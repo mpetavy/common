@@ -1,0 +1,408 @@
+package common
+
+import (
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strconv"
+	"sync"
+
+	"flag"
+	"fmt"
+	"strings"
+)
+
+type ErrFileNotFound struct {
+	FileName string
+}
+
+func (e *ErrFileNotFound) Error() string {
+	return fmt.Sprintf("file or path not found: %s", e.FileName)
+}
+
+// +-----+---+--------------------------+
+// | rwx | 7 | Read, write and execute  |
+// | rw- | 6 | Read, write              |
+// | r-x | 5 | Read, and execute        |
+// | r-- | 4 | Read,                    |
+// | -wx | 3 | Write and execute        |
+// | -w- | 2 | Write                    |
+// | --x | 1 | Execute                  |
+// | --- | 0 | no permissions           |
+// +------------------------------------+
+
+// +------------+------+-------+
+// | Permission | Octal| Field |
+// +------------+------+-------+
+// | rwx------  | 0700 | User  |
+// | ---rwx---  | 0070 | Group |
+// | ------rwx  | 0007 | Other |
+// +------------+------+-------+
+
+var rootTempDir *string
+var tempDir string
+var mu sync.Mutex
+var noTempCleanup = flag.Bool("notempcleanup", false, "no clean of temporary files")
+
+func init() {
+	rootTempDir = flag.String("tempdir", "", "TEMP directory")
+}
+
+// AppCleanup cleans up all remaining objects
+func deleteTempDir() error {
+	if tempDir != "" {
+		DebugFunc()
+
+		b, err := FileExists(tempDir)
+		if err != nil {
+			return err
+		}
+
+		if b {
+			err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+				if !info.IsDir() {
+					b, err := IsFileReadOnly(path)
+					if err != nil {
+						return err
+					}
+
+					if !b {
+						err := SetFileReadOnly(path, false)
+						if err != nil {
+							return err
+						}
+					}
+				}
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+
+			err = os.RemoveAll(tempDir)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// TempDir returns the private temporary directory of the app
+func TempDir() (string, error) {
+	if tempDir == "" {
+		mu.Lock()
+		defer mu.Unlock()
+
+		dir := "golang"
+		if app != nil {
+			dir = app.Name
+		}
+
+		if *rootTempDir == "" {
+			tempDir = filepath.Join(os.TempDir(), dir)
+		} else {
+			tempDir = filepath.Join(*rootTempDir, dir)
+		}
+
+		b, err := FileExists(tempDir)
+		if err != nil {
+			return "", err
+		}
+
+		if b {
+			err := deleteTempDir()
+			if err != nil {
+				return "", err
+			}
+		}
+
+		Debug(fmt.Sprintf("Create temporary directory: %s", tempDir))
+
+		err = os.MkdirAll(tempDir, os.ModePerm)
+		if err != nil {
+			return "", err
+		}
+
+		AddShutdownHook(func() error {
+			if !*noTempCleanup {
+				return deleteTempDir()
+			} else {
+				return nil
+			}
+		})
+	}
+
+	return tempDir, nil
+}
+
+// CurDir returns the current directory of the app
+func CurDir() (string, error) {
+	p, err := filepath.Abs(filepath.Dir("."))
+	if err != nil {
+		return "", err
+	}
+
+	return p, nil
+}
+
+// CreateTempFile creates a temporary file
+func CreateTempFile() (file *os.File, err error) {
+	tempDir, err := TempDir()
+	if err != nil {
+		return nil, err
+	}
+
+	file, err = ioutil.TempFile(tempDir, RuntimeInfo(1).String(true)+"-")
+	if err != nil {
+		return nil, err
+	}
+
+	Debug(fmt.Sprintf("CreateTempFile : %s", file.Name()))
+
+	return file, err
+}
+
+// CreateTempDir creates a temporary file
+func CreateTempDir() (string, error) {
+	rootTempDir, err := TempDir()
+	if err != nil {
+		return "", err
+	}
+
+	tempdir, err := ioutil.TempDir(rootTempDir, RuntimeInfo(1).String(true)+"-")
+	if err != nil {
+		return "", err
+	}
+
+	Debug(fmt.Sprintf("CreateTempDir : %s", tempdir))
+
+	return tempdir, err
+}
+
+// FileExists does ... guess what :-)
+func FileExists(filename string) (bool, error) {
+	var b bool
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		b = false
+		err = nil
+	} else {
+		b = err == nil
+	}
+
+	Debug(fmt.Sprintf("FileExists %s: %v", filename, b))
+
+	return b, err
+}
+
+// FileSize does ... guess what :-)
+func FileSize(filename string) (int64, error) {
+	file, err := os.Stat(filename)
+	if err != nil {
+		return -1, err
+	}
+
+	return file.Size(), nil
+}
+
+// FileCopy does ... guess what :-)
+func FileCopy(src string, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	err = destFile.Sync()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// FileStore creats backup of files
+func FileStore(filename string, r io.Reader) error {
+	// create the file
+	out, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+
+	// care about final cleanup of open file
+	defer out.Close()
+
+	// download the remote resource to the file
+	_, err = io.Copy(out, r)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// FileBackup creats backup of files
+func FileBackup(filename string, count int) error {
+	for i := count - 1; i >= 0; i-- {
+		src := filename
+		if i > 0 {
+			src = src + "." + strconv.Itoa(i)
+		}
+
+		dst := ""
+		if count == 1 {
+			dst = filename + ".bak"
+		} else {
+			dst = filename + "." + strconv.Itoa(i+1)
+		}
+
+
+		b, err := FileExists(src)
+		if err != nil {
+			return nil
+		}
+
+		if b {
+			b, err = FileExists(dst)
+			if err != nil {
+				return nil
+			}
+
+			if b {
+				err = os.Remove(dst)
+				if err != nil {
+					return nil
+				}
+			}
+
+			err := os.Rename(src, dst)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// IsFileReadOnly checks if a file is read only
+func IsFileReadOnly(path string) (result bool, err error) {
+	result = false
+
+	file, err := os.OpenFile(path, os.O_WRONLY, os.ModePerm)
+	if err != nil {
+		if !os.IsPermission(err) {
+			result = true
+		} else {
+			return false, err
+		}
+	}
+	file.Close()
+
+	return result, nil
+}
+
+// IsDirectory checks if the path leads to a directory
+func IsDirectory(path string) (bool, error) {
+	b, err := FileExists(path)
+
+	if err != nil {
+		return false, err
+	}
+
+	if b {
+		fi, err := os.Stat(path)
+		if err != nil {
+			return false, err
+		}
+
+		return fi.IsDir(), nil
+	} else {
+		return false, nil
+	}
+}
+
+// IsDirectory checks if the path leads to a directory
+func IsFile(path string) bool {
+	fi, err := os.Stat(path)
+
+	if err != nil {
+		return false
+	}
+
+	return fi.Mode()&os.ModeType == 0
+}
+
+// IsSymbolicLink checks if the path leads to symbolic link
+func IsSymbolicLink(path string) bool {
+	file, err := os.Lstat(path)
+	if err != nil {
+		return false
+	}
+
+	return file.Mode()&os.ModeSymlink != 0
+}
+
+// SetFileReadOnly sets file READ-ONLY yes or false
+func SetFileReadOnly(path string, readonly bool) (err error) {
+	if readonly {
+		err = os.Chmod(path, 0400)
+	} else {
+		err = os.Chmod(path, os.ModePerm)
+	}
+
+	return err
+}
+
+// Returns the complete filename "test.txt"
+func FileName(filename string) string {
+	_, filename = filepath.Split(filename)
+
+	return filename
+}
+
+// Returns the filename part without extension "test.txt" -> "test"
+func FileNamePart(filename string) string {
+	_, filename = filepath.Split(filename)
+
+	return filename[0 : len(filename)-len(FileNameExt(filename))]
+}
+
+// Returns the filename extension without part "test.txt" -> ".txt"
+func FileNameExt(filename string) string {
+	return filepath.Ext(filename)
+}
+
+// CleanPath cleans the given path and also replace to OS specific separators
+func CleanPath(path string) string {
+	if IsWindowsOS() {
+		path = strings.Replace(path, "/", string(filepath.Separator), -1)
+	} else {
+		path = strings.Replace(path, "\\", string(filepath.Separator), -1)
+	}
+
+	p := strings.Index(path, "~")
+
+	if p != -1 {
+		path = strings.Replace(path, "~", *UserHomeDir, -1)
+	}
+
+	path = filepath.Clean(path)
+
+	return path
+}
