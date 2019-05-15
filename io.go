@@ -40,52 +40,64 @@ func (e *ErrFileNotFound) Error() string {
 // | ------rwx  | 0007 | Other |
 // +------------+------+-------+
 
-var rootTempDir *string
-var tempDir string
+var tempDir *string
 var mu sync.Mutex
 var noTempCleanup = flag.Bool("notempcleanup", false, "no clean of temporary files")
 
 func init() {
-	rootTempDir = flag.String("tempdir", "", "TEMP directory")
+	d, err := ioutil.TempDir("", "golang")
+	if err != nil {
+		panic(err)
+	}
+
+	tempDir = flag.String("tempdir", d, "TEMP directory")
+
+	AddShutdownHook(func() error {
+		if !*noTempCleanup {
+			return deleteTempDir()
+		} else {
+			return nil
+		}
+	})
 }
 
 // AppCleanup cleans up all remaining objects
 func deleteTempDir() error {
-	if tempDir != "" {
-		DebugFunc()
+	DebugFunc()
 
-		b, err := FileExists(tempDir)
-		if err != nil {
-			return err
-		}
+	b, err := FileExists(*tempDir)
+	if err != nil {
+		return err
+	}
 
-		if b {
-			err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
-				if !info.IsDir() {
-					b, err := IsFileReadOnly(path)
-					if err != nil {
-						return err
-					}
+	if !b {
+		return nil
+	}
 
-					if !b {
-						err := SetFileReadOnly(path, false)
-						if err != nil {
-							return err
-						}
-					}
+	err = filepath.Walk(*tempDir, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			b, err := IsFileReadOnly(path)
+			if err != nil {
+				return err
+			}
+
+			if !b {
+				err := SetFileReadOnly(path, false)
+				if err != nil {
+					return err
 				}
-
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-
-			err = os.RemoveAll(tempDir)
-			if err != nil {
-				return err
 			}
 		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	err = os.RemoveAll(*tempDir)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -93,50 +105,7 @@ func deleteTempDir() error {
 
 // TempDir returns the private temporary directory of the app
 func TempDir() (string, error) {
-	if tempDir == "" {
-		mu.Lock()
-		defer mu.Unlock()
-
-		dir := "golang"
-		if app != nil {
-			dir = app.Name
-		}
-
-		if *rootTempDir == "" {
-			tempDir = filepath.Join(os.TempDir(), dir)
-		} else {
-			tempDir = filepath.Join(*rootTempDir, dir)
-		}
-
-		b, err := FileExists(tempDir)
-		if err != nil {
-			return "", err
-		}
-
-		if b {
-			err := deleteTempDir()
-			if err != nil {
-				return "", err
-			}
-		}
-
-		Debug(fmt.Sprintf("Create temporary directory: %s", tempDir))
-
-		err = os.MkdirAll(tempDir, os.ModePerm)
-		if err != nil {
-			return "", err
-		}
-
-		AddShutdownHook(func() error {
-			if !*noTempCleanup {
-				return deleteTempDir()
-			} else {
-				return nil
-			}
-		})
-	}
-
-	return tempDir, nil
+	return *tempDir,nil
 }
 
 // CurDir returns the current directory of the app
@@ -160,6 +129,7 @@ func CreateTempFile() (file *os.File, err error) {
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 
 	Debug(fmt.Sprintf("CreateTempFile : %s", file.Name()))
 
@@ -197,6 +167,22 @@ func FileExists(filename string) (bool, error) {
 	Debug(fmt.Sprintf("FileExists %s: %v", filename, b))
 
 	return b, err
+}
+
+// FileExists does ... guess what :-)
+func FileDelete(filename string) (error) {
+	b, err := FileExists(filename)
+	if err != nil {
+		return err
+	}
+
+	if b {
+		Debug(fmt.Sprintf("FileRemove %s: %v", filename, b))
+
+		return os.Remove(filename)
+	}
+
+	return nil
 }
 
 // FileSize does ... guess what :-)
@@ -270,7 +256,6 @@ func FileBackup(filename string, count int) error {
 		} else {
 			dst = filename + "." + strconv.Itoa(i+1)
 		}
-
 
 		b, err := FileExists(src)
 		if err != nil {

@@ -1,6 +1,8 @@
 package common
 
 import (
+	"os"
+	"strings"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/h2non/filetype"
 )
@@ -20,4 +22,25 @@ func DetectMimeType(buf []byte) (string, string) {
 	}
 
 	return "", ""
+}
+
+func ReadHeader(path string) ([]byte,error) {
+	byteSlice := make([]byte, MIME_TYPE_HEADER_LEN)
+
+	file, err := os.Open(path)
+	if err != nil {
+		return byteSlice[0:0],err
+	}
+	defer file.Close()
+
+	bytesRead, err := file.Read(byteSlice)
+	if err != nil {
+		return byteSlice[0:0],err
+	}
+
+	return byteSlice[:bytesRead],nil
+}
+
+func IsImageMimeType(s string) bool {
+	return strings.HasPrefix(s,"image/") 
 }

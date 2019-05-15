@@ -8,4 +8,5 @@ require (
 	github.com/kardianos/service v1.0.0
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/pkg/errors v0.8.1
+	github.com/stretchr/testify v1.3.0
 )
