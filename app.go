@@ -3,6 +3,7 @@ package common
 import (
 	"flag"
 	"fmt"
+	"github.com/go-ini/ini"
 	"os"
 	"os/signal"
 	"strconv"
@@ -66,6 +67,7 @@ var (
 	usage               *bool
 	NoBanner            bool
 	ticker              *time.Ticker
+	profile             *string
 )
 
 func init() {
@@ -73,6 +75,7 @@ func init() {
 	serviceActions = service.ControlAction[:]
 	serviceActions = append(serviceActions, "simulate")
 	usage = flag.Bool("?", false, "show usage")
+	profile = flag.String("profile", "", "flag profile in configuration file")
 }
 
 // New struct for copyright information
@@ -87,6 +90,8 @@ func New(application *App, mandatoryFlags []string) {
 	}
 
 	flag.Parse()
+
+	parseCfgFile()
 
 	flagErr := false
 
@@ -135,6 +140,27 @@ func New(application *App, mandatoryFlags []string) {
 
 	if flagErr {
 		Exit(1)
+	}
+}
+
+func parseCfgFile() {
+	fn := app.Name + ".cfg"
+	b, _ := FileExists(fn)
+	if b {
+		f, err := ini.Load(fn)
+		if err != nil {
+			Error(err)
+			return
+		}
+
+		for _, k := range f.Section(*profile).Keys() {
+			if flag.Lookup("-"+k.Name()) == nil {
+				err := flag.Set(k.Name(), k.String())
+				if err != nil {
+					Error(err)
+				}
+			}
+		}
 	}
 }
 
