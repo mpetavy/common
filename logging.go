@@ -212,6 +212,15 @@ func Info(t string, arg ...interface{}) {
 	}
 }
 
+// Warn prints out the error
+func WarnError(err error) {
+	if err != nil {
+		if level <= LEVEL_ERROR {
+			log(LEVEL_WARN, fmtLog("WARN", 2, err.Error()))
+		}
+	}
+}
+
 // Warn prints out the information
 func Warn(t string, arg ...interface{}) {
 	if level <= LEVEL_WARN {
