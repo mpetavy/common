@@ -193,7 +193,7 @@ func closeLogFile() error {
 func fmtLog(level string, pos int, txt string) string {
 	ri := RuntimeInfo(pos + 1)
 
-	return fmt.Sprintf("%s %s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, ri.String(false), Capitalize(txt))
+	return fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, ri.String(false), Capitalize(txt))
 }
 
 // File prints out the information
