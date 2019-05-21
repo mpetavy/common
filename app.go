@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"testing"
 	"time"
 
 	"github.com/kardianos/service"
@@ -141,6 +142,10 @@ func New(application *App, mandatoryFlags []string) {
 	if flagErr {
 		Exit(1)
 	}
+}
+
+func Test(m *testing.M) {
+	New(&App{"test", "0.0.0", "2018", "test", "mpetavy", APACHE, "https://github.com/golang/mpetavy/golang/tresor", true, nil, nil, nil, nil, time.Duration(0)}, nil)
 }
 
 func parseCfgFile() {
