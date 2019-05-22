@@ -76,7 +76,7 @@ func init() {
 	serviceActions = service.ControlAction[:]
 	serviceActions = append(serviceActions, "simulate")
 	usage = flag.Bool("?", false, "show usage")
-	profile = flag.String("profile", "", "flag profile in configuration file")
+	profile = flag.String("profile", "", "flag profile in configuration logFile")
 }
 
 // New struct for copyright information
@@ -105,8 +105,6 @@ func New(application *App, mandatoryFlags []string) {
 			flagErr = true
 		}
 	}
-
-	initLog()
 
 	if !NoBanner || *usage {
 		ShowBanner()

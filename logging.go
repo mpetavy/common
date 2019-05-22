@@ -14,7 +14,7 @@ import (
 
 const (
 	// DB level
-	LEVEL_FILE = iota
+	LEVEL_PROLOG = iota
 	// LEVEL_DEBUG level
 	LEVEL_DEBUG
 	// LEVEL_INFO level
@@ -33,15 +33,17 @@ type logEntry struct {
 }
 
 var (
-	level          = LEVEL_INFO
+	logLevel       = LEVEL_INFO
 	logConsole     *bool
-	logFile        *string
+	logFilename    *string
 	logFileSize    *int
-	logLevel       *string
+	logLevelString *string
+
 	defaultLogFile string
 	logEntries     chan logEntry
 	mutex          sync.Mutex
 	wg             sync.WaitGroup
+	logFile        *os.File
 )
 
 func init() {
@@ -66,128 +68,134 @@ func init() {
 	defaultLogFile = filename
 
 	logConsole = flag.Bool("logconsole", true, "log to console")
-	logFile = flag.String("logfile", "", fmt.Sprintf("filename to log file (use \".\" for %s)", defaultLogFile))
-	logFileSize = flag.Int("logfilesize", 10, "log file size in MB")
-	logLevel = flag.String("loglevel", "info", "log level (debug,info,error,fatal)")
+	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
+	logFileSize = flag.Int("logfilesize", 10, "log logFile size in MB")
+	logLevelString = flag.String("loglevel", "info", "log level (debug,info,error,fatal)")
 }
 
 func initLog() {
-	var err error
+	mutex.Lock()
 
-	logEntries = make(chan logEntry, 100)
+	if logEntries == nil {
+		var err error
 
-	switch strings.ToLower(*logLevel) {
-	case "debug":
-		level = LEVEL_DEBUG
-	case "info":
-		level = LEVEL_INFO
-	case "warn":
-		level = LEVEL_WARN
-	case "error":
-		level = LEVEL_ERROR
-	case "fatal":
-		level = LEVEL_FATAL
-	default:
-		level = LEVEL_INFO
-	}
+		logEntries = make(chan logEntry, 100)
 
-	if *logFile == "." {
-		*logFile = defaultLogFile
-	}
+		switch strings.ToLower(*logLevelString) {
+		case "debug":
+			logLevel = LEVEL_DEBUG
+		case "info":
+			logLevel = LEVEL_INFO
+		case "warn":
+			logLevel = LEVEL_WARN
+		case "error":
+			logLevel = LEVEL_ERROR
+		case "fatal":
+			logLevel = LEVEL_FATAL
+		default:
+			logLevel = LEVEL_INFO
+		}
 
-	File(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
-	File(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
+		if *logFilename == "." {
+			*logFilename = defaultLogFile
+		}
 
-	go func() {
-		var file *os.File
+		go func() {
+			timeout := time.Millisecond * 500
 
-		timeout := time.Millisecond * 500
+			t := time.NewTimer(timeout)
 
-		t := time.NewTimer(timeout)
+		loop:
+			for {
+				select {
+				case <-t.C:
+					t.Stop()
 
-	loop:
-		for {
-			select {
-			case <-t.C:
-				mutex.Lock()
-
-				t.Stop()
-
-				if file != nil {
-					file.Close()
-
-					fi, _ := os.Stat(*logFile)
-
-					if fi.Size() > (int64(*logFileSize) * 1024 * 1024) {
-						os.Remove(*logFile)
+					closeLogFile(false)
+				case entry, ok := <-logEntries:
+					if !ok {
+						break loop
 					}
 
-					file = nil
-				}
+					mutex.Lock()
 
-				mutex.Unlock()
-			case entry, ok := <-logEntries:
-				if !ok {
-					break loop
-				}
+					t.Stop()
 
-				mutex.Lock()
+					entry.txt = strings.TrimRight(entry.txt, "\r\n")
 
-				t.Stop()
+					if logFile == nil && len(*logFilename) != 0 {
+						b, _ := FileExists(*logFilename)
 
-				entry.txt = strings.TrimRight(entry.txt, "\r\n")
+						if b {
+							fi, _ := os.Stat(*logFilename)
 
-				if file == nil && len(*logFile) != 0 {
-					file, err = os.OpenFile(*logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
-					if err != nil {
-						Fatal(fmt.Errorf("cannot write to file %s: %v", *logFile, err))
+							if fi.Size() > (int64(*logFileSize) * 1024 * 1024) {
+								os.Remove(*logFilename)
+							}
+						}
+
+						logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
+						if err != nil {
+							Fatal(fmt.Errorf("cannot write to logFile %s: %v", *logFilename, err))
+						}
 					}
+
+					if entry.level != LEVEL_PROLOG && *logConsole {
+						fmt.Fprintf(os.Stderr, "%s\n", entry.txt)
+					}
+
+					if logFile != nil {
+						logFile.WriteString(fmt.Sprintf("%s\n", entry.txt))
+					}
+
+					mutex.Unlock()
+
+					t.Reset(timeout)
+
+					wg.Done()
 				}
-
-				if entry.level != LEVEL_FILE && *logConsole {
-					fmt.Printf("%s\n", entry.txt)
-				}
-
-				if file != nil {
-					file.WriteString(fmt.Sprintf("%s\n", entry.txt))
-				}
-
-				mutex.Unlock()
-
-				t.Reset(timeout)
-
-				wg.Done()
 			}
-		}
 
-		mutex.Lock()
+			closeLogFile(true)
+		}()
 
-		if file != nil {
-			file.Close()
+		AddShutdownHook(func() error {
+			closeLogFile(true)
 
-			file = nil
-		}
+			return nil
+		})
 
-		mutex.Unlock()
-	}()
+		prolog(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
+		prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
+	}
 
-	AddShutdownHook(func() error {
-		return closeLogFile()
-	})
+	mutex.Unlock()
 }
 
-func closeLogFile() error {
+func closeLogFile(isFinal bool) {
 	DebugFunc()
 
-	if logEntries != nil {
-		File(fmt.Sprintf("<<< STOP - %s %s", strings.ToUpper(app.Name), app.Version))
-
-		close(logEntries)
-
-		wg.Wait()
+	if isFinal {
+		prolog(fmt.Sprintf("<<< STOP - %s %s", strings.ToUpper(app.Name), app.Version))
 	}
 
-	return nil
+	wg.Wait()
+
+	mutex.Lock()
+
+	if isFinal {
+		close(logEntries)
+
+		logEntries = nil
+	}
+
+	if logFile != nil {
+		logFile.Close()
+
+		logFile = nil
+	}
+
+	mutex.Unlock()
 }
 
 func fmtLog(level string, pos int, txt string) string {
@@ -196,98 +204,101 @@ func fmtLog(level string, pos int, txt string) string {
 	return fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, ri.String(false), Capitalize(txt))
 }
 
-// File prints out the information
-func File(txt string) {
-	log(LEVEL_FILE, fmtLog("FILE ", 2, txt))
-}
-
-// Info prints out the information
-func Info(t string, arg ...interface{}) {
-	if level <= LEVEL_INFO {
-		if len(arg) > 0 {
-			t = fmt.Sprintf(t, arg...)
-		}
-
-		log(LEVEL_INFO, fmtLog("INFO ", 2, t))
+// logFile prints out the information
+func prolog(t string, arg ...interface{}) {
+	if len(arg) > 0 {
+		t = fmt.Sprintf(t, arg...)
 	}
-}
 
-// Warn prints out the error
-func WarnError(err error) {
-	if err != nil {
-		if level <= LEVEL_ERROR {
-			log(LEVEL_WARN, fmtLog("WARN", 2, err.Error()))
-		}
-	}
-}
-
-// Warn prints out the information
-func Warn(t string, arg ...interface{}) {
-	if level <= LEVEL_WARN {
-		if len(arg) > 0 {
-			t = fmt.Sprintf(t, arg...)
-		}
-
-		log(LEVEL_WARN, fmtLog("WARN ", 2, t))
-	}
+	log(LEVEL_PROLOG, fmtLog("FILE", 2, t))
 }
 
 // Debug prints out the information
 func Debug(t string, arg ...interface{}) {
-	if level <= LEVEL_DEBUG {
-		if len(arg) > 0 {
-			t = fmt.Sprintf(t, arg...)
-		}
+	initLog()
 
-		log(LEVEL_DEBUG, fmtLog("DEBUG", 2, t))
+	if len(arg) > 0 {
+		t = fmt.Sprintf(t, arg...)
+	}
+
+	log(LEVEL_DEBUG, fmtLog("DEBUG", 2, t))
+}
+
+// Info prints out the information
+func Info(t string, arg ...interface{}) {
+	initLog()
+
+	if len(arg) > 0 {
+		t = fmt.Sprintf(t, arg...)
+	}
+
+	log(LEVEL_INFO, fmtLog("INFO", 2, t))
+}
+
+// Warn prints out the information
+func Warn(t string, arg ...interface{}) {
+	initLog()
+
+	if len(arg) > 0 {
+		t = fmt.Sprintf(t, arg...)
+	}
+
+	log(LEVEL_WARN, fmtLog("WARN", 2, t))
+}
+
+// Warn prints out the error
+func WarnError(err error) {
+	initLog()
+
+	if err != nil {
+		log(LEVEL_WARN, fmtLog("DEBUG", 2, fmt.Sprintf("Error: %s", err.Error())))
 	}
 }
 
 // DebugFunc prints out the current executon func
 func DebugFunc() {
+	initLog()
+
 	ri := RuntimeInfo(1)
 
-	if level <= LEVEL_DEBUG {
-		log(LEVEL_DEBUG, fmtLog("DEBUG", 2, ri.Fn+"()"))
-	}
+	log(LEVEL_DEBUG, fmtLog("DEBUG", 2, ri.Fn+"()"))
 }
 
 // Debug prints out the information
 func DebugError(err error) {
-	if level <= LEVEL_DEBUG {
+	initLog()
+
+	if err != nil {
 		log(LEVEL_DEBUG, fmtLog("DEBUG", 2, fmt.Sprintf("Error: %s", err.Error())))
 	}
 }
 
 // Error prints out the error
 func Error(err error) {
+	initLog()
+
 	if err != nil {
-		if level <= LEVEL_ERROR {
-			log(LEVEL_ERROR, fmtLog("ERROR", 2, err.Error()))
-		}
+		log(LEVEL_ERROR, fmtLog("ERROR", 2, err.Error()))
 	}
 }
 
 // Fatal prints out the error
 func Fatal(err error) {
+	initLog()
+
 	if err != nil {
-		s := fmtLog("FATAL", 2, err.Error())
-		if level <= LEVEL_FATAL {
-			log(LEVEL_FATAL, s)
-		}
+		log(LEVEL_FATAL, fmtLog("FATAL", 2, err.Error()))
 
 		panic(err)
 	}
 }
 
 func log(level int, txt string) {
-	mutex.Lock()
+	if logEntries != nil && (level == LEVEL_PROLOG || level >= logLevel) {
+		wg.Add(1)
 
-	wg.Add(1)
-
-	logEntries <- logEntry{level, txt}
-
-	mutex.Unlock()
+		logEntries <- logEntry{level, txt}
+	}
 }
 
 func ToString(cmd exec.Cmd) string {
@@ -297,5 +308,7 @@ func ToString(cmd exec.Cmd) string {
 }
 
 func IsDebugMode() bool {
-	return level == LEVEL_DEBUG
+	initLog()
+
+	return logLevel == LEVEL_DEBUG
 }
