@@ -38,6 +38,7 @@ var (
 	logFilename    *string
 	logFileSize    *int
 	logLevelString *string
+	logFileBackup  *int
 
 	defaultLogFile string
 	logEntries     chan logEntry
@@ -70,6 +71,7 @@ func init() {
 	logConsole = flag.Bool("logconsole", true, "log to console")
 	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
 	logFileSize = flag.Int("logfilesize", 10, "log logFile size in MB")
+	logFileBackup = flag.Int("logfilebackup", 5, "logFile backups")
 	logLevelString = flag.String("loglevel", "info", "log level (debug,info,error,fatal)")
 }
 
@@ -130,14 +132,13 @@ func initLog() {
 							fi, _ := os.Stat(*logFilename)
 
 							if fi.Size() > (int64(*logFileSize) * 1024 * 1024) {
-								os.Remove(*logFilename)
+								err := FileBackup(*logFilename, *logFileBackup)
+								Fatal(fmt.Errorf("cannot write to logFile %s: %v", *logFilename, err))
 							}
 						}
 
 						logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
-						if err != nil {
-							Fatal(fmt.Errorf("cannot write to logFile %s: %v", *logFilename, err))
-						}
+						Fatal(fmt.Errorf("cannot write to logFile %s: %v", *logFilename, err))
 					}
 
 					if entry.level != LEVEL_PROLOG && *logConsole {
