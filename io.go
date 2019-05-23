@@ -306,7 +306,6 @@ func IsFileReadOnly(path string) (result bool, err error) {
 // IsDirectory checks if the path leads to a directory
 func IsDirectory(path string) (bool, error) {
 	b, err := FileExists(path)
-
 	if err != nil {
 		return false, err
 	}
@@ -324,14 +323,13 @@ func IsDirectory(path string) (bool, error) {
 }
 
 // IsDirectory checks if the path leads to a directory
-func IsFile(path string) bool {
-	fi, err := os.Stat(path)
-
+func IsFile(path string) (bool,error) {
+	b,err := IsDirectory(path)
 	if err != nil {
-		return false
+		return false, err
 	}
 
-	return fi.Mode()&os.ModeType == 0
+	return !b,nil
 }
 
 // IsSymbolicLink checks if the path leads to symbolic link
