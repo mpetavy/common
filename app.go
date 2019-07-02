@@ -6,6 +6,7 @@ import (
 	"github.com/go-ini/ini"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -148,19 +149,27 @@ func Test(m *testing.M) {
 
 func parseCfgFile() {
 	fn := app.Name + ".cfg"
-	b, _ := FileExists(fn)
-	if b {
-		f, err := ini.Load(fn)
-		if err != nil {
-			Error(err)
-			return
-		}
 
+	f, err := ini.Load(fn)
+	if err == nil {
 		for _, k := range f.Section(*profile).Keys() {
-			if flag.Lookup("-"+k.Name()) == nil {
-				err := flag.Set(k.Name(), k.String())
-				if err != nil {
-					Error(err)
+			name := strings.ToLower(k.Name())
+			value := k.String()
+
+			p := strings.Index(name,"@")
+			os := runtime.GOOS
+
+			if (p != -1) {
+				os = name[p+1:]
+				name = name[:p]
+			}
+
+			if runtime.GOOS == os {
+				if flag.Lookup("-"+name) == nil {
+					err := flag.Set(name, value)
+					if err != nil {
+						Error(err)
+					}
 				}
 			}
 		}
