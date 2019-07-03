@@ -49,7 +49,7 @@ func (rl *ReentrantLock) Unlock() {
 	if rl.locked {
 		rl.locked = false
 
-		rl.Lock()
+		rl.Unlock()
 	}
 }
 
