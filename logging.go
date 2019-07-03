@@ -32,6 +32,27 @@ type logEntry struct {
 	txt   string
 }
 
+type ReentrantLock struct {
+	locked bool
+	sync.Mutex
+}
+
+func (rl *ReentrantLock) Lock() {
+	if !rl.locked {
+		rl.locked = true
+
+		rl.Lock()
+	}
+}
+
+func (rl *ReentrantLock) Unlock() {
+	if rl.locked {
+		rl.locked = false
+
+		rl.Lock()
+	}
+}
+
 var (
 	logLevel       = LEVEL_INFO
 	logConsole     *bool
@@ -42,8 +63,7 @@ var (
 
 	defaultLogFile string
 	logEntries     chan logEntry
-	mutex          sync.Mutex
-	wg             sync.WaitGroup
+	mutex          ReentrantLock
 	logFile        *os.File
 )
 
@@ -76,113 +96,125 @@ func init() {
 }
 
 func initLog() {
-	mutex.Lock()
-
 	if logEntries == nil {
-		var err error
+		mutex.Lock()
+		defer mutex.Unlock()
 
-		logEntries = make(chan logEntry, 100)
+		if logEntries == nil {
+			logEntries = make(chan logEntry, 100)
 
-		switch strings.ToLower(*logLevelString) {
-		case "debug":
-			logLevel = LEVEL_DEBUG
-		case "info":
-			logLevel = LEVEL_INFO
-		case "warn":
-			logLevel = LEVEL_WARN
-		case "error":
-			logLevel = LEVEL_ERROR
-		case "fatal":
-			logLevel = LEVEL_FATAL
-		default:
-			logLevel = LEVEL_INFO
-		}
-
-		if *logFilename == "." {
-			*logFilename = defaultLogFile
-		}
-
-		go func() {
-			timeout := time.Millisecond * 500
-
-			t := time.NewTimer(timeout)
-
-		loop:
-			for {
-				select {
-				case <-t.C:
-					t.Stop()
-
-					closeLogFile(false)
-				case entry, ok := <-logEntries:
-					if !ok {
-						break loop
-					}
-
-					mutex.Lock()
-
-					t.Stop()
-
-					entry.txt = strings.TrimRight(entry.txt, "\r\n")
-
-					if logFile == nil && len(*logFilename) != 0 {
-						b, _ := FileExists(*logFilename)
-
-						if b {
-							fi, _ := os.Stat(*logFilename)
-
-							if fi.Size() > (int64(*logFileSize) * 1024 * 1024) {
-								err := FileBackup(*logFilename, *logFileBackup)
-								Fatal(fmt.Errorf("cannot write to logFile %s: %v", *logFilename, err))
-							}
-						}
-
-						logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
-						Fatal(fmt.Errorf("cannot write to logFile %s: %v", *logFilename, err))
-					}
-
-					if entry.level != LEVEL_PROLOG && *logConsole {
-						fmt.Fprintf(os.Stderr, "%s\n", entry.txt)
-					}
-
-					if logFile != nil {
-						logFile.WriteString(fmt.Sprintf("%s\n", entry.txt))
-					}
-
-					mutex.Unlock()
-
-					t.Reset(timeout)
-
-					wg.Done()
-				}
+			switch strings.ToLower(*logLevelString) {
+			case "debug":
+				logLevel = LEVEL_DEBUG
+			case "info":
+				logLevel = LEVEL_INFO
+			case "warn":
+				logLevel = LEVEL_WARN
+			case "error":
+				logLevel = LEVEL_ERROR
+			case "fatal":
+				logLevel = LEVEL_FATAL
+			default:
+				logLevel = LEVEL_INFO
 			}
 
-			closeLogFile(true)
-		}()
+			if *logFilename == "." {
+				*logFilename = defaultLogFile
+			}
 
-		AddShutdownHook(func() error {
-			closeLogFile(true)
+			go func() {
+				timeout := time.Millisecond * 500
 
-			return nil
-		})
+				t := time.NewTimer(timeout)
 
-		prolog(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
-		prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
+			loop:
+				for {
+					select {
+					case <-t.C:
+						t.Stop()
+
+						closeLogFile(false)
+					case entry, ok := <-logEntries:
+						t.Stop()
+
+						if !ok {
+							mutex.Unlock()
+
+							break loop
+						}
+
+						mutex.Lock()
+
+						writeEntry(entry)
+
+						t.Reset(timeout)
+					}
+				}
+
+				closeLogFile(true)
+			}()
+
+			AddShutdownHook(func() error {
+				closeLogFile(true)
+
+				return nil
+			})
+
+			prolog(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
+			prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
+		}
+	}
+}
+
+func writeEntry(entry logEntry) {
+	//mutex.Lock()
+	//mutex.Unlock()
+
+	entry.txt = strings.TrimRight(entry.txt, "\r\n")
+
+	var err error
+
+	if logFile == nil && len(*logFilename) != 0 {
+		b, _ := FileExists(*logFilename)
+
+		if b {
+			fi, _ := os.Stat(*logFilename)
+
+			if fi.Size() > (int64(*logFileSize) * 1024 * 1024) {
+				err := FileBackup(*logFilename, *logFileBackup)
+				Fatal(fmt.Errorf("cannot write to logFile %s: %v", *logFilename, err))
+			}
+		}
+
+		logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
+
+		if err != nil {
+			Error(err)
+
+			return
+		}
 	}
 
-	mutex.Unlock()
+	if entry.level != LEVEL_PROLOG && *logConsole {
+		fmt.Fprintf(os.Stderr, "%s\n", entry.txt)
+	}
+
+	if logFile != nil {
+		_, err = logFile.WriteString(fmt.Sprintf("%s\n", entry.txt))
+	}
+
+	if err != nil {
+		Error(err)
+	}
 }
 
 func closeLogFile(isFinal bool) {
-	DebugFunc()
+	mutex.Lock()
+	mutex.Unlock()
 
 	if isFinal {
 		prolog(fmt.Sprintf("<<< STOP - %s %s", strings.ToUpper(app.Name), app.Version))
 	}
-
-	wg.Wait()
-
-	mutex.Lock()
 
 	if isFinal {
 		close(logEntries)
@@ -195,8 +227,6 @@ func closeLogFile(isFinal bool) {
 
 		logFile = nil
 	}
-
-	mutex.Unlock()
 }
 
 func fmtLog(level string, pos int, txt string) string {
@@ -252,7 +282,7 @@ func WarnError(err error) {
 	initLog()
 
 	if err != nil {
-		log(LEVEL_WARN, fmtLog("DEBUG", 2, fmt.Sprintf("Error: %s", err.Error())))
+		log(LEVEL_WARN, fmtLog("WARN", 2, fmt.Sprintf("Error: %s", err.Error())))
 	}
 }
 
@@ -296,8 +326,6 @@ func Fatal(err error) {
 
 func log(level int, txt string) {
 	if logEntries != nil && (level == LEVEL_PROLOG || level >= logLevel) {
-		wg.Add(1)
-
 		logEntries <- logEntry{level, txt}
 	}
 }
