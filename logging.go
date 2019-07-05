@@ -160,8 +160,10 @@ func initLog() {
 				return nil
 			})
 
-			prolog(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
-			prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
+			if app != nil {
+				prolog(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
+				prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
+			}
 		}
 	}
 }
@@ -213,7 +215,9 @@ func closeLogFile(isFinal bool) {
 	mutex.Unlock()
 
 	if isFinal {
-		prolog(fmt.Sprintf("<<< STOP - %s %s", strings.ToUpper(app.Name), app.Version))
+		if app != nil {
+			prolog(fmt.Sprintf("<<< STOP - %s %s", strings.ToUpper(app.Name), app.Version))
+		}
 	}
 
 	if isFinal {
