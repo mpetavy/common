@@ -154,12 +154,6 @@ func initLog() {
 				closeLogFile(true)
 			}()
 
-			AddShutdownHook(func() error {
-				closeLogFile(true)
-
-				return nil
-			})
-
 			if app != nil {
 				prolog(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
 				prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
