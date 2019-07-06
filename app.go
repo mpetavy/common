@@ -156,10 +156,10 @@ func parseCfgFile() {
 			name := strings.ToLower(k.Name())
 			value := k.String()
 
-			p := strings.Index(name,"@")
+			p := strings.Index(name, "@")
 			os := runtime.GOOS
 
-			if (p != -1) {
+			if p != -1 {
 				os = name[p+1:]
 				name = name[:p]
 			}
@@ -407,8 +407,4 @@ func Run() {
 	if err != nil {
 		Fatal(err)
 	}
-}
-
-func GetApp() *App {
-	return app
 }
