@@ -280,7 +280,7 @@ func WarnError(err error) {
 	initLog()
 
 	if err != nil {
-		log(LEVEL_WARN, fmtLog("WARN", 2, fmt.Sprintf("Error: %s", err.Error())))
+		log(LEVEL_WARN, fmtLog("WARN", 2, err.Error()))
 	}
 }
 
@@ -298,7 +298,7 @@ func DebugError(err error) {
 	initLog()
 
 	if err != nil {
-		log(LEVEL_DEBUG, fmtLog("DEBUG", 2, fmt.Sprintf("Error: %s", err.Error())))
+		log(LEVEL_DEBUG, fmtLog("DEBUG", 2, err.Error()))
 	}
 }
 

@@ -2,6 +2,7 @@ package common
 
 import (
 	"flag"
+	"fmt"
 	"github.com/disintegration/imaging"
 	"github.com/hhrutter/pdfcpu/tiff"
 	"image"
@@ -34,8 +35,15 @@ func init() {
 	quality = flag.Int("jpeg.quality", 80, "JPEG quality")
 }
 
-func LoadImage(path string) (image.Image, error) {
-	img, err := imaging.Open(path)
+func LoadImage(path string) (img image.Image, err error) {
+	defer func() {
+		if err := recover(); err != nil {
+			img = nil
+			err = fmt.Errorf("LoadImage failed: %s", path)
+		}
+	}()
+
+	img, err = imaging.Open(path)
 
 	if err != nil {
 		f, err := os.Open(path)

@@ -10,6 +10,16 @@ import (
 
 // https://medium.com/@vCabbage/go-timeout-commands-with-os-exec-commandcontext-ba0c861ed738
 
+type ErrWatchdog struct {
+	Pid   int
+	Start time.Time
+	Cmd   *exec.Cmd
+}
+
+func (e *ErrWatchdog) Error() string {
+	return fmt.Sprintf("watchdog killed process pid: %d cmd: %s after: %v", e.Cmd.Process.Pid, ToString(*e.Cmd), time.Since(e.Start))
+}
+
 func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 	doneCh := make(chan error)
 
@@ -33,9 +43,9 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 		case <-ti:
 			cmd.Process.Kill()
 
-			return fmt.Errorf("watchdog killed: pid: %d cmd: %s\n", cmd.Process.Pid, ToString(*cmd))
+			return &ErrWatchdog{cmd.Process.Pid, start, cmd}
 		case err = <-doneCh:
-			Debug("watchdog finished: pid: %d cmd: %s\n time: %s", cmd.Process.Pid, ToString(*cmd), time.Since(start))
+			Debug("watchdog finished process pid: %d cmd: %s\n time: %s", cmd.Process.Pid, ToString(*cmd), time.Since(start))
 			return err
 		}
 	}
