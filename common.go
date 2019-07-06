@@ -104,18 +104,18 @@ func Translate(msg string, args ...interface{}) string {
 	return fmt.Sprintf(msg, args...)
 }
 
-func Eval(b bool, tf interface{}, ff interface{}) interface{} {
+func Eval(b bool, trueFunc interface{}, falseFunc interface{}) interface{} {
 	if b {
-		if f, ok := tf.(func() interface{}); ok {
+		if f, ok := trueFunc.(func() interface{}); ok {
 			return f()
 		} else {
-			return tf
+			return trueFunc
 		}
 	} else {
-		if f, ok := ff.(func() interface{}); ok {
+		if f, ok := falseFunc.(func() interface{}); ok {
 			return f()
 		} else {
-			return ff
+			return falseFunc
 		}
 	}
 }

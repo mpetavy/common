@@ -3,6 +3,7 @@ package common
 import (
 	"flag"
 	"github.com/disintegration/imaging"
+	"github.com/hhrutter/pdfcpu/tiff"
 	"image"
 	"image/draw"
 	"io"
@@ -34,7 +35,24 @@ func init() {
 }
 
 func LoadImage(path string) (image.Image, error) {
-	return imaging.Open(path)
+	img, err := imaging.Open(path)
+
+	if err != nil {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+
+		defer f.Close()
+
+		img, err = tiff.Decode(f)
+		if err != nil {
+			return nil, err
+		}
+		return img, nil
+	}
+
+	return nil, err
 }
 
 func CopyImage(src image.Image) draw.Image {
