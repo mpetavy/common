@@ -45,22 +45,23 @@ func LoadImage(path string) (img image.Image, err error) {
 
 	img, err = imaging.Open(path)
 
-	if err != nil {
-		f, err := os.Open(path)
-		if err != nil {
-			return nil, err
-		}
-
-		defer f.Close()
-
-		img, err = tiff.Decode(f)
-		if err != nil {
-			return nil, err
-		}
+	if err == nil {
 		return img, nil
 	}
 
-	return nil, err
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer f.Close()
+
+	img, err = tiff.Decode(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return img, nil
 }
 
 func CopyImage(src image.Image) draw.Image {

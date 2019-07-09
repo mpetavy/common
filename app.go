@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"testing"
 	"time"
 
 	"github.com/kardianos/service"
@@ -143,7 +142,7 @@ func New(application *App, mandatoryFlags []string) {
 	}
 }
 
-func Test(m *testing.M) {
+func Test() {
 	New(&App{"test", "0.0.0", "2018", "test", "mpetavy", APACHE, "https://github.com/golang/mpetavy/golang/tresor", true, nil, nil, nil, nil, time.Duration(0)}, nil)
 }
 
