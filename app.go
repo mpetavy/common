@@ -132,7 +132,7 @@ func New(application *App, mandatoryFlags []string) {
 		}
 	}
 
-	if *usage {
+	if *usage && !flagErr{
 		flag.Usage()
 		Exit(0)
 	}
