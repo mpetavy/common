@@ -94,21 +94,24 @@ func New(application *App, mandatoryFlags []string) {
 
 	parseCfgFile()
 
-	flagErr := false
-
 	if app.PrepareFunc != nil {
 		err := app.PrepareFunc()
 
 		if err != nil {
-			Error(err)
-
-			flagErr = true
+			Fatal(err)
 		}
 	}
 
 	if !NoBanner || *usage {
 		ShowBanner()
 	}
+
+	if *usage {
+		flag.Usage()
+		Exit(0)
+	}
+
+	flagErr := false
 
 	if *serviceFlag == "" || *serviceFlag == "install" {
 		for _, f := range mandatoryFlags {
@@ -130,11 +133,6 @@ func New(application *App, mandatoryFlags []string) {
 				flagErr = true
 			}
 		}
-	}
-
-	if *usage && !flagErr{
-		flag.Usage()
-		Exit(0)
 	}
 
 	if flagErr {
