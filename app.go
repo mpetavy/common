@@ -118,7 +118,6 @@ func New(application *App, mandatoryFlags []string) {
 			fl := flag.Lookup(f)
 
 			if fl == nil {
-				ShowBanner()
 				Error(fmt.Errorf("unknown mandatory flag: %s", f))
 
 				flagErr = true
@@ -127,7 +126,6 @@ func New(application *App, mandatoryFlags []string) {
 			}
 
 			if len(fl.Value.String()) == 0 {
-				ShowBanner()
 				Error(fmt.Errorf("mandatory flag needed: \"-%s\" - %s", fl.Name, fl.Usage))
 
 				flagErr = true
