@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"github.com/go-ini/ini"
@@ -118,16 +119,12 @@ func New(application *App, mandatoryFlags []string) {
 			fl := flag.Lookup(f)
 
 			if fl == nil {
-				ShowBanner()
 				Error(fmt.Errorf("unknown mandatory flag: %s", f))
 
 				flagErr = true
-
-				continue
 			}
 
 			if len(fl.Value.String()) == 0 {
-				ShowBanner()
 				Error(fmt.Errorf("mandatory flag needed: \"-%s\" - %s", fl.Name, fl.Usage))
 
 				flagErr = true
@@ -219,8 +216,20 @@ func (app *App) service() error {
 	ctrlC := make(chan os.Signal, 1)
 	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
+	kbCh := make(chan struct{})
+
+	go func(){
+		r := bufio.NewReader(os.Stdin)
+		r.ReadString('\n')
+
+		kbCh <- struct{}{}
+	}()
+
 	for {
 		select {
+		case <-kbCh:
+			Info("keyboard ENTER key pressed")
+			return nil
 		case <-ctrlC:
 			Info("ctrl-c received")
 			return nil
