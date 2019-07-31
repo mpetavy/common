@@ -226,7 +226,12 @@ func (app *App) service() error {
 
 	go func() {
 		r := bufio.NewReader(os.Stdin)
-		r.ReadString('\n')
+
+		var s string
+
+		for len(s) == 0 {
+			s, _ = r.ReadString('\n')
+		}
 
 		kbCh <- struct{}{}
 	}()
