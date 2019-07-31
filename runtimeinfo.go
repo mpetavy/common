@@ -9,24 +9,24 @@ import (
 
 const UNKNOWN = "unknwon"
 
-type ri struct {
+type runtimeInfo struct {
 	Pack, File, Fn string
 	Line           int
 }
 
-func (r ri) String(asFilename bool) string {
+func (r runtimeInfo) String(asFilename bool) string {
 	if asFilename {
 		return fmt.Sprintf("%s-%s-%s-%d", r.Pack, r.File, r.Fn, r.Line)
 	} else {
-		return fmt.Sprintf("%s/%s.%s:%d", r.Pack, r.File, r.Fn, r.Line)
+		return fmt.Sprintf("%s/%s/%s:%d", r.Pack, r.File, r.Fn, r.Line)
 	}
 }
 
-func RuntimeInfo(pos int) ri {
+func RuntimeInfo(pos int) runtimeInfo {
 	pc, _, _, ok := runtime.Caller(1 + pos)
 
 	if !ok {
-		return ri{UNKNOWN, UNKNOWN, UNKNOWN, 0}
+		return runtimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, 0}
 	}
 
 	f := runtime.FuncForPC(pc)
@@ -41,5 +41,5 @@ func RuntimeInfo(pos int) ri {
 	pack = pack[strings.LastIndex(pack, "/")+1:]
 	pack = pack[0:strings.Index(pack, ".")]
 
-	return ri{pack, file, fn, line}
+	return runtimeInfo{pack, file, fn, line}
 }
