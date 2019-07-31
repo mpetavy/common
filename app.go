@@ -124,6 +124,8 @@ func New(application *App, mandatoryFlags []string) {
 				Error(fmt.Errorf("unknown mandatory flag: %s", f))
 
 				flagErr = true
+
+				continue
 			}
 
 			if len(fl.Value.String()) == 0 {
@@ -157,14 +159,14 @@ func parseCfgFile() {
 			value := k.String()
 
 			p := strings.Index(name, "@")
-			os := runtime.GOOS
+			system := runtime.GOOS
 
 			if p != -1 {
-				os = name[p+1:]
+				system = name[p+1:]
 				name = name[:p]
 			}
 
-			if runtime.GOOS == os {
+			if runtime.GOOS == system {
 				if flag.Lookup("-"+name) == nil {
 					err := flag.Set(name, value)
 					if err != nil {
@@ -224,17 +226,19 @@ func (app *App) service() error {
 
 	kbCh := make(chan struct{})
 
-	go func() {
-		r := bufio.NewReader(os.Stdin)
+	if service.Interactive() {
+		go func() {
+			r := bufio.NewReader(os.Stdin)
 
-		var s string
+			var s string
 
-		for len(s) == 0 {
-			s, _ = r.ReadString('\n')
-		}
+			for len(s) == 0 {
+				s, _ = r.ReadString('\n')
+			}
 
-		kbCh <- struct{}{}
-	}()
+			kbCh <- struct{}{}
+		}()
+	}
 
 	for {
 		select {
@@ -324,6 +328,11 @@ func run() error {
 			for i := range args {
 				if args[i] == "-"+item {
 					args = append(args[:i], args[i+2:]...)
+					break
+				}
+
+				if strings.HasPrefix(args[i], "-"+item) {
+					args = append(args[:i], args[i+1:]...)
 					break
 				}
 			}
