@@ -14,7 +14,7 @@ import (
 
 const (
 	// DB level
-	LEVEL_PROLOG = iota
+	LEVEL_FILE = iota
 	// LEVEL_DEBUG level
 	LEVEL_DEBUG
 	// LEVEL_INFO level
@@ -29,28 +29,28 @@ const (
 
 type logEntry struct {
 	level int
-	txt   string
+	ri    runtimeInfo
+	msg   string
 }
 
-type ReentrantLock struct {
-	locked bool
-	sync.Mutex
-}
+func (l *logEntry) String() string {
+	level := ""
 
-func (rl *ReentrantLock) Lock() {
-	if !rl.locked {
-		rl.locked = true
-
-		rl.Lock()
+	switch l.level {
+	case LEVEL_FILE:
+		level = "FILE"
+	case LEVEL_DEBUG:
+		level = "DEBUG"
+	case LEVEL_INFO:
+		level = "INFO"
+	case LEVEL_WARN:
+		level = "WARN"
+	case LEVEL_ERROR:
+		level = "ERROR"
+	case LEVEL_FATAL:
+		level = "FATAL"
 	}
-}
-
-func (rl *ReentrantLock) Unlock() {
-	if rl.locked {
-		rl.locked = false
-
-		rl.Unlock()
-	}
+	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(false), Capitalize(l.msg)), "\r\n")
 }
 
 var (
@@ -63,7 +63,7 @@ var (
 
 	defaultLogFile string
 	logEntries     chan logEntry
-	mutex          ReentrantLock
+	mutex          sync.Mutex
 	logFile        *os.File
 )
 
@@ -81,9 +81,11 @@ func init() {
 
 	filename += ".log"
 
-	path, err := os.Getwd()
-	if err == nil {
-		filename = filepath.Join(path, filepath.Base(filename))
+	if filepath.Base(filename) == "main.log" {
+		path, err := os.Getwd()
+		if err == nil {
+			filename = filepath.Join(path, filepath.Base(path)) + ".log"
+		}
 	}
 
 	defaultLogFile = filename
@@ -98,9 +100,13 @@ func init() {
 func initLog() {
 	if logEntries == nil {
 		mutex.Lock()
-		defer mutex.Unlock()
 
 		if logEntries == nil {
+			AddShutdownHook(func() error {
+				closeLogFile(true)
+				return nil
+			})
+
 			logEntries = make(chan logEntry, 100)
 
 			switch strings.ToLower(*logLevelString) {
@@ -131,10 +137,14 @@ func initLog() {
 				for {
 					select {
 					case <-t.C:
-						t.Stop()
+						mutex.Lock()
 
+						t.Stop()
 						closeLogFile(false)
+
+						mutex.Unlock()
 					case entry, ok := <-logEntries:
+						mutex.Lock()
 						t.Stop()
 
 						if !ok {
@@ -143,15 +153,13 @@ func initLog() {
 							break loop
 						}
 
-						mutex.Lock()
-
 						writeEntry(entry)
 
 						t.Reset(timeout)
+
+						mutex.Unlock()
 					}
 				}
-
-				closeLogFile(true)
 			}()
 
 			if app != nil {
@@ -159,15 +167,12 @@ func initLog() {
 				prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 			}
 		}
+
+		mutex.Unlock()
 	}
 }
 
 func writeEntry(entry logEntry) {
-	//mutex.Lock()
-	//mutex.Unlock()
-
-	entry.txt = strings.TrimRight(entry.txt, "\r\n")
-
 	var err error
 
 	if logFile == nil && len(*logFilename) != 0 {
@@ -191,12 +196,12 @@ func writeEntry(entry logEntry) {
 		}
 	}
 
-	if entry.level != LEVEL_PROLOG && *logConsole {
-		fmt.Fprintf(os.Stderr, "%s\n", entry.txt)
+	if entry.level != LEVEL_FILE && *logConsole {
+		fmt.Fprintf(os.Stderr, "%s\n", entry.String())
 	}
 
 	if logFile != nil {
-		_, err = logFile.WriteString(fmt.Sprintf("%s\n", entry.txt))
+		_, err = logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
 	}
 
 	if err != nil {
@@ -205,16 +210,15 @@ func writeEntry(entry logEntry) {
 }
 
 func closeLogFile(isFinal bool) {
-	mutex.Lock()
-	mutex.Unlock()
-
 	if isFinal {
 		if app != nil {
-			prolog(fmt.Sprintf("<<< STOP - %s %s", strings.ToUpper(app.Name), app.Version))
+			writeEntry(logEntry{
+				level: LEVEL_FILE,
+				ri:    RuntimeInfo(1),
+				msg:   fmt.Sprintf("<<< STOP - %s %s", strings.ToUpper(app.Name), app.Version),
+			})
 		}
-	}
 
-	if isFinal {
 		close(logEntries)
 
 		logEntries = nil
@@ -227,19 +231,13 @@ func closeLogFile(isFinal bool) {
 	}
 }
 
-func fmtLog(level string, pos int, txt string) string {
-	ri := RuntimeInfo(pos + 1)
-
-	return fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, ri.String(false), Capitalize(txt))
-}
-
 // logFile prints out the information
 func prolog(t string, arg ...interface{}) {
 	if len(arg) > 0 {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_PROLOG, fmtLog("FILE", 2, t))
+	log(LEVEL_FILE, RuntimeInfo(1), t)
 }
 
 // Debug prints out the information
@@ -250,7 +248,7 @@ func Debug(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_DEBUG, fmtLog("DEBUG", 2, t))
+	log(LEVEL_DEBUG, RuntimeInfo(1), t)
 }
 
 // Info prints out the information
@@ -261,7 +259,7 @@ func Info(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_INFO, fmtLog("INFO", 2, t))
+	log(LEVEL_INFO, RuntimeInfo(1), t)
 }
 
 // Warn prints out the information
@@ -272,7 +270,7 @@ func Warn(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_WARN, fmtLog("WARN", 2, t))
+	log(LEVEL_WARN, RuntimeInfo(1), t)
 }
 
 // Warn prints out the error
@@ -280,17 +278,26 @@ func WarnError(err error) {
 	initLog()
 
 	if err != nil {
-		log(LEVEL_WARN, fmtLog("WARN", 2, err.Error()))
+		log(LEVEL_WARN, RuntimeInfo(1), err.Error())
 	}
 }
 
 // DebugFunc prints out the current executon func
-func DebugFunc() {
+func DebugFunc(arg ...interface{}) {
 	initLog()
 
 	ri := RuntimeInfo(1)
 
-	log(LEVEL_DEBUG, fmtLog("DEBUG", 2, ri.Fn+"()"))
+	t := ri.Fn + "()"
+
+	if len(arg) == 1 {
+		t = fmt.Sprintf("%s: %v", t, arg[0])
+	}
+	if len(arg) > 1 {
+		t = fmt.Sprintf("%s: "+fmt.Sprintf("%v", arg[0]), arg[1:])
+	}
+
+	log(LEVEL_DEBUG, ri, t)
 }
 
 // Debug prints out the information
@@ -298,7 +305,7 @@ func DebugError(err error) {
 	initLog()
 
 	if err != nil {
-		log(LEVEL_DEBUG, fmtLog("DEBUG", 2, err.Error()))
+		log(LEVEL_DEBUG, RuntimeInfo(1), err.Error())
 	}
 }
 
@@ -307,7 +314,7 @@ func Error(err error) {
 	initLog()
 
 	if err != nil {
-		log(LEVEL_ERROR, fmtLog("ERROR", 2, err.Error()))
+		log(LEVEL_ERROR, RuntimeInfo(1), err.Error())
 	}
 }
 
@@ -316,15 +323,19 @@ func Fatal(err error) {
 	initLog()
 
 	if err != nil {
-		log(LEVEL_FATAL, fmtLog("FATAL", 2, err.Error()))
+		log(LEVEL_FATAL, RuntimeInfo(1), err.Error())
 
 		panic(err)
 	}
 }
 
-func log(level int, txt string) {
-	if logEntries != nil && (level == LEVEL_PROLOG || level >= logLevel) {
-		logEntries <- logEntry{level, txt}
+func log(level int, ri runtimeInfo, msg string) {
+	if logEntries != nil && (level == LEVEL_FILE || level >= logLevel) {
+		logEntries <- logEntry{
+			level: level,
+			ri:    ri,
+			msg:   msg,
+		}
 	}
 }
 
