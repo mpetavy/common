@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"github.com/go-ini/ini"
 	"os"
 	"os/signal"
 	"runtime"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/go-ini/ini"
 
 	"github.com/kardianos/service"
 )
@@ -70,6 +71,7 @@ var (
 	NoBanner            bool
 	ticker              *time.Ticker
 	profile             *string
+	stopped             bool
 )
 
 func init() {
@@ -135,6 +137,10 @@ func New(application *App, mandatoryFlags []string) {
 	if flagErr {
 		Exit(1)
 	}
+}
+
+func GetApp() *App {
+	return app
 }
 
 func Test() {
@@ -218,7 +224,7 @@ func (app *App) service() error {
 
 	kbCh := make(chan struct{})
 
-	go func(){
+	go func() {
 		r := bufio.NewReader(os.Stdin)
 		r.ReadString('\n')
 
@@ -228,10 +234,10 @@ func (app *App) service() error {
 	for {
 		select {
 		case <-kbCh:
-			Info("keyboard ENTER key pressed")
+			Info("Terminate: keyboard ENTER key pressed")
 			return nil
 		case <-ctrlC:
-			Info("ctrl-c received")
+			Info("Terminate: CTRL-C pressed")
 			return nil
 		case <-ticker.C:
 			Debug("ticker!")
@@ -272,8 +278,14 @@ func (app *App) Start(s service.Service) error {
 	return err
 }
 
+func (app *App) Stopped() bool {
+	return stopped
+}
+
 func (app *App) Stop(s service.Service) error {
 	DebugFunc()
+
+	stopped = true
 
 	if ticker != nil {
 		ticker.Stop()
