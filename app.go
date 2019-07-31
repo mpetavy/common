@@ -90,7 +90,7 @@ func New(application *App, mandatoryFlags []string) {
 		serviceFlag = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		serviceUser = flag.String(SERVICE_USER, "", "Service user")
 		servicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
-		serviceStartTimeout = flag.Int("service-starttimeout", 1000, "Server START timeout")
+		serviceStartTimeout = flag.Int("service-timeout", 1000, "Server start timeout")
 	}
 
 	flag.Parse()
