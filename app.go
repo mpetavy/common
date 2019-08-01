@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -139,6 +140,39 @@ func New(application *App, mandatoryFlags []string) {
 	if flagErr {
 		Exit(1)
 	}
+}
+
+func Executable() string {
+	path, err := os.Executable()
+	if err != nil {
+		path = os.Args[0]
+	}
+
+	isMain := strings.Index(filepath.Base(path), "main") != -1
+
+	if service.Interactive() || isMain {
+		wd, err := os.Getwd()
+		if err == nil {
+			path = filepath.Join(wd, filepath.Base(wd)+filepath.Ext(path))
+		}
+	}
+
+	return path
+}
+
+func CustomAppFilename(newExt string) string {
+	filename := Executable()
+	ext := filepath.Ext(filename)
+
+	if len(ext) > 0 {
+		filename = string(filename[:len(filename)-len(ext)])
+	}
+
+	return filename + newExt
+}
+
+func Title() string {
+	return filepath.Base(CustomAppFilename(""))
 }
 
 func GetApp() *App {

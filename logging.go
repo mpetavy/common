@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -68,27 +67,7 @@ var (
 )
 
 func init() {
-	filename, err := os.Executable()
-	if err != nil {
-		filename = os.Args[0]
-	}
-
-	ext := filepath.Ext(filename)
-
-	if len(ext) > 0 {
-		filename = string(filename[:len(filename)-len(ext)])
-	}
-
-	filename += ".log"
-
-	if filepath.Base(filename) == "main.log" {
-		path, err := os.Getwd()
-		if err == nil {
-			filename = filepath.Join(path, filepath.Base(path)) + ".log"
-		}
-	}
-
-	defaultLogFile = filename
+	defaultLogFile = CustomAppFilename(".log")
 
 	logConsole = flag.Bool("logconsole", true, "log to console")
 	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
@@ -248,7 +227,7 @@ func Debug(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_DEBUG, RuntimeInfo(1), t)
+	log(LEVEL_DEBUG, RuntimeInfo(2), t)
 }
 
 // Info prints out the information

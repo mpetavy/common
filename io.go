@@ -106,7 +106,7 @@ func deleteTempDir() error {
 
 // TempDir returns the private temporary directory of the app
 func TempDir() (string, error) {
-	return *tempDir,nil
+	return *tempDir, nil
 }
 
 // CurDir returns the current directory of the app
@@ -171,7 +171,7 @@ func FileExists(filename string) (bool, error) {
 }
 
 // FileExists does ... guess what :-)
-func FileDelete(filename string) (error) {
+func FileDelete(filename string) error {
 	b, err := FileExists(filename)
 	if err != nil {
 		return err
@@ -323,13 +323,13 @@ func IsDirectory(path string) (bool, error) {
 }
 
 // IsDirectory checks if the path leads to a directory
-func IsFile(path string) (bool,error) {
-	b,err := IsDirectory(path)
+func IsFile(path string) (bool, error) {
+	b, err := IsDirectory(path)
 	if err != nil {
 		return false, err
 	}
 
-	return !b,nil
+	return !b, nil
 }
 
 // IsSymbolicLink checks if the path leads to symbolic link
@@ -388,6 +388,10 @@ func CleanPath(path string) string {
 
 	path = filepath.Clean(path)
 
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(filepath.Dir(Executable()), path)
+	}
+
 	return path
 }
 
@@ -397,7 +401,7 @@ func ScanLinesWithLF(data []byte, atEOF bool) (advance int, token []byte, err er
 	}
 	if i := bytes.IndexByte(data, '\n'); i >= 0 {
 		// We have a full newline-terminated line.
-		return i + 1, data[0:i + 1], nil
+		return i + 1, data[0 : i+1], nil
 	}
 	// If we're at EOF, we have a final, non-terminated line. Return it.
 	if atEOF {
