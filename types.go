@@ -93,7 +93,7 @@ func SplitWithQuotation(txt string) []string {
 // Capitalize the first letter
 func Capitalize(txt string) string {
 	if len(txt) > 0 {
-		return strings.ToUpper(string(txt[0])) + strings.ToLower(string(txt[1:]))
+		return strings.ToUpper(string(txt[0])) + string(txt[1:])
 	} else {
 		return txt
 	}
@@ -209,10 +209,10 @@ func ConvertToOSspecificLF(s string) string {
 	return s
 }
 
-func GetRune(s string,index int) (rune,error) {
+func GetRune(s string, index int) (rune, error) {
 	var r rune
 
-	for _,r = range s {
+	for _, r = range s {
 		if index == 0 {
 			break
 		}
@@ -221,25 +221,25 @@ func GetRune(s string,index int) (rune,error) {
 	}
 
 	if index == 0 {
-		return r,nil
+		return r, nil
 	} else {
-		return r,fmt.Errorf("invalid rune position: %d",index)
+		return r, fmt.Errorf("invalid rune position: %d", index)
 	}
 }
 
 func ContainsWildcard(s string) bool {
-	return strings.ContainsAny(s,"*?")
+	return strings.ContainsAny(s, "*?")
 }
 
-func EqualWildcards(s,mask string) (bool,error) {
-	mask = strings.ReplaceAll(mask,".","\\.")
-	mask = strings.ReplaceAll(mask,"*",".*")
-	mask = strings.ReplaceAll(mask,"?",".")
+func EqualWildcards(s, mask string) (bool, error) {
+	mask = strings.ReplaceAll(mask, ".", "\\.")
+	mask = strings.ReplaceAll(mask, "*", ".*")
+	mask = strings.ReplaceAll(mask, "?", ".")
 
-	r,err := regexp.Compile("^" + mask + "$")
+	r, err := regexp.Compile("^" + mask + "$")
 	if err != nil {
-		return false,err
+		return false, err
 	}
 
-	return r.MatchString(s),nil
+	return r.MatchString(s), nil
 }
