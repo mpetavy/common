@@ -186,9 +186,7 @@ func Test() {
 }
 
 func parseCfgFile() {
-	fn := app.Name + ".cfg"
-
-	f, err := ini.Load(fn)
+	f, err := ini.Load(CustomAppFilename(".cfg"))
 	if err == nil {
 		for _, k := range f.Section(*profile).Keys() {
 			name := strings.ToLower(k.Name())
