@@ -78,12 +78,9 @@ func init() {
 
 func initLog() {
 	if logEntries == nil {
-		mutex.Lock()
-
 		if logEntries == nil {
 			AddShutdownHook(func() error {
-				closeLogFile(true)
-				return nil
+				return closeLogfile()
 			})
 
 			logEntries = make(chan logEntry, 100)
@@ -108,36 +105,8 @@ func initLog() {
 			}
 
 			go func() {
-				timeout := time.Millisecond * 500
-
-				t := time.NewTimer(timeout)
-
-			loop:
-				for {
-					select {
-					case <-t.C:
-						mutex.Lock()
-
-						t.Stop()
-						closeLogFile(false)
-
-						mutex.Unlock()
-					case entry, ok := <-logEntries:
-						mutex.Lock()
-						t.Stop()
-
-						if !ok {
-							mutex.Unlock()
-
-							break loop
-						}
-
-						writeEntry(entry)
-
-						t.Reset(timeout)
-
-						mutex.Unlock()
-					}
+				for entry := range logEntries {
+					writeEntry(entry)
 				}
 			}()
 
@@ -146,12 +115,13 @@ func initLog() {
 				prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 			}
 		}
-
-		mutex.Unlock()
 	}
 }
 
 func writeEntry(entry logEntry) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	var err error
 
 	if logFile == nil && len(*logFilename) != 0 {
@@ -181,6 +151,7 @@ func writeEntry(entry logEntry) {
 
 	if logFile != nil {
 		_, err = logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
+		DebugError(logFile.Sync())
 	}
 
 	if err != nil {
@@ -188,26 +159,17 @@ func writeEntry(entry logEntry) {
 	}
 }
 
-func closeLogFile(isFinal bool) {
-	if isFinal {
-		if app != nil {
-			writeEntry(logEntry{
-				level: LEVEL_FILE,
-				ri:    RuntimeInfo(1),
-				msg:   fmt.Sprintf("<<< STOP - %s %s", strings.ToUpper(app.Name), app.Version),
-			})
-		}
-
-		close(logEntries)
-
-		logEntries = nil
-	}
+func closeLogfile() error {
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	if logFile != nil {
 		logFile.Close()
 
 		logFile = nil
 	}
+
+	return nil
 }
 
 // logFile prints out the information
