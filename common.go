@@ -15,7 +15,6 @@ import (
 var (
 	onceShutdownHooks sync.Once
 	shutdownHooks     []func() error
-	fnShutdownHooks   func()
 
 	UserName    *string
 	UserHomeDir *string
@@ -23,14 +22,6 @@ var (
 
 func init() {
 	shutdownHooks = make([]func() error, 0)
-	fnShutdownHooks = func() {
-		for _, f := range shutdownHooks {
-			err := f()
-			if err != nil {
-				Error(err)
-			}
-		}
-	}
 
 	UserName = new(string)
 	UserHomeDir = new(string)
@@ -50,7 +41,14 @@ func Cleanup() {
 }
 
 func runShutdownHooks() {
-	onceShutdownHooks.Do(fnShutdownHooks)
+	onceShutdownHooks.Do(func() {
+		for _, f := range shutdownHooks {
+			err := f()
+			if err != nil {
+				Error(err)
+			}
+		}
+	})
 }
 
 func AddShutdownHook(f func() error) {

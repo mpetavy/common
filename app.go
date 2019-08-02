@@ -1,16 +1,19 @@
 package common
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
-	"github.com/go-ini/ini"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/go-ini/ini"
 
 	"github.com/kardianos/service"
 )
@@ -69,6 +72,7 @@ var (
 	NoBanner            bool
 	ticker              *time.Ticker
 	profile             *string
+	stopped             bool
 )
 
 func init() {
@@ -87,7 +91,7 @@ func New(application *App, mandatoryFlags []string) {
 		serviceFlag = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		serviceUser = flag.String(SERVICE_USER, "", "Service user")
 		servicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
-		serviceStartTimeout = flag.Int("service-starttimeout", 1000, "Server START timeout")
+		serviceStartTimeout = flag.Int("service-timeout", 1000, "Server start timeout")
 	}
 
 	flag.Parse()
@@ -140,6 +144,43 @@ func New(application *App, mandatoryFlags []string) {
 	}
 }
 
+func Executable() string {
+	path, err := os.Executable()
+	if err != nil {
+		path = os.Args[0]
+	}
+
+	isMain := strings.Index(filepath.Base(path), "main") != -1
+
+	if service.Interactive() || isMain {
+		wd, err := os.Getwd()
+		if err == nil {
+			path = filepath.Join(wd, filepath.Base(wd)+filepath.Ext(path))
+		}
+	}
+
+	return path
+}
+
+func CustomAppFilename(newExt string) string {
+	filename := Executable()
+	ext := filepath.Ext(filename)
+
+	if len(ext) > 0 {
+		filename = string(filename[:len(filename)-len(ext)])
+	}
+
+	return filename + newExt
+}
+
+func Title() string {
+	return filepath.Base(CustomAppFilename(""))
+}
+
+func GetApp() *App {
+	return app
+}
+
 func Test() {
 	New(&App{"test", "0.0.0", "2018", "test", "mpetavy", APACHE, "https://github.com/golang/mpetavy/golang/tresor", true, nil, nil, nil, nil, time.Duration(0)}, nil)
 }
@@ -154,14 +195,14 @@ func parseCfgFile() {
 			value := k.String()
 
 			p := strings.Index(name, "@")
-			os := runtime.GOOS
+			system := runtime.GOOS
 
 			if p != -1 {
-				os = name[p+1:]
+				system = name[p+1:]
 				name = name[:p]
 			}
 
-			if runtime.GOOS == os {
+			if runtime.GOOS == system {
 				if flag.Lookup("-"+name) == nil {
 					err := flag.Set(name, value)
 					if err != nil {
@@ -219,10 +260,29 @@ func (app *App) service() error {
 	ctrlC := make(chan os.Signal, 1)
 	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
+	kbCh := make(chan struct{})
+
+	if service.Interactive() {
+		go func() {
+			r := bufio.NewReader(os.Stdin)
+
+			var s string
+
+			for len(s) == 0 {
+				s, _ = r.ReadString('\n')
+			}
+
+			kbCh <- struct{}{}
+		}()
+	}
+
 	for {
 		select {
+		case <-kbCh:
+			Info("Terminate: keyboard ENTER key pressed")
+			return nil
 		case <-ctrlC:
-			Info("ctrl-c received")
+			Info("Terminate: CTRL-C pressed")
 			return nil
 		case <-ticker.C:
 			Debug("ticker!")
@@ -263,8 +323,14 @@ func (app *App) Start(s service.Service) error {
 	return err
 }
 
+func (app *App) Stopped() bool {
+	return stopped
+}
+
 func (app *App) Stop(s service.Service) error {
 	DebugFunc()
+
+	stopped = true
 
 	if ticker != nil {
 		ticker.Stop()
@@ -298,6 +364,11 @@ func run() error {
 			for i := range args {
 				if args[i] == "-"+item {
 					args = append(args[:i], args[i+2:]...)
+					break
+				}
+
+				if strings.HasPrefix(args[i], "-"+item) {
+					args = append(args[:i], args[i+1:]...)
 					break
 				}
 			}
