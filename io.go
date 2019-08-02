@@ -2,15 +2,13 @@ package common
 
 import (
 	"bytes"
+	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
-	"sync"
-
-	"flag"
-	"fmt"
 	"strings"
 )
 
@@ -42,7 +40,6 @@ func (e *ErrFileNotFound) Error() string {
 // +------------+------+-------+
 
 var tempDir *string
-var mu sync.Mutex
 var noTempCleanup = flag.Bool("notempcleanup", false, "no clean of temporary files")
 
 func init() {
