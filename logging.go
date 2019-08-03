@@ -189,7 +189,7 @@ func Debug(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_DEBUG, RuntimeInfo(2), t)
+	log(LEVEL_DEBUG, RuntimeInfo(1), t)
 }
 
 // Info prints out the information
