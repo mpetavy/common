@@ -235,7 +235,7 @@ func DebugFunc(arg ...interface{}) {
 		t = fmt.Sprintf("%s: %v", t, arg[0])
 	}
 	if len(arg) > 1 {
-		t = fmt.Sprintf("%s: "+fmt.Sprintf("%v", arg[0]), arg[1:])
+		t = fmt.Sprintf("%s: "+fmt.Sprintf("%s", arg[0]), t, arg[1:])
 	}
 
 	log(LEVEL_DEBUG, ri, t)
