@@ -10,7 +10,13 @@ var (
 )
 
 func start() error {
-	discoverServer = discover.NewServer("", 0, "", "")
+	var err error
+
+	discoverServer, err = discover.NewServer("", 0, "", "")
+	if err != nil {
+		return err
+	}
+
 	return discoverServer.Start()
 }
 
