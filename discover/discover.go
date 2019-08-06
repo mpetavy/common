@@ -27,7 +27,7 @@ var (
 )
 
 const (
-	maxMsgLength = 10240
+	maxMsgLength = 1024
 )
 
 func init() {
