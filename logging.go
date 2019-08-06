@@ -62,8 +62,8 @@ var (
 
 	defaultLogFile string
 	logEntries     chan logEntry
-	mutex          sync.Mutex
 	logFile        *os.File
+	wg             sync.WaitGroup
 )
 
 func init() {
@@ -107,6 +107,7 @@ func initLog() {
 			go func() {
 				for entry := range logEntries {
 					writeEntry(entry)
+					wg.Done()
 				}
 			}()
 
@@ -119,9 +120,6 @@ func initLog() {
 }
 
 func writeEntry(entry logEntry) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
 	var err error
 
 	if logFile == nil && len(*logFilename) != 0 {
@@ -160,8 +158,7 @@ func writeEntry(entry logEntry) {
 }
 
 func closeLogfile() error {
-	mutex.Lock()
-	defer mutex.Unlock()
+	wg.Wait()
 
 	if logFile != nil {
 		logFile.Close()
@@ -272,6 +269,7 @@ func Fatal(err error) {
 
 func log(level int, ri runtimeInfo, msg string) {
 	if logEntries != nil && (level == LEVEL_FILE || level >= logLevel) {
+		wg.Add(1)
 		logEntries <- logEntry{
 			level: level,
 			ri:    ri,
