@@ -26,6 +26,10 @@ var (
 	discoverInfo        *string
 )
 
+const (
+	maxMsgLength = 10240
+)
+
 func init() {
 	discoverAddress = flag.String("discover.address", ":9999", "discover address")
 	discoverReadTimeout = flag.Duration("discover.readtimeout", time.Millisecond*1000, "discover read timeout")
@@ -33,13 +37,17 @@ func init() {
 	discoverInfo = flag.String("discover.info", "my-info", "discover info")
 }
 
-func NewServer(address string, readTimeout time.Duration, uid string, info string) Server {
+func NewServer(address string, readTimeout time.Duration, uid string, info string) (Server, error) {
 	address = common.Eval(len(address) != 0, address, *discoverAddress).(string)
 	readTimeout = common.Eval(readTimeout != 0, readTimeout, *discoverReadTimeout).(time.Duration)
 	uid = common.Eval(len(uid) != 0, uid, *discoverUID).(string)
 	info = common.Eval(len(info) != 0, info, *discoverInfo).(string)
 
-	return Server{address: address, readTimeout: readTimeout, uid: uid, info: info}
+	if len(info) > maxMsgLength {
+		return Server{}, fmt.Errorf("max UDP info length exceeded. max length expected: %d received: %d", maxMsgLength, len(info))
+	}
+
+	return Server{address: address, readTimeout: readTimeout, uid: uid, info: info}, nil
 }
 
 func (server *Server) Start() error {
@@ -82,7 +90,7 @@ func (server *Server) Start() error {
 				common.Debug("received UDP broadcast from %+v: %s\n", peer, receivedUID)
 
 				if receivedUID != server.uid {
-					common.Debug("not matching uid, expected: %s received:%s -> ignore", server.uid, receivedUID)
+					common.Debug("not matching uid, expected: %s received: %s -> ignore", server.uid, receivedUID)
 
 					break
 				}
@@ -180,7 +188,7 @@ func Discover(uid string) (map[string]string, error) {
 
 	common.Debug("reading answers ...")
 
-	b := make([]byte, 512)
+	b := make([]byte, maxMsgLength)
 	c.SetReadDeadline(time.Now().Add(*discoverReadTimeout))
 	for {
 		n, peer, err := c.ReadFrom(b)
