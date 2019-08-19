@@ -289,3 +289,13 @@ func IsDebugMode() bool {
 
 	return logLevel == LEVEL_DEBUG
 }
+
+func isError(err error) bool {
+	b := err != nil
+
+	if b {
+		Error(err)
+	}
+
+	return b
+}
