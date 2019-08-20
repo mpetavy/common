@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -73,6 +74,7 @@ var (
 	ticker              *time.Ticker
 	profile             *string
 	stopped             bool
+	onceBanner          sync.Once
 )
 
 func init() {
@@ -218,21 +220,23 @@ func Exit(code int) {
 }
 
 func ShowBanner() {
-	if app != nil {
-		date := strconv.Itoa(time.Now().Year())
+	onceBanner.Do(func() {
+		if app != nil {
+			date := strconv.Itoa(time.Now().Year())
 
-		if app.Date != date {
-			date = app.Date + "-" + date
+			if app.Date != date {
+				date = app.Date + "-" + date
+			}
+
+			fmt.Printf("\n")
+			fmt.Printf("%s %s - %s\n", strings.ToUpper(app.Name), app.Version, app.Description)
+			fmt.Printf("\n")
+			fmt.Printf("Copyright: © %s %s\n", date, app.Developer)
+			fmt.Printf("Homepage:  %s\n", app.Homepage)
+			fmt.Printf("License:   %s\n", app.License)
+			fmt.Printf("\n")
 		}
-
-		fmt.Printf("\n")
-		fmt.Printf("%s %s - %s\n", strings.ToUpper(app.Name), app.Version, app.Description)
-		fmt.Printf("\n")
-		fmt.Printf("Copyright: © %s %s\n", date, app.Developer)
-		fmt.Printf("Homepage:  %s\n", app.Homepage)
-		fmt.Printf("License:   %s\n", app.License)
-		fmt.Printf("\n")
-	}
+	})
 }
 
 func (app *App) service() error {
