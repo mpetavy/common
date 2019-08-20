@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"os/exec"
@@ -61,9 +60,8 @@ var (
 	logFileBackup  *int
 
 	defaultLogFile string
-	logEntries     chan logEntry
 	logFile        *os.File
-	wg             sync.WaitGroup
+	sign           Sign
 )
 
 func init() {
@@ -77,49 +75,44 @@ func init() {
 }
 
 func initLog() {
-	if logEntries == nil {
-		if logEntries == nil {
-			AddShutdownHook(func() error {
-				return closeLogfile()
-			})
+	AddShutdownHook(func() error {
+		return closeLogfile()
+	})
 
-			logEntries = make(chan logEntry, 100)
+	switch strings.ToLower(*logLevelString) {
+	case "debug":
+		logLevel = LEVEL_DEBUG
+	case "info":
+		logLevel = LEVEL_INFO
+	case "warn":
+		logLevel = LEVEL_WARN
+	case "error":
+		logLevel = LEVEL_ERROR
+	case "fatal":
+		logLevel = LEVEL_FATAL
+	default:
+		logLevel = LEVEL_INFO
+	}
 
-			switch strings.ToLower(*logLevelString) {
-			case "debug":
-				logLevel = LEVEL_DEBUG
-			case "info":
-				logLevel = LEVEL_INFO
-			case "warn":
-				logLevel = LEVEL_WARN
-			case "error":
-				logLevel = LEVEL_ERROR
-			case "fatal":
-				logLevel = LEVEL_FATAL
-			default:
-				logLevel = LEVEL_INFO
-			}
+	if *logFilename == "." {
+		*logFilename = defaultLogFile
+	}
 
-			if *logFilename == "." {
-				*logFilename = defaultLogFile
-			}
-
-			go func() {
-				for entry := range logEntries {
-					writeEntry(entry)
-					wg.Done()
-				}
-			}()
-
-			if app != nil {
-				prolog(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
-				prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
-			}
-		}
+	if app != nil {
+		prolog(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
+		prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 	}
 }
 
 func writeEntry(entry logEntry) {
+	if !sign.Set() {
+		return
+	}
+
+	defer func() {
+		sign.Unset()
+	}()
+
 	var err error
 
 	if logFile == nil && len(*logFilename) != 0 {
@@ -158,8 +151,6 @@ func writeEntry(entry logEntry) {
 }
 
 func closeLogfile() error {
-	wg.Wait()
-
 	if logFile != nil {
 		logFile.Close()
 
@@ -268,13 +259,12 @@ func Fatal(err error) {
 }
 
 func log(level int, ri runtimeInfo, msg string) {
-	if logEntries != nil && (level == LEVEL_FILE || level >= logLevel) {
-		wg.Add(1)
-		logEntries <- logEntry{
+	if level == LEVEL_FILE || level >= logLevel {
+		writeEntry(logEntry{
 			level: level,
 			ri:    ri,
 			msg:   msg,
-		}
+		})
 	}
 }
 
