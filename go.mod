@@ -9,7 +9,6 @@ require (
 	github.com/h2non/filetype v1.0.8
 	github.com/hhrutter/pdfcpu v0.1.25
 	github.com/kardianos/service v1.0.0
-	github.com/mpetavy/discover v1.0.0 // indirect
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/pkg/errors v0.8.1
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
