@@ -2,11 +2,9 @@ package common
 
 var events = make(map[string][]chan interface{})
 
-const (
-	AFTER_FLAG_PARSE = "AFTER_FLAG_PARSE"
-)
+// ListEvents list all current registered
 
-// AddSitter adds an event listener to the Dog struct instance
+// AddListener adds an event listener to the Dog struct instance
 func AddListener(name string, ch chan interface{}) {
 	if _, ok := events[name]; ok {
 		events[name] = append(events[name], ch)
@@ -15,7 +13,7 @@ func AddListener(name string, ch chan interface{}) {
 	}
 }
 
-// RemoveSitter removes an event listener from the Dog struct instance
+// RemoveListener removes an event listener from the Dog struct instance
 func RemoveListener(name string, ch chan interface{}) {
 	if _, ok := events[name]; ok {
 		for i := range events[name] {
@@ -27,8 +25,8 @@ func RemoveListener(name string, ch chan interface{}) {
 	}
 }
 
-// Emit emits an event on the Dog struct instance
-func EmitListener(name string, event string) {
+// EmitEvent emits an event on the Dog struct instance
+func EmitEvent(name string, event interface{}) {
 	if _, ok := events[name]; ok {
 		for _, handler := range events[name] {
 			go func(handler chan interface{}) {
