@@ -385,7 +385,7 @@ func CleanPath(path string) string {
 
 	path = filepath.Clean(path)
 
-	if !filepath.IsAbs(path) {
+	if !filepath.IsAbs(path) && !strings.HasPrefix(path, string(filepath.Separator)) {
 		path = filepath.Join(filepath.Dir(Executable()), path)
 	}
 
