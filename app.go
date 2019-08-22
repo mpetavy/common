@@ -44,8 +44,6 @@ type App struct {
 	Homepage string
 	//IsService
 	IsService bool
-	//PrepareFunc
-	PrepareFunc func() error
 	//StartFunc
 	StartFunc func() error
 	//StopFunc
@@ -99,14 +97,6 @@ func New(application *App, mandatoryFlags []string) {
 	flag.Parse()
 
 	parseCfgFile()
-
-	if app.PrepareFunc != nil {
-		err := app.PrepareFunc()
-
-		if err != nil {
-			Fatal(err)
-		}
-	}
 
 	if !NoBanner || *usage {
 		ShowBanner()
@@ -184,7 +174,7 @@ func GetApp() *App {
 }
 
 func Test() {
-	New(&App{"test", "0.0.0", "2018", "test", "mpetavy", APACHE, "https://github.com/golang/mpetavy/golang/tresor", true, nil, nil, nil, nil, time.Duration(0)}, nil)
+	New(&App{"test", "0.0.0", "2018", "test", "mpetavy", APACHE, "https://github.com/golang/mpetavy/golang/tresor", true, nil, nil, nil, time.Duration(0)}, nil)
 }
 
 func parseCfgFile() {
