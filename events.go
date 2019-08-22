@@ -1,24 +1,41 @@
 package common
 
-var events = make(map[string][]chan interface{})
+import (
+	"fmt"
+	"reflect"
+)
 
-// ListEvents list all current registered
+type EventInfo reflect.Type
+type EventListener chan interface{}
+type EventType int
+type Event struct {
+	infoType  EventInfo
+	listeners map[EventType][]EventListener
+}
+
+func NewEvent(eventInfo interface{}) *Event {
+	return &Event{infoType: reflect.TypeOf(eventInfo), listeners: make(map[EventType][]EventListener)}
+}
 
 // AddListener adds an event listener to the Dog struct instance
-func AddListener(name string, ch chan interface{}) {
-	if _, ok := events[name]; ok {
-		events[name] = append(events[name], ch)
+func (this *Event) AddListener(eventType EventType) EventListener {
+	eventListener := make(EventListener)
+
+	if _, ok := this.listeners[eventType]; ok {
+		this.listeners[eventType] = append(this.listeners[eventType], eventListener)
 	} else {
-		events[name] = []chan interface{}{ch}
+		this.listeners[eventType] = []EventListener{eventListener}
 	}
+
+	return eventListener
 }
 
 // RemoveListener removes an event listener from the Dog struct instance
-func RemoveListener(name string, ch chan interface{}) {
-	if _, ok := events[name]; ok {
-		for i := range events[name] {
-			if events[name][i] == ch {
-				events[name] = append(events[name][:i], events[name][i+1:]...)
+func (this *Event) RemoveListener(eventType EventType, eventListener EventListener) {
+	if _, ok := this.listeners[eventType]; ok {
+		for i := range this.listeners[eventType] {
+			if this.listeners[eventType][i] == eventListener {
+				this.listeners[eventType] = append(this.listeners[eventType][:i], this.listeners[eventType][i+1:]...)
 				break
 			}
 		}
@@ -26,12 +43,14 @@ func RemoveListener(name string, ch chan interface{}) {
 }
 
 // EmitEvent emits an event on the Dog struct instance
-func EmitEvent(name string, event interface{}) {
-	if _, ok := events[name]; ok {
-		for _, handler := range events[name] {
-			go func(handler chan interface{}) {
-				handler <- event
-			}(handler)
+func (this *Event) EmitEvent(eventType EventType, infoType interface{}) {
+	if this.infoType != reflect.TypeOf(infoType) {
+		panic(fmt.Errorf("event expects typeof %v but tried to emit is typeof %v", this.infoType, reflect.TypeOf(infoType)))
+	}
+
+	if listeners, ok := this.listeners[eventType]; ok {
+		for _, listener := range listeners {
+			listener <- infoType
 		}
 	}
 }
