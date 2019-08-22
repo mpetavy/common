@@ -1,46 +1,68 @@
 package common
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
-func TestEvents(t *testing.T) {
-	listener1 := make(chan interface{})
-	listener2 := make(chan interface{})
+const (
+	tick = iota
+)
 
-	AddListener("listener", listener1)
-	AddListener("listener", listener2)
+func TestEvent(t *testing.T) {
+	event := NewEvent(true)
 
-	ticker := time.NewTicker(time.Second)
-	timer := time.NewTimer(time.Second * 5)
-	i := 0
+	listener1 := event.AddListener(tick)
+	listener2 := event.AddListener(tick)
 
-	resultListener1 := ""
-	resultListener2 := ""
-loop:
-	for {
-		select {
-		case ev := <-listener1:
-			resultListener1 = resultListener1 + ev.(string)
-			fmt.Printf("listener111: %v\n", ev)
-		case ev := <-listener2:
-			resultListener2 = resultListener2 + ev.(string)
-			fmt.Printf("listener222: %v\n", ev)
-		case <-ticker.C:
-			if i%2 == 0 {
-				EmitEvent("listener", "0")
-			} else {
-				EmitEvent("listener", "1")
-			}
-			i++
-		case <-timer.C:
-			break loop
+	var listener1Received bool
+	var listener2Received bool
+
+	go func() {
+		for {
+			ev := <-listener1
+			listener1Received = ev.(bool)
 		}
-	}
+	}()
 
-	assert.Equal(t, "0101", resultListener1)
-	assert.Equal(t, "0101", resultListener2)
+	go func() {
+		for {
+			ev := <-listener2
+			listener2Received = ev.(bool)
+		}
+	}()
+
+	event.EmitEvent(tick, true)
+
+	time.Sleep(time.Millisecond * 100)
+
+	// check that listeners are modified by EmitEvent
+
+	assert.Equal(t, true, listener1Received)
+	assert.Equal(t, true, listener2Received)
+
+	// remove only listener1, listener2 should still be notified
+
+	event.RemoveListener(tick, listener1)
+
+	event.EmitEvent(tick, false)
+
+	time.Sleep(time.Millisecond * 100)
+
+	// listener1 must not be notified, listener2 still be notified
+
+	assert.Equal(t, true, listener1Received)
+	assert.Equal(t, false, listener2Received)
+}
+
+func TestInvalidInfoTypePanic(t *testing.T) {
+	defer func() {
+		recover()
+	}()
+
+	event := NewEvent(true)
+	event.EmitEvent(tick, "not a bool type")
+
+	t.Errorf("code did not panic")
 }
