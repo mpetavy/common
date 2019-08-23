@@ -58,6 +58,7 @@ const (
 	SERVICE          = "service"
 	SERVICE_USER     = "service-user"
 	SERVICE_PASSWORD = "service-password"
+	SERVICE_TIMEOUT  = "service-timeout"
 )
 
 var (
@@ -76,6 +77,8 @@ var (
 )
 
 func init() {
+	app = &App{}
+
 	serviceFlag = new(string)
 	serviceActions = service.ControlAction[:]
 	serviceActions = append(serviceActions, "simulate")
@@ -83,15 +86,28 @@ func init() {
 	profile = flag.String("profile", "", "flag profile in configuration logFile")
 }
 
-// New struct for copyright information
-func New(application *App, mandatoryFlags []string) {
-	app = application
+func Init(Name string, Version string, Date string, Description string, Developer string, License string, Homepage string, IsService bool, StartFunc func() error, StopFunc func() error, TickFunc func() error, TickTime time.Duration) {
+	app.Name = Name
+	app.Version = Version
+	app.Date = Date
+	app.Description = Description
+	app.Developer = Developer
+	app.License = License
+	app.Homepage = Homepage
+	app.IsService = IsService
+	app.StartFunc = StartFunc
+	app.StopFunc = StopFunc
+	app.TickFunc = TickFunc
+	app.TickTime = TickTime
+}
 
+// Run struct for copyright information
+func Run(mandatoryFlags []string) {
 	if app.IsService {
 		serviceFlag = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		serviceUser = flag.String(SERVICE_USER, "", "Service user")
 		servicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
-		serviceStartTimeout = flag.Int("service-timeout", 1000, "Server start timeout")
+		serviceStartTimeout = flag.Int(SERVICE_TIMEOUT, 1000, "Server start timeout")
 	}
 
 	flag.Parse()
@@ -134,6 +150,12 @@ func New(application *App, mandatoryFlags []string) {
 	if flagErr {
 		Exit(1)
 	}
+
+	err := run()
+
+	if err != nil {
+		Fatal(err)
+	}
 }
 
 func Executable() string {
@@ -171,10 +193,6 @@ func Title() string {
 
 func GetApp() *App {
 	return app
-}
-
-func Test() {
-	New(&App{"test", "0.0.0", "2018", "test", "mpetavy", APACHE, "https://github.com/golang/mpetavy/golang/tresor", true, nil, nil, nil, time.Duration(0)}, nil)
 }
 
 func parseCfgFile() {
@@ -459,12 +477,4 @@ func run() error {
 	}
 
 	return nil
-}
-
-func Run() {
-	err := run()
-
-	if err != nil {
-		Fatal(err)
-	}
 }
