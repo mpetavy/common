@@ -36,7 +36,7 @@ func init() {
 }
 
 // Exit exist app and run all registered shutdown hooks
-func Cleanup() {
+func Done() {
 	runShutdownHooks()
 }
 
