@@ -1,13 +1,11 @@
 package common
 
 import (
-	"flag"
 	"fmt"
 	"runtime"
 	"sync"
 
 	"math/rand"
-	"os/user"
 	"strings"
 	"time"
 )
@@ -15,39 +13,23 @@ import (
 var (
 	onceShutdownHooks sync.Once
 	shutdownHooks     []func() error
-
-	UserName    *string
-	UserHomeDir *string
 )
 
 func init() {
 	shutdownHooks = make([]func() error, 0)
-
-	UserName = new(string)
-	UserHomeDir = new(string)
-
-	usr, err := user.Current()
-	if err == nil {
-		*UserHomeDir = usr.HomeDir
-	}
-
-	UserName = flag.String("user.name", *UserName, "user name")
-	UserHomeDir = flag.String("user.homedir", *UserHomeDir, "user home directory")
 }
 
 // Exit exist app and run all registered shutdown hooks
 func Done() {
-	runShutdownHooks()
-}
-
-func runShutdownHooks() {
-	onceShutdownHooks.Do(func() {
-		for _, f := range shutdownHooks {
-			err := f()
-			if err != nil {
-				Error(err)
+	onceDone.Do(func() {
+		onceShutdownHooks.Do(func() {
+			for _, f := range shutdownHooks {
+				err := f()
+				if err != nil {
+					Error(err)
+				}
 			}
-		}
+		})
 	})
 }
 

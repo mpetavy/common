@@ -2,11 +2,11 @@ package common
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -39,31 +39,26 @@ func (e *ErrFileNotFound) Error() string {
 // | ------rwx  | 0007 | Other |
 // +------------+------+-------+
 
-var tempDir *string
-var noTempCleanup = flag.Bool("notempcleanup", false, "no clean of temporary files")
+var tempDir string
 
 func init() {
-	d, err := ioutil.TempDir("", "golang")
+	var err error
+
+	tempDir, err = ioutil.TempDir("", Title())
 	if err != nil {
 		panic(err)
 	}
 
-	tempDir = flag.String("tempdir", d, "TEMP directory")
-
 	AddShutdownHook(func() error {
-		if !*noTempCleanup {
-			return deleteTempDir()
-		} else {
-			return nil
-		}
+		return deleteTempDir()
 	})
 }
 
 // AppCleanup cleans up all remaining objects
 func deleteTempDir() error {
-	DebugFunc()
+	DebugFunc(tempDir)
 
-	b, err := FileExists(*tempDir)
+	b, err := FileExists(tempDir)
 	if err != nil {
 		return err
 	}
@@ -72,7 +67,7 @@ func deleteTempDir() error {
 		return nil
 	}
 
-	err = filepath.Walk(*tempDir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
 			b, err := IsFileReadOnly(path)
 			if err != nil {
@@ -93,7 +88,7 @@ func deleteTempDir() error {
 		return err
 	}
 
-	err = os.RemoveAll(*tempDir)
+	err = os.RemoveAll(tempDir)
 	if err != nil {
 		return err
 	}
@@ -103,7 +98,7 @@ func deleteTempDir() error {
 
 // TempDir returns the private temporary directory of the app
 func TempDir() (string, error) {
-	return *tempDir, nil
+	return tempDir, nil
 }
 
 // CurDir returns the current directory of the app
@@ -380,7 +375,14 @@ func CleanPath(path string) string {
 	p := strings.Index(path, "~")
 
 	if p != -1 {
-		path = strings.Replace(path, "~", *UserHomeDir, -1)
+		userHomeDir := ""
+
+		user, err := user.Current()
+		if !CheckError(err) {
+			userHomeDir = user.HomeDir
+		}
+
+		path = strings.Replace(path, "~", userHomeDir, -1)
 	}
 
 	path = filepath.Clean(path)

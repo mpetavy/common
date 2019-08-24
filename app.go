@@ -74,6 +74,7 @@ var (
 	profile             *string
 	stopped             bool
 	onceBanner          sync.Once
+	onceDone            sync.Once
 )
 
 func init() {
@@ -191,8 +192,14 @@ func Title() string {
 	return filepath.Base(CustomAppFilename(""))
 }
 
-func GetApp() *App {
-	return app
+func isFlagPassed(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
 
 func parseCfgFile() {
@@ -211,7 +218,7 @@ func parseCfgFile() {
 			}
 
 			if runtime.GOOS == system {
-				if flag.Lookup("-"+name) == nil {
+				if flag.Lookup("-"+name) == nil && !isFlagPassed(name) {
 					err := flag.Set(name, value)
 					if err != nil {
 						Error(err)
@@ -223,7 +230,8 @@ func parseCfgFile() {
 }
 
 func Exit(code int) {
-	runShutdownHooks()
+	Done()
+
 	os.Exit(code)
 }
 
@@ -248,7 +256,7 @@ func ShowBanner() {
 }
 
 func (app *App) service() error {
-	DebugFunc()
+	Info("Service()")
 
 	sleep := time.Duration(1000000) * time.Hour
 
@@ -312,7 +320,7 @@ func (app *App) service() error {
 }
 
 func (app *App) Start(s service.Service) error {
-	DebugFunc()
+	Info("Start()")
 
 	if app.StartFunc != nil {
 		if err := app.StartFunc(); err != nil {
@@ -338,7 +346,7 @@ func Stopped() bool {
 }
 
 func (app *App) Stop(s service.Service) error {
-	DebugFunc()
+	Info("Stop()")
 
 	stopped = true
 
