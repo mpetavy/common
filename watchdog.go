@@ -45,7 +45,7 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 
 			return &ErrWatchdog{cmd.Process.Pid, start, cmd}
 		case err = <-doneCh:
-			Debug("watchdog finished process pid: %d cmd: %s\n time: %s", cmd.Process.Pid, ToString(*cmd), time.Since(start))
+			Debug("watchdog finished successfully observerd process pid: %d cmd: %s\n time: %s", cmd.Process.Pid, ToString(*cmd), time.Since(start))
 			return err
 		}
 	}
