@@ -65,7 +65,7 @@ var (
 )
 
 func init() {
-	defaultLogFile = CustomAppFilename(".log")
+	defaultLogFile = AppFilename(".log")
 
 	logConsole = flag.Bool("logconsole", true, "log to console")
 	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
