@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 )
 
-type filemaskwalker struct {
+type filewalker struct {
 	path      string
 	filemask  string
 	recursive bool
 	walkFunc  func(path string) error
 }
 
-func (this *filemaskwalker) walkfunc(path string, fi os.FileInfo, err error) error {
+func (this *filewalker) walkfunc(path string, fi os.FileInfo, err error) error {
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func WalkFilepath(filemask string, recursive bool, walkFunc func(path string) er
 		}
 	}
 
-	w := filemaskwalker{path: path, filemask: filemask, recursive: recursive, walkFunc: walkFunc}
+	w := filewalker{path: path, filemask: filemask, recursive: recursive, walkFunc: walkFunc}
 
 	return filepath.Walk(path, w.walkfunc)
 }

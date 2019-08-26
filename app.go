@@ -116,7 +116,7 @@ func Run(mandatoryFlags []string) {
 	parseCfgFile()
 
 	if !NoBanner || *usage {
-		ShowBanner()
+		showBanner()
 	}
 
 	if *usage {
@@ -131,7 +131,7 @@ func Run(mandatoryFlags []string) {
 			fl := flag.Lookup(f)
 
 			if fl == nil {
-				ShowBanner()
+				showBanner()
 				Error(fmt.Errorf("unknown mandatory flag: %s", f))
 
 				flagErr = true
@@ -140,7 +140,7 @@ func Run(mandatoryFlags []string) {
 			}
 
 			if len(fl.Value.String()) == 0 {
-				ShowBanner()
+				showBanner()
 				Error(fmt.Errorf("mandatory flag needed: \"-%s\" - %s", fl.Name, fl.Usage))
 
 				flagErr = true
@@ -177,7 +177,7 @@ func Executable() string {
 	return path
 }
 
-func CustomAppFilename(newExt string) string {
+func AppFilename(newExt string) string {
 	filename := Executable()
 	ext := filepath.Ext(filename)
 
@@ -189,7 +189,7 @@ func CustomAppFilename(newExt string) string {
 }
 
 func Title() string {
-	return filepath.Base(CustomAppFilename(""))
+	return filepath.Base(AppFilename(""))
 }
 
 func isFlagPassed(name string) bool {
@@ -203,7 +203,7 @@ func isFlagPassed(name string) bool {
 }
 
 func parseCfgFile() {
-	f, err := ini.Load(CustomAppFilename(".cfg"))
+	f, err := ini.Load(AppFilename(".cfg"))
 	if err == nil {
 		for _, k := range f.Section(*profile).Keys() {
 			name := strings.ToLower(k.Name())
@@ -235,7 +235,7 @@ func Exit(code int) {
 	os.Exit(code)
 }
 
-func ShowBanner() {
+func showBanner() {
 	onceBanner.Do(func() {
 		if app != nil {
 			date := strconv.Itoa(time.Now().Year())
