@@ -258,13 +258,18 @@ func showBanner() {
 func (app *App) service() error {
 	Info("Service()")
 
-	sleep := time.Duration(1000000) * time.Hour
+	sleep := time.Second
 
 	if app.TickTime > 0 {
 		nextTick := time.Now().Truncate(app.TickTime).Add(app.TickTime)
 		sleep = nextTick.Sub(time.Now())
 	}
+
 	ticker = time.NewTicker(sleep)
+
+	if app.TickTime == 0 {
+		ticker.Stop()
+	}
 
 	info := func() {
 		if app.TickTime > 0 {
@@ -311,8 +316,12 @@ func (app *App) service() error {
 				Error(err)
 			}
 
-			sleep = app.TickTime
-			ticker = time.NewTicker(app.TickTime)
+			ti := time.Now()
+			ti = ti.Add(app.TickTime)
+			ti = TruncateTime(ti, Second)
+
+			sleep = ti.Sub(time.Now())
+			ticker = time.NewTicker(sleep)
 
 			info()
 		}
