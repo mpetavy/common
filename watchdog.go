@@ -1,6 +1,7 @@
 package common
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,11 +17,23 @@ type ErrWatchdog struct {
 	Cmd   *exec.Cmd
 }
 
+var (
+	flagTimeout *time.Duration
+)
+
+func init() {
+	flagTimeout = flag.Duration("watchdog.timeout", 0, "watchdog timeout")
+}
+
 func (e *ErrWatchdog) Error() string {
 	return fmt.Sprintf("watchdog killed process pid: %d cmd: %s after: %v", e.Cmd.Process.Pid, ToString(*e.Cmd), time.Since(e.Start))
 }
 
 func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
+	if *flagTimeout > timeout {
+		timeout = *flagTimeout
+	}
+
 	doneCh := make(chan error)
 
 	start := time.Now()
