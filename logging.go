@@ -53,7 +53,6 @@ func (l *logEntry) String() string {
 
 var (
 	logLevel       = LEVEL_INFO
-	logConsole     *bool
 	logFilename    *string
 	logFileSize    *int
 	logLevelString *string
@@ -67,7 +66,6 @@ var (
 func init() {
 	defaultLogFile = AppFilename(".log")
 
-	logConsole = flag.Bool("logconsole", true, "log to console")
 	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
 	logFileSize = flag.Int("logfilesize", 10, "log logFile size in MB")
 	logFileBackup = flag.Int("logfilebackup", 5, "logFile backups")
@@ -136,7 +134,7 @@ func writeEntry(entry logEntry) {
 		}
 	}
 
-	if entry.level != LEVEL_FILE && *logConsole {
+	if entry.level != LEVEL_FILE {
 		fmt.Fprintf(os.Stderr, "%s\n", entry.String())
 	}
 
