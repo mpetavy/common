@@ -1,83 +1,81 @@
 package common
 
 import (
-	"errors"
+	"bufio"
+	"bytes"
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
+	"strings"
+	"time"
 )
 
-func FindSystemIP1() (string, error) {
-	hostname, err := os.Hostname()
-
-	ips, err := net.LookupIP(hostname)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
-		os.Exit(1)
-	}
-	for _, ip := range ips {
-		fmt.Printf("%s IN A %s\n", hostname, ip.String())
-	}
-
-	return hostname, err
-}
-
-func FindSystemIP() (string, error) {
-	// list of system network interfaces
-	// https://golang.org/pkg/net/#Interfaces
-	intfs, err := net.Interfaces()
-	if err != nil {
+func FindMainIP() (string, error) {
+	host, err := os.Hostname()
+	if CheckError(err) {
 		return "", err
 	}
-	// mapping between network interface name and index
-	// https://golang.org/pkg/net/#Interface
-	for _, intf := range intfs {
-		// skip down interface & check next intf
-		if intf.Flags&net.FlagUp == 0 {
-			continue
+
+	if IsWindowsOS() {
+		cmd := exec.Command("nslookup", host)
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		err := Watchdog(cmd, time.Second*3)
+		if CheckError(err) {
+			return "", nil
 		}
-		// skip loopback & check next intf
-		if intf.Flags&net.FlagLoopback != 0 {
-			continue
+		output := string(stdout.Bytes())
+
+		scanner := bufio.NewScanner(strings.NewReader(output))
+		line := ""
+		found := false
+
+		for scanner.Scan() {
+			line = strings.TrimSpace(scanner.Text())
+
+			found = strings.Index(line, "Name:") != -1
+
+			if found {
+				break
+			}
 		}
-		// list of unicast interface addresses for specific interface
-		// https://golang.org/pkg/net/#Interface.Addrs
-		addrs, err := intf.Addrs()
-		if err != nil {
-			return "", err
+
+		if found && scanner.Scan() {
+			line = strings.TrimSpace(scanner.Text())
+
+			line = line[10:]
+
+			return line, nil
 		}
-		// network end point address
-		// https://golang.org/pkg/net/#Addr
-		for _, addr := range addrs {
-			var ip net.IP
-			// Addr type switch required as a result of IPNet & IPAddr return in
-			// https://golang.org/src/net/interface_windows.go?h=interfaceAddrTable
-			switch v := addr.(type) {
-			// net.IPNet satisfies Addr interface
-			// since it contains Network() & String()
-			// https://golang.org/pkg/net/#IPNet
-			case *net.IPNet:
-				ip = v.IP
-			// net.IPAddr satisfies Addr interface
-			// since it contains Network() & String()
-			// https://golang.org/pkg/net/#IPAddr
-			case *net.IPAddr:
-				ip = v.IP
-			}
-			// skip loopback & check next addr
-			if ip == nil || ip.IsLoopback() {
-				continue
-			}
-			// convert IP IPv4 address to 4-byte
-			ip = ip.To4()
-			if ip == nil {
-				continue // not an ipv4 address
-			}
-			// return IP address as string
-			return ip.String(), nil
+	} else {
+		cmd := exec.Command("host", host)
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		err := Watchdog(cmd, time.Second*3)
+		if CheckError(err) {
+			return "", nil
+		}
+		output := string(stdout.Bytes())
+
+		ss := strings.Split(output, " ")
+
+		if len(ss) > 0 {
+			return ss[len(ss)-1], nil
 		}
 	}
-	return "", errors.New("no ip interface up")
+
+	return "", fmt.Errorf("cannot find main ip for %s", host)
 }
 
 func FindActiveIPs() ([]string, error) {
