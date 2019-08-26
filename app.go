@@ -350,7 +350,7 @@ func (app *App) Start(s service.Service) error {
 	return err
 }
 
-func Stopped() bool {
+func AppStopped() bool {
 	return stopped
 }
 
