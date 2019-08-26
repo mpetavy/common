@@ -101,16 +101,6 @@ func TempDir() (string, error) {
 	return tempDir, nil
 }
 
-// CurDir returns the current directory of the app
-func CurDir() (string, error) {
-	p, err := filepath.Abs(filepath.Dir("."))
-	if err != nil {
-		return "", err
-	}
-
-	return p, nil
-}
-
 // CreateTempFile creates a temporary file
 func CreateTempFile() (file *os.File, err error) {
 	tempDir, err := TempDir()

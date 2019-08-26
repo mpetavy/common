@@ -76,7 +76,7 @@ func ToBool(s string) bool {
 
 	s = strings.ToLower(s)
 
-	return s == "true" || s == "t"
+	return s == "true" || s == "t" || s == "1"
 }
 
 // Translate a i18n message
@@ -104,4 +104,28 @@ func Rnd(max int) int {
 	rand.Seed(time.Now().UnixNano())
 
 	return rand.Intn(max)
+}
+
+func Min(v ...int) int {
+	r := 0
+
+	for _, vi := range v {
+		if vi < r {
+			r = vi
+		}
+	}
+
+	return r
+}
+
+func Max(v ...int) int {
+	r := 0
+
+	for _, vi := range v {
+		if vi > r {
+			r = vi
+		}
+	}
+
+	return r
 }
