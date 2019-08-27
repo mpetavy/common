@@ -30,6 +30,8 @@ func Done() {
 				}
 			}
 		})
+
+		closeLogfile(true)
 	})
 }
 

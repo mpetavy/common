@@ -52,103 +52,109 @@ func (l *logEntry) String() string {
 }
 
 var (
-	logLevel       = LEVEL_INFO
-	logFilename    *string
-	logFileSize    *int
-	logLevelString *string
-	logFileBackup  *int
+	logLevel      *string
+	logFilename   *string
+	logFileSize   *int
+	logFileBackup *int
 
 	defaultLogFile string
 	logFile        *os.File
-	sign           Sign
+	signInitLog    Sign
+	signCount      Sign
 )
 
 func init() {
 	defaultLogFile = AppFilename(".log")
 
 	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
-	logFileSize = flag.Int("logfilesize", 10, "log logFile size in MB")
+	logFileSize = flag.Int("logfilesize", 1048576, "log logFile size in bytes")
 	logFileBackup = flag.Int("logfilebackup", 5, "logFile backups")
-	logLevelString = flag.String("loglevel", "info", "log level (debug,info,error,fatal)")
+	logLevel = flag.String("loglevel", "info", "log level (debug,info,error,fatal)")
+}
+
+func currentLevel() int {
+	switch strings.ToLower(*logLevel) {
+	case "debug":
+		return LEVEL_DEBUG
+	case "info":
+		return LEVEL_INFO
+	case "warn":
+		return LEVEL_WARN
+	case "error":
+		return LEVEL_ERROR
+	case "fatal":
+		return LEVEL_FATAL
+	default:
+		return LEVEL_INFO
+	}
 }
 
 func initLog() {
-	AddShutdownHook(func() error {
-		return closeLogfile()
-	})
+	if signInitLog.Set() {
+		if *logFilename == "." {
+			*logFilename = defaultLogFile
+		}
 
-	switch strings.ToLower(*logLevelString) {
-	case "debug":
-		logLevel = LEVEL_DEBUG
-	case "info":
-		logLevel = LEVEL_INFO
-	case "warn":
-		logLevel = LEVEL_WARN
-	case "error":
-		logLevel = LEVEL_ERROR
-	case "fatal":
-		logLevel = LEVEL_FATAL
-	default:
-		logLevel = LEVEL_INFO
-	}
+		openLogFile()
 
-	if *logFilename == "." {
-		*logFilename = defaultLogFile
-	}
-
-	if app != nil {
-		prolog(fmt.Sprintf(">>> START - %s %s", strings.ToUpper(app.Name), app.Version))
-		prolog(fmt.Sprintf("cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
+		if app != nil {
+			prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
+			prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
+		}
 	}
 }
 
 func writeEntry(entry logEntry) {
-	if !sign.Set() {
-		return
-	}
-
-	defer func() {
-		sign.Unset()
-	}()
-
-	var err error
-
-	if logFile == nil && len(*logFilename) != 0 {
-		b, _ := FileExists(*logFilename)
-
-		if b {
-			fi, _ := os.Stat(*logFilename)
-
-			if fi.Size() > (int64(*logFileSize) * 1024 * 1024) {
-				err := FileBackup(*logFilename, *logFileBackup)
-				Fatal(fmt.Errorf("cannot write to logFile %s: %v", *logFilename, err))
-			}
-		}
-
-		logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
-
-		if err != nil {
-			Error(err)
-
-			return
-		}
-	}
-
 	if entry.level != LEVEL_FILE {
 		fmt.Fprintf(os.Stderr, "%s\n", entry.String())
 	}
 
 	if logFile != nil {
-		_, err = logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
-		DebugError(logFile.Sync())
-	}
+		if signCount.IncAndReached(100) {
+			closeLogfile(false)
+			openLogFile()
 
-	if err != nil {
-		Error(err)
+			signCount.ResetWithoutLock()
+			signCount.Unlock()
+		}
+
+		logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
+		logFile.Sync()
 	}
 }
 
-func closeLogfile() error {
+func openLogFile() {
+	if *logFilename != "" {
+		b, _ := FileExists(*logFilename)
+
+		if b {
+			fi, _ := os.Stat(*logFilename)
+
+			if fi.Size() > int64(*logFileSize) {
+				err := FileBackup(*logFilename, *logFileBackup)
+				Fatal(fmt.Errorf("cannot backup logFile %s: %v", *logFilename, err))
+			}
+		}
+
+		var err error
+
+		logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
+
+		if err != nil {
+			logFile.Close()
+
+			logFile = nil
+
+			Error(err)
+		}
+	}
+}
+
+func closeLogfile(final bool) error {
+	if final {
+		prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
+	}
+
 	if logFile != nil {
 		logFile.Close()
 
@@ -227,6 +233,10 @@ func DebugFunc(arg ...interface{}) {
 	log(LEVEL_DEBUG, ri, t)
 }
 
+// IgnoreError just ignores the error
+func IgnoreError(err error) {
+}
+
 // Debug prints out the information
 func DebugError(err error) {
 	initLog()
@@ -257,7 +267,7 @@ func Fatal(err error) {
 }
 
 func log(level int, ri runtimeInfo, msg string) {
-	if level == LEVEL_FILE || level >= logLevel {
+	if level == LEVEL_FILE || level >= currentLevel() {
 		writeEntry(logEntry{
 			level: level,
 			ri:    ri,
@@ -270,12 +280,6 @@ func ToString(cmd exec.Cmd) string {
 	s := SurroundWith(cmd.Args, "\"")
 
 	return strings.Join(s, " ")
-}
-
-func IsDebugMode() bool {
-	initLog()
-
-	return logLevel == LEVEL_DEBUG
 }
 
 func CheckError(err error) bool {
