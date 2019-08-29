@@ -192,6 +192,42 @@ func Title() string {
 	return filepath.Base(AppFilename(""))
 }
 
+func Version(major bool, minor bool, patch bool) string {
+	if strings.Count(app.Version, ".") == 2 {
+		s := strings.Split(app.Version, ".")
+
+		sb := strings.Builder{}
+
+		if major {
+			sb.WriteString(s[0])
+		}
+
+		if minor {
+			if sb.Len() > 0 {
+				sb.WriteString(".")
+			}
+
+			sb.WriteString(s[1])
+		}
+
+		if patch {
+			if sb.Len() > 0 {
+				sb.WriteString(".")
+			}
+
+			sb.WriteString(s[2])
+		}
+
+		return sb.String()
+	}
+
+	return ""
+}
+
+func TitleVersion(major bool, minor bool, patch bool) string {
+	return Title() + "-" + Version(major, minor, patch)
+}
+
 func isFlagPassed(name string) bool {
 	found := false
 	flag.Visit(func(f *flag.Flag) {
@@ -233,6 +269,14 @@ func Exit(code int) {
 	Done()
 
 	os.Exit(code)
+}
+
+func ErrExitOrError(err error) error {
+	if err != nil {
+		return err
+	} else {
+		return &ErrExit{}
+	}
 }
 
 func showBanner() {
