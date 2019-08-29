@@ -25,6 +25,11 @@ const (
 	LEVEL_FATAL
 )
 
+type ErrExit struct {
+}
+
+func (e *ErrExit) Error() string { return "" }
+
 type logEntry struct {
 	level int
 	ri    runtimeInfo
@@ -260,9 +265,12 @@ func Fatal(err error) {
 	initLog()
 
 	if err != nil {
-		log(LEVEL_FATAL, RuntimeInfo(1), err.Error())
 
-		panic(err)
+		if _, ok := err.(*ErrExit); !ok {
+			log(LEVEL_FATAL, RuntimeInfo(1), err.Error())
+
+			panic(err)
+		}
 	}
 }
 
@@ -290,4 +298,8 @@ func CheckError(err error) bool {
 	}
 
 	return b
+}
+
+func AppsInfo() *App {
+	return app
 }
