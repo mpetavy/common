@@ -47,23 +47,15 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 		doneCh <- cmd.Wait()
 	}()
 
-	pid := cmd.Process.Pid
+	select {
+	case <-time.After(timeout):
+		DebugError(cmd.Process.Kill())
 
-	if pid > 0 {
-		ti := time.After(timeout)
-
-		select {
-		case <-ti:
-			DebugError(cmd.Process.Kill())
-
-			return &ErrWatchdog{cmd.Process.Pid, start, cmd}
-		case err = <-doneCh:
-			Debug("watchdog finished successfully observerd process pid: %d cmd: %s time: %s", cmd.Process.Pid, ToString(*cmd), time.Since(start))
-			return err
-		}
+		return &ErrWatchdog{cmd.Process.Pid, start, cmd}
+	case err = <-doneCh:
+		Debug("watchdog finished successfully observerd process pid: %d cmd: %s time: %s", cmd.Process.Pid, ToString(*cmd), time.Since(start))
+		return err
 	}
-
-	return nil
 }
 
 func StillAlive(pid int) bool {
