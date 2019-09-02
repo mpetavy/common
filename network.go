@@ -11,6 +11,30 @@ import (
 	"time"
 )
 
+type TimeoutSocket struct {
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	Socket       *net.Conn
+}
+
+func (this TimeoutSocket) Read(p []byte) (n int, err error) {
+	err = (*this.Socket).SetReadDeadline(time.Now().Add(this.ReadTimeout))
+	if err != nil {
+		return 0, err
+	}
+
+	return (*this.Socket).Read(p)
+}
+
+func (this TimeoutSocket) Write(p []byte) (n int, err error) {
+	err = (*this.Socket).SetWriteDeadline(time.Now().Add(this.WriteTimeout))
+	if err != nil {
+		return 0, err
+	}
+
+	return (*this.Socket).Write(p)
+}
+
 func FindMainIP() (string, error) {
 	host, err := os.Hostname()
 	if CheckError(err) {
