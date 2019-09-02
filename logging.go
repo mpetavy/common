@@ -229,10 +229,16 @@ func DebugFunc(arg ...interface{}) {
 	t := ri.Fn + "()"
 
 	if len(arg) == 1 {
-		t = fmt.Sprintf("%s: %v", t, arg[0])
+		t = fmt.Sprintf("%s: %s", t, arg[0])
 	}
 	if len(arg) > 1 {
-		t = fmt.Sprintf("%s: "+fmt.Sprintf("%s", arg[0]), t, arg[1:])
+		s, ok := arg[0].(string)
+
+		if ok {
+			t = fmt.Sprintf("%s: %s", t, fmt.Sprintf(s, arg[1:]...))
+		} else {
+			t = fmt.Sprintf("%s: %s", t, fmt.Sprintf("%v", arg[1:]...))
+		}
 	}
 
 	log(LEVEL_DEBUG, ri, t)
