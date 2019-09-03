@@ -18,6 +18,13 @@ type TimeoutSocket struct {
 }
 
 func (this TimeoutSocket) Read(p []byte) (n int, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("socket not valid")
+			n = 0
+		}
+	}()
+
 	err = (*this.Socket).SetReadDeadline(time.Now().Add(this.ReadTimeout))
 	if err != nil {
 		return 0, err
@@ -27,6 +34,13 @@ func (this TimeoutSocket) Read(p []byte) (n int, err error) {
 }
 
 func (this TimeoutSocket) Write(p []byte) (n int, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("socket not valid")
+			n = 0
+		}
+	}()
+
 	err = (*this.Socket).SetWriteDeadline(time.Now().Add(this.WriteTimeout))
 	if err != nil {
 		return 0, err
