@@ -67,7 +67,7 @@ var (
 	serviceUser         *string
 	servicePassword     *string
 	serviceActions      []string
-	serviceStartTimeout *int
+	ServiceStartTimeout *int
 	usage               *bool
 	NoBanner            bool
 	ticker              *time.Ticker
@@ -108,7 +108,7 @@ func Run(mandatoryFlags []string) {
 		serviceFlag = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		serviceUser = flag.String(SERVICE_USER, "", "Service user")
 		servicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
-		serviceStartTimeout = flag.Int(SERVICE_TIMEOUT, 1000, "Server start timeout")
+		ServiceStartTimeout = flag.Int(SERVICE_TIMEOUT, 1000, "Server start timeout")
 	}
 
 	flag.Parse()
@@ -388,7 +388,7 @@ func (app *App) Start(s service.Service) error {
 			*err = app.service()
 		}(&err)
 
-		time.Sleep(time.Duration(*serviceStartTimeout) * time.Millisecond)
+		time.Sleep(time.Duration(*ServiceStartTimeout) * time.Millisecond)
 	}
 
 	return err
