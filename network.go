@@ -30,7 +30,13 @@ func (this TimeoutSocket) Read(p []byte) (n int, err error) {
 		return 0, err
 	}
 
-	return (*this.Socket).Read(p)
+	n, err = (*this.Socket).Read(p)
+
+	if n > 0 {
+		DebugFunc("Read %d bytes: %v %+q", n, p[:n], string(p[:n]))
+	}
+
+	return
 }
 
 func (this TimeoutSocket) Write(p []byte) (n int, err error) {
@@ -44,6 +50,12 @@ func (this TimeoutSocket) Write(p []byte) (n int, err error) {
 	err = (*this.Socket).SetWriteDeadline(time.Now().Add(this.WriteTimeout))
 	if err != nil {
 		return 0, err
+	}
+
+	n, err = (*this.Socket).Write(p)
+
+	if n > 0 {
+		DebugFunc("Write %d bytes: %v %+q", n, p[:n], string(p[:n]))
 	}
 
 	return (*this.Socket).Write(p)
