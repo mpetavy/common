@@ -56,6 +56,17 @@ func (l *logEntry) String() string {
 	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(false), Capitalize(l.msg)), "\r\n")
 }
 
+type DebugWriter struct {
+	Name   string
+	Action string
+}
+
+func (this *DebugWriter) Write(p []byte) (n int, err error) {
+	Debug("%s %s %d bytes: %+q", this.Name, this.Action, len(p), string(p))
+
+	return len(p), nil
+}
+
 var (
 	logLevel      *string
 	logFilename   *string
