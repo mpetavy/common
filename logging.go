@@ -264,7 +264,7 @@ func DebugError(err error) {
 	initLog()
 
 	if err != nil {
-		log(LEVEL_DEBUG, RuntimeInfo(1), err.Error())
+		log(LEVEL_DEBUG, RuntimeInfo(1), fmt.Sprintf("DebugError: %s", err.Error()))
 	}
 }
 
