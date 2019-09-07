@@ -4,12 +4,54 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
+
+type TimeoutSocket struct {
+	io.ReadWriter
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	Socket       *net.Conn
+}
+
+func (this *TimeoutSocket) Read(p []byte) (n int, err error) {
+	err = (*this.Socket).SetReadDeadline(DeadlineByDuration(this.ReadTimeout))
+	if err != nil {
+		return 0, err
+	}
+
+	return (*this.Socket).Read(p)
+}
+
+func (this *TimeoutSocket) Write(p []byte) (n int, err error) {
+	err = (*this.Socket).SetWriteDeadline(DeadlineByDuration(this.WriteTimeout))
+	if err != nil {
+		return 0, err
+	}
+
+	return (*this.Socket).Write(p)
+}
+
+func DeadlineByMsec(msec int) time.Time {
+	if msec > 0 {
+		return time.Now().Add(time.Duration(msec) * time.Millisecond)
+	} else {
+		return time.Time{}
+	}
+}
+
+func DeadlineByDuration(duration time.Duration) time.Time {
+	if duration > 0 {
+		return time.Now().Add(duration)
+	} else {
+		return time.Time{}
+	}
+}
 
 func FindMainIP() (string, error) {
 	host, err := os.Hostname()
