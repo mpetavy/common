@@ -20,38 +20,22 @@ type TimeoutSocket struct {
 }
 
 func (this *TimeoutSocket) Read(p []byte) (n int, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			if recoverErr, ok := recover().(error); ok {
-				err = recoverErr
-			} else {
-				err = fmt.Errorf("recovered from panic")
-			}
+	if this.Socket != nil {
+		err = (*this.Socket).SetReadDeadline(DeadlineByDuration(this.ReadTimeout))
+		if err != nil {
+			return 0, err
 		}
-	}()
-
-	err = (*this.Socket).SetReadDeadline(DeadlineByDuration(this.ReadTimeout))
-	if err != nil {
-		return 0, err
 	}
 
 	return (*this.Socket).Read(p)
 }
 
 func (this *TimeoutSocket) Write(p []byte) (n int, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			if recoverErr, ok := recover().(error); ok {
-				err = recoverErr
-			} else {
-				err = fmt.Errorf("recovered from panic")
-			}
+	if this.Socket != nil {
+		err = (*this.Socket).SetWriteDeadline(DeadlineByDuration(this.WriteTimeout))
+		if err != nil {
+			return 0, err
 		}
-	}()
-
-	err = (*this.Socket).SetWriteDeadline(DeadlineByDuration(this.WriteTimeout))
-	if err != nil {
-		return 0, err
 	}
 
 	return (*this.Socket).Write(p)
