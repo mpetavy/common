@@ -75,7 +75,6 @@ var (
 
 	defaultLogFile string
 	logFile        *os.File
-	signInitLog    Sign
 	signCount      Sign
 )
 
@@ -106,23 +105,24 @@ func currentLevel() int {
 }
 
 func initLog() {
-	if signInitLog.Set() {
-		if *logFilename == "." {
-			*logFilename = defaultLogFile
-		}
+	closeLogfile(false)
 
-		openLogFile()
+	if *logFilename == "." {
+		*logFilename = defaultLogFile
+	}
 
-		if app != nil {
-			prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
-			prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
-		}
+	openLogFile()
+
+	if app != nil {
+		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
+		prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 	}
 }
 
 func writeEntry(entry logEntry) {
 	if entry.level != LEVEL_FILE {
-		fmt.Fprintf(os.Stderr, "%s\n", entry.String())
+		_, err := fmt.Fprintf(os.Stderr, "%s\n", entry.String())
+		DebugError(err)
 	}
 
 	if logFile != nil {
@@ -134,21 +134,22 @@ func writeEntry(entry logEntry) {
 			signCount.Unlock()
 		}
 
-		logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
-		logFile.Sync()
+		_, err := logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
+		DebugError(err)
+
+		DebugError(logFile.Sync())
 	}
 }
 
 func openLogFile() {
-	if *logFilename != "" {
+	if *logFilename != "" && logFile == nil {
 		b, _ := FileExists(*logFilename)
 
 		if b {
 			fi, _ := os.Stat(*logFilename)
 
 			if fi.Size() > int64(*logFileSize) {
-				err := FileBackup(*logFilename, *logFileBackup)
-				Fatal(fmt.Errorf("cannot backup logFile %s: %v", *logFilename, err))
+				Error(FileBackup(*logFilename, *logFileBackup))
 			}
 		}
 
@@ -157,7 +158,7 @@ func openLogFile() {
 		logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
 
 		if err != nil {
-			logFile.Close()
+			DebugError(logFile.Close())
 
 			logFile = nil
 
@@ -166,18 +167,16 @@ func openLogFile() {
 	}
 }
 
-func closeLogfile(final bool) error {
+func closeLogfile(final bool) {
 	if final {
 		prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
 	}
 
 	if logFile != nil {
-		logFile.Close()
+		DebugError(logFile.Close())
 
 		logFile = nil
 	}
-
-	return nil
 }
 
 // logFile prints out the information
@@ -191,8 +190,6 @@ func prolog(t string, arg ...interface{}) {
 
 // Debug prints out the information
 func Debug(t string, arg ...interface{}) {
-	initLog()
-
 	if len(arg) > 0 {
 		t = fmt.Sprintf(t, arg...)
 	}
@@ -202,8 +199,6 @@ func Debug(t string, arg ...interface{}) {
 
 // Info prints out the information
 func Info(t string, arg ...interface{}) {
-	initLog()
-
 	if len(arg) > 0 {
 		t = fmt.Sprintf(t, arg...)
 	}
@@ -213,8 +208,6 @@ func Info(t string, arg ...interface{}) {
 
 // Warn prints out the information
 func Warn(t string, arg ...interface{}) {
-	initLog()
-
 	if len(arg) > 0 {
 		t = fmt.Sprintf(t, arg...)
 	}
@@ -224,8 +217,6 @@ func Warn(t string, arg ...interface{}) {
 
 // Warn prints out the error
 func WarnError(err error) {
-	initLog()
-
 	if err != nil {
 		log(LEVEL_WARN, RuntimeInfo(1), err.Error())
 	}
@@ -233,8 +224,6 @@ func WarnError(err error) {
 
 // DebugFunc prints out the current executon func
 func DebugFunc(arg ...interface{}) {
-	initLog()
-
 	ri := RuntimeInfo(1)
 
 	t := ri.Fn + "()"
@@ -256,13 +245,11 @@ func DebugFunc(arg ...interface{}) {
 }
 
 // IgnoreError just ignores the error
-func IgnoreError(err error) {
+func IgnoreError(_ error) {
 }
 
 // Debug prints out the information
 func DebugError(err error) {
-	initLog()
-
 	if err != nil {
 		log(LEVEL_DEBUG, RuntimeInfo(1), fmt.Sprintf("DebugError: %s", err.Error()))
 	}
@@ -270,8 +257,6 @@ func DebugError(err error) {
 
 // Error prints out the error
 func Error(err error) {
-	initLog()
-
 	if err != nil {
 		log(LEVEL_ERROR, RuntimeInfo(1), err.Error())
 	}
@@ -279,8 +264,6 @@ func Error(err error) {
 
 // Fatal prints out the error
 func Fatal(err error) {
-	initLog()
-
 	if err != nil {
 
 		if _, ok := err.(*ErrExit); !ok {
@@ -315,8 +298,4 @@ func CheckError(err error) bool {
 	}
 
 	return b
-}
-
-func AppsInfo() *App {
-	return app
 }

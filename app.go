@@ -115,6 +115,8 @@ func Run(mandatoryFlags []string) {
 
 	parseCfgFile()
 
+	initLog()
+
 	if !NoBanner || *usage {
 		showBanner()
 	}
@@ -244,6 +246,8 @@ func parseCfgFile() {
 	f, err := ini.Load(fn)
 	if err != nil {
 		Fatal(fmt.Errorf("cannot read config file %s", fn))
+
+		return
 	}
 
 	sections := make([]string, 0)

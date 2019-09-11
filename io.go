@@ -49,8 +49,8 @@ func init() {
 		panic(err)
 	}
 
-	AddShutdownHook(func() error {
-		return deleteTempDir()
+	AddShutdownHook(func() {
+		Error(deleteTempDir())
 	})
 }
 
@@ -112,7 +112,9 @@ func CreateTempFile() (file *os.File, err error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		IgnoreError(file.Close())
+	}()
 
 	Debug(fmt.Sprintf("CreateTempFile : %s", file.Name()))
 
@@ -184,13 +186,17 @@ func FileCopy(src string, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() {
+		IgnoreError(srcFile.Close())
+	}()
 
 	destFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() {
+		IgnoreError(destFile.Close())
+	}()
 
 	_, err = io.Copy(destFile, srcFile)
 	if err != nil {
@@ -214,7 +220,9 @@ func FileStore(filename string, r io.Reader) error {
 	}
 
 	// care about final cleanup of open file
-	defer out.Close()
+	defer func() {
+		IgnoreError(out.Close())
+	}()
 
 	// download the remote resource to the file
 	_, err = io.Copy(out, r)
@@ -280,7 +288,7 @@ func IsFileReadOnly(path string) (result bool, err error) {
 			return false, err
 		}
 	}
-	file.Close()
+	IgnoreError(file.Close())
 
 	return result, nil
 }
@@ -367,9 +375,9 @@ func CleanPath(path string) string {
 	if p != -1 {
 		userHomeDir := ""
 
-		user, err := user.Current()
+		usr, err := user.Current()
 		if !CheckError(err) {
-			userHomeDir = user.HomeDir
+			userHomeDir = usr.HomeDir
 		}
 
 		path = strings.Replace(path, "~", userHomeDir, -1)
