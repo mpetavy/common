@@ -23,7 +23,7 @@ const (
 	// Apache license
 	APACHE string = "https://www.apache.org/licenses/LICENSE-2.0.html"
 	// GPL2 license
-	GPL2 string = "https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html"
+	//GPL2 string = "https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html"
 )
 
 //Info information of the application
@@ -239,26 +239,32 @@ func isFlagPassed(name string) bool {
 }
 
 func parseCfgFile() {
-	f, err := ini.Load(AppFilename(".cfg"))
-	if err == nil {
-		for _, k := range f.Section(*profile).Keys() {
+	fn := AppFilename(".cfg")
+
+	f, err := ini.Load(fn)
+	if err != nil {
+		Fatal(fmt.Errorf("cannot read config file %s", fn))
+	}
+
+	sections := make([]string, 0)
+	sections = append(sections, "")
+	sections = append(sections, runtime.GOOS)
+	if *profile != "" {
+		sections = append(sections, *profile)
+		sections = append(sections, *profile+"-"+runtime.GOOS)
+	}
+
+	for _, section := range sections {
+		for _, k := range f.Section(section).Keys() {
 			name := strings.ToLower(k.Name())
 			value := k.String()
 
-			p := strings.Index(name, "@")
-			system := runtime.GOOS
+			if flag.Lookup("-"+name) == nil && !isFlagPassed(name) {
+				DebugFunc("%s: set %s=%s", fn, name, value)
 
-			if p != -1 {
-				system = name[p+1:]
-				name = name[:p]
-			}
-
-			if runtime.GOOS == system {
-				if flag.Lookup("-"+name) == nil && !isFlagPassed(name) {
-					err := flag.Set(name, value)
-					if err != nil {
-						Error(err)
-					}
+				err := flag.Set(name, value)
+				if err != nil {
+					Error(err)
 				}
 			}
 		}
