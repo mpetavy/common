@@ -12,11 +12,11 @@ import (
 
 var (
 	onceShutdownHooks sync.Once
-	shutdownHooks     []func() error
+	shutdownHooks     []func()
 )
 
 func init() {
-	shutdownHooks = make([]func() error, 0)
+	shutdownHooks = make([]func(), 0)
 }
 
 // Exit exist app and run all registered shutdown hooks
@@ -24,10 +24,7 @@ func Done() {
 	onceDone.Do(func() {
 		onceShutdownHooks.Do(func() {
 			for _, f := range shutdownHooks {
-				err := f()
-				if err != nil {
-					Error(err)
-				}
+				f()
 			}
 		})
 
@@ -35,7 +32,7 @@ func Done() {
 	})
 }
 
-func AddShutdownHook(f func() error) {
+func AddShutdownHook(f func()) {
 	shutdownHooks = append(shutdownHooks, nil)
 	copy(shutdownHooks[1:], shutdownHooks[0:])
 	shutdownHooks[0] = f
