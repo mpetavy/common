@@ -18,11 +18,11 @@ type ErrWatchdog struct {
 }
 
 var (
-	flagTimeout *time.Duration
+	flagTimeout *int
 )
 
 func init() {
-	flagTimeout = flag.Duration("watchdog.timeout", 0, "watchdog timeout")
+	flagTimeout = flag.Int("watchdog.timeout", 0, "watchdog timeout")
 }
 
 func (e *ErrWatchdog) Error() string {
@@ -30,8 +30,8 @@ func (e *ErrWatchdog) Error() string {
 }
 
 func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
-	if *flagTimeout > timeout {
-		timeout = *flagTimeout
+	if MsecToDuration(*flagTimeout) > timeout {
+		timeout = MsecToDuration(*flagTimeout)
 	}
 
 	doneCh := make(chan error)
