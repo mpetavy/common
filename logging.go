@@ -3,7 +3,9 @@ package common
 import (
 	"flag"
 	"fmt"
+	"github.com/kardianos/service"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -53,7 +55,7 @@ func (l *logEntry) String() string {
 	case LEVEL_FATAL:
 		level = "FATAL"
 	}
-	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(false), Capitalize(l.msg)), "\r\n")
+	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s | %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(false), Capitalize(l.msg)), "\r\n")
 }
 
 type DebugWriter struct {
@@ -79,7 +81,12 @@ var (
 )
 
 func init() {
-	defaultLogFile = AppFilename(".log")
+	path := CleanPath(AppFilename(".log"))
+	if !IsWindowsOS() && !service.Interactive() {
+		path = filepath.Join("var", "log", AppFilename(".log"))
+	}
+
+	defaultLogFile = path
 
 	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
 	logFileSize = flag.Int("logfilesize", 1048576, "log logFile size in bytes")
@@ -121,7 +128,12 @@ func initLog() {
 
 func writeEntry(entry logEntry) {
 	if entry.level != LEVEL_FILE {
-		_, err := fmt.Fprintf(os.Stderr, "%s\n", entry.String())
+		s := entry.String()
+		if currentLevel() == LEVEL_INFO {
+			s = s[strings.Index(s, " | ")+3:]
+		}
+
+		_, err := fmt.Fprintf(os.Stderr, "%s\n", s)
 		DebugError(err)
 	}
 

@@ -115,6 +115,15 @@ func Run(mandatoryFlags []string) {
 
 	parseCfgFile()
 
+	flag.VisitAll(func(f *flag.Flag) {
+		v := fmt.Sprintf("%+v", f.Value)
+		if strings.Index(strings.ToLower(f.Name), "password") != -1 {
+			v = strings.Repeat("X", len(v))
+		}
+
+		Debug("flag %s = %+v", f.Name, v)
+	})
+
 	initLog()
 
 	if !NoBanner || *usage {
@@ -262,6 +271,8 @@ func parseCfgFile() {
 		sections = append(sections, *profile+"-"+runtime.GOOS)
 	}
 
+	valueLogLevel := ""
+
 	for _, section := range sections {
 		for _, k := range f.Section(section).Keys() {
 			name := strings.ToLower(k.Name())
@@ -270,12 +281,22 @@ func parseCfgFile() {
 			if flag.Lookup("-"+name) == nil && !isFlagPassed(name) {
 				DebugFunc("%s: set %s=%s", fn, name, value)
 
+				if name == "loglevel" {
+					valueLogLevel = value
+
+					continue
+				}
+
 				err := flag.Set(name, value)
 				if err != nil {
 					Error(err)
 				}
 			}
 		}
+	}
+
+	if valueLogLevel != "" {
+		*logLevel = valueLogLevel
 	}
 }
 
