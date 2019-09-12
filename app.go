@@ -167,13 +167,11 @@ func Executable() string {
 		path = os.Args[0]
 	}
 
-	isMain := strings.Index(filepath.Base(path), "main") != -1
+	path = filepath.Base(path)
+	path = path[0:(len(path) - len(filepath.Ext(path)))]
 
-	if service.Interactive() || isMain {
-		wd, err := os.Getwd()
-		if err == nil {
-			path = filepath.Join(wd, filepath.Base(wd)+filepath.Ext(path))
-		}
+	if strings.HasPrefix(path, "___") {
+		path = path[3:]
 	}
 
 	return path
@@ -242,6 +240,12 @@ func isFlagPassed(name string) bool {
 
 func parseCfgFile() {
 	fn := AppFilename(".cfg")
+
+	b, err := FileExists(fn)
+
+	if !b {
+		return
+	}
 
 	f, err := ini.Load(fn)
 	if err != nil {
