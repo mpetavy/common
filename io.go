@@ -388,7 +388,10 @@ func CleanPath(path string) string {
 	path = filepath.Clean(path)
 
 	if !filepath.IsAbs(path) && !strings.HasPrefix(path, string(filepath.Separator)) {
-		path = filepath.Join(filepath.Dir(Executable()), path)
+		cwd, err := os.Getwd()
+		if err == nil {
+			path = filepath.Join(cwd, path)
+		}
 	}
 
 	return path
