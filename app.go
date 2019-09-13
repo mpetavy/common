@@ -562,7 +562,7 @@ func run() error {
 		}
 	}
 
-	if app.IsService && (!service.Interactive() || *serviceFlag == "simulate") {
+	if IsRunningAsService() {
 		if err := app.service(); err != nil {
 			return err
 		}
@@ -573,4 +573,8 @@ func run() error {
 	}
 
 	return nil
+}
+
+func IsRunningAsService() bool {
+	return app.IsService && (!service.Interactive() || *serviceFlag == "simulate")
 }
