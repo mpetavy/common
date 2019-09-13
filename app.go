@@ -198,7 +198,7 @@ func AppFilename(newExt string) string {
 }
 
 func Title() string {
-	return filepath.Base(AppFilename(""))
+	return Executable()
 }
 
 func Version(major bool, minor bool, patch bool) string {
