@@ -129,7 +129,7 @@ func initLog() {
 func writeEntry(entry logEntry) {
 	if entry.level != LEVEL_FILE {
 		s := entry.String()
-		if currentLevel() == LEVEL_INFO {
+		if currentLevel() > LEVEL_DEBUG {
 			s = s[strings.Index(s, " | ")+3:]
 		}
 
