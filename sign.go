@@ -8,6 +8,13 @@ type Sign struct {
 	isSet int
 }
 
+func (this *Sign) IsSet() bool {
+	this.Lock()
+	defer this.Unlock()
+
+	return this.isSet > 0
+}
+
 func (this *Sign) Set() bool {
 	this.Lock()
 	defer this.Unlock()

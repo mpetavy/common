@@ -14,17 +14,10 @@ type Jason struct {
 	attributes map[string]interface{}
 }
 
-func removeComments(s string) string {
-	s = regexp.MustCompile("(?s)\\/\\*.*?\\*\\/").ReplaceAllString(s, "")
-	s = regexp.MustCompile("[^:]\\/\\/.*").ReplaceAllString(s, "")
-
-	return s
-}
-
 func NewJason(s string) (*Jason, error) {
 	var m map[string]interface{}
 
-	err := json.Unmarshal([]byte(removeComments(s)), &m)
+	err := json.Unmarshal([]byte(RemoveJsonComments(s)), &m)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +57,6 @@ func (jason *Jason) Element(key string) (*Jason, error) {
 	if !ok {
 		return nil, fmt.Errorf("not an object for key: %s", key)
 	}
-
-	m["name"] = key
 
 	return &Jason{m}, nil
 }
@@ -245,4 +236,11 @@ func (jason *Jason) pretty(index int) (string, error) {
 
 func (jason *Jason) Pretty() (string, error) {
 	return jason.pretty(0)
+}
+
+func RemoveJsonComments(s string) string {
+	s = regexp.MustCompile("(?s)\\/\\*.*?\\*\\/").ReplaceAllString(s, "")
+	s = regexp.MustCompile("[^:]\\/\\/.*").ReplaceAllString(s, "")
+
+	return s
 }
