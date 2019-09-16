@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,6 +13,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+)
+
+var (
+	countBackups *int
 )
 
 type ErrFileNotFound struct {
@@ -54,6 +59,8 @@ func init() {
 	AddShutdownHook(func() {
 		Error(deleteTempDir())
 	})
+
+	countBackups = flag.Int("filebackup", 5, "amount of file backups")
 }
 
 // AppCleanup cleans up all remaining objects
@@ -236,15 +243,19 @@ func FileStore(filename string, r io.Reader) error {
 }
 
 // FileBackup creats backup of files
-func FileBackup(filename string, count int) error {
-	for i := count - 1; i >= 0; i-- {
+func FileBackup(filename string) error {
+	if *countBackups < 1 {
+		return nil
+	}
+
+	for i := *countBackups - 1; i >= 0; i-- {
 		src := filename
 		if i > 0 {
 			src = src + "." + strconv.Itoa(i)
 		}
 
 		dst := ""
-		if count == 1 {
+		if *countBackups == 1 {
 			dst = filename + ".bak"
 		} else {
 			dst = filename + "." + strconv.Itoa(i+1)

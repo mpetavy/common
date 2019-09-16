@@ -7,14 +7,11 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/go-ini/ini"
 
 	"github.com/kardianos/service"
 )
@@ -71,8 +68,7 @@ var (
 	usage               *bool
 	NoBanner            bool
 	ticker              *time.Ticker
-	profile             *string
-	stopped             bool
+	stopped             Sign
 	onceBanner          sync.Once
 	onceDone            sync.Once
 )
@@ -84,7 +80,6 @@ func init() {
 	serviceActions = service.ControlAction[:]
 	serviceActions = append(serviceActions, "simulate")
 	usage = flag.Bool("?", false, "show usage")
-	profile = flag.String("profile", "", "flag profile in configuration logFile")
 }
 
 func Init(Name string, Version string, Date string, Description string, Developer string, License string, Homepage string, IsService bool, StartFunc func() error, StopFunc func() error, TickFunc func() error, TickTime time.Duration) {
@@ -113,18 +108,23 @@ func Run(mandatoryFlags []string) {
 
 	flag.Parse()
 
-	parseCfgFile()
-
-	flag.VisitAll(func(f *flag.Flag) {
-		v := fmt.Sprintf("%+v", f.Value)
-		if strings.Index(strings.ToLower(f.Name), "password") != -1 {
-			v = strings.Repeat("X", len(v))
-		}
-
-		Debug("flag %s = %+v", f.Name, v)
-	})
+	err := initConfiguration()
+	if err != nil {
+		Fatal(err)
+	}
 
 	initLog()
+
+	flag.VisitAll(func(fl *flag.Flag) {
+		if fl.Value.String() != "" && fl.Value.String() != fl.DefValue {
+			v := fmt.Sprintf("%+v", fl.Value)
+			if strings.Index(strings.ToLower(fl.Name), "password") != -1 {
+				v = strings.Repeat("X", len(v))
+			}
+
+			Debug("flag %s = %+v", fl.Name, v)
+		}
+	})
 
 	if !NoBanner || *usage {
 		showBanner()
@@ -163,8 +163,7 @@ func Run(mandatoryFlags []string) {
 		Exit(1)
 	}
 
-	err := run()
-
+	err = run()
 	if err != nil {
 		Fatal(err)
 	}
@@ -235,69 +234,6 @@ func Version(major bool, minor bool, patch bool) string {
 
 func TitleVersion(major bool, minor bool, patch bool) string {
 	return Title() + "-" + Version(major, minor, patch)
-}
-
-func isFlagPassed(name string) bool {
-	found := false
-	flag.Visit(func(f *flag.Flag) {
-		if f.Name == name {
-			found = true
-		}
-	})
-	return found
-}
-
-func parseCfgFile() {
-	fn := AppFilename(".cfg")
-
-	b, err := FileExists(fn)
-
-	if !b {
-		return
-	}
-
-	f, err := ini.Load(fn)
-	if err != nil {
-		Fatal(fmt.Errorf("cannot read config file %s", fn))
-
-		return
-	}
-
-	sections := make([]string, 0)
-	sections = append(sections, "")
-	sections = append(sections, runtime.GOOS)
-	if *profile != "" {
-		sections = append(sections, *profile)
-		sections = append(sections, *profile+"-"+runtime.GOOS)
-	}
-
-	valueLogLevel := ""
-
-	for _, section := range sections {
-		for _, k := range f.Section(section).Keys() {
-			name := strings.ToLower(k.Name())
-			value := k.String()
-
-			if flag.Lookup("-"+name) == nil && !isFlagPassed(name) {
-				DebugFunc("%s: set %s=%s", fn, name, value)
-
-				if name == "loglevel" {
-					valueLogLevel = value
-
-					continue
-				}
-
-				err := flag.Set(name, value)
-				if err != nil {
-					Error(err)
-				}
-			}
-		}
-	}
-
-	if valueLogLevel != "" {
-		*logLevel = valueLogLevel
-	}
 }
 
 func Exit(code int) {
@@ -430,13 +366,13 @@ func (app *App) Start(s service.Service) error {
 }
 
 func AppStopped() bool {
-	return stopped
+	return stopped.IsSet()
 }
 
 func (app *App) Stop(s service.Service) error {
 	Info("Stop()")
 
-	stopped = true
+	stopped.Set()
 
 	if ticker != nil {
 		ticker.Stop()

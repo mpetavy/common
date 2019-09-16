@@ -32,6 +32,10 @@ type ErrExit struct {
 
 func (e *ErrExit) Error() string { return "" }
 
+var (
+	LogEnabled Sign
+)
+
 type logEntry struct {
 	level int
 	ri    runtimeInfo
@@ -55,7 +59,7 @@ func (l *logEntry) String() string {
 	case LEVEL_FATAL:
 		level = "FATAL"
 	}
-	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s | %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(false), Capitalize(l.msg)), "\r\n")
+	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(false), Capitalize(l.msg)), "\r\n")
 }
 
 type DebugWriter struct {
@@ -70,10 +74,9 @@ func (this *DebugWriter) Write(p []byte) (n int, err error) {
 }
 
 var (
-	logLevel      *string
-	logFilename   *string
-	logFileSize   *int
-	logFileBackup *int
+	logLevel    *string
+	logFilename *string
+	logFileSize *int
 
 	defaultLogFile string
 	logFile        *os.File
@@ -90,7 +93,6 @@ func init() {
 
 	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
 	logFileSize = flag.Int("logfilesize", 1048576, "log logFile size in bytes")
-	logFileBackup = flag.Int("logfilebackup", 5, "logFile backups")
 	logLevel = flag.String("loglevel", "info", "log level (debug,info,error,fatal)")
 }
 
@@ -112,6 +114,8 @@ func currentLevel() int {
 }
 
 func initLog() {
+	LogEnabled.Set()
+
 	closeLogfile(false)
 
 	if *logFilename == "." {
@@ -121,16 +125,20 @@ func initLog() {
 	openLogFile()
 
 	if app != nil {
-		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
+		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 98)))
 		prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 	}
 }
 
 func writeEntry(entry logEntry) {
+	if !LogEnabled.IsSet() {
+		return
+	}
+
 	if entry.level != LEVEL_FILE {
 		s := entry.String()
 		if currentLevel() > LEVEL_DEBUG {
-			s = s[strings.Index(s, " | ")+3:]
+			s = s[71:]
 		}
 
 		_, err := fmt.Fprintf(os.Stderr, "%s\n", s)
@@ -161,7 +169,7 @@ func openLogFile() {
 			fi, _ := os.Stat(*logFilename)
 
 			if fi.Size() > int64(*logFileSize) {
-				Error(FileBackup(*logFilename, *logFileBackup))
+				Error(FileBackup(*logFilename))
 			}
 		}
 
@@ -170,8 +178,6 @@ func openLogFile() {
 		logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
 
 		if err != nil {
-			DebugError(logFile.Close())
-
 			logFile = nil
 
 			Error(err)
