@@ -33,7 +33,9 @@ type ErrExit struct {
 func (e *ErrExit) Error() string { return "" }
 
 var (
-	LogEnabled Sign
+	LogEnabled    Sign
+	defaultStdout *os.File
+	defaultStderr *os.File
 )
 
 type logEntry struct {
@@ -94,6 +96,9 @@ func init() {
 	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
 	logFileSize = flag.Int("logfilesize", 1048576, "log logFile size in bytes")
 	logLevel = flag.String("loglevel", "info", "log level (debug,info,error,fatal)")
+
+	defaultStdout = os.Stdout
+	defaultStderr = os.Stderr
 }
 
 func currentLevel() int {
@@ -116,8 +121,6 @@ func currentLevel() int {
 func initLog() {
 	DebugFunc()
 
-	LogEnabled.Set()
-
 	closeLogfile(false)
 
 	if *logFilename == "." {
@@ -125,6 +128,8 @@ func initLog() {
 	}
 
 	openLogFile()
+
+	LogEnabled.Set()
 
 	if app != nil {
 		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 98)))
@@ -139,12 +144,13 @@ func writeEntry(entry logEntry) {
 
 	if entry.level != LEVEL_FILE {
 		s := entry.String()
-		if currentLevel() > LEVEL_DEBUG {
+		if currentLevel() > LEVEL_DEBUG && len(s) > 71 {
 			s = s[71:]
 		}
 
-		_, err := fmt.Fprintf(os.Stderr, "%s\n", s)
-		DebugError(err)
+		if !IsRunningAsService() {
+			fmt.Printf("%s\n", s)
+		}
 	}
 
 	if logFile != nil {
@@ -156,10 +162,11 @@ func writeEntry(entry logEntry) {
 			signCount.Unlock()
 		}
 
-		_, err := logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
-		DebugError(err)
+		// dont handle errors here
+		logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
 
-		DebugError(logFile.Sync())
+		// dont handle errors here
+		logFile.Sync()
 	}
 }
 
@@ -181,9 +188,10 @@ func openLogFile() {
 
 		if err != nil {
 			logFile = nil
-
-			Error(err)
 		}
+
+		os.Stdout = logFile
+		os.Stderr = logFile
 	}
 }
 
@@ -193,7 +201,11 @@ func closeLogfile(final bool) {
 	}
 
 	if logFile != nil {
-		DebugError(logFile.Close())
+		os.Stdout = defaultStdout
+		os.Stderr = defaultStderr
+
+		// dont handle errors here
+		logFile.Close()
 
 		logFile = nil
 	}
