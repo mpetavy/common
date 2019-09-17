@@ -163,10 +163,11 @@ func writeEntry(entry logEntry) {
 		}
 
 		// dont handle errors here
-		logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
+		_, err := logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
+		IgnoreError(err)
 
 		// dont handle errors here
-		logFile.Sync()
+		IgnoreError(logFile.Sync())
 	}
 }
 
@@ -205,7 +206,7 @@ func closeLogfile(final bool) {
 		os.Stderr = defaultStderr
 
 		// dont handle errors here
-		logFile.Close()
+		IgnoreError(logFile.Close())
 
 		logFile = nil
 	}
