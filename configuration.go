@@ -36,6 +36,8 @@ func init() {
 }
 
 func initConfiguration() error {
+	DebugFunc()
+
 	err := config.readEnv()
 	if err != nil {
 		return err

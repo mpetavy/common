@@ -114,6 +114,8 @@ func currentLevel() int {
 }
 
 func initLog() {
+	DebugFunc()
+
 	LogEnabled.Set()
 
 	closeLogfile(false)
