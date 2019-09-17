@@ -126,7 +126,7 @@ func (this *configuration) readJsonFile() error {
 
 			fl := flag.Lookup(k)
 			if fl != nil {
-				Debug("flag from %s: %s = %s", filepath.Base(this.jsonFilename), k, v)
+				Debug("flag from %s: %s = %+v", filepath.Base(this.jsonFilename), k, v)
 
 				var err error
 

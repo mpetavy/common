@@ -333,3 +333,7 @@ func CheckError(err error) bool {
 
 	return b
 }
+
+func LogFileName() string {
+	return *logFilename
+}
