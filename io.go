@@ -424,13 +424,16 @@ func ScanLinesWithLF(data []byte, atEOF bool) (advance int, token []byte, err er
 	return 0, nil, nil
 }
 func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader) (int64, error) {
-	Debug("copyWithContext %s: start", name)
+	Debug("%s copyWithContext: start", name)
 
 	var written int64
 	var err error
 
 	go func(written *int64, err error) {
-		defer cancel()
+		defer func() {
+			Debug("%s cancel!", name)
+			cancel()
+		}()
 		*written, err = io.Copy(io.MultiWriter(writer, &DebugWriter{name, "WRITE"}), io.TeeReader(reader, &DebugWriter{name, "READ"}))
 		if err != nil {
 			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
@@ -442,7 +445,7 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 
 	select {
 	case <-ctx.Done():
-		Debug("copyWithContext %s: stop", name)
+		Debug("%s copyWithContext: stop", name)
 	}
 
 	return written, err
