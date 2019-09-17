@@ -148,9 +148,8 @@ func writeEntry(entry logEntry) {
 			s = s[71:]
 		}
 
-		if !IsRunningAsService() {
-			fmt.Printf("%s\n", s)
-		}
+		_, err := fmt.Printf("%s\n", s)
+		IgnoreError(err)
 	}
 
 	if logFile != nil {
@@ -191,8 +190,10 @@ func openLogFile() {
 			logFile = nil
 		}
 
-		os.Stdout = logFile
-		os.Stderr = logFile
+		if !service.Interactive() {
+			os.Stdout = logFile
+			os.Stderr = logFile
+		}
 	}
 }
 

@@ -182,7 +182,7 @@ func (this *configuration) checkChanged() {
 		return
 	}
 
-	if fileInfo.ModTime() != this.jsonFileInfo.ModTime() {
+	if this.jsonFileInfo != nil && fileInfo.ModTime() != this.jsonFileInfo.ModTime() {
 		old := this.json
 
 		err := this.readJsonFile()
