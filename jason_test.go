@@ -18,7 +18,7 @@ func c(s string) string {
 }
 
 func TestJason(t *testing.T) {
-	j, err := NewJason(c("{ 'string':'s','int':'1','bool':'true' }"))
+	j, err := NewJason(c("{ 'string':'s','int':1,'bool':true }"))
 	checkError(t, err)
 
 	b := j.IsString("string")

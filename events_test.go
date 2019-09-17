@@ -11,7 +11,7 @@ const (
 )
 
 func TestEvent(t *testing.T) {
-	event := NewEvent(true)
+	event := NewEvent()
 
 	listener1 := event.AddListener(tick)
 	listener2 := event.AddListener(tick)
@@ -54,15 +54,4 @@ func TestEvent(t *testing.T) {
 
 	assert.Equal(t, true, listener1Received)
 	assert.Equal(t, false, listener2Received)
-}
-
-func TestInvalidInfoTypePanic(t *testing.T) {
-	defer func() {
-		recover()
-	}()
-
-	event := NewEvent(true)
-	event.EmitEvent(tick, "not a bool type")
-
-	t.Errorf("code did not panic")
 }
