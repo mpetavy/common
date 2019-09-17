@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -62,7 +61,14 @@ func (jason *Jason) Element(key string) (*Jason, error) {
 }
 
 func (jason *Jason) IsString(key string) bool {
-	return !jason.IsInt(key) && !jason.IsBool(key)
+	v, err := jason.get(key)
+	if err != nil {
+		return false
+	}
+
+	_, b := v.(string)
+
+	return b
 }
 
 func (jason *Jason) IsInt(key string) bool {
@@ -71,15 +77,9 @@ func (jason *Jason) IsInt(key string) bool {
 		return false
 	}
 
-	_, b := v.(int)
+	v1, b := v.(float64)
 
-	if !b {
-		_, err = strconv.Atoi(v.(string))
-
-		b = err == nil
-	}
-
-	return b
+	return b && (v1 == float64(int(v1)))
 }
 
 func (jason *Jason) IsBool(key string) bool {
@@ -89,10 +89,6 @@ func (jason *Jason) IsBool(key string) bool {
 	}
 
 	_, b := v.(bool)
-
-	if !b {
-		b = ToBool(v.(string))
-	}
 
 	return b
 }
@@ -162,35 +158,48 @@ func (jason *Jason) String(key string, def ...string) (string, error) {
 	return v.(string), nil
 }
 
-func (jason *Jason) Int(key string, def ...int) (int, error) {
-	v, err := jason.get(key)
-	if err != nil {
-		if len(def) > 0 {
-			return def[0], nil
-		} else {
-			return 0, err
+func (jason *Jason) Int(key string, def ...int) (result int, err error) {
+	defer func() {
+		if err != nil {
+			if len(def) > 0 {
+				result = def[0]
+				err = nil
+			} else {
+				result = 0
+			}
 		}
+	}()
+
+	v, err := jason.get(key)
+
+	v1, b := v.(float64)
+	if !b {
+		err = fmt.Errorf("not a int: %v", v)
 	}
 
-	i, err := strconv.Atoi(v.(string))
-	if err != nil {
-		return 0, err
-	}
-
-	return i, nil
+	return int(v1), nil
 }
 
-func (jason *Jason) Bool(key string, def ...bool) (bool, error) {
-	v, err := jason.get(key)
-	if err != nil {
-		if len(def) > 0 {
-			return def[0], nil
-		} else {
-			return false, err
+func (jason *Jason) Bool(key string, def ...bool) (result bool, err error) {
+	defer func() {
+		if err != nil {
+			if len(def) > 0 {
+				result = def[0]
+				err = nil
+			} else {
+				result = false
+			}
 		}
+	}()
+
+	v, err := jason.get(key)
+
+	v1, b := v.(bool)
+	if !b {
+		err = fmt.Errorf("not a bool: %v", v)
 	}
 
-	return ToBool(v.(string)), nil
+	return v1, nil
 }
 
 func (jason *Jason) pretty(index int) (string, error) {
