@@ -83,14 +83,14 @@ func init() {
 	usage = flag.Bool("?", false, "show usage")
 }
 
-func Init(Name string, Version string, Date string, Description string, Developer string, License string, Homepage string, IsService bool, StartFunc func() error, StopFunc func() error, TickFunc func() error, TickTime time.Duration) {
-	app.Name = Name
+func Init(Version string, Date string, Description string, Developer string, License string, IsService bool, StartFunc func() error, StopFunc func() error, TickFunc func() error, TickTime time.Duration) {
+	app.Name = Title()
 	app.Version = Version
 	app.Date = Date
 	app.Description = Description
 	app.Developer = Developer
 	app.License = License
-	app.Homepage = Homepage
+	app.Homepage = fmt.Sprintf("https://github.com/mpetavy/%s", Title())
 	app.IsService = IsService
 	app.StartFunc = StartFunc
 	app.StopFunc = StopFunc
