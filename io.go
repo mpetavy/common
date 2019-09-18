@@ -17,6 +17,8 @@ import (
 )
 
 var (
+	FileFileMode = FileMode(true, true, false)
+	DirFileMode  = FileMode(true, true, true)
 	countBackups *int
 )
 
@@ -294,7 +296,7 @@ func FileBackup(filename string) error {
 func IsFileReadOnly(path string) (result bool, err error) {
 	result = false
 
-	file, err := os.OpenFile(path, os.O_WRONLY, os.ModePerm)
+	file, err := os.OpenFile(path, os.O_WRONLY, FileFileMode)
 	if err != nil {
 		if !os.IsPermission(err) {
 			result = true
@@ -349,9 +351,9 @@ func IsSymbolicLink(path string) bool {
 // SetFileReadOnly sets file READ-ONLY yes or false
 func SetFileReadOnly(path string, readonly bool) (err error) {
 	if readonly {
-		err = os.Chmod(path, 0400)
+		err = os.Chmod(path, FileMode(true, false, false))
 	} else {
-		err = os.Chmod(path, os.ModePerm)
+		err = os.Chmod(path, FileFileMode)
 	}
 
 	return err
@@ -503,41 +505,21 @@ func CalcFileMode(owner FilePermission, group FilePermission, public FilePermiss
 }
 
 func FileMode(read, write, execute bool) os.FileMode {
-	if service.Interactive() {
-		return CalcFileMode(
-			FilePermission{
-				Read:    read,
-				Write:   write,
-				Execute: execute,
-			},
-			FilePermission{
-				Read:    read,
-				Write:   write,
-				Execute: execute,
-			},
-			FilePermission{
-				Read:    read,
-				Write:   write,
-				Execute: execute,
-			},
-		)
-	} else {
-		return CalcFileMode(
-			FilePermission{
-				Read:    read,
-				Write:   write,
-				Execute: execute,
-			},
-			FilePermission{
-				Read:    read,
-				Write:   false,
-				Execute: execute,
-			},
-			FilePermission{
-				Read:    read,
-				Write:   false,
-				Execute: false,
-			},
-		)
-	}
+	return CalcFileMode(
+		FilePermission{
+			Read:    read,
+			Write:   write,
+			Execute: execute,
+		},
+		FilePermission{
+			Read:    read,
+			Write:   false,
+			Execute: execute,
+		},
+		FilePermission{
+			Read:    read,
+			Write:   false,
+			Execute: execute,
+		},
+	)
 }
