@@ -159,7 +159,7 @@ func (this *configuration) readJsonFile() error {
 	}
 
 	if string(buf.Bytes()) != string(ba) {
-		err = ioutil.WriteFile(this.jsonFilename, buf.Bytes(), os.ModePerm)
+		err = ioutil.WriteFile(this.jsonFilename, buf.Bytes(), FileMode(true, true, false))
 		if err != nil {
 			return err
 		}

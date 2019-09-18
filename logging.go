@@ -184,7 +184,7 @@ func openLogFile() {
 
 		var err error
 
-		logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
+		logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
 
 		if err != nil {
 			logFile = nil
@@ -309,6 +309,10 @@ func Fatal(err error) {
 }
 
 func log(level int, ri runtimeInfo, msg string) {
+	if !LogEnabled.IsSet() {
+		return
+	}
+
 	if level == LEVEL_FILE || level >= currentLevel() {
 		writeEntry(logEntry{
 			level: level,
