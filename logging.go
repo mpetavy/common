@@ -33,9 +33,7 @@ type ErrExit struct {
 func (e *ErrExit) Error() string { return "" }
 
 var (
-	LogEnabled    Sign
-	defaultStdout *os.File
-	defaultStderr *os.File
+	LogEnabled Sign
 )
 
 type logEntry struct {
@@ -96,9 +94,6 @@ func init() {
 	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
 	logFileSize = flag.Int("logfilesize", 1048576, "log logFile size in bytes")
 	logLevel = flag.String("loglevel", "info", "log level (debug,info,error,fatal)")
-
-	defaultStdout = os.Stdout
-	defaultStderr = os.Stderr
 }
 
 func currentLevel() int {
@@ -189,11 +184,6 @@ func openLogFile() {
 		if err != nil {
 			logFile = nil
 		}
-
-		if !service.Interactive() {
-			os.Stdout = logFile
-			os.Stderr = logFile
-		}
 	}
 }
 
@@ -203,9 +193,6 @@ func closeLogfile(final bool) {
 	}
 
 	if logFile != nil {
-		os.Stdout = defaultStdout
-		os.Stderr = defaultStderr
-
 		// dont handle errors here
 		IgnoreError(logFile.Close())
 
@@ -263,7 +250,7 @@ func DebugFunc(arg ...interface{}) {
 	t := ri.Fn + "()"
 
 	if len(arg) == 1 {
-		t = fmt.Sprintf("%s: %s", t, arg[0])
+		t = fmt.Sprintf("%s: %v", t, arg[0])
 	}
 	if len(arg) > 1 {
 		s, ok := arg[0].(string)
