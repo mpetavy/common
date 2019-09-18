@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/kardianos/service"
 	"io"
 	"io/ioutil"
 	"net"
@@ -377,13 +378,15 @@ func FileNameExt(filename string) string {
 
 // CleanPath cleans the given path and also replace to OS specific separators
 func CleanPath(path string) string {
+	result := path
+
 	if IsWindowsOS() {
-		path = strings.Replace(path, "/", string(filepath.Separator), -1)
+		result = strings.Replace(result, "/", string(filepath.Separator), -1)
 	} else {
-		path = strings.Replace(path, "\\", string(filepath.Separator), -1)
+		result = strings.Replace(result, "\\", string(filepath.Separator), -1)
 	}
 
-	p := strings.Index(path, "~")
+	p := strings.Index(result, "~")
 
 	if p != -1 {
 		userHomeDir := ""
@@ -393,19 +396,34 @@ func CleanPath(path string) string {
 			userHomeDir = usr.HomeDir
 		}
 
-		path = strings.Replace(path, "~", userHomeDir, -1)
+		result = strings.Replace(result, "~", userHomeDir, -1)
 	}
 
-	path = filepath.Clean(path)
+	result = filepath.Clean(result)
 
-	if !filepath.IsAbs(path) && !strings.HasPrefix(path, string(filepath.Separator)) {
-		cwd, err := os.Getwd()
-		if err == nil {
-			path = filepath.Join(cwd, path)
+	if !filepath.IsAbs(result) && !strings.HasPrefix(result, string(filepath.Separator)) {
+		var dir string
+		var err error
+
+		if service.Interactive() {
+			dir, err = os.Getwd()
+		} else {
+			dir, err = os.Executable()
+			if err == nil {
+				dir = filepath.Dir(dir)
+			}
+		}
+
+		if err != nil {
+			Error(err)
+		} else {
+			result = filepath.Join(dir, result)
 		}
 	}
 
-	return path
+	DebugFunc("%s -> %s", path, result)
+
+	return result
 }
 
 func ScanLinesWithLF(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -423,6 +441,7 @@ func ScanLinesWithLF(data []byte, atEOF bool) (advance int, token []byte, err er
 	// Request more data.
 	return 0, nil, nil
 }
+
 func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader) (int64, error) {
 	Debug("%s copyWithContext: start", name)
 
@@ -449,4 +468,76 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 	}
 
 	return written, err
+}
+
+type FilePermission struct {
+	Read    bool
+	Write   bool
+	Execute bool
+}
+
+func CalcFileMode(owner FilePermission, group FilePermission, public FilePermission) os.FileMode {
+	txt := "0"
+
+	for _, p := range []FilePermission{owner, group, public} {
+		var value int
+
+		if p.Execute {
+			value += 1
+		}
+		if p.Write {
+			value += 2
+		}
+		if p.Read {
+			value += 4
+		}
+
+		txt += strconv.Itoa(value)
+	}
+
+	result, _ := strconv.ParseInt(txt, 8, 64)
+
+	DebugFunc("%s, %d: owner: %+v group: %+v public: %+v", txt, result, owner, group, public)
+
+	return os.FileMode(result)
+}
+
+func FileMode(read, write, execute bool) os.FileMode {
+	if service.Interactive() {
+		return CalcFileMode(
+			FilePermission{
+				Read:    read,
+				Write:   write,
+				Execute: execute,
+			},
+			FilePermission{
+				Read:    read,
+				Write:   write,
+				Execute: execute,
+			},
+			FilePermission{
+				Read:    read,
+				Write:   write,
+				Execute: execute,
+			},
+		)
+	} else {
+		return CalcFileMode(
+			FilePermission{
+				Read:    read,
+				Write:   write,
+				Execute: execute,
+			},
+			FilePermission{
+				Read:    read,
+				Write:   false,
+				Execute: execute,
+			},
+			FilePermission{
+				Read:    read,
+				Write:   false,
+				Execute: false,
+			},
+		)
+	}
 }

@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -10,8 +11,8 @@ import (
 const UNKNOWN = "unknwon"
 
 type runtimeInfo struct {
-	Pack, File, Fn string
-	Line           int
+	Dir, Pack, File, Fn string
+	Line                int
 }
 
 func (r runtimeInfo) String(asFilename bool) string {
@@ -26,7 +27,7 @@ func RuntimeInfo(pos int) runtimeInfo {
 	pc, _, _, ok := runtime.Caller(1 + pos)
 
 	if !ok {
-		return runtimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, 0}
+		return runtimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, 0}
 	}
 
 	f := runtime.FuncForPC(pc)
@@ -35,11 +36,14 @@ func RuntimeInfo(pos int) runtimeInfo {
 	fn = fn[strings.LastIndex(fn, ".")+1:]
 
 	file, line := f.FileLine(pc)
+
+	dir := filepath.Base(filepath.Dir(file))
+
 	file = path.Base(file)
 
 	pack := runtime.FuncForPC(pc).Name()
 	pack = pack[strings.LastIndex(pack, "/")+1:]
 	pack = pack[0:strings.Index(pack, ".")]
 
-	return runtimeInfo{pack, file, fn, line}
+	return runtimeInfo{dir, pack, file, fn, line}
 }

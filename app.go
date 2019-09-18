@@ -12,6 +12,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
 
 	"github.com/kardianos/service"
 )
@@ -169,24 +170,8 @@ func Run(mandatoryFlags []string) {
 	}
 }
 
-func Executable() string {
-	path, err := os.Executable()
-	if err != nil {
-		path = os.Args[0]
-	}
-
-	path = filepath.Base(path)
-	path = path[0:(len(path) - len(filepath.Ext(path)))]
-
-	if strings.HasPrefix(path, "___") {
-		path = path[3:]
-	}
-
-	return path
-}
-
 func AppFilename(newExt string) string {
-	filename := Executable()
+	filename := Title()
 	ext := filepath.Ext(filename)
 
 	if len(ext) > 0 {
@@ -197,7 +182,24 @@ func AppFilename(newExt string) string {
 }
 
 func Title() string {
-	return Executable()
+	path, err := os.Executable()
+	if err != nil {
+		path = os.Args[0]
+	}
+
+	path = filepath.Base(path)
+	path = path[0:(len(path) - len(filepath.Ext(path)))]
+
+	runes := []rune(path)
+	for len(runes) > 0 && !unicode.IsLetter(runes[0]) {
+		runes = runes[1:]
+	}
+
+	title := string(runes)
+
+	DebugFunc(title)
+
+	return title
 }
 
 func Version(major bool, minor bool, patch bool) string {
