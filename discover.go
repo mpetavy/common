@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 )
@@ -20,7 +21,7 @@ const (
 	maxInfoLength = 1024
 )
 
-func New(address string, timeout time.Duration, uid string, info string) (*Server, error) {
+func NewDiscoverServer(address string, timeout time.Duration, uid string, info string) (*Server, error) {
 	if len(info) > maxInfoLength {
 		return nil, fmt.Errorf("max UDP info length exceeded. max length expected: %d received: %d", maxInfoLength, len(info))
 	}
@@ -80,9 +81,16 @@ func (server *Server) Start() error {
 					break
 				}
 
+				info := server.info
+				listenHost, listenPort, err := net.SplitHostPort(peer.String())
+
+				info = strings.ReplaceAll(info, "$host", listenHost)
+				info = strings.ReplaceAll(info, "$port", listenPort)
+				info = strings.ReplaceAll(info, "$address", peer.String())
+
 				Debug("answer positive discover with info %s to %+v", server.info, peer)
 
-				if _, err := server.listener.WriteTo([]byte(server.info), peer); err != nil {
+				if _, err := server.listener.WriteTo([]byte(info), peer); err != nil {
 					Error(err)
 				}
 			}
