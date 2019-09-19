@@ -23,7 +23,7 @@ type EventConfigurationLoaded struct {
 	cfg *[]byte
 }
 
-type Cfg struct {
+type Configuration struct {
 	Flags map[string]interface{} `json:"flags"`
 }
 
@@ -49,13 +49,6 @@ func init() {
 }
 
 func initConfiguration() error {
-	if *reset {
-		err := resetConfiguration()
-		if err != nil {
-			return err
-		}
-	}
-
 	DebugFunc()
 
 	err := readEnv()
@@ -71,6 +64,18 @@ func initConfiguration() error {
 	err = setFlags()
 	if err != nil {
 		return err
+	}
+
+	if *reset {
+		err := resetConfiguration()
+		if err != nil {
+			return err
+		}
+
+		err = SetConfiguration(config)
+		if err != nil {
+			return err
+		}
 	}
 
 	if *file != "" && *timeout > 0 {
@@ -114,12 +119,12 @@ func SetConfiguration(cfg []byte) error {
 
 		config = buf.Bytes()
 
-		Events.Emit(EventConfigurationChanged{&old, &config})
-	}
+		err = setFlags()
+		if err != nil {
+			return err
+		}
 
-	err = setFlags()
-	if err != nil {
-		return err
+		Events.Emit(EventConfigurationChanged{&old, &config})
 	}
 
 	return nil
@@ -147,7 +152,9 @@ func readFile() error {
 		return err
 	}
 
-	return SetConfiguration(config)
+	Events.Emit(EventConfigurationLoaded{&config})
+
+	return nil
 }
 
 func setFlags() error {
@@ -156,18 +163,16 @@ func setFlags() error {
 	if config == nil {
 		return nil
 	}
-	j, err := NewJason(string(config))
+
+	cfg := Configuration{}
+
+	err := json.Unmarshal(config, &cfg)
 	if err != nil {
 		return err
 	}
 
-	if j.Exists("flags") {
-		j, err = j.Element("flags")
-		if err != nil {
-			return err
-		}
-
-		for k, v := range j.attributes {
+	if cfg.Flags != nil {
+		for k, v := range cfg.Flags {
 			p := strings.Index(k, "@")
 			if p != -1 {
 				targetOs := k[p+1:]
@@ -222,7 +227,12 @@ func checkChanged() {
 				return
 			}
 
-			Events.Emit(EventConfigurationLoaded{&config})
+			err = SetConfiguration(config)
+			if err != nil {
+				Error(err)
+
+				return
+			}
 		}
 	}
 }
@@ -249,5 +259,22 @@ func readEnv() error {
 func resetConfiguration() error {
 	DebugFunc(*file)
 
-	return FileDelete(*file)
+	*reset = false
+
+	cfg := Configuration{Flags: make(map[string]interface{})}
+
+	flag.VisitAll(func(fl *flag.Flag) {
+		if fl.Value.String() != "" && fl.Value.String() != fl.DefValue {
+			cfg.Flags[fl.Name] = fl.Value
+		}
+	})
+
+	var err error
+
+	config, err = json.Marshal(&cfg)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
