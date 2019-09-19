@@ -21,14 +21,14 @@ type configuration struct {
 	jsonFileInfo os.FileInfo
 }
 
-type OnConfigurationChangedFunc func(old, new []byte)
+type EventConfigurationChanged struct {
+	old, new []byte
+}
 
 var (
 	config  configuration
 	timeout *int
 	checker *time.Ticker
-
-	configurationChangedFunc OnConfigurationChangedFunc
 )
 
 func init() {
@@ -192,9 +192,7 @@ func (this *configuration) checkChanged() {
 			return
 		}
 
-		if configurationChangedFunc != nil {
-			configurationChangedFunc(old, config.json)
-		}
+		Events.EmitEvent(EventConfigurationChanged{old, config.json})
 	}
 }
 
@@ -215,8 +213,4 @@ func (this *configuration) readEnv() error {
 	})
 
 	return nil
-}
-
-func OnConfigurationChange(f OnConfigurationChangedFunc) {
-	configurationChangedFunc = f
 }
