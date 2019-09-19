@@ -1,22 +1,30 @@
 package common
 
-import (
-	"reflect"
-)
+import "reflect"
 
-type EventInfo reflect.Type
 type EventListener chan interface{}
-type EventType int
-type Event struct {
+
+type EventType reflect.Type
+
+type EventManager struct {
 	listeners map[EventType][]EventListener
 }
 
-func NewEvent() *Event {
-	return &Event{listeners: make(map[EventType][]EventListener)}
+var (
+	Events *EventManager
+)
+
+func init() {
+	Events = NewEventManager()
+}
+
+func NewEventManager() *EventManager {
+	return &EventManager{listeners: make(map[EventType][]EventListener)}
 }
 
 // AddListener adds an event listener to the Dog struct instance
-func (this *Event) AddListener(eventType EventType) EventListener {
+func (this *EventManager) AddListener(event interface{}) EventListener {
+	eventType := reflect.TypeOf(event)
 	eventListener := make(EventListener)
 
 	if _, ok := this.listeners[eventType]; ok {
@@ -29,7 +37,9 @@ func (this *Event) AddListener(eventType EventType) EventListener {
 }
 
 // RemoveListener removes an event listener from the Dog struct instance
-func (this *Event) RemoveListener(eventType EventType, eventListener EventListener) {
+func (this *EventManager) RemoveListener(event interface{}, eventListener EventListener) {
+	eventType := reflect.TypeOf(event)
+
 	if _, ok := this.listeners[eventType]; ok {
 		for i := range this.listeners[eventType] {
 			if this.listeners[eventType][i] == eventListener {
@@ -41,10 +51,12 @@ func (this *Event) RemoveListener(eventType EventType, eventListener EventListen
 }
 
 // EmitEvent emits an event on the Dog struct instance
-func (this *Event) EmitEvent(eventType EventType, eventInfo interface{}) {
+func (this *EventManager) EmitEvent(event interface{}) {
+	eventType := reflect.TypeOf(event)
+
 	if listeners, ok := this.listeners[eventType]; ok {
 		for _, listener := range listeners {
-			listener <- eventInfo
+			listener <- event
 		}
 	}
 }
