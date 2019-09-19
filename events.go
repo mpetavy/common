@@ -50,8 +50,8 @@ func (this *EventManager) RemoveListener(event interface{}, eventListener EventL
 	}
 }
 
-// EmitEvent emits an event on the Dog struct instance
-func (this *EventManager) EmitEvent(event interface{}) {
+// Emit emits an event on the Dog struct instance
+func (this *EventManager) Emit(event interface{}) {
 	eventType := reflect.TypeOf(event)
 
 	if listeners, ok := this.listeners[eventType]; ok {
