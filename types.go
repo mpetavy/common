@@ -243,3 +243,38 @@ func EqualWildcards(s, mask string) (bool, error) {
 
 	return r.MatchString(s), nil
 }
+
+func ReflectStructField(Iface interface{}, FieldName string) (*reflect.Value, error) {
+	valueIface := reflect.ValueOf(Iface)
+
+	// Check if the passed interface is a pointer
+	if valueIface.Type().Kind() != reflect.Ptr {
+		// Create a new type of Iface's Type, so we have a pointer to work with
+		valueIface = reflect.New(reflect.TypeOf(Iface))
+	}
+
+	// 'dereference' with Elem() and get the field by name
+	field := valueIface.Elem().FieldByName(FieldName)
+	if !field.IsValid() {
+		return nil, fmt.Errorf("Interface `%s` does not have the field `%s`", valueIface.Type(), FieldName)
+	}
+
+	return &field, nil
+}
+
+func ReflectStructMethod(Iface interface{}, MethodName string) (*reflect.Value, error) {
+	valueIface := reflect.ValueOf(Iface)
+
+	// Check if the passed interface is a pointer
+	if valueIface.Type().Kind() != reflect.Ptr {
+		// Create a new type of Iface, so we have a pointer to work with
+		valueIface = reflect.New(reflect.TypeOf(Iface))
+	}
+
+	// Get the method by name
+	method := valueIface.MethodByName(MethodName)
+	if !method.IsValid() {
+		return nil, fmt.Errorf("Couldn't find method `%s` in interface `%s`, is it Exported?", MethodName, valueIface.Type())
+	}
+	return &method, nil
+}

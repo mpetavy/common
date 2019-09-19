@@ -15,46 +15,71 @@ import (
 	"time"
 )
 
-type configuration struct {
-	json         []byte
-	jsonFilename string
-	jsonFileInfo os.FileInfo
+type EventConfigurationChanged struct {
+	old, new *[]byte
 }
 
-type EventConfigurationChanged struct {
-	old, new []byte
+type EventConfigurationLoaded struct {
+	cfg *[]byte
+}
+
+type Cfg struct {
+	Flags map[string]interface{} `json:"flags"`
 }
 
 var (
-	config  configuration
+	reset   *bool
+	file    *string
 	timeout *int
 	checker *time.Ticker
+
+	fileInfo os.FileInfo
+	config   []byte
 )
 
 func init() {
-	timeout = flag.Int("configuration.timeout", 1000, "rescan timeout for configuration change")
+	path := CleanPath(AppFilename(".json"))
+	if !IsWindowsOS() && !service.Interactive() {
+		path = filepath.Join("/etc", AppFilename(".json"))
+	}
+
+	file = flag.String("cfg.file", path, "Configuration file")
+	reset = flag.Bool("cfg.reset", false, "Reset configuration file")
+	timeout = flag.Int("cfg.timeout", 1000, "rescan timeout for configuration change")
 }
 
 func initConfiguration() error {
+	if *reset {
+		err := resetConfiguration()
+		if err != nil {
+			return err
+		}
+	}
+
 	DebugFunc()
 
-	err := config.readEnv()
+	err := readEnv()
 	if err != nil {
 		return err
 	}
 
-	err = config.readJsonFile()
+	err = readFile()
 	if err != nil {
 		return err
 	}
 
-	if config.jsonFilename != "" && *timeout > 0 {
+	err = setFlags()
+	if err != nil {
+		return err
+	}
+
+	if *file != "" && *timeout > 0 {
 		checker = time.NewTicker(MsecToDuration(*timeout))
 		go func() {
 			for !AppStopped() {
 				select {
 				case <-checker.C:
-					config.checkChanged()
+					checkChanged()
 				}
 			}
 		}()
@@ -63,28 +88,47 @@ func initConfiguration() error {
 	return nil
 }
 
-func (this *configuration) GetConfioguration() []byte {
-	return this.json
+func GetConfiguration() []byte {
+	DebugFunc()
+
+	return config
 }
 
-func (this *configuration) getFilepath() string {
-	path, err := filepath.Abs(".")
+func SetConfiguration(cfg []byte) error {
+	DebugFunc()
+
+	old := config
+
+	buf := bytes.Buffer{}
+
+	err := json.Indent(&buf, cfg, "", "    ")
 	if err != nil {
-		path = "."
+		return err
 	}
 
-	path = CleanPath(path)
-	if !IsWindowsOS() && !service.Interactive() {
-		path = filepath.Join("etc", AppFilename(".log"))
+	if string(buf.Bytes()) != string(config) {
+		err = ioutil.WriteFile(*file, buf.Bytes(), FileMode(true, true, false))
+		if err != nil {
+			return err
+		}
+
+		config = buf.Bytes()
+
+		Events.Emit(EventConfigurationChanged{&old, &config})
 	}
 
-	return path
+	err = setFlags()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (this *configuration) readJsonFile() error {
-	this.jsonFilename = filepath.Join(this.getFilepath(), AppFilename(".json"))
+func readFile() error {
+	DebugFunc(file)
 
-	b, err := FileExists(this.jsonFilename)
+	b, err := FileExists(*file)
 	if err != nil {
 		return err
 	}
@@ -93,16 +137,26 @@ func (this *configuration) readJsonFile() error {
 		return nil
 	}
 
-	DebugFunc(this.jsonFilename)
-
-	ba, err := ioutil.ReadFile(this.jsonFilename)
+	config, err = ioutil.ReadFile(*file)
 	if err != nil {
 		return err
 	}
 
-	ba = []byte(RemoveJsonComments(string(ba)))
+	fileInfo, err = os.Stat(*file)
+	if err != nil {
+		return err
+	}
 
-	j, err := NewJason(string(ba))
+	return SetConfiguration(config)
+}
+
+func setFlags() error {
+	DebugFunc()
+
+	if config == nil {
+		return nil
+	}
+	j, err := NewJason(string(config))
 	if err != nil {
 		return err
 	}
@@ -126,7 +180,7 @@ func (this *configuration) readJsonFile() error {
 
 			fl := flag.Lookup(k)
 			if fl != nil {
-				Debug("flag from %s: %s = %+v", filepath.Base(this.jsonFilename), k, v)
+				Debug("flag from %s: %s = %+v", filepath.Base(*file), k, v)
 
 				var err error
 
@@ -148,55 +202,32 @@ func (this *configuration) readJsonFile() error {
 				}
 			}
 		}
-
-	}
-
-	buf := bytes.Buffer{}
-
-	err = json.Indent(&buf, ba, "", "    ")
-	if err != nil {
-		return err
-	}
-
-	if string(buf.Bytes()) != string(ba) {
-		err = ioutil.WriteFile(this.jsonFilename, buf.Bytes(), FileMode(true, true, false))
-		if err != nil {
-			return err
-		}
-
-		ba = buf.Bytes()
-	}
-
-	this.json = ba
-	this.jsonFileInfo, err = os.Stat(this.jsonFilename)
-	if err != nil {
-		return err
 	}
 
 	return nil
 }
 
-func (this *configuration) checkChanged() {
-	fileInfo, err := os.Stat(config.jsonFilename)
-	if err != nil {
-		return
-	}
-
-	if this.jsonFileInfo != nil && fileInfo.ModTime() != this.jsonFileInfo.ModTime() {
-		old := this.json
-
-		err := this.readJsonFile()
+func checkChanged() {
+	if fileInfo != nil {
+		fi, err := os.Stat(*file)
 		if err != nil {
-			Error(err)
-
 			return
 		}
 
-		Events.EmitEvent(EventConfigurationChanged{old, config.json})
+		if fi.ModTime() != fileInfo.ModTime() {
+			err := readFile()
+			if err != nil {
+				Error(err)
+
+				return
+			}
+
+			Events.Emit(EventConfigurationLoaded{&config})
+		}
 	}
 }
 
-func (this *configuration) readEnv() error {
+func readEnv() error {
 	flag.VisitAll(func(f *flag.Flag) {
 		v := os.Getenv(fmt.Sprintf("%s.%s", Title(), f.Name))
 
@@ -213,4 +244,10 @@ func (this *configuration) readEnv() error {
 	})
 
 	return nil
+}
+
+func resetConfiguration() error {
+	DebugFunc(*file)
+
+	return FileDelete(*file)
 }

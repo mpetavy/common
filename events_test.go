@@ -33,11 +33,11 @@ func TestEvent(t *testing.T) {
 		}
 	}()
 
-	event.EmitEvent(tickEvent{true})
+	event.Emit(tickEvent{true})
 
 	time.Sleep(time.Millisecond * 100)
 
-	// check that listeners are modified by EmitEvent
+	// check that listeners are modified by Emit
 
 	assert.Equal(t, true, listener1Received.value)
 	assert.Equal(t, true, listener2Received.value)
@@ -46,7 +46,7 @@ func TestEvent(t *testing.T) {
 
 	event.RemoveListener(tickEvent{}, listener1)
 
-	event.EmitEvent(tickEvent{false})
+	event.Emit(tickEvent{false})
 
 	time.Sleep(time.Millisecond * 100)
 
