@@ -16,11 +16,11 @@ import (
 )
 
 type EventConfigurationChanged struct {
-	old, new *[]byte
+	Cfg *[]byte
 }
 
 type EventConfigurationLoaded struct {
-	cfg *[]byte
+	Cfg *[]byte
 }
 
 type Configuration struct {
@@ -28,13 +28,12 @@ type Configuration struct {
 }
 
 var (
-	reset   *bool
-	file    *string
-	timeout *int
-	checker *time.Ticker
-
-	fileInfo os.FileInfo
-	config   []byte
+	reset       *bool
+	file        *string
+	timeout     *int
+	fileChecker *time.Ticker
+	config      []byte
+	configTime  time.Time
 )
 
 func init() {
@@ -56,34 +55,34 @@ func initConfiguration() error {
 		return err
 	}
 
-	err = readFile()
+	ba, ti, err := readFile()
 	if err != nil {
 		return err
 	}
 
-	err = setFlags()
+	err = SetConfiguration(ba, ti)
 	if err != nil {
 		return err
 	}
 
 	if *reset {
-		err := resetConfiguration()
+		ba, err = resetConfiguration()
 		if err != nil {
 			return err
 		}
 
-		err = SetConfiguration(config)
+		err = SetConfiguration(ba, time.Now())
 		if err != nil {
 			return err
 		}
 	}
 
 	if *file != "" && *timeout > 0 {
-		checker = time.NewTicker(MsecToDuration(*timeout))
+		fileChecker = time.NewTicker(MsecToDuration(*timeout))
 		go func() {
-			for !AppStopped() {
+			for !AppDeath().IsSet() {
 				select {
-				case <-checker.C:
+				case <-fileChecker.C:
 					checkChanged()
 				}
 			}
@@ -94,79 +93,78 @@ func initConfiguration() error {
 }
 
 func GetConfiguration() []byte {
-	DebugFunc()
-
 	return config
 }
 
-func SetConfiguration(cfg []byte) error {
+func SetConfiguration(ba []byte, ti time.Time) error {
 	DebugFunc()
 
-	old := config
+	config = ba
+	configTime = ti
 
-	buf := bytes.Buffer{}
-
-	err := json.Indent(&buf, cfg, "", "    ")
+	err := setFlags(config)
 	if err != nil {
 		return err
 	}
 
-	if string(buf.Bytes()) != string(config) {
-		err = ioutil.WriteFile(*file, buf.Bytes(), FileMode(true, true, false))
-		if err != nil {
-			return err
-		}
-
-		config = buf.Bytes()
-
-		err = setFlags()
-		if err != nil {
-			return err
-		}
-
-		Events.Emit(EventConfigurationChanged{&old, &config})
-	}
+	Events.Emit(EventConfigurationChanged{&config})
 
 	return nil
 }
 
-func readFile() error {
-	DebugFunc(file)
+func readFile() ([]byte, time.Time, error) {
+	DebugFunc(*file)
 
 	b, err := FileExists(*file)
 	if err != nil {
-		return err
+		return nil, time.Time{}, err
 	}
 
 	if !b {
-		return nil
+		return nil, time.Time{}, nil
 	}
 
-	config, err = ioutil.ReadFile(*file)
+	ba, err := ioutil.ReadFile(*file)
 	if err != nil {
-		return err
+		return nil, time.Time{}, err
 	}
 
-	fileInfo, err = os.Stat(*file)
+	buf := bytes.Buffer{}
+
+	err = json.Indent(&buf, ba, "", "    ")
 	if err != nil {
-		return err
+		return nil, time.Time{}, err
 	}
 
-	Events.Emit(EventConfigurationLoaded{&config})
+	if string(buf.Bytes()) != string(ba) {
+		Debug("Reformat of configuration file done")
 
-	return nil
+		err = ioutil.WriteFile(*file, buf.Bytes(), FileMode(true, true, false))
+		if err != nil {
+			return nil, time.Time{}, err
+		}
+	}
+
+	fileInfo, err := os.Stat(*file)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	Events.Emit(EventConfigurationLoaded{&ba})
+
+	return ba, fileInfo.ModTime(), nil
 }
 
-func setFlags() error {
+func setFlags(ba []byte) error {
 	DebugFunc()
 
-	if config == nil {
+	if ba == nil {
 		return nil
 	}
 
 	cfg := Configuration{}
 
-	err := json.Unmarshal(config, &cfg)
+	err := json.Unmarshal(ba, &cfg)
 	if err != nil {
 		return err
 	}
@@ -213,26 +211,22 @@ func setFlags() error {
 }
 
 func checkChanged() {
-	if fileInfo != nil {
-		fi, err := os.Stat(*file)
+	fi, err := os.Stat(*file)
+	if err != nil {
+		return
+	}
+
+	if fi.ModTime() != configTime {
+		DebugFunc()
+
+		ba, ti, err := readFile()
 		if err != nil {
 			return
 		}
 
-		if fi.ModTime() != fileInfo.ModTime() {
-			err := readFile()
-			if err != nil {
-				Error(err)
-
-				return
-			}
-
-			err = SetConfiguration(config)
-			if err != nil {
-				Error(err)
-
-				return
-			}
+		err = SetConfiguration(ba, ti)
+		if err != nil {
+			return
 		}
 	}
 }
@@ -256,7 +250,7 @@ func readEnv() error {
 	return nil
 }
 
-func resetConfiguration() error {
+func resetConfiguration() ([]byte, error) {
 	DebugFunc(*file)
 
 	*reset = false
@@ -271,10 +265,10 @@ func resetConfiguration() error {
 
 	var err error
 
-	config, err = json.Marshal(&cfg)
+	ba, err := json.Marshal(&cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return ba, nil
 }

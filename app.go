@@ -64,12 +64,12 @@ var (
 	serviceFlag         *string
 	serviceUser         *string
 	servicePassword     *string
-	serviceActions      []string
 	ServiceStartTimeout *int
+	serviceActions      []string
 	usage               *bool
 	NoBanner            bool
 	ticker              *time.Ticker
-	stopped             Sign
+	appDeath            = NewSignal()
 	onceBanner          sync.Once
 	onceDone            sync.Once
 )
@@ -273,7 +273,9 @@ func showBanner() {
 }
 
 func (app *App) service() error {
-	Info("Service()")
+	if IsRunningAsService() {
+		Info("Service()")
+	}
 
 	sleep := time.Second
 
@@ -346,7 +348,9 @@ func (app *App) service() error {
 }
 
 func (app *App) Start(s service.Service) error {
-	Info("Start()")
+	if IsRunningAsService() {
+		Info("Start()")
+	}
 
 	if app.StartFunc != nil {
 		if err := app.StartFunc(); err != nil {
@@ -367,14 +371,16 @@ func (app *App) Start(s service.Service) error {
 	return err
 }
 
-func AppStopped() bool {
-	return stopped.IsSet()
+func AppDeath() *Signal {
+	return appDeath
 }
 
 func (app *App) Stop(s service.Service) error {
-	Info("Stop()")
+	if IsRunningAsService() {
+		Info("Stop()")
+	}
 
-	stopped.Set()
+	appDeath.Set()
 
 	if ticker != nil {
 		ticker.Stop()

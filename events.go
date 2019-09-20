@@ -1,13 +1,17 @@
 package common
 
-import "reflect"
+import (
+	"reflect"
+	"sync"
+)
 
 type EventListener chan interface{}
 
 type EventType reflect.Type
 
 type EventManager struct {
-	listeners map[EventType][]EventListener
+	mu            sync.Mutex
+	listenerTypes map[EventType][]EventListener
 }
 
 var (
@@ -19,31 +23,35 @@ func init() {
 }
 
 func NewEventManager() *EventManager {
-	return &EventManager{listeners: make(map[EventType][]EventListener)}
+	return &EventManager{listenerTypes: make(map[EventType][]EventListener)}
 }
 
-// AddListener adds an event listener to the Dog struct instance
-func (this *EventManager) AddListener(event interface{}) EventListener {
+// CreateListener adds an event listener to the Dog struct instance
+func (this *EventManager) CreateListener(event interface{}) EventListener {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
 	eventType := reflect.TypeOf(event)
 	eventListener := make(EventListener)
 
-	if _, ok := this.listeners[eventType]; ok {
-		this.listeners[eventType] = append(this.listeners[eventType], eventListener)
+	if _, ok := this.listenerTypes[eventType]; ok {
+		this.listenerTypes[eventType] = append(this.listenerTypes[eventType], eventListener)
 	} else {
-		this.listeners[eventType] = []EventListener{eventListener}
+		this.listenerTypes[eventType] = []EventListener{eventListener}
 	}
 
 	return eventListener
 }
 
-// RemoveListener removes an event listener from the Dog struct instance
-func (this *EventManager) RemoveListener(event interface{}, eventListener EventListener) {
-	eventType := reflect.TypeOf(event)
+// DestroyListener removes an event listener from the Dog struct instance
+func (this *EventManager) DestroyListener(eventListener EventListener) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
-	if _, ok := this.listeners[eventType]; ok {
-		for i := range this.listeners[eventType] {
-			if this.listeners[eventType][i] == eventListener {
-				this.listeners[eventType] = append(this.listeners[eventType][:i], this.listeners[eventType][i+1:]...)
+	for _, listenerType := range this.listenerTypes {
+		for i := range listenerType {
+			if listenerType[i] == eventListener {
+				listenerType = append(listenerType[:i], listenerType[i+1:]...)
 				break
 			}
 		}
@@ -52,10 +60,13 @@ func (this *EventManager) RemoveListener(event interface{}, eventListener EventL
 
 // Emit emits an event on the Dog struct instance
 func (this *EventManager) Emit(event interface{}) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
 	eventType := reflect.TypeOf(event)
 
-	if listeners, ok := this.listeners[eventType]; ok {
-		for _, listener := range listeners {
+	if listenerType, ok := this.listenerTypes[eventType]; ok {
+		for _, listener := range listenerType {
 			listener <- event
 		}
 	}

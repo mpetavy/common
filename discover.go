@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type Server struct {
+type DiscoverServer struct {
 	address  string
 	timeout  time.Duration
 	uid      string
@@ -21,19 +21,19 @@ const (
 	maxInfoLength = 1024
 )
 
-func NewDiscoverServer(address string, timeout time.Duration, uid string, info string) (*Server, error) {
+func NewDiscoverServer(address string, timeout time.Duration, uid string, info string) (*DiscoverServer, error) {
 	if len(info) > maxInfoLength {
 		return nil, fmt.Errorf("max UDP info length exceeded. max length expected: %d received: %d", maxInfoLength, len(info))
 	}
 
-	return &Server{address: address, timeout: timeout, uid: uid, info: info}, nil
+	return &DiscoverServer{address: address, timeout: timeout, uid: uid, info: info}, nil
 }
 
-func (server *Server) Start() error {
-	DebugFunc("discover server: %+v", *server)
+func (server *DiscoverServer) Start() error {
+	DebugFunc(*server)
 
 	if server.quitCh != nil {
-		return fmt.Errorf("Server already started")
+		return fmt.Errorf("DiscoverServer already started")
 	}
 
 	b := make([]byte, maxInfoLength)
@@ -48,10 +48,11 @@ func (server *Server) Start() error {
 	server.quitCh = make(chan struct{})
 
 	go func() {
-		for !AppStopped() {
+	loop:
+		for !AppDeath().IsSet() {
 			select {
 			case <-server.quitCh:
-				break
+				break loop
 			default:
 				err := server.listener.SetDeadline(DeadlineByDuration(server.timeout))
 				if err != nil {
@@ -93,18 +94,12 @@ func (server *Server) Start() error {
 	return nil
 }
 
-func (server *Server) Stop() error {
-	DebugError(server.listener.Close())
-
-	if server.quitCh == nil {
-		return fmt.Errorf("Server already stopped")
-	}
+func (server *DiscoverServer) Stop() error {
+	DebugFunc(*server)
 
 	close(server.quitCh)
 
-	server.quitCh = nil
-
-	DebugFunc("discover server: %+v", *server)
+	DebugError(server.listener.Close())
 
 	return nil
 }
