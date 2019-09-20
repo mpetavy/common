@@ -13,8 +13,8 @@ type tickEvent struct {
 func TestEvent(t *testing.T) {
 	event := NewEventManager()
 
-	listener1 := event.AddListener(tickEvent{})
-	listener2 := event.AddListener(tickEvent{})
+	listener1 := event.CreateListener(tickEvent{})
+	listener2 := event.CreateListener(tickEvent{})
 
 	var listener1Received tickEvent
 	var listener2Received tickEvent
@@ -44,7 +44,7 @@ func TestEvent(t *testing.T) {
 
 	// remove only listener1, listener2 should still be notified
 
-	event.RemoveListener(tickEvent{}, listener1)
+	event.DestroyListener(listener1)
 
 	event.Emit(tickEvent{false})
 

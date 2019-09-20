@@ -33,7 +33,7 @@ type ErrExit struct {
 func (e *ErrExit) Error() string { return "" }
 
 var (
-	LogEnabled Sign
+	LogEnabled = NewSignal()
 )
 
 type logEntry struct {
@@ -80,7 +80,7 @@ var (
 
 	defaultLogFile string
 	logFile        *os.File
-	signCount      Sign
+	signCount      = NewSignal()
 )
 
 func init() {
