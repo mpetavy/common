@@ -59,7 +59,7 @@ func (l *logEntry) String() string {
 	case LEVEL_FATAL:
 		level = "FATAL"
 	}
-	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(false), Capitalize(l.msg)), "\r\n")
+	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(), Capitalize(l.msg)), "\r\n")
 }
 
 type DebugWriter struct {

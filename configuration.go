@@ -15,12 +15,16 @@ import (
 	"time"
 )
 
+type EventConfigurationReset struct {
+	Cfg *bytes.Buffer
+}
+
 type EventConfigurationChanged struct {
-	Cfg *[]byte
+	Cfg *bytes.Buffer
 }
 
 type EventConfigurationLoaded struct {
-	Cfg *[]byte
+	Cfg *bytes.Buffer
 }
 
 type Configuration struct {
@@ -60,21 +64,26 @@ func initConfiguration() error {
 		return err
 	}
 
-	err = SetConfiguration(ba, ti)
-	if err != nil {
-		return err
-	}
-
 	if *reset {
+		err := setFlags(ba)
+		if err != nil {
+			return err
+		}
+
 		ba, err = resetConfiguration()
 		if err != nil {
 			return err
 		}
 
-		err = SetConfiguration(ba, time.Now())
+		ti, err = writeFile(ba)
 		if err != nil {
 			return err
 		}
+	}
+
+	err = SetConfiguration(ba, ti)
+	if err != nil {
+		return err
 	}
 
 	if *file != "" && *timeout > 0 {
@@ -107,7 +116,7 @@ func SetConfiguration(ba []byte, ti time.Time) error {
 		return err
 	}
 
-	Events.Emit(EventConfigurationChanged{&config})
+	Events.Emit(EventConfigurationChanged{bytes.NewBuffer(config)})
 
 	return nil
 }
@@ -129,11 +138,24 @@ func readFile() ([]byte, time.Time, error) {
 		return nil, time.Time{}, err
 	}
 
-	buf := bytes.Buffer{}
-
-	err = json.Indent(&buf, ba, "", "    ")
+	fileInfo, err := os.Stat(*file)
 	if err != nil {
 		return nil, time.Time{}, err
+	}
+
+	Events.Emit(EventConfigurationLoaded{bytes.NewBuffer(ba)})
+
+	return ba, fileInfo.ModTime(), nil
+}
+
+func writeFile(ba []byte) (time.Time, error) {
+	DebugFunc(*file)
+
+	buf := bytes.Buffer{}
+
+	err := json.Indent(&buf, ba, "", "    ")
+	if err != nil {
+		return time.Time{}, err
 	}
 
 	if string(buf.Bytes()) != string(ba) {
@@ -141,18 +163,16 @@ func readFile() ([]byte, time.Time, error) {
 
 		err = ioutil.WriteFile(*file, buf.Bytes(), FileMode(true, true, false))
 		if err != nil {
-			return nil, time.Time{}, err
+			return time.Time{}, err
 		}
 	}
 
 	fileInfo, err := os.Stat(*file)
 	if err != nil {
-		return nil, time.Time{}, err
+		return time.Time{}, err
 	}
 
-	Events.Emit(EventConfigurationLoaded{&ba})
-
-	return ba, fileInfo.ModTime(), nil
+	return fileInfo.ModTime(), nil
 }
 
 func setFlags(ba []byte) error {
@@ -255,20 +275,22 @@ func resetConfiguration() ([]byte, error) {
 
 	*reset = false
 
-	cfg := Configuration{Flags: make(map[string]interface{})}
-
+	cfg := Configuration{}
+	cfg.Flags = make(map[string]interface{})
 	flag.VisitAll(func(fl *flag.Flag) {
 		if fl.Value.String() != "" && fl.Value.String() != fl.DefValue {
 			cfg.Flags[fl.Name] = fl.Value
 		}
 	})
 
-	var err error
-
 	ba, err := json.Marshal(&cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return ba, nil
+	result := bytes.NewBuffer(ba)
+
+	Events.Emit(EventConfigurationReset{result})
+
+	return result.Bytes(), nil
 }
