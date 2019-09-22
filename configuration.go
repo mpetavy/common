@@ -81,7 +81,7 @@ func initConfiguration() error {
 		}
 	}
 
-	err = SetConfiguration(ba, ti)
+	err = activateConfiguration(ba, ti)
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,16 @@ func GetConfiguration() []byte {
 	return config
 }
 
-func SetConfiguration(ba []byte, ti time.Time) error {
+func SetConfiguration(ba []byte) error {
+	ti, err := writeFile(ba)
+	if err != nil {
+		return err
+	}
+
+	return activateConfiguration(ba, ti)
+}
+
+func activateConfiguration(ba []byte, ti time.Time) error {
 	DebugFunc()
 
 	config = ba
@@ -244,7 +253,7 @@ func checkChanged() {
 			return
 		}
 
-		err = SetConfiguration(ba, ti)
+		err = activateConfiguration(ba, ti)
 		if err != nil {
 			return
 		}
