@@ -15,12 +15,20 @@ type runtimeInfo struct {
 	Line                int
 }
 
-func (r runtimeInfo) String(asFilename bool) string {
+func (r runtimeInfo) toString(asFilename bool) string {
 	if asFilename {
-		return fmt.Sprintf("%s-%s-%s-%d", r.Pack, r.File, r.Fn, r.Line)
+		return fmt.Sprintf("%s-%s-%d-%s", r.Pack, r.File, r.Line, r.Fn)
 	} else {
-		return fmt.Sprintf("%s/%s/%s:%d", r.Pack, r.File, r.Fn, r.Line)
+		return fmt.Sprintf("%s/%s:%d/%s", r.Pack, r.File, r.Line, r.Fn)
 	}
+}
+
+func (r runtimeInfo) String() string {
+	return r.toString(false)
+}
+
+func (r runtimeInfo) Filename() string {
+	return r.toString(true)
 }
 
 func RuntimeInfo(pos int) runtimeInfo {

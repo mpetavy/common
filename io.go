@@ -120,7 +120,7 @@ func CreateTempFile() (file *os.File, err error) {
 		return nil, err
 	}
 
-	file, err = ioutil.TempFile(tempDir, RuntimeInfo(1).String(true)+"-")
+	file, err = ioutil.TempFile(tempDir, RuntimeInfo(1).Filename()+"-")
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func CreateTempDir() (string, error) {
 		return "", err
 	}
 
-	tempdir, err := ioutil.TempDir(rootTempDir, RuntimeInfo(1).String(true)+"-")
+	tempdir, err := ioutil.TempDir(rootTempDir, RuntimeInfo(1).Filename()+"-")
 	if err != nil {
 		return "", err
 	}
