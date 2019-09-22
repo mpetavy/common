@@ -198,7 +198,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 			}
 		}
 
-		host, _, err := net.SplitHostPort(peer.String())
+		host, port, err := net.SplitHostPort(peer.String())
 		if err != nil {
 			Error(err)
 
@@ -207,9 +207,9 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 
 		info := string(b[:n])
 
-		p := strings.LastIndex(info, ":")
-
-		info = fmt.Sprintf("%s%s%s", info[:p], host, info[p:])
+		info = strings.ReplaceAll(info, "$host", host)
+		info = strings.ReplaceAll(info, "$port", port)
+		info = strings.ReplaceAll(info, "$address", peer.String())
 
 		discoveredIps[peer.String()] = info
 
