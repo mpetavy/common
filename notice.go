@@ -2,29 +2,29 @@ package common
 
 import "sync"
 
-type Signal struct {
+type Notice struct {
 	sync.Mutex
 
 	isSet int
 	ch    chan struct{}
 }
 
-func NewSignal() *Signal {
-	return &Signal{isSet: 0, ch: make(chan struct{})}
+func NewNotice() *Notice {
+	return &Notice{isSet: 0, ch: make(chan struct{})}
 }
 
-func (this *Signal) Channel() chan struct{} {
+func (this *Notice) Channel() chan struct{} {
 	return this.ch
 }
 
-func (this *Signal) IsSet() bool {
+func (this *Notice) IsSet() bool {
 	this.Lock()
 	defer this.Unlock()
 
 	return this.isSet > 0
 }
 
-func (this *Signal) Set() bool {
+func (this *Notice) Set() bool {
 	this.Lock()
 	defer this.Unlock()
 
@@ -39,7 +39,7 @@ func (this *Signal) Set() bool {
 	return false
 }
 
-func (this *Signal) Unset() bool {
+func (this *Notice) Unset() bool {
 	this.Lock()
 	defer this.Unlock()
 
@@ -54,7 +54,7 @@ func (this *Signal) Unset() bool {
 	return false
 }
 
-func (this *Signal) Inc() int {
+func (this *Notice) Inc() int {
 	this.Lock()
 	defer this.Unlock()
 
@@ -63,7 +63,7 @@ func (this *Signal) Inc() int {
 	return this.isSet
 }
 
-func (this *Signal) Dec() int {
+func (this *Notice) Dec() int {
 	this.Lock()
 	defer this.Unlock()
 
@@ -72,18 +72,18 @@ func (this *Signal) Dec() int {
 	return this.isSet
 }
 
-func (this *Signal) Reset() {
+func (this *Notice) Reset() {
 	this.Lock()
 	defer this.Unlock()
 
 	this.isSet = 0
 }
 
-func (this *Signal) ResetWithoutLock() {
+func (this *Notice) ResetWithoutLock() {
 	this.isSet = 0
 }
 
-func (this *Signal) IncAndReached(v int) bool {
+func (this *Notice) IncAndReached(v int) bool {
 	this.Lock()
 
 	this.isSet++

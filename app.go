@@ -69,7 +69,7 @@ var (
 	usage               *bool
 	NoBanner            bool
 	ticker              *time.Ticker
-	appDeath            = NewSignal()
+	appDeath            = NewNotice()
 	onceBanner          sync.Once
 	onceDone            sync.Once
 )
@@ -371,7 +371,7 @@ func (app *App) Start(s service.Service) error {
 	return err
 }
 
-func AppDeath() *Signal {
+func AppDeath() *Notice {
 	return appDeath
 }
 
