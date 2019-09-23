@@ -107,15 +107,15 @@ func (server *DiscoverServer) Stop() error {
 func Discover(address string, timeout time.Duration, uid string) (map[string]string, error) {
 	DebugFunc("discover uid: %s", uid)
 
+	discoveredIps := make(map[string]string)
+
 	localIps, err := FindActiveIPs()
 	if err != nil {
-		panic(err)
+		return discoveredIps, err
 	}
 
 	var wg sync.WaitGroup
 	var errs ChannelError
-
-	discoveredIps := make(map[string]string)
 
 	c, err := net.ListenPacket("udp4", ":0")
 	if err != nil {
@@ -133,7 +133,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 	for _, localIp := range localIps {
 		ip, ipNet, err := net.ParseCIDR(localIp)
 		if err != nil {
-			panic(err)
+			return discoveredIps, err
 		}
 
 		ip = ip.To4()
