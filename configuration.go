@@ -32,9 +32,10 @@ type Configuration struct {
 }
 
 var (
-	reset       *bool
-	file        *string
-	timeout     *int
+	reset   *bool
+	file    *string
+	timeout *int
+
 	fileChecker *time.Ticker
 	config      []byte
 	configTime  time.Time
@@ -70,18 +71,13 @@ func initConfiguration() error {
 			return err
 		}
 
-		ba, err = resetConfiguration()
-		if err != nil {
-			return err
-		}
-
-		ti, err = writeFile(ba)
+		ba, ti, err = resetCfg()
 		if err != nil {
 			return err
 		}
 	}
 
-	err = activateConfiguration(ba, ti)
+	err = activateCfg(ba, ti)
 	if err != nil {
 		return err
 	}
@@ -101,6 +97,12 @@ func initConfiguration() error {
 	return nil
 }
 
+func ResetConfiguration() error {
+	_, _, err := resetCfg()
+
+	return err
+}
+
 func GetConfiguration() []byte {
 	return config
 }
@@ -111,10 +113,10 @@ func SetConfiguration(ba []byte) error {
 		return err
 	}
 
-	return activateConfiguration(ba, ti)
+	return activateCfg(ba, ti)
 }
 
-func activateConfiguration(ba []byte, ti time.Time) error {
+func activateCfg(ba []byte, ti time.Time) error {
 	DebugFunc()
 
 	config = ba
@@ -253,7 +255,7 @@ func checkChanged() {
 			return
 		}
 
-		err = activateConfiguration(ba, ti)
+		err = activateCfg(ba, ti)
 		if err != nil {
 			return
 		}
@@ -279,7 +281,7 @@ func readEnv() error {
 	return nil
 }
 
-func resetConfiguration() ([]byte, error) {
+func resetCfg() ([]byte, time.Time, error) {
 	DebugFunc(*file)
 
 	*reset = false
@@ -294,12 +296,17 @@ func resetConfiguration() ([]byte, error) {
 
 	ba, err := json.Marshal(&cfg)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
-	result := bytes.NewBuffer(ba)
+	buf := bytes.NewBuffer(ba)
 
-	Events.Emit(EventConfigurationReset{result})
+	Events.Emit(EventConfigurationReset{buf})
 
-	return result.Bytes(), nil
+	ti, err := writeFile(buf.Bytes())
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	return buf.Bytes(), ti, nil
 }

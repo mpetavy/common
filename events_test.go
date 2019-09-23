@@ -10,30 +10,28 @@ type tickEvent struct {
 	value bool
 }
 
-func TestEvent(t *testing.T) {
-	event := NewEventManager()
+func TestChanReceiver(t *testing.T) {
+	eventManager := NewEventManager()
 
-	listener1 := event.CreateChanReceiver(tickEvent{})
-	listener2 := event.CreateChanReceiver(tickEvent{})
+	listener1 := eventManager.NewChanReceiver(tickEvent{})
+	listener2 := eventManager.NewChanReceiver(tickEvent{})
 
 	var listener1Received tickEvent
 	var listener2Received tickEvent
 
 	go func() {
-		for {
-			ev := <-listener1
-			listener1Received = ev.(tickEvent)
+		for event := range listener1 {
+			listener1Received = event.(tickEvent)
 		}
 	}()
 
 	go func() {
-		for {
-			ev := <-listener2
-			listener2Received = ev.(tickEvent)
+		for event := range listener2 {
+			listener2Received = event.(tickEvent)
 		}
 	}()
 
-	event.Emit(tickEvent{true})
+	eventManager.Emit(tickEvent{true})
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -44,11 +42,43 @@ func TestEvent(t *testing.T) {
 
 	// remove only listener1, listener2 should still be notified
 
-	event.DestroyFuncReceiver(listener1)
+	eventManager.DestroyChanReceiver(listener1)
 
-	event.Emit(tickEvent{false})
+	eventManager.Emit(tickEvent{false})
 
 	time.Sleep(time.Millisecond * 100)
+
+	// listener1 must not be notified, listener2 still be notified
+
+	assert.Equal(t, true, listener1Received.value)
+	assert.Equal(t, false, listener2Received.value)
+}
+
+func TestFuncReceiver(t *testing.T) {
+	eventManager := NewEventManager()
+
+	var listener1Received tickEvent
+	var listener2Received tickEvent
+
+	ef1 := eventManager.NewFuncReceiver(tickEvent{}, func(e Event) {
+		listener1Received = e.(tickEvent)
+	})
+	eventManager.NewFuncReceiver(tickEvent{}, func(e Event) {
+		listener2Received = e.(tickEvent)
+	})
+
+	eventManager.Emit(tickEvent{true})
+
+	// check that listeners are modified by Emit
+
+	assert.Equal(t, true, listener1Received.value)
+	assert.Equal(t, true, listener2Received.value)
+
+	// remove only listener1, listener2 should still be notified
+
+	eventManager.DestroyFuncReceiver(ef1)
+
+	eventManager.Emit(tickEvent{false})
 
 	// listener1 must not be notified, listener2 still be notified
 
