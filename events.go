@@ -30,13 +30,15 @@ func NewEventManager() *EventManager {
 	}
 }
 
-// CreateChanReceiver adds an event listener to the Dog struct instance
-func (this *EventManager) CreateChanReceiver(event interface{}) EventChan {
+// NewChanReceiver adds an event listener to the Dog struct instance
+func (this *EventManager) NewChanReceiver(event interface{}) EventChan {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
 	eventType := reflect.TypeOf(event)
 	eventListener := make(EventChan)
+
+	DebugFunc(eventType)
 
 	if _, ok := this.chans[eventType]; ok {
 		this.chans[eventType] = append(this.chans[eventType], eventListener)
@@ -47,28 +49,34 @@ func (this *EventManager) CreateChanReceiver(event interface{}) EventChan {
 	return eventListener
 }
 
-// CreateFuncReceiver adds an event listener to the Dog struct instance
-func (this *EventManager) CreateFuncReceiver(event interface{}, eventFunc EventFunc) {
+// NewFuncReceiver adds an event listener to the Dog struct instance
+func (this *EventManager) NewFuncReceiver(event interface{}, eventFunc EventFunc) *EventFunc {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
 	eventType := reflect.TypeOf(event)
+
+	DebugFunc()
 
 	if _, ok := this.funcs[eventType]; ok {
 		this.funcs[eventType] = append(this.funcs[eventType], &eventFunc)
 	} else {
 		this.funcs[eventType] = []*EventFunc{&eventFunc}
 	}
+
+	return &eventFunc
 }
 
 // DestroyFuncReceiver removes an event listener from the Dog struct instance
-func (this *EventManager) DestroyChanReceiver(eventChans EventChan) {
+func (this *EventManager) DestroyChanReceiver(eventChan EventChan) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
+	DebugFunc()
+
 	for _, chans := range this.chans {
 		for i := range chans {
-			if chans[i] == eventChans {
+			if chans[i] == eventChan {
 				close(chans[i])
 				chans = append(chans[:i], chans[i+1:]...)
 				break
@@ -78,14 +86,16 @@ func (this *EventManager) DestroyChanReceiver(eventChans EventChan) {
 }
 
 // DestroyFuncReceiver removes an event listener from the Dog struct instance
-func (this *EventManager) DestroyFuncReceiver(eventChans EventChan) {
+func (this *EventManager) DestroyFuncReceiver(eventFunc *EventFunc) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
-	for _, chans := range this.chans {
-		for i := range chans {
-			if chans[i] == eventChans {
-				chans = append(chans[:i], chans[i+1:]...)
+	DebugFunc()
+
+	for _, funcs := range this.funcs {
+		for i := range funcs {
+			if funcs[i] == eventFunc {
+				funcs = append(funcs[:i], funcs[i+1:]...)
 				break
 			}
 		}
@@ -98,6 +108,8 @@ func (this *EventManager) Emit(event interface{}) {
 	defer this.mu.Unlock()
 
 	eventType := reflect.TypeOf(event)
+
+	DebugFunc(eventType)
 
 	if chans, ok := this.chans[eventType]; ok {
 		for _, receiver := range chans {
