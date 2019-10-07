@@ -171,5 +171,5 @@ func MsecToDuration(msec int) time.Duration {
 }
 
 func DurationToMsec(d time.Duration) int {
-	return int(d.Seconds()) * 1000
+	return int(d.Milliseconds())
 }
