@@ -93,7 +93,13 @@ func SplitWithQuotation(txt string) []string {
 // Capitalize the first letter
 func Capitalize(txt string) string {
 	if len(txt) > 0 {
-		return strings.ToUpper(string(txt[0])) + string(txt[1:])
+		lastCh := txt[len(txt)-1:]
+
+		if lastCh == strings.ToUpper(lastCh) {
+			return txt
+		} else {
+			return strings.ToUpper(string(txt[0])) + string(txt[1:])
+		}
 	} else {
 		return txt
 	}
