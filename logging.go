@@ -319,7 +319,7 @@ func CheckError(err error) bool {
 	b := err != nil
 
 	if b {
-		Error(err)
+		log(LEVEL_ERROR, RuntimeInfo(1), err.Error())
 	}
 
 	return b
