@@ -43,7 +43,7 @@ var (
 
 func init() {
 	path := CleanPath(AppFilename(".json"))
-	if !IsWindowsOS() && !service.Interactive() {
+	if !IsWindowsOS() && !service.Interactive() && IsRunningAsExecutable() {
 		path = string(filepath.Separator) + filepath.Join("etc", AppFilename(".json"))
 	}
 

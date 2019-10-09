@@ -73,34 +73,20 @@ func AddShutdownHook(f func()) {
 
 // IsWindowsOS reports true if underlying OS is MS Windows
 func IsWindowsOS() bool {
-	result := runtime.GOOS == "windows"
-
-	return result
+	return runtime.GOOS == "windows"
 }
 
 // IsLinuxOS reports true if underlying OS is Linux
 func IsLinuxOS() bool {
-	result := runtime.GOOS == "linux"
-
-	return result
+	return runtime.GOOS == "linux"
 }
 
 // IsMacOS reports true if underlying OS is MacOS
 func IsMacOS() bool {
-	result := runtime.GOOS == "darwin"
-
-	return result
+	return runtime.GOOS == "darwin"
 }
 
-// IsAMD64 reports true if underlying OS is 64Bit ready
-func IsAMD64() bool {
-	result := runtime.GOARCH == "amd64"
-
-	Debug(fmt.Sprintf("isAMD64 : %v", result))
-
-	return result
-}
-
+// ToBool reports if value indicates "true"
 func ToBool(s string) bool {
 	if len(s) == 0 {
 		return false
