@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/kardianos/service"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -42,12 +41,7 @@ var (
 )
 
 func init() {
-	path := CleanPath(AppFilename(".json"))
-	if !IsWindowsOS() && !service.Interactive() && IsRunningAsExecutable() {
-		path = string(filepath.Separator) + filepath.Join("etc", AppFilename(".json"))
-	}
-
-	file = flag.String("cfg.file", path, "Configuration file")
+	file = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
 	reset = flag.Bool("cfg.reset", false, "Reset configuration file")
 	timeout = flag.Int("cfg.timeout", 1000, "rescan timeout for configuration change")
 }
