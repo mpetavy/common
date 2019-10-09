@@ -34,6 +34,10 @@ func isIncluded(min int, max int, v int) bool {
 	return min <= v && v <= max
 }
 
+func (q *Quantum) IsIncluded(v int) bool {
+	return q.findRange(v) != -1
+}
+
 func (q *Quantum) findRange(v int) int {
 	for i, r := range q.ranges {
 		if isIncluded(r.from, r.to, v) {

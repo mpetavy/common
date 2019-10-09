@@ -44,7 +44,7 @@ var (
 func init() {
 	path := CleanPath(AppFilename(".json"))
 	if !IsWindowsOS() && !service.Interactive() {
-		path = filepath.Join("/etc", AppFilename(".json"))
+		path = string(filepath.Separator) + filepath.Join("etc", AppFilename(".json"))
 	}
 
 	file = flag.String("cfg.file", path, "Configuration file")

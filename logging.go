@@ -86,7 +86,7 @@ var (
 func init() {
 	path := CleanPath(AppFilename(".log"))
 	if !IsWindowsOS() && !service.Interactive() {
-		path = filepath.Join("var", "log", AppFilename(".log"))
+		path = string(filepath.Separator) + filepath.Join("var", "log", AppFilename(".log"))
 	}
 
 	defaultLogFile = path
