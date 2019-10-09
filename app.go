@@ -54,9 +54,9 @@ type App struct {
 
 const (
 	SERVICE          = "service"
-	SERVICE_USER     = "service-user"
-	SERVICE_PASSWORD = "service-password"
-	SERVICE_TIMEOUT  = "service-timeout"
+	SERVICE_USERNAME = "service.username"
+	SERVICE_PASSWORD = "service.password"
+	SERVICE_TIMEOUT  = "service.timeout"
 )
 
 var (
@@ -102,7 +102,7 @@ func Init(Version string, Date string, Description string, Developer string, Lic
 func Run(mandatoryFlags []string) {
 	if app.IsService {
 		serviceFlag = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
-		serviceUser = flag.String(SERVICE_USER, "", "Service user")
+		serviceUser = flag.String(SERVICE_USERNAME, "", "Service user")
 		servicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
 		ServiceStartTimeout = flag.Int(SERVICE_TIMEOUT, 1000, "Server start timeout")
 	}
@@ -410,7 +410,7 @@ func run() error {
 	if *serviceFlag != "" && *serviceFlag != "simulate" {
 		args := os.Args[1:]
 
-		for _, item := range []string{SERVICE, SERVICE_USER, SERVICE_PASSWORD} {
+		for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
 			for i := range args {
 				if args[i] == "-"+item {
 					args = append(args[:i], args[i+2:]...)
@@ -521,4 +521,13 @@ func run() error {
 
 func IsRunningAsService() bool {
 	return app.IsService && (!service.Interactive() || *serviceFlag == "simulate")
+}
+
+func IsRunningAsExecutable() bool {
+	path, err := os.Executable()
+	if err != nil {
+		path = os.Args[0]
+	}
+
+	return !strings.HasPrefix(path, os.TempDir())
 }

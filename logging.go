@@ -85,15 +85,15 @@ var (
 
 func init() {
 	path := CleanPath(AppFilename(".log"))
-	if !IsWindowsOS() && !service.Interactive() {
+	if !IsWindowsOS() && !service.Interactive() && IsRunningAsExecutable() {
 		path = string(filepath.Separator) + filepath.Join("var", "log", AppFilename(".log"))
 	}
 
 	defaultLogFile = path
 
-	logFilename = flag.String("logfile", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
-	logFileSize = flag.Int("logfilesize", 1048576, "log logFile size in bytes")
-	logLevel = flag.String("loglevel", "info", "log level (debug,info,error,fatal)")
+	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
+	logFileSize = flag.Int("log.filesize", 1048576, "log logFile size in bytes")
+	logLevel = flag.String("log.level", "info", "log level (debug,info,error,fatal)")
 }
 
 func currentLevel() int {
