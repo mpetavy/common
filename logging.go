@@ -3,9 +3,7 @@ package common
 import (
 	"flag"
 	"fmt"
-	"github.com/kardianos/service"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -85,10 +83,6 @@ var (
 
 func init() {
 	path := CleanPath(AppFilename(".log"))
-	if !IsWindowsOS() && !service.Interactive() && IsRunningAsExecutable() {
-		path = string(filepath.Separator) + filepath.Join("var", "log", AppFilename(".log"))
-	}
-
 	defaultLogFile = path
 
 	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
@@ -117,10 +111,6 @@ func initLog() {
 	DebugFunc()
 
 	closeLogfile(false)
-
-	if *logFilename == "." {
-		*logFilename = defaultLogFile
-	}
 
 	openLogFile()
 
@@ -166,20 +156,20 @@ func writeEntry(entry logEntry) {
 }
 
 func openLogFile() {
-	if *logFilename != "" && logFile == nil {
-		b, _ := FileExists(*logFilename)
+	if LogFileName() != "" && logFile == nil {
+		b, _ := FileExists(LogFileName())
 
 		if b {
-			fi, _ := os.Stat(*logFilename)
+			fi, _ := os.Stat(LogFileName())
 
 			if fi.Size() > int64(*logFileSize) {
-				Error(FileBackup(*logFilename))
+				Error(FileBackup(LogFileName()))
 			}
 		}
 
 		var err error
 
-		logFile, err = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
+		logFile, err = os.OpenFile(LogFileName(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
 
 		if err != nil {
 			logFile = nil
@@ -326,5 +316,9 @@ func CheckError(err error) bool {
 }
 
 func LogFileName() string {
+	if *logFilename == "." {
+		return defaultLogFile
+	}
+
 	return *logFilename
 }
