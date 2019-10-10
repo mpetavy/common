@@ -227,10 +227,12 @@ func Warn(t string, arg ...interface{}) {
 }
 
 // Warn prints out the error
-func WarnError(err error) {
+func WarnError(err error) bool {
 	if err != nil {
 		log(LEVEL_WARN, RuntimeInfo(1), err.Error())
 	}
+
+	return err != nil
 }
 
 // DebugFunc prints out the current executon func
@@ -256,33 +258,39 @@ func DebugFunc(arg ...interface{}) {
 }
 
 // IgnoreError just ignores the error
-func IgnoreError(_ error) {
+func IgnoreError(err error) bool {
+	return err != nil
 }
 
 // Debug prints out the information
-func DebugError(err error) {
+func DebugError(err error) bool {
 	if err != nil {
 		log(LEVEL_DEBUG, RuntimeInfo(1), fmt.Sprintf("DebugError: %s", err.Error()))
 	}
+
+	return err != nil
 }
 
 // Error prints out the error
-func Error(err error) {
+func Error(err error) bool {
 	if err != nil {
 		log(LEVEL_ERROR, RuntimeInfo(1), err.Error())
 	}
+
+	return err != nil
 }
 
 // Fatal prints out the error
-func Fatal(err error) {
+func Fatal(err error) bool {
 	if err != nil {
-
 		if _, ok := err.(*ErrExit); !ok {
 			log(LEVEL_FATAL, RuntimeInfo(1), err.Error())
 
 			panic(err)
 		}
 	}
+
+	return err != nil
 }
 
 func log(level int, ri runtimeInfo, msg string) {
@@ -303,16 +311,6 @@ func ToString(cmd exec.Cmd) string {
 	s := SurroundWith(cmd.Args, "\"")
 
 	return strings.Join(s, " ")
-}
-
-func CheckError(err error) bool {
-	b := err != nil
-
-	if b {
-		log(LEVEL_ERROR, RuntimeInfo(1), err.Error())
-	}
-
-	return b
 }
 
 func LogFileName() string {

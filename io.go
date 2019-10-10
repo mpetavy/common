@@ -388,7 +388,7 @@ func CleanPath(path string) string {
 		userHomeDir := ""
 
 		usr, err := user.Current()
-		if !CheckError(err) {
+		if !Error(err) {
 			userHomeDir = usr.HomeDir
 		}
 
