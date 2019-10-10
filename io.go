@@ -109,16 +109,13 @@ func deleteTempDir() error {
 }
 
 // TempDir returns the private temporary directory of the app
-func TempDir() (string, error) {
-	return tempDir, nil
+func TempDir() string {
+	return tempDir
 }
 
 // CreateTempFile creates a temporary file
 func CreateTempFile() (file *os.File, err error) {
-	tempDir, err := TempDir()
-	if err != nil {
-		return nil, err
-	}
+	tempDir := TempDir()
 
 	file, err = ioutil.TempFile(tempDir, RuntimeInfo(1).Filename()+"-")
 	if err != nil {
@@ -135,10 +132,7 @@ func CreateTempFile() (file *os.File, err error) {
 
 // CreateTempDir creates a temporary file
 func CreateTempDir() (string, error) {
-	rootTempDir, err := TempDir()
-	if err != nil {
-		return "", err
-	}
+	rootTempDir := TempDir()
 
 	tempdir, err := ioutil.TempDir(rootTempDir, RuntimeInfo(1).Filename()+"-")
 	if err != nil {
