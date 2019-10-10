@@ -163,7 +163,7 @@ func writeFile(ba []byte) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	if string(buf.Bytes()) != string(ba) {
+	if string(buf.Bytes()) != string(config) {
 		Debug("Reformat of configuration file done")
 
 		err = ioutil.WriteFile(*file, buf.Bytes(), FileMode(true, true, false))
