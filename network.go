@@ -55,7 +55,7 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 
 func FindMainIP() (string, error) {
 	host, err := os.Hostname()
-	if CheckError(err) {
+	if Error(err) {
 		return "", err
 	}
 
@@ -69,7 +69,7 @@ func FindMainIP() (string, error) {
 		cmd.Stderr = &stderr
 
 		err := Watchdog(cmd, time.Second*3)
-		if CheckError(err) {
+		if Error(err) {
 			return "", nil
 		}
 		output := string(stdout.Bytes())
@@ -105,7 +105,7 @@ func FindMainIP() (string, error) {
 		cmd.Stderr = &stderr
 
 		err := Watchdog(cmd, time.Second*3)
-		if CheckError(err) {
+		if Error(err) {
 			return "", nil
 		}
 		output := string(stdout.Bytes())
