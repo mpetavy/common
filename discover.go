@@ -122,7 +122,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 		return discoveredIps, err
 	}
 	defer func() {
-		IgnoreError(c.Close())
+		Ignore(c.Close())
 	}()
 
 	_, discoverPort, err := net.SplitHostPort(address)

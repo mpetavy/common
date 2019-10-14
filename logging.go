@@ -129,12 +129,14 @@ func writeEntry(entry logEntry) {
 
 	if entry.level != LEVEL_FILE {
 		s := entry.String()
-		if currentLevel() > LEVEL_DEBUG && len(s) > 71 {
-			s = s[71:]
+		if currentLevel() > LEVEL_DEBUG {
+			if entry.level > LEVEL_WARN && len(s) > 71 {
+				s = s[24:]
+			} else {
+				s = s[71:]
+			}
 		}
-
-		_, err := fmt.Printf("%s\n", s)
-		IgnoreError(err)
+		fmt.Printf("%s\n", s)
 	}
 
 	if logFile != nil {
@@ -148,10 +150,10 @@ func writeEntry(entry logEntry) {
 
 		// dont handle errors here
 		_, err := logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
-		IgnoreError(err)
+		Ignore(err)
 
 		// dont handle errors here
-		IgnoreError(logFile.Sync())
+		Ignore(logFile.Sync())
 	}
 }
 
@@ -184,7 +186,7 @@ func closeLogfile(final bool) {
 
 	if logFile != nil {
 		// dont handle errors here
-		IgnoreError(logFile.Close())
+		Ignore(logFile.Close())
 
 		logFile = nil
 	}
@@ -257,9 +259,9 @@ func DebugFunc(arg ...interface{}) {
 	log(LEVEL_DEBUG, ri, t)
 }
 
-// IgnoreError just ignores the error
-func IgnoreError(err error) bool {
-	return err != nil
+// Ignore just ignores the error
+func Ignore(arg ...interface{}) bool {
+	return false
 }
 
 // Debug prints out the information
