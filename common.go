@@ -125,11 +125,14 @@ func Rnd(max int) int {
 }
 
 func Min(v ...int) int {
-	r := 0
-
-	for _, vi := range v {
-		if vi < r {
+	var r int
+	for i, vi := range v {
+		if i == 0 {
 			r = vi
+		} else {
+			if vi < r {
+				r = vi
+			}
 		}
 	}
 
@@ -137,11 +140,14 @@ func Min(v ...int) int {
 }
 
 func Max(v ...int) int {
-	r := 0
-
-	for _, vi := range v {
-		if vi > r {
+	var r int
+	for i, vi := range v {
+		if i == 0 {
 			r = vi
+		} else {
+			if vi > r {
+				r = vi
+			}
 		}
 	}
 

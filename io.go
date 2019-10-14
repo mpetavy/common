@@ -122,7 +122,7 @@ func CreateTempFile() (file *os.File, err error) {
 		return nil, err
 	}
 	defer func() {
-		IgnoreError(file.Close())
+		Ignore(file.Close())
 	}()
 
 	Debug(fmt.Sprintf("CreateTempFile : %s", file.Name()))
@@ -193,7 +193,7 @@ func FileCopy(src string, dst string) error {
 		return err
 	}
 	defer func() {
-		IgnoreError(srcFile.Close())
+		Ignore(srcFile.Close())
 	}()
 
 	destFile, err := os.Create(dst)
@@ -201,7 +201,7 @@ func FileCopy(src string, dst string) error {
 		return err
 	}
 	defer func() {
-		IgnoreError(destFile.Close())
+		Ignore(destFile.Close())
 	}()
 
 	_, err = io.Copy(destFile, srcFile)
@@ -227,7 +227,7 @@ func FileStore(filename string, r io.Reader) error {
 
 	// care about final cleanup of open file
 	defer func() {
-		IgnoreError(out.Close())
+		Ignore(out.Close())
 	}()
 
 	// download the remote resource to the file
@@ -298,7 +298,7 @@ func IsFileReadOnly(path string) (result bool, err error) {
 			return false, err
 		}
 	}
-	IgnoreError(file.Close())
+	Ignore(file.Close())
 
 	return result, nil
 }
