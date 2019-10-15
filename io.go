@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -174,6 +175,23 @@ func FileDelete(filename string) error {
 	}
 
 	return nil
+}
+
+// FileExists does ... guess what :-)
+func FileDate(filename string) (time.Time, error) {
+	f, err := os.Stat(filename)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	t, err := f.ModTime().MarshalText()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	Debug(fmt.Sprintf("FileDate %s: %s", filename, string(t)))
+
+	return f.ModTime(), nil
 }
 
 // FileSize does ... guess what :-)
