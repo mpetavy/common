@@ -1,11 +1,15 @@
 package common
 
 import (
+	"bytes"
 	"fmt"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"time"
 )
 
 const UNKNOWN = "unknwon"
@@ -13,6 +17,51 @@ const UNKNOWN = "unknwon"
 type runtimeInfo struct {
 	Dir, Pack, File, Fn string
 	Line                int
+}
+
+type systemInfo struct {
+	KernelName    string
+	KernelVersion string
+	KernelRelease string
+	Machine       string
+}
+
+type runner struct {
+	cmd *exec.Cmd
+	wg  *sync.WaitGroup
+
+	err    error
+	output string
+}
+
+var (
+	si *systemInfo
+)
+
+func (this *runner) execute(cmd *exec.Cmd, timeout time.Duration, wg *sync.WaitGroup) {
+	defer func() {
+		wg.Done()
+	}()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	this.err = Watchdog(cmd, timeout)
+	if Error(this.err) {
+		return
+	}
+
+	var ba []byte
+
+	ba, this.err = cmd.Output()
+	if Error(this.err) {
+		return
+	}
+
+	this.output = string(ba)
 }
 
 func (r runtimeInfo) toString(asFilename bool) string {
@@ -54,4 +103,63 @@ func RuntimeInfo(pos int) runtimeInfo {
 	pack = pack[0:strings.Index(pack, ".")]
 
 	return runtimeInfo{dir, pack, file, fn, line}
+}
+
+func removeApostroph(txt string) string {
+	return txt[1 : len(txt)-1]
+}
+
+func SystemInfo() (*systemInfo, error) {
+	DebugFunc()
+
+	if si != nil {
+		return si, nil
+	}
+
+	si = &systemInfo{}
+
+	if IsWindowsOS() {
+		cmd := exec.Command("systeminfo", "/fo", "csv", "/nh")
+
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		err := Watchdog(cmd, time.Millisecond*time.Duration(time.Second))
+		if !Error(err) {
+			splits := strings.Split(string(stdout.Bytes()), ",")
+
+			si.KernelName = removeApostroph(splits[1])
+			si.KernelRelease = removeApostroph(splits[5])
+			si.KernelVersion = removeApostroph(splits[2])
+			si.Machine = removeApostroph(splits[15])
+		}
+
+		return si, nil
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(4)
+
+	var kernelNameRunner runner
+	var kernelReleaseRunner runner
+	var kernelVersionRunner runner
+	var machineRunner runner
+
+	go kernelNameRunner.execute(exec.Command("uname", "-s"), time.Second, &wg)
+	go kernelReleaseRunner.execute(exec.Command("uname", "-r"), time.Second, &wg)
+	go kernelVersionRunner.execute(exec.Command("uname", "-v"), time.Second, &wg)
+	go machineRunner.execute(exec.Command("uname", "-m"), time.Second, &wg)
+
+	wg.Wait()
+
+	si.KernelName = kernelNameRunner.output
+	si.KernelRelease = kernelReleaseRunner.output
+	si.KernelVersion = kernelVersionRunner.output
+	si.Machine = machineRunner.output
+
+	return si, nil
 }
