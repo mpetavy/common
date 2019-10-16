@@ -126,7 +126,7 @@ func SystemInfo() (*systemInfo, error) {
 
 			si.KernelName = removeApostroph(splits[1])
 			si.KernelRelease = removeApostroph(splits[5])
-			si.KernelVersion = removeApostroph(splits[2])
+			si.KernelVersion = removeApostroph(splits[2][:strings.Index(splits[2], " ")])
 			si.Machine = removeApostroph(splits[15])
 		}
 
