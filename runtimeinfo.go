@@ -54,14 +54,7 @@ func (this *runner) execute(cmd *exec.Cmd, timeout time.Duration, wg *sync.WaitG
 		return
 	}
 
-	var ba []byte
-
-	ba, this.err = cmd.Output()
-	if Error(this.err) {
-		return
-	}
-
-	this.output = string(ba)
+	this.output = string(stdout.Bytes())
 }
 
 func (r runtimeInfo) toString(asFilename bool) string {
