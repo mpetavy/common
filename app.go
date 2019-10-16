@@ -136,6 +136,8 @@ func Run(mandatoryFlags []string) {
 		Exit(0)
 	}
 
+	Ignore(SystemInfo())
+
 	flagErr := false
 
 	if *serviceFlag == "" || *serviceFlag == "install" {
