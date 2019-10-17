@@ -1,8 +1,10 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -24,6 +26,8 @@ type systemInfo struct {
 	KernelVersion string
 	KernelRelease string
 	Machine       string
+	MemTotal      string
+	MemFree       string
 }
 
 type runner struct {
@@ -128,6 +132,8 @@ func SystemInfo() (*systemInfo, error) {
 			si.KernelRelease = removeApostroph(splits[5])
 			si.KernelVersion = removeApostroph(splits[2][:strings.Index(splits[2], " ")])
 			si.Machine = removeApostroph(splits[15])
+			si.MemTotal = removeApostroph(splits[31])
+			si.MemFree = removeApostroph(splits[33])
 		}
 
 		return si, nil
@@ -135,7 +141,7 @@ func SystemInfo() (*systemInfo, error) {
 
 	var wg sync.WaitGroup
 
-	wg.Add(4)
+	wg.Add(5)
 
 	var kernelNameRunner runner
 	var kernelReleaseRunner runner
@@ -146,6 +152,35 @@ func SystemInfo() (*systemInfo, error) {
 	go kernelReleaseRunner.execute(exec.Command("uname", "-r"), time.Second, &wg)
 	go kernelVersionRunner.execute(exec.Command("uname", "-v"), time.Second, &wg)
 	go machineRunner.execute(exec.Command("uname", "-m"), time.Second, &wg)
+	go func(si *systemInfo) {
+		ba, err := ioutil.ReadFile("/proc/meminfo")
+		if err != nil {
+			return
+		}
+
+		scanner := bufio.NewScanner(bytes.NewBuffer(ba))
+		for scanner.Scan() {
+			txt := scanner.Text()
+
+			splits := strings.Split(txt, ":")
+			if len(splits) != 2 {
+				continue
+			}
+
+			for i := 0; i < len(splits); i++ {
+				splits[i] = strings.TrimSpace(splits[i])
+			}
+
+			if strings.HasPrefix(strings.ToLower(splits[0]), "memtotal") {
+				si.MemTotal = splits[1]
+			}
+			if strings.HasPrefix(strings.ToLower(splits[0]), "memfree") {
+				si.MemFree = splits[1]
+			}
+		}
+
+		wg.Done()
+	}(si)
 
 	wg.Wait()
 
