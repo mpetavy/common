@@ -6,7 +6,7 @@ import (
 )
 
 func TestRuntimeInfo(t *testing.T) {
-	ri := RuntimeInfo(0)
+	ri := GetRuntimeInfo(0)
 
 	assert.Equal(t, ri.Pack, "common")
 	assert.Equal(t, ri.File, "runtimeinfo_test.go")
