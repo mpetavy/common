@@ -16,12 +16,12 @@ import (
 
 const UNKNOWN = "unknwon"
 
-type runtimeInfo struct {
+type RuntimeInfo struct {
 	Dir, Pack, File, Fn string
 	Line                int
 }
 
-type systemInfo struct {
+type SystemInfo struct {
 	KernelName    string
 	KernelVersion string
 	KernelRelease string
@@ -37,10 +37,6 @@ type runner struct {
 	err    error
 	output string
 }
-
-var (
-	si *systemInfo
-)
 
 func (this *runner) execute(cmd *exec.Cmd, timeout time.Duration, wg *sync.WaitGroup) {
 	defer func() {
@@ -61,7 +57,7 @@ func (this *runner) execute(cmd *exec.Cmd, timeout time.Duration, wg *sync.WaitG
 	this.output = string(stdout.Bytes())
 }
 
-func (r runtimeInfo) toString(asFilename bool) string {
+func (r RuntimeInfo) toString(asFilename bool) string {
 	if asFilename {
 		return fmt.Sprintf("%s-%s-%d-%s", r.Pack, r.File, r.Line, r.Fn)
 	} else {
@@ -69,19 +65,19 @@ func (r runtimeInfo) toString(asFilename bool) string {
 	}
 }
 
-func (r runtimeInfo) String() string {
+func (r RuntimeInfo) String() string {
 	return r.toString(false)
 }
 
-func (r runtimeInfo) Filename() string {
+func (r RuntimeInfo) Filename() string {
 	return r.toString(true)
 }
 
-func RuntimeInfo(pos int) runtimeInfo {
+func GetRuntimeInfo(pos int) RuntimeInfo {
 	pc, _, _, ok := runtime.Caller(1 + pos)
 
 	if !ok {
-		return runtimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, 0}
+		return RuntimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, 0}
 	}
 
 	f := runtime.FuncForPC(pc)
@@ -99,21 +95,17 @@ func RuntimeInfo(pos int) runtimeInfo {
 	pack = pack[strings.LastIndex(pack, "/")+1:]
 	pack = pack[0:strings.Index(pack, ".")]
 
-	return runtimeInfo{dir, pack, file, fn, line}
+	return RuntimeInfo{dir, pack, file, fn, line}
 }
 
 func removeApostroph(txt string) string {
 	return txt[1 : len(txt)-1]
 }
 
-func SystemInfo() (*systemInfo, error) {
+func GetSystemInfo() (SystemInfo, error) {
 	DebugFunc()
 
-	if si != nil {
-		return si, nil
-	}
-
-	si = &systemInfo{}
+	si := SystemInfo{}
 
 	if IsWindowsOS() {
 		cmd := exec.Command("systeminfo", "/fo", "csv", "/nh")
@@ -152,7 +144,7 @@ func SystemInfo() (*systemInfo, error) {
 	go kernelReleaseRunner.execute(exec.Command("uname", "-r"), time.Second, &wg)
 	go kernelVersionRunner.execute(exec.Command("uname", "-v"), time.Second, &wg)
 	go machineRunner.execute(exec.Command("uname", "-m"), time.Second, &wg)
-	go func(si *systemInfo) {
+	go func(si *SystemInfo) {
 		ba, err := ioutil.ReadFile("/proc/meminfo")
 		if err != nil {
 			return
@@ -180,7 +172,7 @@ func SystemInfo() (*systemInfo, error) {
 		}
 
 		wg.Done()
-	}(si)
+	}(&si)
 
 	wg.Wait()
 

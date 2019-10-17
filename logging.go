@@ -36,7 +36,7 @@ var (
 
 type logEntry struct {
 	level int
-	ri    runtimeInfo
+	ri    RuntimeInfo
 	msg   string
 }
 
@@ -198,7 +198,7 @@ func prolog(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_FILE, RuntimeInfo(1), t)
+	log(LEVEL_FILE, GetRuntimeInfo(1), t)
 }
 
 // Debug prints out the information
@@ -207,7 +207,7 @@ func Debug(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_DEBUG, RuntimeInfo(1), t)
+	log(LEVEL_DEBUG, GetRuntimeInfo(1), t)
 }
 
 // Info prints out the information
@@ -216,7 +216,7 @@ func Info(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_INFO, RuntimeInfo(1), t)
+	log(LEVEL_INFO, GetRuntimeInfo(1), t)
 }
 
 // Warn prints out the information
@@ -225,13 +225,13 @@ func Warn(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_WARN, RuntimeInfo(1), t)
+	log(LEVEL_WARN, GetRuntimeInfo(1), t)
 }
 
 // Warn prints out the error
 func WarnError(err error) bool {
 	if err != nil {
-		log(LEVEL_WARN, RuntimeInfo(1), err.Error())
+		log(LEVEL_WARN, GetRuntimeInfo(1), err.Error())
 	}
 
 	return err != nil
@@ -239,7 +239,7 @@ func WarnError(err error) bool {
 
 // DebugFunc prints out the current executon func
 func DebugFunc(arg ...interface{}) {
-	ri := RuntimeInfo(1)
+	ri := GetRuntimeInfo(1)
 
 	t := ri.Fn + "()"
 
@@ -267,7 +267,7 @@ func Ignore(arg ...interface{}) bool {
 // Debug prints out the information
 func DebugError(err error) bool {
 	if err != nil {
-		log(LEVEL_DEBUG, RuntimeInfo(1), fmt.Sprintf("DebugError: %s", err.Error()))
+		log(LEVEL_DEBUG, GetRuntimeInfo(1), fmt.Sprintf("DebugError: %s", err.Error()))
 	}
 
 	return err != nil
@@ -276,7 +276,7 @@ func DebugError(err error) bool {
 // Error prints out the error
 func Error(err error) bool {
 	if err != nil {
-		log(LEVEL_ERROR, RuntimeInfo(1), err.Error())
+		log(LEVEL_ERROR, GetRuntimeInfo(1), err.Error())
 	}
 
 	return err != nil
@@ -286,7 +286,7 @@ func Error(err error) bool {
 func Fatal(err error) bool {
 	if err != nil {
 		if _, ok := err.(*ErrExit); !ok {
-			log(LEVEL_FATAL, RuntimeInfo(1), err.Error())
+			log(LEVEL_FATAL, GetRuntimeInfo(1), err.Error())
 
 			panic(err)
 		}
@@ -295,7 +295,7 @@ func Fatal(err error) bool {
 	return err != nil
 }
 
-func log(level int, ri runtimeInfo, msg string) {
+func log(level int, ri RuntimeInfo, msg string) {
 	if !LogEnabled.IsSet() {
 		return
 	}
