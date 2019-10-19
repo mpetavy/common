@@ -207,7 +207,7 @@ func setFlags(ba []byte) error {
 			}
 
 			fl := flag.Lookup(k)
-			if fl != nil {
+			if fl != nil && (fl.Value.String() == "" || fl.Value.String() == fl.DefValue) {
 				Debug("flag from %s: %s = %+v", filepath.Base(*file), k, v)
 
 				var err error
@@ -262,8 +262,9 @@ func readEnv() error {
 
 		if v != "" {
 			fl := flag.Lookup(f.Name)
-			if fl != nil {
+			if fl != nil && (fl.Value.String() == "" || fl.Value.String() == fl.DefValue) {
 				Debug("flag from env: %s = %s", f.Name, v)
+
 				err := flag.Set(f.Name, v)
 				if err != nil {
 					DebugError(err)

@@ -3,11 +3,13 @@ package common
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
-	"strings"
-	"time"
-
 	"os/exec"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 const (
@@ -25,14 +27,27 @@ const (
 	LEVEL_FATAL
 )
 
+var (
+	logLevel           *string
+	logFilename        *string
+	logSize            *int
+	logEnabled         = NewNotice()
+	logger             logWriter
+	defaultLogFilename string
+)
+
+func init() {
+	defaultLogFilename = CleanPath(AppFilename(".log"))
+
+	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
+	logSize = flag.Int("log.size", 1000, "max amount of log lines")
+	logLevel = flag.String("log.level", "info", "log level (debug,info,error,fatal)")
+}
+
 type ErrExit struct {
 }
 
 func (e *ErrExit) Error() string { return "" }
-
-var (
-	LogEnabled = NewNotice()
-)
 
 type logEntry struct {
 	level int
@@ -60,34 +75,140 @@ func (l *logEntry) String() string {
 	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(), Capitalize(l.msg)), "\r\n")
 }
 
-type DebugWriter struct {
-	Name   string
-	Action string
+type logWriter interface {
+	WriteString(txt string)
+	Logs(io.Writer) error
+	Close()
 }
 
-func (this *DebugWriter) Write(p []byte) (n int, err error) {
-	Debug("%s %s %d bytes: %+q", this.Name, this.Action, len(p), string(p))
-
-	return len(p), nil
+type logMemoryWriter struct {
+	mu    sync.Mutex
+	lines []string
 }
 
-var (
-	logLevel    *string
-	logFilename *string
-	logFileSize *int
+func (this *logMemoryWriter) WriteString(txt string) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
-	defaultLogFile string
-	logFile        *os.File
-	signCount      = NewNotice()
-)
+	copy(this.lines[0:], this.lines[1:])
+	this.lines[len(this.lines)-1] = txt
+}
 
-func init() {
-	path := CleanPath(AppFilename(".log"))
-	defaultLogFile = path
+func (this *logMemoryWriter) Logs(w io.Writer) error {
+	for _, l := range this.lines {
+		_, err := w.Write([]byte(l))
 
-	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFile))
-	logFileSize = flag.Int("log.filesize", 1048576, "log logFile size in bytes")
-	logLevel = flag.String("log.level", "info", "log level (debug,info,error,fatal)")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (this *logMemoryWriter) Close() {
+}
+
+func newLogMemoryWriter() *logMemoryWriter {
+	writer := logMemoryWriter{
+		mu:    sync.Mutex{},
+		lines: make([]string, *logSize),
+	}
+
+	return &writer
+}
+
+type logFileWriter struct {
+	c    int
+	mu   sync.Mutex
+	file *os.File
+}
+
+func (this *logFileWriter) WriteString(txt string) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	logEnabled.Unset()
+	defer logEnabled.Set()
+
+	if this.file == nil {
+		return
+	}
+
+	if this.c == *logSize {
+		this.c = 0
+
+		if this.file != nil {
+			Ignore(this.file.Close())
+			this.file = nil
+		}
+
+		Ignore(FileBackup(*logFilename))
+
+		this.file, _ = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
+	}
+
+	if this.file == nil {
+		return
+	}
+
+	Ignore(this.file.Write([]byte(txt)))
+	Ignore(this.file.Sync())
+
+	this.c++
+}
+
+func (this *logFileWriter) Logs(w io.Writer) error {
+	for i := *countBackups; i >= 0; i-- {
+		var src string
+
+		if *countBackups == 1 {
+			src = *logFilename + ".bak"
+		} else {
+			if i > 0 {
+				src = *logFilename + "." + strconv.Itoa(i)
+			} else {
+				src = *logFilename
+			}
+		}
+
+		b, _ := FileExists(src)
+
+		if b {
+			file, err := os.Open(src)
+			if err != nil {
+				return err
+			}
+
+			_, err = io.Copy(w, file)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (this *logFileWriter) Close() {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	if this.file != nil {
+		Ignore(this.file.Close())
+		this.file = nil
+	}
+}
+
+func newLogFileWriter() *logFileWriter {
+	logFile, _ := os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
+
+	writer := logFileWriter{
+		mu:   sync.Mutex{},
+		file: logFile,
+	}
+
+	return &writer
 }
 
 func currentLevel() int {
@@ -110,11 +231,19 @@ func currentLevel() int {
 func initLog() {
 	DebugFunc()
 
-	closeLogfile(false)
+	if *logFilename == "." {
+		*logFilename = defaultLogFilename
+	}
 
-	openLogFile()
+	if *logFilename != "" {
+		if *logFilename == "memory" {
+			logger = newLogMemoryWriter()
+		} else {
+			logger = newLogFileWriter()
+		}
+	}
 
-	LogEnabled.Set()
+	logEnabled.Set()
 
 	if app != nil {
 		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 98)))
@@ -123,7 +252,7 @@ func initLog() {
 }
 
 func writeEntry(entry logEntry) {
-	if !LogEnabled.IsSet() {
+	if !logEnabled.IsSet() {
 		return
 	}
 
@@ -139,56 +268,16 @@ func writeEntry(entry logEntry) {
 		fmt.Printf("%s\n", s)
 	}
 
-	if logFile != nil {
-		if signCount.IncAndReached(100) {
-			closeLogfile(false)
-			openLogFile()
-
-			signCount.ResetWithoutLock()
-			signCount.Unlock()
-		}
-
-		// dont handle errors here
-		_, err := logFile.WriteString(fmt.Sprintf("%s\n", entry.String()))
-		Ignore(err)
-
-		// dont handle errors here
-		Ignore(logFile.Sync())
+	if logger != nil {
+		logger.WriteString(fmt.Sprintf("%s\n", entry.String()))
 	}
 }
 
-func openLogFile() {
-	if LogFileName() != "" && logFile == nil {
-		b, _ := FileExists(LogFileName())
+func closeLogFile() {
+	prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
 
-		if b {
-			fi, _ := os.Stat(LogFileName())
-
-			if fi.Size() > int64(*logFileSize) {
-				Error(FileBackup(LogFileName()))
-			}
-		}
-
-		var err error
-
-		logFile, err = os.OpenFile(LogFileName(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
-
-		if err != nil {
-			logFile = nil
-		}
-	}
-}
-
-func closeLogfile(final bool) {
-	if final {
-		prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
-	}
-
-	if logFile != nil {
-		// dont handle errors here
-		Ignore(logFile.Close())
-
-		logFile = nil
+	if logger != nil {
+		logger.Close()
 	}
 }
 
@@ -296,7 +385,7 @@ func Fatal(err error) bool {
 }
 
 func log(level int, ri RuntimeInfo, msg string) {
-	if !LogEnabled.IsSet() {
+	if !logEnabled.IsSet() {
 		return
 	}
 
@@ -315,10 +404,9 @@ func ToString(cmd exec.Cmd) string {
 	return strings.Join(s, " ")
 }
 
-func LogFileName() string {
-	if *logFilename == "." {
-		return defaultLogFile
+func Logs(w io.Writer) error {
+	if logger != nil {
+		return logger.Logs(w)
 	}
-
-	return *logFilename
+	return nil
 }

@@ -31,6 +31,17 @@ func (e *ErrFileNotFound) Error() string {
 	return fmt.Sprintf("file or path not found: %s", e.FileName)
 }
 
+type debugWriter struct {
+	Name   string
+	Action string
+}
+
+func (this *debugWriter) Write(p []byte) (n int, err error) {
+	Debug("%s %s %d bytes: %+q", this.Name, this.Action, len(p), string(p))
+
+	return len(p), nil
+}
+
 // +-----+---+--------------------------+
 // | rwx | 7 | Read, write and execute  |
 // | rw- | 6 | Read, write              |
@@ -278,25 +289,18 @@ func FileBackup(filename string) error {
 
 		b, err := FileExists(src)
 		if err != nil {
-			return nil
+			continue
 		}
 
 		if b {
-			b, err = FileExists(dst)
+			err = FileDelete(dst)
 			if err != nil {
-				return nil
-			}
-
-			if b {
-				err = os.Remove(dst)
-				if err != nil {
-					return nil
-				}
+				continue
 			}
 
 			err := os.Rename(src, dst)
 			if err != nil {
-				return err
+				continue
 			}
 		}
 	}
@@ -467,7 +471,7 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 			Debug("%s cancel!", name)
 			cancel()
 		}()
-		*written, err = io.Copy(io.MultiWriter(writer, &DebugWriter{name, "WRITE"}), io.TeeReader(reader, &DebugWriter{name, "READ"}))
+		*written, err = io.Copy(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}))
 		if err != nil {
 			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
 				err = fmt.Errorf("Timeoutout error")
