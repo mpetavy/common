@@ -181,6 +181,7 @@ func (this *logFileWriter) Logs(w io.Writer) error {
 			}
 
 			_, err = io.Copy(w, file)
+			Ignore(file.Close())
 			if err != nil {
 				return err
 			}
