@@ -61,7 +61,7 @@ func Done() {
 			}
 		})
 
-		closeLogfile(true)
+		closeLogFile()
 	})
 }
 
