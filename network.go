@@ -122,40 +122,30 @@ func FindMainIP() (string, error) {
 
 func FindActiveIPs() ([]string, error) {
 	var addresses []string
-	// list system network interfaces
-	// https://golang.org/pkg/net/#Interfaces
+
 	intfs, err := net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
-	// mapping between network interface name and index
-	// https://golang.org/pkg/net/#Interface
+
 	for _, intf := range intfs {
-		// skip down interface & check next intf
 		if intf.Flags&net.FlagUp == 0 {
 			continue
 		}
-		// skip loopback & check next intf
+
 		if intf.Flags&net.FlagLoopback != 0 {
 			continue
 		}
-		// list of unicast interface addresses for specific interface
-		// https://golang.org/pkg/net/#Interface.Addrs
 		addrs, err := intf.Addrs()
 		if err != nil {
 			return nil, err
 		}
-		// network end point address
-		// https://golang.org/pkg/net/#Addr
-		for _, addr := range addrs {
-			// if for windows may need to type switch
 
-			// type assertion to access Addr interface
-			// underlying IPNet IP method
+		for _, addr := range addrs {
 			if addr == nil || addr.(*net.IPNet).IP.IsLoopback() {
 				continue
 			}
-			// append active interfaces
+
 			addresses = append(addresses, addr.String())
 		}
 	}
