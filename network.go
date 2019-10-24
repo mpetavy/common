@@ -96,7 +96,16 @@ func FindMainIP() (string, error) {
 			return line, nil
 		}
 	} else {
-		cmd := exec.Command("host", host)
+		path, err := exec.LookPath("hostname")
+		if DebugError(err) {
+			path, err = exec.LookPath("host")
+		}
+
+		if Error(err) {
+			return "", err
+		}
+
+		cmd := exec.Command(path, host)
 
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -104,7 +113,7 @@ func FindMainIP() (string, error) {
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		err := Watchdog(cmd, time.Second*3)
+		err = Watchdog(cmd, time.Second*3)
 		if Error(err) {
 			return "", nil
 		}
