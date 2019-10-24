@@ -351,7 +351,13 @@ func DebugFunc(arg ...interface{}) {
 
 // Ignore just ignores the error
 func Ignore(arg ...interface{}) bool {
-	return false
+	b := false
+
+	if len(arg) > 0 {
+		_, b = arg[len(arg)-1].(error)
+	}
+
+	return b
 }
 
 // Debug prints out the information
