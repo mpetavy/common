@@ -3,6 +3,7 @@ package common
 import (
 	"flag"
 	"fmt"
+	"github.com/gookit/color"
 	"io"
 	"os"
 	"os/exec"
@@ -34,6 +35,7 @@ var (
 	logEnabled         = NewNotice()
 	logger             logWriter
 	defaultLogFilename string
+	mu                 sync.Mutex
 )
 
 func init() {
@@ -82,15 +84,12 @@ type logWriter interface {
 }
 
 type logMemoryWriter struct {
-	mu    sync.Mutex
 	lines []string
 }
 
 func (this *logMemoryWriter) WriteString(txt string) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
 	copy(this.lines[0:], this.lines[1:])
+
 	this.lines[len(this.lines)-1] = txt
 }
 
@@ -111,7 +110,6 @@ func (this *logMemoryWriter) Close() {
 
 func newLogMemoryWriter() *logMemoryWriter {
 	writer := logMemoryWriter{
-		mu:    sync.Mutex{},
 		lines: make([]string, *logSize),
 	}
 
@@ -120,14 +118,10 @@ func newLogMemoryWriter() *logMemoryWriter {
 
 type logFileWriter struct {
 	c    int
-	mu   sync.Mutex
 	file *os.File
 }
 
 func (this *logFileWriter) WriteString(txt string) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
 	logEnabled.Unset()
 	defer logEnabled.Set()
 
@@ -172,19 +166,15 @@ func (this *logFileWriter) Logs(w io.Writer) error {
 			}
 		}
 
-		b, _ := FileExists(src)
+		file, err := os.Open(src)
+		if err != nil {
+			continue
+		}
 
-		if b {
-			file, err := os.Open(src)
-			if err != nil {
-				return err
-			}
-
-			_, err = io.Copy(w, file)
-			Ignore(file.Close())
-			if err != nil {
-				return err
-			}
+		_, err = io.Copy(w, file)
+		_ = file.Close()
+		if err != nil {
+			return err
 		}
 	}
 
@@ -192,9 +182,6 @@ func (this *logFileWriter) Logs(w io.Writer) error {
 }
 
 func (this *logFileWriter) Close() {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
 	if this.file != nil {
 		Ignore(this.file.Close())
 		this.file = nil
@@ -205,7 +192,6 @@ func newLogFileWriter() *logFileWriter {
 	logFile, _ := os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
 
 	writer := logFileWriter{
-		mu:   sync.Mutex{},
 		file: logFile,
 	}
 
@@ -266,7 +252,17 @@ func writeEntry(entry logEntry) {
 				s = s[71:]
 			}
 		}
-		fmt.Printf("%s\n", s)
+
+		switch entry.level {
+		case LEVEL_WARN:
+			color.Warn.Println(s)
+		case LEVEL_ERROR:
+			color.Error.Println(s)
+		case LEVEL_FATAL:
+			color.Error.Println(s)
+		default:
+			fmt.Printf("%s\n", s)
+		}
 	}
 
 	if logger != nil {
@@ -400,6 +396,9 @@ func log(level int, ri RuntimeInfo, msg string) {
 		return
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
+
 	if level == LEVEL_FILE || level >= currentLevel() {
 		writeEntry(logEntry{
 			level: level,
@@ -419,5 +418,6 @@ func Logs(w io.Writer) error {
 	if logger != nil {
 		return logger.Logs(w)
 	}
+
 	return nil
 }
