@@ -361,9 +361,9 @@ func (app *App) Start(s service.Service) error {
 	var err error
 
 	if !service.Interactive() {
-		go func(err *error) {
-			*err = app.service()
-		}(&err)
+		go func() {
+			err = app.service()
+		}()
 
 		time.Sleep(time.Duration(*ServiceStartTimeout) * time.Millisecond)
 	}

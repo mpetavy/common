@@ -318,10 +318,14 @@ func Warn(t string, arg ...interface{}) {
 	log(LEVEL_WARN, GetRuntimeInfo(1), t)
 }
 
+func errorString(err error) string {
+	return fmt.Sprintf("%T: %s", err, err.Error())
+}
+
 // Warn prints out the error
 func WarnError(err error) bool {
 	if err != nil {
-		log(LEVEL_WARN, GetRuntimeInfo(1), err.Error())
+		log(LEVEL_WARN, GetRuntimeInfo(1), errorString(err))
 	}
 
 	return err != nil
@@ -363,7 +367,7 @@ func Ignore(arg ...interface{}) bool {
 // Debug prints out the information
 func DebugError(err error) bool {
 	if err != nil {
-		log(LEVEL_DEBUG, GetRuntimeInfo(1), fmt.Sprintf("DebugError: %s", err.Error()))
+		log(LEVEL_DEBUG, GetRuntimeInfo(1), fmt.Sprintf("DebugError: %s", errorString(err)))
 	}
 
 	return err != nil
@@ -372,7 +376,7 @@ func DebugError(err error) bool {
 // Error prints out the error
 func Error(err error) bool {
 	if err != nil {
-		log(LEVEL_ERROR, GetRuntimeInfo(1), err.Error())
+		log(LEVEL_ERROR, GetRuntimeInfo(1), errorString(err))
 	}
 
 	return err != nil
@@ -382,7 +386,7 @@ func Error(err error) bool {
 func Fatal(err error) bool {
 	if err != nil {
 		if _, ok := err.(*ErrExit); !ok {
-			log(LEVEL_FATAL, GetRuntimeInfo(1), err.Error())
+			log(LEVEL_FATAL, GetRuntimeInfo(1), errorString(err))
 
 			panic(err)
 		}
