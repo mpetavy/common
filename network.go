@@ -3,6 +3,9 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
+	"crypto/tls"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -11,6 +14,16 @@ import (
 	"strings"
 	"time"
 )
+
+var (
+	TLSPemFile *string
+	TLSKeyFile *string
+)
+
+func init() {
+	TLSPemFile = flag.String("tls.pem", AppFilename(".server.pem"), "TLS server PEM file")
+	TLSKeyFile = flag.String("tls.key", AppFilename(".server.key"), "TLS server KEY file")
+}
 
 type TimeoutSocket struct {
 	io.ReadWriter
@@ -159,4 +172,32 @@ func FindActiveIPs() ([]string, error) {
 		}
 	}
 	return addresses, nil
+}
+
+func CreateTLSConfig() (*tls.Config, error) {
+	DebugFunc()
+
+	b, err := FileExists(*TLSPemFile)
+	if Error(err) || !b {
+		return nil, nil
+	}
+
+	b, err = FileExists(*TLSKeyFile)
+	if Error(err) || !b {
+		return nil, nil
+	}
+
+	Debug("generate TLS config from pem %s and key %s", *TLSPemFile, *TLSKeyFile)
+
+	cert, err := tls.LoadX509KeyPair(*TLSPemFile, *TLSKeyFile)
+	if Error(err) {
+		return nil, err
+	}
+
+	var tlsConfig tls.Config
+
+	tlsConfig = tls.Config{Certificates: []tls.Certificate{cert}}
+	tlsConfig.Rand = rand.Reader
+
+	return &tlsConfig, nil
 }
