@@ -134,9 +134,9 @@ func (this *logFileWriter) WriteString(txt string) {
 			this.file = nil
 		}
 
-		Ignore(FileBackup(*logFilename))
+		Ignore(FileBackup(realLogFilename()))
 
-		this.file, _ = os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
+		this.file, _ = os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
 	}
 
 	if this.file == nil {
@@ -154,12 +154,12 @@ func (this *logFileWriter) Logs(w io.Writer) error {
 		var src string
 
 		if *countBackups == 1 {
-			src = *logFilename + ".bak"
+			src = realLogFilename() + ".bak"
 		} else {
 			if i > 0 {
-				src = *logFilename + "." + strconv.Itoa(i)
+				src = realLogFilename() + "." + strconv.Itoa(i)
 			} else {
-				src = *logFilename
+				src = realLogFilename()
 			}
 		}
 
@@ -186,7 +186,7 @@ func (this *logFileWriter) Close() {
 }
 
 func newLogFileWriter() *logFileWriter {
-	logFile, _ := os.OpenFile(*logFilename, os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
+	logFile, _ := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
 
 	writer := logFileWriter{
 		file: logFile,
@@ -215,12 +215,8 @@ func currentLevel() int {
 func initLog() {
 	DebugFunc()
 
-	if *logFilename == "." {
-		*logFilename = defaultLogFilename
-	}
-
-	if *logFilename != "" {
-		if *logFilename == "memory" {
+	if realLogFilename() != "" {
+		if realLogFilename() == "memory" {
 			logger = newLogMemoryWriter()
 		} else {
 			logger = newLogFileWriter()
@@ -417,4 +413,12 @@ func Logs(w io.Writer) error {
 	}
 
 	return nil
+}
+
+func realLogFilename() string {
+	if *logFilename == "." {
+		return defaultLogFilename
+	} else {
+		return *logFilename
+	}
 }

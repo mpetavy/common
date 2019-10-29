@@ -80,8 +80,6 @@ func init() {
 
 // AppCleanup cleans up all remaining objects
 func deleteTempDir() error {
-	DebugFunc(tempDir)
-
 	b, err := FileExists(tempDir)
 	if err != nil {
 		return err
@@ -90,6 +88,8 @@ func deleteTempDir() error {
 	if !b {
 		return nil
 	}
+
+	DebugFunc(tempDir)
 
 	err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
