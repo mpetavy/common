@@ -122,9 +122,6 @@ type logFileWriter struct {
 }
 
 func (this *logFileWriter) WriteString(txt string) {
-	logEnabled.Unset()
-	defer logEnabled.Set()
-
 	if this.file == nil {
 		return
 	}

@@ -67,13 +67,13 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 }
 
 func FindMainIP() (string, error) {
-	host, err := os.Hostname()
+	hostname, err := os.Hostname()
 	if Error(err) {
 		return "", err
 	}
 
 	if IsWindowsOS() {
-		cmd := exec.Command("nslookup", host)
+		cmd := exec.Command("nslookup", hostname)
 
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -109,16 +109,7 @@ func FindMainIP() (string, error) {
 			return line, nil
 		}
 	} else {
-		path, err := exec.LookPath("hostname")
-		if DebugError(err) {
-			path, err = exec.LookPath("host")
-		}
-
-		if Error(err) {
-			return "", err
-		}
-
-		cmd := exec.Command(path, host)
+		cmd := exec.Command("host", hostname)
 
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -135,11 +126,11 @@ func FindMainIP() (string, error) {
 		ss := strings.Split(output, " ")
 
 		if len(ss) > 0 {
-			return ss[len(ss)-1], nil
+			return strings.TrimSpace(ss[len(ss)-1]), nil
 		}
 	}
 
-	return "", fmt.Errorf("cannot find main ip for %s", host)
+	return "", fmt.Errorf("cannot find main ip for %s", hostname)
 }
 
 func FindActiveIPs() ([]string, error) {
