@@ -7,10 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
-	"runtime"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -19,10 +15,6 @@ type EventConfigurationReset struct {
 }
 
 type EventConfigurationChanged struct {
-	Cfg *bytes.Buffer
-}
-
-type EventConfigurationLoaded struct {
 	Cfg *bytes.Buffer
 }
 
@@ -36,44 +28,57 @@ var (
 	timeout *int
 
 	fileChecker *time.Ticker
-	config      []byte
-	configTime  time.Time
+	fileInfo    os.FileInfo
+	fileConfig  []byte
+
+	mapFlag map[string]string
+	mapEnv  map[string]string
+	mapFile map[string]string
 )
 
 func init() {
 	file = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
 	reset = flag.Bool("cfg.reset", false, "Reset configuration file")
 	timeout = flag.Int("cfg.timeout", 1000, "rescan timeout for configuration change")
+
+	mapFlag = make(map[string]string)
+	mapEnv = make(map[string]string)
+	mapFile = make(map[string]string)
 }
 
 func initConfiguration() error {
 	DebugFunc()
 
-	err := readEnv()
+	err := registerArgsFlags()
 	if err != nil {
 		return err
 	}
 
-	ba, ti, err := readFile()
+	err = registerEnvFlags()
+	if err != nil {
+		return err
+	}
+
+	ba, err := readFile()
+	if err != nil {
+		return err
+	}
+
+	err = registerFileFlags(ba)
+	if err != nil {
+		return err
+	}
+
+	err = setFlags()
 	if err != nil {
 		return err
 	}
 
 	if *reset {
-		err := setFlags(ba)
+		err = ResetConfiguration()
 		if err != nil {
 			return err
 		}
-
-		ba, ti, err = resetCfg()
-		if err != nil {
-			return err
-		}
-	}
-
-	err = activateCfg(ba, ti)
-	if err != nil {
-		return err
 	}
 
 	if *file != "" && *timeout > 0 {
@@ -92,96 +97,231 @@ func initConfiguration() error {
 }
 
 func ResetConfiguration() error {
-	_, _, err := resetCfg()
+	*reset = false
 
-	return err
-}
+	cfg := Configuration{}
+	cfg.Flags = make(map[string]interface{})
+	for k, v := range mapFile {
+		cfg.Flags[k] = v
+	}
 
-func GetConfiguration() []byte {
-	return config
-}
-
-func SetConfiguration(ba []byte) error {
-	ti, err := writeFile(ba)
+	ba, err := json.Marshal(&cfg)
 	if err != nil {
 		return err
 	}
 
-	return activateCfg(ba, ti)
-}
+	buf := bytes.NewBuffer(ba)
 
-func activateCfg(ba []byte, ti time.Time) error {
-	DebugFunc()
+	Events.Emit(EventConfigurationReset{buf})
 
-	config = ba
-	configTime = ti
-
-	err := setFlags(config)
+	err = writeFile(ba)
 	if err != nil {
 		return err
 	}
 
-	Events.Emit(EventConfigurationChanged{bytes.NewBuffer(config)})
+	err = registerFileFlags(ba)
+	if err != nil {
+		return err
+	}
+
+	err = setFlags()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func readFile() ([]byte, time.Time, error) {
+func GetConfiguration() []byte {
+	return fileConfig
+}
+
+func SetConfiguration(ba []byte) error {
+	err := writeFile(ba)
+	if err != nil {
+		return err
+	}
+
+	err = registerFileFlags(ba)
+	if err != nil {
+		return err
+	}
+
+	err = setFlags()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func readFile() ([]byte, error) {
 	DebugFunc(*file)
 
 	b, err := FileExists(*file)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, err
 	}
 
 	if !b {
-		return nil, time.Time{}, nil
+		return nil, nil
 	}
 
 	ba, err := ioutil.ReadFile(*file)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, err
 	}
 
-	fileInfo, err := os.Stat(*file)
+	fileConfig = ba
+
+	fileInfo, err = os.Stat(*file)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, err
 	}
 
-	Events.Emit(EventConfigurationLoaded{bytes.NewBuffer(ba)})
-
-	return ba, fileInfo.ModTime(), nil
+	return ba, nil
 }
 
-func writeFile(ba []byte) (time.Time, error) {
+func writeFile(ba []byte) error {
 	DebugFunc(*file)
 
 	buf := bytes.Buffer{}
 
 	err := json.Indent(&buf, ba, "", "    ")
 	if err != nil {
-		return time.Time{}, err
+		return err
 	}
 
-	if string(buf.Bytes()) != string(config) {
+	if string(buf.Bytes()) != string(fileConfig) {
 		Debug("Reformat of configuration file done")
 
 		err = ioutil.WriteFile(*file, buf.Bytes(), FileMode(true, true, false))
 		if err != nil {
-			return time.Time{}, err
+			return err
+		}
+
+		fileInfo, err = os.Stat(*file)
+		if err != nil {
+			return err
 		}
 	}
 
-	fileInfo, err := os.Stat(*file)
-	if err != nil {
-		return time.Time{}, err
-	}
+	fileConfig = buf.Bytes()
 
-	return fileInfo.ModTime(), nil
+	return nil
 }
 
-func setFlags(ba []byte) error {
+func setFlags() error {
 	DebugFunc()
+
+	var err error
+
+	changed := false
+
+	flag.VisitAll(func(f *flag.Flag) {
+		if f.Name == "cfg.reset" {
+			return
+		}
+
+		vFlag, bFlag := mapFlag[f.Name]
+		vEnv, bEnv := mapEnv[f.Name]
+		vFile, bFile := mapFile[f.Name]
+
+		value := ""
+		origin := ""
+
+		if bFile {
+			value = vFile
+			origin = "file"
+		}
+		if bEnv {
+			value = vEnv
+			origin = "env"
+		}
+		if bFlag {
+			value = vFlag
+			origin = "flag"
+		}
+
+		if value != "" && value != f.Value.String() {
+			changed = true
+
+			Debug("Set flag %s : %s [%s]", f.Name, value, origin)
+
+			tempErr := flag.Set(f.Name, value)
+			if Error(tempErr) && err == nil {
+				err = tempErr
+			}
+		}
+	})
+
+	if changed {
+		Events.Emit(EventConfigurationChanged{bytes.NewBuffer(fileConfig)})
+	}
+
+	return err
+}
+
+func checkChanged() error {
+	fi, err := os.Stat(*file)
+	if err != nil {
+		return err
+	}
+
+	if fi.ModTime() != fileInfo.ModTime() {
+		DebugFunc()
+
+		ba, err := readFile()
+		if err != nil {
+			return err
+		}
+
+		err = registerFileFlags(ba)
+		if err != nil {
+			return err
+		}
+
+		err = setFlags()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func registerArgsFlags() error {
+	DebugFunc(*file)
+
+	mapFlag = make(map[string]string)
+
+	flag.Visit(func(f *flag.Flag) {
+		mapFlag[f.Name] = f.Value.String()
+	})
+
+	return nil
+}
+
+func registerEnvFlags() error {
+	DebugFunc(*file)
+
+	mapEnv = make(map[string]string)
+
+	flag.VisitAll(func(f *flag.Flag) {
+		v := os.Getenv(fmt.Sprintf("%s.%s", Title(), f.Name))
+
+		if v != "" {
+			mapEnv[f.Name] = v
+		}
+	})
+
+	return nil
+}
+
+func registerFileFlags(ba []byte) error {
+	DebugFunc(*file)
+
+	mapFile = make(map[string]string)
 
 	if ba == nil {
 		return nil
@@ -196,112 +336,11 @@ func setFlags(ba []byte) error {
 
 	if cfg.Flags != nil {
 		for k, v := range cfg.Flags {
-			p := strings.Index(k, "@")
-			if p != -1 {
-				targetOs := k[p+1:]
-				k = k[:p]
+			value := fmt.Sprintf("%v", v)
 
-				if targetOs != runtime.GOOS {
-					continue
-				}
-			}
-
-			fl := flag.Lookup(k)
-			if fl != nil && (fl.Value.String() == "" || fl.Value.String() == fl.DefValue) {
-				Debug("flag from %s: %s = %+v", filepath.Base(*file), k, v)
-
-				var err error
-
-				switch value := v.(type) {
-				case string:
-					err = flag.Set(k, value)
-				case float64:
-					i := fmt.Sprintf("%.0f", value)
-					err = flag.Set(k, i)
-				case bool:
-					i := strconv.FormatBool(value)
-					err = flag.Set(k, i)
-				default:
-					err = fmt.Errorf("unknown flag type: %+v", value)
-				}
-
-				if err != nil {
-					return err
-				}
-			}
+			mapFile[k] = value
 		}
 	}
 
 	return nil
-}
-
-func checkChanged() {
-	fi, err := os.Stat(*file)
-	if err != nil {
-		return
-	}
-
-	if fi.ModTime() != configTime {
-		DebugFunc()
-
-		ba, ti, err := readFile()
-		if err != nil {
-			return
-		}
-
-		err = activateCfg(ba, ti)
-		if err != nil {
-			return
-		}
-	}
-}
-
-func readEnv() error {
-	flag.VisitAll(func(f *flag.Flag) {
-		v := os.Getenv(fmt.Sprintf("%s.%s", Title(), f.Name))
-
-		if v != "" {
-			fl := flag.Lookup(f.Name)
-			if fl != nil && (fl.Value.String() == "" || fl.Value.String() == fl.DefValue) {
-				Debug("flag from env: %s = %s", f.Name, v)
-
-				err := flag.Set(f.Name, v)
-				if err != nil {
-					DebugError(err)
-				}
-			}
-		}
-	})
-
-	return nil
-}
-
-func resetCfg() ([]byte, time.Time, error) {
-	DebugFunc(*file)
-
-	*reset = false
-
-	cfg := Configuration{}
-	cfg.Flags = make(map[string]interface{})
-	flag.VisitAll(func(fl *flag.Flag) {
-		if fl.Value.String() != "" && fl.Value.String() != fl.DefValue {
-			cfg.Flags[fl.Name] = fl.Value
-		}
-	})
-
-	ba, err := json.Marshal(&cfg)
-	if err != nil {
-		return nil, time.Time{}, err
-	}
-
-	buf := bytes.NewBuffer(ba)
-
-	Events.Emit(EventConfigurationReset{buf})
-
-	ti, err := writeFile(buf.Bytes())
-	if err != nil {
-		return nil, time.Time{}, err
-	}
-
-	return buf.Bytes(), ti, nil
 }
