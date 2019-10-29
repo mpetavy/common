@@ -72,8 +72,10 @@ func FindMainIP() (string, error) {
 		return "", err
 	}
 
-	if IsWindowsOS() {
-		cmd := exec.Command("nslookup", hostname)
+	path, err := exec.LookPath("nslookup")
+
+	if path != "" {
+		cmd := exec.Command(path, hostname)
 
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
@@ -104,12 +106,16 @@ func FindMainIP() (string, error) {
 		if found && scanner.Scan() {
 			line = strings.TrimSpace(scanner.Text())
 
-			line = line[10:]
+			line = strings.TrimSpace(line[10:])
 
 			return line, nil
 		}
-	} else {
-		cmd := exec.Command("host", hostname)
+	}
+
+	path, err = exec.LookPath("host")
+
+	if path != "" {
+		cmd := exec.Command(path, hostname)
 
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
