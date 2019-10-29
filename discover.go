@@ -66,7 +66,9 @@ func (server *DiscoverServer) Start() error {
 					if err, ok := err.(net.Error); ok && err.Timeout() {
 						break
 					} else {
-						DebugError(err)
+						if !AppDeath().IsSet() {
+							DebugError(err)
+						}
 
 						break
 					}
