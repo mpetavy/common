@@ -50,33 +50,33 @@ func initConfiguration() error {
 	DebugFunc()
 
 	err := registerArgsFlags()
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	err = registerEnvFlags()
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	ba, err := readFile()
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	err = registerFileFlags(ba)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	err = setFlags()
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	if *reset {
 		err = ResetConfiguration()
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 	}
@@ -87,7 +87,7 @@ func initConfiguration() error {
 			for !AppDeath().IsSet() {
 				select {
 				case <-fileChecker.C:
-					checkChanged()
+					Error(checkChanged())
 				}
 			}
 		}()
@@ -106,7 +106,7 @@ func ResetConfiguration() error {
 	}
 
 	ba, err := json.Marshal(&cfg)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -115,17 +115,17 @@ func ResetConfiguration() error {
 	Events.Emit(EventConfigurationReset{buf})
 
 	err = writeFile(ba)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	err = registerFileFlags(ba)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	err = setFlags()
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -138,17 +138,17 @@ func GetConfiguration() []byte {
 
 func SetConfiguration(ba []byte) error {
 	err := writeFile(ba)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	err = registerFileFlags(ba)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	err = setFlags()
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -159,7 +159,7 @@ func readFile() ([]byte, error) {
 	DebugFunc(*file)
 
 	b, err := FileExists(*file)
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 
@@ -168,14 +168,14 @@ func readFile() ([]byte, error) {
 	}
 
 	ba, err := ioutil.ReadFile(*file)
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 
 	fileConfig = ba
 
 	fileInfo, err = os.Stat(*file)
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 
@@ -188,7 +188,7 @@ func writeFile(ba []byte) error {
 	buf := bytes.Buffer{}
 
 	err := json.Indent(&buf, ba, "", "    ")
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -196,12 +196,12 @@ func writeFile(ba []byte) error {
 		Debug("Reformat of configuration file done")
 
 		err = ioutil.WriteFile(*file, buf.Bytes(), FileMode(true, true, false))
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 
 		fileInfo, err = os.Stat(*file)
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 	}
@@ -264,7 +264,7 @@ func setFlags() error {
 
 func checkChanged() error {
 	fi, err := os.Stat(*file)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -272,17 +272,17 @@ func checkChanged() error {
 		DebugFunc()
 
 		ba, err := readFile()
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 
 		err = registerFileFlags(ba)
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 
 		err = setFlags()
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 	}
@@ -330,7 +330,7 @@ func registerFileFlags(ba []byte) error {
 	cfg := Configuration{}
 
 	err := json.Unmarshal(ba, &cfg)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
