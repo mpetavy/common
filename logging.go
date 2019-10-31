@@ -149,6 +149,19 @@ func (this *logFileWriter) WriteString(txt string) {
 	this.c++
 }
 
+func fileExists(filename string) (bool, error) {
+	var b bool
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		b = false
+		err = nil
+	} else {
+		b = err == nil
+	}
+
+	return b, err
+}
+
 func (this *logFileWriter) Logs(w io.Writer) error {
 	for i := *countBackups; i >= 0; i-- {
 		var src string
@@ -156,7 +169,7 @@ func (this *logFileWriter) Logs(w io.Writer) error {
 		if *countBackups == 1 {
 			src = realLogFilename() + ".bak"
 
-			b, _ := FileExists(src)
+			b, _ := fileExists(src)
 			if !b {
 				src = ""
 			}

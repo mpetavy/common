@@ -172,7 +172,7 @@ func FileExists(filename string) (bool, error) {
 	return b, err
 }
 
-// FileExists does ... guess what :-)
+// FileDelete does ... guess what :-)
 func FileDelete(filename string) error {
 	b, err := FileExists(filename)
 	if err != nil {
@@ -188,7 +188,7 @@ func FileDelete(filename string) error {
 	return nil
 }
 
-// FileExists does ... guess what :-)
+// FileDate does ... guess what :-)
 func FileDate(filename string) (time.Time, error) {
 	f, err := os.Stat(filename)
 	if err != nil {
@@ -246,7 +246,7 @@ func FileCopy(src string, dst string) error {
 	return nil
 }
 
-// FileStore creats backup of files
+// FileStore creates backup of files
 func FileStore(filename string, r io.Reader) error {
 	// create the file
 	out, err := os.Create(filename)
