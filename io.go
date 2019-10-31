@@ -75,7 +75,7 @@ func init() {
 		Error(deleteTempDir())
 	})
 
-	countBackups = flag.Int("filebackup", 5, "amount of file backups")
+	countBackups = flag.Int("filebackup", 1, "amount of file backups")
 }
 
 // AppCleanup cleans up all remaining objects

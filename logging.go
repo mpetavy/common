@@ -155,7 +155,14 @@ func (this *logFileWriter) Logs(w io.Writer) error {
 
 		if *countBackups == 1 {
 			src = realLogFilename() + ".bak"
-		} else {
+
+			b, _ := FileExists(src)
+			if !b {
+				src = ""
+			}
+		}
+
+		if src == "" {
 			if i > 0 {
 				src = realLogFilename() + "." + strconv.Itoa(i)
 			} else {

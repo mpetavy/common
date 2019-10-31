@@ -101,7 +101,7 @@ func ToBool(s string) bool {
 
 	s = strings.ToLower(s)
 
-	return s == "true" || s == "t" || s == "1"
+	return s == "true" || s == "1" || strings.HasPrefix(s, "t") || strings.HasPrefix(s, "y") || strings.HasPrefix(s, "j")
 }
 
 // Translate a i18n message
