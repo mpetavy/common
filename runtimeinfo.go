@@ -116,7 +116,7 @@ func GetSystemInfo() (SystemInfo, error) {
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		err := Watchdog(cmd, time.Millisecond*time.Duration(time.Second))
+		err := Watchdog(cmd, time.Second*10)
 		if !Error(err) {
 			splits := strings.Split(string(stdout.Bytes()), ",")
 
