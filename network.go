@@ -12,17 +12,20 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 )
 
 var (
 	TLSPemFile *string
 	TLSKeyFile *string
+	muTLS      sync.Mutex
+	tlsConfig  *tls.Config
 )
 
 func init() {
-	TLSPemFile = flag.String("tls.pem", AppFilename(".server.pem"), "TLS server PEM file")
-	TLSKeyFile = flag.String("tls.key", AppFilename(".server.key"), "TLS server KEY file")
+	TLSPemFile = flag.String("tls.pemfile", AppFilename(".cert.pem"), "TLS server PEM file")
+	TLSKeyFile = flag.String("tls.keyfile", AppFilename(".cert.key"), "TLS server KEY file")
 }
 
 type TimeoutSocket struct {
@@ -171,7 +174,7 @@ func FindActiveIPs() ([]string, error) {
 	return addresses, nil
 }
 
-func CreateTLSConfig() (*tls.Config, error) {
+func verifyTLSConfig() (*tls.Config, error) {
 	DebugFunc()
 
 	b, err := FileExists(*TLSPemFile)
@@ -197,4 +200,49 @@ func CreateTLSConfig() (*tls.Config, error) {
 	tlsConfig.Rand = rand.Reader
 
 	return &tlsConfig, nil
+}
+
+func createTLSConfig() (*tls.Config, error) {
+	DebugFunc()
+
+	hostname, err := os.Hostname()
+	if WarnError(err) {
+		hostname = "localhost"
+	}
+
+	path, err := exec.LookPath("openssl")
+
+	if path != "" {
+		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *TLSPemFile, "-keyout", *TLSKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
+
+		err := Watchdog(cmd, time.Second*3)
+		if Error(err) {
+			return nil, nil
+		}
+
+		return verifyTLSConfig()
+	}
+
+	return nil, fmt.Errorf("openssl not available")
+}
+
+func GetTLSConfig() (*tls.Config, error) {
+	DebugFunc()
+
+	muTLS.Lock()
+	defer muTLS.Unlock()
+
+	var err error
+
+	if tlsConfig == nil {
+		tlsConfig, _ = verifyTLSConfig()
+
+		if tlsConfig != nil {
+			return tlsConfig, nil
+		}
+
+		tlsConfig, err = createTLSConfig()
+	}
+
+	return tlsConfig, err
 }
