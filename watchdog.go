@@ -43,7 +43,7 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 		return err
 	}
 
-	Debug("watchdog started process pid: %d cmd: %s ...", cmd.Process.Pid, ToString(*cmd))
+	Debug("watchdog observes process pid: %d timeout %v cmd: %s ...", cmd.Process.Pid, timeout, ToString(*cmd))
 
 	go func() {
 		doneCh <- cmd.Wait()
@@ -51,11 +51,12 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 
 	select {
 	case <-time.After(timeout):
+		Debug("watchdog killed process pid: %d timeout %v cmd: %s time: %s", cmd.Process.Pid, timeout, ToString(*cmd), time.Since(start))
 		DebugError(cmd.Process.Kill())
 
 		return &ErrWatchdog{cmd.Process.Pid, start, cmd}
 	case err = <-doneCh:
-		Debug("watchdog finished successfully process pid: %d cmd: %s time: %s", cmd.Process.Pid, ToString(*cmd), time.Since(start))
+		Debug("watchdog accept process pid: %d timeout %v cmd: %s time: %s", cmd.Process.Pid, timeout, ToString(*cmd), time.Since(start))
 		return err
 	}
 }
