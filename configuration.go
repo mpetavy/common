@@ -263,9 +263,9 @@ func setFlags() error {
 }
 
 func checkChanged() error {
-	fi, err := os.Stat(*file)
-	if Error(err) {
-		return err
+	fi, _ := os.Stat(*file)
+	if fi == nil {
+		return nil
 	}
 
 	if fi.ModTime() != fileInfo.ModTime() {
