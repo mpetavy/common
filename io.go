@@ -156,8 +156,7 @@ func CreateTempDir() (string, error) {
 	return tempdir, err
 }
 
-// FileExists does ... guess what :-)
-func FileExists(filename string) (bool, error) {
+func fileExists(filename string) (bool, error) {
 	var b bool
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
@@ -166,6 +165,13 @@ func FileExists(filename string) (bool, error) {
 	} else {
 		b = err == nil
 	}
+
+	return b, err
+}
+
+// FileExists does ... guess what :-)
+func FileExists(filename string) (bool, error) {
+	b, err := fileExists(filename)
 
 	Debug(fmt.Sprintf("FileExists %s: %v", filename, b))
 
