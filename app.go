@@ -50,6 +50,10 @@ type App struct {
 	TickFunc func() error
 	//TickTime
 	TickTime time.Duration
+	//Service
+	Service service.Service
+	//ServiceConfig
+	ServiceConfig *service.Config
 }
 
 const (
@@ -72,6 +76,8 @@ var (
 	appDeath            = NewNotice()
 	onceBanner          sync.Once
 	onceDone            sync.Once
+	restart             = true
+	restartCh           = make(chan struct{})
 )
 
 func init() {
@@ -320,6 +326,8 @@ func (app *App) service() error {
 
 	for {
 		select {
+		case <-restartCh:
+			return nil
 		case <-kbCh:
 			Info("Terminate: keyboard ENTER key pressed")
 			return nil
@@ -396,13 +404,15 @@ func (app *App) Stop(s service.Service) error {
 }
 
 func run() error {
-	svcConfig := &service.Config{
+	var err error
+
+	app.ServiceConfig = &service.Config{
 		Name:        Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
 		DisplayName: Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
 		Description: app.Description,
 	}
 
-	s, err := service.New(app, svcConfig)
+	app.Service, err = service.New(app, app.ServiceConfig)
 	if err != nil {
 		return err
 	}
@@ -425,18 +435,18 @@ func run() error {
 		}
 
 		if len(args) > 0 {
-			svcConfig.Arguments = args
+			app.ServiceConfig.Arguments = args
 		}
 
 		if *serviceUser != "" {
-			svcConfig.UserName = *serviceUser
+			app.ServiceConfig.UserName = *serviceUser
 		}
 
 		if *servicePassword != "" {
 			option := service.KeyValue{}
 			option["Password"] = *servicePassword
 
-			svcConfig.Option = option
+			app.ServiceConfig.Option = option
 		}
 
 		i, err := IndexOf(serviceActions, *serviceFlag)
@@ -449,39 +459,39 @@ func run() error {
 		}
 
 		if *serviceFlag == "uninstall" {
-			status, err := s.Status()
+			status, err := app.Service.Status()
 			if err != nil {
 				return err
 			}
 
 			if status == service.StatusRunning {
-				err = service.Control(s, "stop")
+				err = service.Control(app.Service, "stop")
 				if err != nil {
 					return err
 				}
 			}
 		}
 
-		err = service.Control(s, *serviceFlag)
+		err = service.Control(app.Service, *serviceFlag)
 		if err != nil {
 			return err
 		}
 
 		switch *serviceFlag {
 		case "install":
-			Info(fmt.Sprintf("Service %s successfully installed", svcConfig.Name))
+			Info(fmt.Sprintf("Service %s successfully installed", app.ServiceConfig.Name))
 			return nil
 		case "uninstall":
-			Info(fmt.Sprintf("Service %s successfully uninstalled", svcConfig.Name))
+			Info(fmt.Sprintf("Service %s successfully uninstalled", app.ServiceConfig.Name))
 			return nil
 		case "start":
-			Info(fmt.Sprintf("Service %s successfully started", svcConfig.Name))
+			Info(fmt.Sprintf("Service %s successfully started", app.ServiceConfig.Name))
 			return nil
 		case "stop":
-			Info(fmt.Sprintf("Service %s successfully stopped", svcConfig.Name))
+			Info(fmt.Sprintf("Service %s successfully stopped", app.ServiceConfig.Name))
 			return nil
 		case "restart":
-			Info(fmt.Sprintf("Service %s successfully restarted", svcConfig.Name))
+			Info(fmt.Sprintf("Service %s successfully restarted", app.ServiceConfig.Name))
 			return nil
 		}
 
@@ -491,29 +501,49 @@ func run() error {
 	// run as service
 
 	if app.IsService && !service.Interactive() {
-		return s.Run()
+		return app.Service.Run()
 	}
 
-	// run as app
+	for restart {
+		restart = false
 
-	if err := app.Start(s); err != nil {
-		return err
-	}
+		// run as app
 
-	if app.TickFunc != nil {
-		if err := app.TickFunc(); err != nil {
+		if err := app.Start(app.Service); err != nil {
+			return err
+		}
+
+		if app.TickFunc != nil {
+			if err := app.TickFunc(); err != nil {
+				return err
+			}
+		}
+
+		if IsRunningAsService() {
+			if err := app.service(); err != nil {
+				return err
+			}
+		}
+
+		if err := app.Stop(app.Service); err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+func Restart() error {
 	if IsRunningAsService() {
-		if err := app.service(); err != nil {
-			return err
-		}
-	}
+		Info("Restart()")
 
-	if err := app.Stop(s); err != nil {
-		return err
+		restart = true
+
+		if service.Interactive() {
+			restartCh <- struct{}{}
+		} else {
+			return app.Service.Restart()
+		}
 	}
 
 	return nil
