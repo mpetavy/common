@@ -158,7 +158,9 @@ func CreateTempDir() (string, error) {
 
 func fileExists(filename string) (bool, error) {
 	var b bool
+
 	_, err := os.Stat(filename)
+
 	if os.IsNotExist(err) {
 		b = false
 		err = nil
