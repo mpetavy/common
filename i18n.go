@@ -18,13 +18,13 @@ import (
 )
 
 var (
-	language       *string
+	Language       *string
 	systemLanguage string
 	i18nFile       *ini.File
 )
 
 func init() {
-	language = flag.String("language", "", "language for messages")
+	Language = flag.String("language", "", "language for messages")
 }
 
 //GetSystemLanguage return BCP 47 standard language name
@@ -130,15 +130,15 @@ func initLanguage() error {
 			return err
 		}
 
-		if *language == "" {
-			*language, err = GetSystemLanguage()
+		if *Language == "" {
+			*Language, err = GetSystemLanguage()
 			if Error(err) {
 				return err
 			}
 		}
 
-		if *language != "" {
-			Error(SetLanguage(*language))
+		if *Language != "" {
+			Error(SetLanguage(*Language))
 		}
 
 		return nil
@@ -191,11 +191,11 @@ func scanStruct(i18ns *[]string, data interface{}) error {
 func SetLanguage(lang string) error {
 	DebugFunc(lang)
 
-	if i18nFile != nil {
+	if i18nFile == nil {
 		return fmt.Errorf("no language file available")
 	}
 
-	*language = lang
+	*Language = lang
 
 	return nil
 }
@@ -214,8 +214,8 @@ func GetLanguages() ([]string, error) {
 
 // Translate a message to the current set language
 func Translate(msg string, args ...interface{}) string {
-	if i18nFile != nil && *language != "" {
-		sec, _ := i18nFile.GetSection(*language)
+	if i18nFile != nil && *Language != "" {
+		sec, _ := i18nFile.GetSection(*Language)
 		if sec != nil {
 			m, err := sec.GetKey(msg)
 
@@ -279,11 +279,26 @@ func CreateI18nFile(objs ...interface{}) error {
 		i18nFile = ini.Empty()
 	}
 
-	for _, i18n := range i18ns {
-		if i18n == "READ timeout (ms)" {
-			fmt.Println("stop")
-		}
+	for _, sec := range i18nFile.Sections() {
+		keys := sec.KeyStrings()
 
+		for _, key := range keys {
+			found := false
+
+			for _, i18n := range i18ns {
+				found = i18n == key
+				if found {
+					break
+				}
+			}
+
+			if !found {
+				sec.DeleteKey(key)
+			}
+		}
+	}
+
+	for _, i18n := range i18ns {
 		secs := i18nFile.Sections()
 
 		for _, sec := range secs {
@@ -304,8 +319,7 @@ func CreateI18nFile(objs ...interface{}) error {
 
 	newFile := ini.Empty()
 
-	secs := i18nFile.Sections()
-	for _, sec := range secs {
+	for _, sec := range i18nFile.Sections() {
 		keys := sec.KeyStrings()
 
 		sort.Strings(keys)
