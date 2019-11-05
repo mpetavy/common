@@ -17,13 +17,13 @@ func (this *filewalker) walkfunc(path string, fi os.FileInfo, err error) error {
 		return err
 	}
 
-	b, err := IsFile(path)
+	f, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
 
-	if b {
-		b = this.filemask == ""
+	if !f.IsDir() {
+		b := this.filemask == ""
 
 		if !b {
 			b, err = EqualWildcards(filepath.Base(path), this.filemask)

@@ -121,6 +121,7 @@ func Run(mandatoryFlags []string) {
 	}
 
 	initLog()
+	initLanguage()
 
 	flag.VisitAll(func(fl *flag.Flag) {
 		if fl.Value.String() != "" && fl.Value.String() != fl.DefValue {
