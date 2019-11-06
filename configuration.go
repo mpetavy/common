@@ -22,6 +22,24 @@ type Configuration struct {
 	Flags map[string]interface{} `json:"flags"`
 }
 
+func (this *Configuration) SetFlag(flagName string, flagValue interface{}) error {
+	if flag.Lookup(flagName) == nil {
+		return fmt.Errorf("unknown flag: %s", flagName)
+	}
+
+	this.Flags[flagName] = flagValue
+
+	return nil
+}
+
+func (this *Configuration) GetFlag(flagName string) (interface{}, error) {
+	if flag.Lookup(flagName) == nil {
+		return "", fmt.Errorf("unknown flag: %s", flagName)
+	}
+
+	return this.Flags[flagName], nil
+}
+
 var (
 	reset   *bool
 	file    *string
