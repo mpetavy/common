@@ -202,6 +202,23 @@ func newLogFileWriter() *logFileWriter {
 	return &writer
 }
 
+func levelToString(level int) string {
+	switch level {
+	case LEVEL_DEBUG:
+		return "debug"
+	case LEVEL_INFO:
+		return "info"
+	case LEVEL_WARN:
+		return "warn"
+	case LEVEL_ERROR:
+		return "error"
+	case LEVEL_FATAL:
+		return "fatal"
+	default:
+		return "info"
+	}
+}
+
 func currentLevel() int {
 	switch strings.ToLower(*logLevel) {
 	case "debug":
