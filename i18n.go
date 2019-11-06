@@ -23,6 +23,10 @@ var (
 	i18nFile       *ini.File
 )
 
+const (
+	DEFAULT_LANGUAGE = "en"
+)
+
 func init() {
 	Language = flag.String("language", "", "language for messages")
 }
@@ -206,7 +210,9 @@ func GetLanguages() ([]string, error) {
 
 	secs := i18nFile.Sections()
 	for _, sec := range secs {
-		list = append(list, sec.Name())
+		if sec.Name() != ini.DefaultSection {
+			list = append(list, sec.Name())
+		}
 	}
 
 	return list, nil
@@ -230,6 +236,8 @@ func Translate(msg string, args ...interface{}) string {
 
 func CreateI18nFile(objs ...interface{}) error {
 	i18ns := make([]string, 0)
+
+	//get i18n from source
 
 	re := regexp.MustCompile("Translate\\(\"(.*?)\"")
 
@@ -265,6 +273,8 @@ func CreateI18nFile(objs ...interface{}) error {
 
 	sort.Strings(i18ns)
 
+	// remove duplicates
+
 	for i := 1; i < len(i18ns); i++ {
 		if i18ns[i] == i18ns[i-1] {
 			if i+1 == len(i18ns) {
@@ -279,39 +289,47 @@ func CreateI18nFile(objs ...interface{}) error {
 		i18nFile = ini.Empty()
 	}
 
+	// remove non existing i18ns from list
+
 	for _, sec := range i18nFile.Sections() {
-		keys := sec.KeyStrings()
+		if sec.Name() != ini.DefaultSection {
+			keys := sec.KeyStrings()
 
-		for _, key := range keys {
-			found := false
+			for _, key := range keys {
+				found := false
 
-			for _, i18n := range i18ns {
-				found = i18n == key
-				if found {
-					break
+				for _, i18n := range i18ns {
+					found = i18n == key
+					if found {
+						break
+					}
 				}
-			}
 
-			if !found {
-				sec.DeleteKey(key)
+				if !found {
+					sec.DeleteKey(key)
+				}
 			}
 		}
 	}
+
+	// update all languages with found i18ns
 
 	for _, i18n := range i18ns {
 		secs := i18nFile.Sections()
 
 		for _, sec := range secs {
-			key, _ := sec.GetKey(i18n)
-			if key != nil {
-				if sec.Name() == ini.DefaultSection {
-					key.SetValue(i18n)
-				}
-			} else {
-				if sec.Name() == ini.DefaultSection {
-					Ignore(sec.NewKey(i18n, i18n))
+			if sec.Name() != ini.DefaultSection {
+				key, _ := sec.GetKey(i18n)
+				if key != nil {
+					if sec.Name() == DEFAULT_LANGUAGE {
+						key.SetValue(i18n)
+					}
 				} else {
-					Ignore(sec.NewKey(i18n, ""))
+					if sec.Name() == DEFAULT_LANGUAGE {
+						Ignore(sec.NewKey(i18n, i18n))
+					} else {
+						Ignore(sec.NewKey(i18n, ""))
+					}
 				}
 			}
 		}
@@ -320,22 +338,24 @@ func CreateI18nFile(objs ...interface{}) error {
 	newFile := ini.Empty()
 
 	for _, sec := range i18nFile.Sections() {
-		keys := sec.KeyStrings()
+		if sec.Name() != ini.DefaultSection {
+			keys := sec.KeyStrings()
 
-		sort.Strings(keys)
+			sort.Strings(keys)
 
-		newSec, err := newFile.NewSection(sec.Name())
-		if Error(err) {
-			return err
-		}
-
-		for _, key := range keys {
-			k, err := sec.GetKey(key)
+			newSec, err := newFile.NewSection(sec.Name())
 			if Error(err) {
 				return err
 			}
 
-			Ignore(newSec.NewKey(key, k.Value()))
+			for _, key := range keys {
+				k, err := sec.GetKey(key)
+				if Error(err) {
+					return err
+				}
+
+				Ignore(newSec.NewKey(key, k.Value()))
+			}
 		}
 	}
 
