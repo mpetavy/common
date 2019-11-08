@@ -56,7 +56,7 @@ func (server *DiscoverServer) Start() error {
 			default:
 				err := server.listener.SetDeadline(DeadlineByDuration(server.timeout))
 				if err != nil {
-					Error(err)
+					WarnError(err)
 
 					break
 				}
@@ -87,7 +87,7 @@ func (server *DiscoverServer) Start() error {
 				Debug("answer positive discover with info %s to %+v", server.info, peer)
 
 				if _, err := server.listener.WriteTo([]byte(server.info), peer); err != nil {
-					Error(err)
+					WarnError(err)
 				}
 			}
 		}
@@ -186,7 +186,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 	for {
 		err := c.SetDeadline(DeadlineByDuration(timeout))
 		if err != nil {
-			Error(err)
+			WarnError(err)
 
 			break
 		}
@@ -202,7 +202,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 
 		host, port, err := net.SplitHostPort(peer.String())
 		if err != nil {
-			Error(err)
+			WarnError(err)
 
 			continue
 		}

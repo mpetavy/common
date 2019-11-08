@@ -29,10 +29,9 @@ const (
 )
 
 var (
-	logLevel           *string
+	logVerbose         *bool
 	logFilename        *string
 	logSize            *int
-	logEnabled         = NewNotice()
 	logger             logWriter
 	defaultLogFilename string
 	mu                 sync.Mutex
@@ -43,7 +42,7 @@ func init() {
 
 	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
 	logSize = flag.Int("log.size", 1000, "max amount of log lines")
-	logLevel = flag.String("log.level", "info", "log level (debug,info,error,fatal)")
+	logVerbose = flag.Bool("log.verbose", false, "verbose logging")
 }
 
 type ErrExit struct {
@@ -58,23 +57,7 @@ type logEntry struct {
 }
 
 func (l *logEntry) String() string {
-	level := ""
-
-	switch l.level {
-	case LEVEL_FILE:
-		level = "FILE"
-	case LEVEL_DEBUG:
-		level = "DEBUG"
-	case LEVEL_INFO:
-		level = "INFO"
-	case LEVEL_WARN:
-		level = "WARN"
-	case LEVEL_ERROR:
-		level = "ERROR"
-	case LEVEL_FATAL:
-		level = "FATAL"
-	}
-	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), level, l.ri.String(), Capitalize(l.msg)), "\r\n")
+	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), levelToString(l.level), l.ri.String(), Capitalize(l.msg)), "\r\n")
 }
 
 type logWriter interface {
@@ -205,34 +188,17 @@ func newLogFileWriter() *logFileWriter {
 func levelToString(level int) string {
 	switch level {
 	case LEVEL_DEBUG:
-		return "debug"
+		return "DEBUG"
 	case LEVEL_INFO:
-		return "info"
+		return "INFO"
 	case LEVEL_WARN:
-		return "warn"
+		return "WARN"
 	case LEVEL_ERROR:
-		return "error"
+		return "ERROR"
 	case LEVEL_FATAL:
-		return "fatal"
+		return "FATAL"
 	default:
-		return "info"
-	}
-}
-
-func currentLevel() int {
-	switch strings.ToLower(*logLevel) {
-	case "debug":
-		return LEVEL_DEBUG
-	case "info":
-		return LEVEL_INFO
-	case "warn":
-		return LEVEL_WARN
-	case "error":
-		return LEVEL_ERROR
-	case "fatal":
-		return LEVEL_FATAL
-	default:
-		return LEVEL_INFO
+		return "INFO"
 	}
 }
 
@@ -247,8 +213,6 @@ func initLog() {
 		}
 	}
 
-	logEnabled.Set()
-
 	if app != nil {
 		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 98)))
 		prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
@@ -256,13 +220,9 @@ func initLog() {
 }
 
 func writeEntry(entry logEntry) {
-	if !logEnabled.IsSet() {
-		return
-	}
-
 	if entry.level != LEVEL_FILE {
 		s := entry.String()
-		if currentLevel() > LEVEL_DEBUG {
+		if logVerbose == nil || !*logVerbose {
 			if entry.level > LEVEL_WARN && len(s) > 71 {
 				s = s[24:]
 			} else {
@@ -332,7 +292,7 @@ func Warn(t string, arg ...interface{}) {
 }
 
 func errorString(err error) string {
-	return fmt.Sprintf("%T: %s", err, err.Error())
+	return fmt.Sprintf("[%T] %s", err, err.Error())
 }
 
 // Warn prints out the error
@@ -409,14 +369,10 @@ func Fatal(err error) bool {
 }
 
 func log(level int, ri RuntimeInfo, msg string) {
-	if !logEnabled.IsSet() {
-		return
-	}
-
 	mu.Lock()
 	defer mu.Unlock()
 
-	if level == LEVEL_FILE || level >= currentLevel() {
+	if level == LEVEL_FILE || (logVerbose != nil && *logVerbose) || level > LEVEL_DEBUG {
 		writeEntry(logEntry{
 			level: level,
 			ri:    ri,

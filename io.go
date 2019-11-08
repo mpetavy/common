@@ -72,7 +72,7 @@ func init() {
 	}
 
 	AddShutdownHook(func() {
-		Error(deleteTempDir())
+		WarnError(deleteTempDir())
 	})
 
 	countBackups = flag.Int("filebackup", 1, "amount of file backups")
@@ -441,7 +441,7 @@ func CleanPath(path string) string {
 		}
 
 		if err != nil {
-			Error(err)
+			WarnError(err)
 		} else {
 			result = filepath.Join(dir, result)
 		}
