@@ -284,3 +284,41 @@ func ReflectStructMethod(Iface interface{}, MethodName string) (*reflect.Value, 
 	}
 	return &method, nil
 }
+
+func IterateStruct(data interface{}, function func(typ reflect.StructField, val reflect.Value) error) error {
+	DebugFunc()
+
+	val, ok := data.(reflect.Value)
+	if !ok {
+		val = reflect.Indirect(reflect.ValueOf(data))
+	}
+	typ := val.Type()
+
+	if typ.Kind() != reflect.Struct {
+		return fmt.Errorf("not a struct: %s", typ.Name())
+	}
+
+	DebugFunc("struct: %s", typ.Name())
+
+	for i := 0; i < val.NumField(); i++ {
+		DebugFunc("field #$d: %s = %s : %s", typ.Field(i).Name, val.Field(i).Type().Name(), val.Field(i).Kind().String())
+
+		if function != nil {
+			err := function(typ.Field(i), val.Field(i))
+			if Error(err) {
+				return err
+			}
+		}
+
+		if val.Field(i).Kind() == reflect.Struct {
+			err := IterateStruct(val.Field(i), function)
+			if err != nil {
+				return err
+			}
+
+			continue
+		}
+	}
+
+	return nil
+}

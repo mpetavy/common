@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	Language       *string
+	language       *string
 	systemLanguage string
 	i18nFile       *ini.File
 )
@@ -28,7 +28,7 @@ const (
 )
 
 func init() {
-	Language = flag.String("language", "", "language for messages")
+	language = flag.String("language", "", "language for messages")
 }
 
 //GetSystemLanguage return BCP 47 standard language name
@@ -134,15 +134,15 @@ func initLanguage() error {
 			return err
 		}
 
-		if *Language == "" {
-			*Language, err = GetSystemLanguage()
+		if *language == "" {
+			*language, err = GetSystemLanguage()
 			if Error(err) {
 				return err
 			}
 		}
 
-		if *Language != "" {
-			Error(SetLanguage(*Language))
+		if *language != "" {
+			WarnError(SetLanguage(*language))
 		}
 
 		return nil
@@ -199,7 +199,7 @@ func SetLanguage(lang string) error {
 		return fmt.Errorf("no language file available")
 	}
 
-	*Language = lang
+	*language = lang
 
 	return nil
 }
@@ -220,8 +220,8 @@ func GetLanguages() ([]string, error) {
 
 // Translate a message to the current set language
 func Translate(msg string, args ...interface{}) string {
-	if i18nFile != nil && *Language != "" {
-		sec, _ := i18nFile.GetSection(*Language)
+	if i18nFile != nil && *language != "" {
+		sec, _ := i18nFile.GetSection(*language)
 		if sec != nil {
 			m, err := sec.GetKey(msg)
 

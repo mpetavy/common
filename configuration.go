@@ -57,7 +57,7 @@ var (
 func init() {
 	file = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
 	reset = flag.Bool("cfg.reset", false, "Reset configuration file")
-	timeout = flag.Int("cfg.timeout", 1000, "rescan timeout for configuration change")
+	timeout = flag.Int("cfg.timeout", 0, "rescan timeout for configuration change") // FIXME
 
 	mapFlag = make(map[string]string)
 	mapEnv = make(map[string]string)
@@ -105,7 +105,7 @@ func initConfiguration() error {
 			for !AppDeath().IsSet() {
 				select {
 				case <-fileChecker.C:
-					Error(checkChanged())
+					WarnError(checkChanged())
 				}
 			}
 		}()
@@ -266,10 +266,7 @@ func setFlags() error {
 
 			Debug("Set flag %s : %s [%s]", f.Name, value, origin)
 
-			tempErr := flag.Set(f.Name, value)
-			if Error(tempErr) && err == nil {
-				err = tempErr
-			}
+			WarnError(flag.Set(f.Name, value))
 		}
 	})
 
