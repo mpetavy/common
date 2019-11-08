@@ -27,7 +27,7 @@ type SystemInfo struct {
 	KernelName    string
 	KernelVersion string
 	KernelRelease string
-	Machine       string
+	Platform      string
 	MemTotal      string
 	MemFree       string
 }
@@ -177,7 +177,7 @@ func GetSystemInfo() (SystemInfo, error) {
 		si.KernelName = splits[3]
 		si.KernelVersion = splits[62]
 		si.KernelRelease = splits[2]
-		si.Machine = splits[38]
+		si.Platform = splits[38]
 
 		return si, nil
 	}
@@ -230,7 +230,7 @@ func GetSystemInfo() (SystemInfo, error) {
 	si.KernelName = kernelNameRunner.output
 	si.KernelRelease = kernelReleaseRunner.output
 	si.KernelVersion = kernelVersionRunner.output
-	si.Machine = machineRunner.output
+	si.Platform = machineRunner.output
 
 	return si, nil
 }
