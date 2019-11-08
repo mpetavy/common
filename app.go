@@ -110,7 +110,7 @@ func Run(mandatoryFlags []string) {
 		serviceFlag = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		serviceUser = flag.String(SERVICE_USERNAME, "", "Service user")
 		servicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
-		ServiceStartTimeout = flag.Int(SERVICE_TIMEOUT, 1000, "Server start timeout")
+		ServiceStartTimeout = flag.Int(SERVICE_TIMEOUT, 500, "Server start timeout")
 	}
 
 	flag.Parse()
