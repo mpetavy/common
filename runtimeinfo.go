@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -40,7 +42,9 @@ type runner struct {
 
 func (this *runner) execute(cmd *exec.Cmd, timeout time.Duration, wg *sync.WaitGroup) {
 	defer func() {
-		wg.Done()
+		if wg != nil {
+			wg.Done()
+		}
 	}()
 
 	var stdout bytes.Buffer
@@ -98,8 +102,43 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 	return RuntimeInfo{dir, pack, file, fn, line}
 }
 
-func removeApostroph(txt string) string {
-	return txt[1 : len(txt)-1]
+func readStringTable(txt string, separator string) []string {
+	r := bufio.NewReader(strings.NewReader(txt))
+
+	lines := make([]string, 2)
+	splits := make([]string, 0)
+
+	length := 0
+
+	for i := 0; i < 2; i++ {
+		line, err := r.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		lines[i] = line
+		length = Max(length, len(lines[i]))
+	}
+
+	start := 0
+
+	for col := 0; col < length; col++ {
+		c := 0
+		for l := 0; l < len(lines); l++ {
+			if col >= len(lines[l]) || (col > 1) && lines[l][col-2:col] == separator {
+				c++
+			}
+		}
+
+		if c == len(lines) {
+			split := strings.TrimSpace(lines[1][start:col])
+
+			splits = append(splits, split)
+
+			start = col
+		}
+	}
+
+	return splits
 }
 
 func GetSystemInfo() (SystemInfo, error) {
@@ -108,25 +147,37 @@ func GetSystemInfo() (SystemInfo, error) {
 	si := SystemInfo{}
 
 	if IsWindowsOS() {
-		cmd := exec.Command("systeminfo", "/fo", "csv", "/nh")
+		var wmicOSRunner runner
 
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
+		wmicOSRunner.execute(exec.Command("wmic", "os"), time.Second, nil)
 
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
+		splits := readStringTable(wmicOSRunner.output, "  ")
 
-		err := Watchdog(cmd, time.Second*10)
-		if !Error(err) {
-			splits := strings.Split(string(stdout.Bytes()), ",")
+		si.MemFree = splits[20] + "+" + splits[22]
+		mem0, err := strconv.Atoi(splits[20])
+		if err == nil {
+			mem1, err := strconv.Atoi(splits[22])
 
-			si.KernelName = removeApostroph(splits[1])
-			si.KernelRelease = removeApostroph(splits[5])
-			si.KernelVersion = removeApostroph(splits[2][:strings.Index(splits[2], " ")])
-			si.Machine = removeApostroph(splits[15])
-			si.MemTotal = removeApostroph(splits[31])
-			si.MemFree = removeApostroph(splits[33])
+			if err == nil {
+				mem := float64(mem0+mem1) / float64(1024*1024)
+
+				si.MemFree = fmt.Sprintf("%f MB", mem)
+
+			}
 		}
+
+		si.MemTotal = splits[60]
+		mem0, err = strconv.Atoi(splits[60])
+		if err == nil {
+			mem := float64(mem0) / float64(1024*1024)
+
+			si.MemTotal = fmt.Sprintf("%f MB", mem)
+		}
+
+		si.KernelName = splits[3]
+		si.KernelVersion = splits[62]
+		si.KernelRelease = splits[2]
+		si.Machine = splits[38]
 
 		return si, nil
 	}
