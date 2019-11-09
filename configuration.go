@@ -213,6 +213,11 @@ func writeFile(ba []byte) error {
 	if string(buf.Bytes()) != string(fileConfig) {
 		Debug("Reformat of configuration file done")
 
+		err := FileBackup(*file)
+		if Error(err) {
+			return err
+		}
+
 		err = ioutil.WriteFile(*file, buf.Bytes(), FileMode(true, true, false))
 		if Error(err) {
 			return err
