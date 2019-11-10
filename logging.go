@@ -130,7 +130,7 @@ func (this *logFileWriter) WriteString(txt string) {
 
 		Ignore(FileBackup(realLogFilename()))
 
-		this.file, _ = os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileFileMode)
+		this.file, _ = os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
 	}
 
 	if this.file == nil {
@@ -190,7 +190,7 @@ func (this *logFileWriter) Close() {
 
 func newLogFileWriter() *logFileWriter {
 	filesize, _ := FileSize(realLogFilename())
-	logFile, _ := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileFileMode)
+	logFile, _ := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
 
 	writer := logFileWriter{
 		file:     logFile,

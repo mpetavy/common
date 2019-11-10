@@ -211,7 +211,7 @@ func writeFile(ba []byte) error {
 
 		Error(FileBackup(*file))
 
-		err = ioutil.WriteFile(*file, buf.Bytes(), FileFileMode)
+		err = ioutil.WriteFile(*file, buf.Bytes(), DefaultFileMode)
 		if Error(err) {
 			return err
 		}
