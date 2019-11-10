@@ -31,7 +31,7 @@ const (
 var (
 	logVerbose         *bool
 	logFilename        *string
-	logSize            *int
+	logFilesize        *int64
 	logger             logWriter
 	defaultLogFilename string
 	mu                 sync.Mutex
@@ -41,7 +41,7 @@ func init() {
 	defaultLogFilename = CleanPath(AppFilename(".log"))
 
 	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
-	logSize = flag.Int("log.size", 1000, "max amount of log lines")
+	logFilesize = flag.Int64("log.filesize", 5*1024*1024, "max log file size")
 	logVerbose = flag.Bool("log.verbose", false, "verbose logging")
 }
 
@@ -93,15 +93,15 @@ func (this *logMemoryWriter) Close() {
 
 func newLogMemoryWriter() *logMemoryWriter {
 	writer := logMemoryWriter{
-		lines: make([]string, *logSize),
+		lines: make([]string, 1000),
 	}
 
 	return &writer
 }
 
 type logFileWriter struct {
-	c    int
-	file *os.File
+	filesize int64
+	file     *os.File
 }
 
 func (this *logFileWriter) WriteString(txt string) {
@@ -109,8 +109,8 @@ func (this *logFileWriter) WriteString(txt string) {
 		return
 	}
 
-	if this.c == *logSize {
-		this.c = 0
+	if this.filesize >= *logFilesize {
+		this.filesize = 0
 
 		if this.file != nil {
 			Ignore(this.file.Close())
@@ -119,17 +119,19 @@ func (this *logFileWriter) WriteString(txt string) {
 
 		Ignore(FileBackup(realLogFilename()))
 
-		this.file, _ = os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
+		this.file, _ = os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileFileMode)
 	}
 
 	if this.file == nil {
 		return
 	}
 
-	Ignore(this.file.Write([]byte(txt)))
+	ba := []byte(txt)
+
+	Ignore(this.file.Write(ba))
 	Ignore(this.file.Sync())
 
-	this.c++
+	this.filesize += int64(len(ba))
 }
 
 func (this *logFileWriter) Logs(w io.Writer) error {
@@ -176,10 +178,12 @@ func (this *logFileWriter) Close() {
 }
 
 func newLogFileWriter() *logFileWriter {
-	logFile, _ := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileMode(true, true, false))
+	filesize, _ := FileSize(realLogFilename())
+	logFile, _ := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, FileFileMode)
 
 	writer := logFileWriter{
-		file: logFile,
+		file:     logFile,
+		filesize: filesize,
 	}
 
 	return &writer

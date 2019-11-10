@@ -73,11 +73,11 @@ var (
 	usage               *bool
 	NoBanner            bool
 	ticker              *time.Ticker
-	appDeath            = NewNotice()
+	appLifecycle        *Notice
 	onceBanner          sync.Once
 	onceDone            sync.Once
-	restart             = true
-	restartCh           = make(chan struct{})
+	restart             bool
+	restartCh           chan struct{}
 )
 
 func init() {
@@ -306,28 +306,37 @@ func (app *App) service() error {
 
 	info()
 
-	ctrlC := make(chan os.Signal, 1)
-	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-
-	kbCh := make(chan struct{})
-
-	if service.Interactive() {
-		go func() {
-			r := bufio.NewReader(os.Stdin)
-
-			var s string
-
-			for len(s) == 0 {
-				s, _ = r.ReadString('\n')
-			}
-
-			kbCh <- struct{}{}
-		}()
-	}
+	restartCh = make(chan struct{})
+	restart = false
 
 	for {
+		ctrlC := make(chan os.Signal, 1)
+		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
+
+		kbCh := make(chan struct{})
+
+		if service.Interactive() {
+			go func() {
+				r := bufio.NewReader(os.Stdin)
+
+				var s string
+
+				for len(s) == 0 {
+					s, _ = r.ReadString('\n')
+				}
+
+				kbCh <- struct{}{}
+			}()
+		}
+
 		select {
+		//case <-time.After(time.Second):
+		//	Info("Restart on time")
+		//	restart = true
+		//	return nil
 		case <-restartCh:
+			Info("Restart on request")
+			restart = true
 			return nil
 		case <-kbCh:
 			Info("Terminate: keyboard ENTER key pressed")
@@ -357,6 +366,9 @@ func (app *App) service() error {
 }
 
 func (app *App) Start(s service.Service) error {
+	appLifecycle = NewNotice()
+	appLifecycle.Set()
+
 	if IsRunningAsService() {
 		Info("Start()")
 	}
@@ -367,21 +379,11 @@ func (app *App) Start(s service.Service) error {
 		}
 	}
 
-	var err error
-
-	if !service.Interactive() {
-		go func() {
-			err = app.service()
-		}()
-
-		time.Sleep(time.Duration(*ServiceStartTimeout) * time.Millisecond)
-	}
-
-	return err
+	return nil
 }
 
-func AppDeath() *Notice {
-	return appDeath
+func AppLifecycle() *Notice {
+	return appLifecycle
 }
 
 func (app *App) Stop(s service.Service) error {
@@ -389,7 +391,7 @@ func (app *App) Stop(s service.Service) error {
 		Info("Stop()")
 	}
 
-	appDeath.Set()
+	appLifecycle.Unset()
 
 	if ticker != nil {
 		ticker.Stop()
@@ -505,9 +507,7 @@ func run() error {
 		return app.Service.Run()
 	}
 
-	for restart {
-		restart = false
-
+	for {
 		// run as app
 
 		if err := app.Start(app.Service); err != nil {
@@ -529,25 +529,25 @@ func run() error {
 		if err := app.Stop(app.Service); err != nil {
 			return err
 		}
+
+		if !restart {
+			break
+		}
 	}
 
 	return nil
 }
 
-func Restart() error {
-	if IsRunningAsService() {
-		Info("Restart()")
+func AppRestart() {
+	DebugFunc()
 
-		restart = true
+	go func() {
+		time.Sleep(time.Second)
 
-		if service.Interactive() {
-			restartCh <- struct{}{}
-		} else {
-			return app.Service.Restart()
+		if restartCh != nil {
+			close(restartCh)
 		}
-	}
-
-	return nil
+	}()
 }
 
 func IsRunningAsService() bool {

@@ -49,7 +49,7 @@ func (server *DiscoverServer) Start() error {
 
 	go func() {
 	loop:
-		for !AppDeath().IsSet() {
+		for AppLifecycle().IsSet() {
 			select {
 			case <-server.quitCh:
 				break loop
@@ -66,7 +66,7 @@ func (server *DiscoverServer) Start() error {
 					if err, ok := err.(net.Error); ok && err.Timeout() {
 						break
 					} else {
-						if !AppDeath().IsSet() {
+						if AppLifecycle().IsSet() {
 							DebugError(err)
 						}
 

@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	FileFileMode = FileMode(true, true, false)
-	DirFileMode  = FileMode(true, true, true)
-	countBackups *int
+	ReadOnlyFileMode = FileMode(true, true, false)
+	FileFileMode     = FileMode(true, true, false)
+	DirFileMode      = FileMode(true, true, true)
+	countBackups     *int
 )
 
 type ErrFileNotFound struct {
@@ -295,20 +296,27 @@ func FileBackup(filename string) error {
 			dst = filename + "." + strconv.Itoa(i+1)
 		}
 
-		b, err := FileExists(src)
+		b, err := fileExists(src)
 		if err != nil {
-			continue
+			return err
 		}
 
 		if b {
-			err = FileDelete(dst)
+			b, err = fileExists(dst)
 			if err != nil {
-				continue
+				return err
+			}
+
+			if b {
+				err = os.Remove(dst)
+				if err != nil {
+					return err
+				}
 			}
 
 			err := os.Rename(src, dst)
 			if err != nil {
-				continue
+				return err
 			}
 		}
 	}
@@ -375,7 +383,7 @@ func IsSymbolicLink(path string) bool {
 // SetFileReadOnly sets file READ-ONLY yes or false
 func SetFileReadOnly(path string, readonly bool) (err error) {
 	if readonly {
-		err = os.Chmod(path, FileMode(true, false, false))
+		err = os.Chmod(path, ReadOnlyFileMode)
 	} else {
 		err = os.Chmod(path, FileFileMode)
 	}
