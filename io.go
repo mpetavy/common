@@ -19,8 +19,8 @@ import (
 
 var (
 	ReadOnlyFileMode = FileMode(true, true, false)
-	FileFileMode     = FileMode(true, true, false)
-	DirFileMode      = FileMode(true, true, true)
+	DefaultFileMode  = FileMode(true, true, false)
+	DefaultDirMode   = FileMode(true, true, true)
 	countBackups     *int
 )
 
@@ -328,7 +328,7 @@ func FileBackup(filename string) error {
 func IsFileReadOnly(path string) (result bool, err error) {
 	result = false
 
-	file, err := os.OpenFile(path, os.O_WRONLY, FileFileMode)
+	file, err := os.OpenFile(path, os.O_WRONLY, DefaultFileMode)
 	if err != nil {
 		if !os.IsPermission(err) {
 			result = true
@@ -385,7 +385,7 @@ func SetFileReadOnly(path string, readonly bool) (err error) {
 	if readonly {
 		err = os.Chmod(path, ReadOnlyFileMode)
 	} else {
-		err = os.Chmod(path, FileFileMode)
+		err = os.Chmod(path, DefaultFileMode)
 	}
 
 	return err
