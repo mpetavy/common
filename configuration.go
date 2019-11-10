@@ -14,10 +14,6 @@ type EventConfigurationReset struct {
 	Cfg *bytes.Buffer
 }
 
-type EventConfigurationChanged struct {
-	Cfg *bytes.Buffer
-}
-
 type Configuration struct {
 	Flags map[string]interface{} `json:"flags"`
 }
@@ -102,7 +98,7 @@ func initConfiguration() error {
 	if *file != "" && *timeout > 0 {
 		fileChecker = time.NewTicker(MsecToDuration(*timeout))
 		go func() {
-			for !AppDeath().IsSet() {
+			for AppLifecycle().IsSet() {
 				select {
 				case <-fileChecker.C:
 					WarnError(checkChanged())
@@ -213,12 +209,9 @@ func writeFile(ba []byte) error {
 	if string(buf.Bytes()) != string(fileConfig) {
 		Debug("Reformat of configuration file done")
 
-		err := FileBackup(*file)
-		if Error(err) {
-			return err
-		}
+		Error(FileBackup(*file))
 
-		err = ioutil.WriteFile(*file, buf.Bytes(), FileMode(true, true, false))
+		err = ioutil.WriteFile(*file, buf.Bytes(), FileFileMode)
 		if Error(err) {
 			return err
 		}
@@ -274,10 +267,6 @@ func setFlags() error {
 			WarnError(flag.Set(f.Name, value))
 		}
 	})
-
-	if changed {
-		Events.Emit(EventConfigurationChanged{bytes.NewBuffer(fileConfig)})
-	}
 
 	return err
 }
