@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/gookit/color"
@@ -32,6 +33,7 @@ var (
 	logVerbose         *bool
 	logFilename        *string
 	logFilesize        *int64
+	logJson            *bool
 	logger             logWriter
 	defaultLogFilename string
 	mu                 sync.Mutex
@@ -43,6 +45,7 @@ func init() {
 	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
 	logFilesize = flag.Int64("log.filesize", 5*1024*1024, "max log file size")
 	logVerbose = flag.Bool("log.verbose", false, "verbose logging")
+	logJson = flag.Bool("log.json", false, "JSON output")
 }
 
 type ErrExit struct {
@@ -51,13 +54,21 @@ type ErrExit struct {
 func (e *ErrExit) Error() string { return "" }
 
 type logEntry struct {
-	level int
-	ri    RuntimeInfo
-	msg   string
+	levelInt int
+	Clock    string `json:"time"`
+	LevelStr string `json:"level"`
+	Ri       string `json:"runtime"`
+	Msg      string `json:"msg"`
 }
 
 func (l *logEntry) String() string {
-	return strings.TrimRight(fmt.Sprintf("%s %-5s %-40.40s %s", time.Now().Format(DateTimeMilliMask), levelToString(l.level), l.ri.String(), Capitalize(l.msg)), "\r\n")
+	if *logJson {
+		ba, _ := json.Marshal(l)
+		return string(ba)
+
+	} else {
+		return fmt.Sprintf("%s %-5s %-40.40s %s", l.Clock, l.LevelStr, l.Ri, l.Msg)
+	}
 }
 
 type logWriter interface {
@@ -224,17 +235,17 @@ func initLog() {
 }
 
 func writeEntry(entry logEntry) {
-	if entry.level != LEVEL_FILE {
+	if entry.levelInt != LEVEL_FILE {
 		s := entry.String()
 		if logVerbose == nil || !*logVerbose {
-			if entry.level > LEVEL_WARN && len(s) > 71 {
+			if entry.levelInt > LEVEL_WARN && len(s) > 71 {
 				s = s[24:]
 			} else {
 				s = s[71:]
 			}
 		}
 
-		switch entry.level {
+		switch entry.levelInt {
 		case LEVEL_WARN:
 			color.Warn.Println(s)
 		case LEVEL_ERROR:
@@ -378,9 +389,11 @@ func log(level int, ri RuntimeInfo, msg string) {
 
 	if level == LEVEL_FILE || (logVerbose != nil && *logVerbose) || level > LEVEL_DEBUG {
 		writeEntry(logEntry{
-			level: level,
-			ri:    ri,
-			msg:   msg,
+			levelInt: level,
+			LevelStr: levelToString(level),
+			Clock:    time.Now().Format(DateTimeMilliMask),
+			Ri:       ri.String(),
+			Msg:      Capitalize(strings.TrimRight(strings.TrimSpace(msg), "\r\n")),
 		})
 	}
 }
