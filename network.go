@@ -246,3 +246,39 @@ func GetTLSConfig() (*tls.Config, error) {
 
 	return tlsConfig, err
 }
+
+func IsPortAvailable(port int) (bool, error) {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return false, err
+	}
+
+	DebugError(listener.Close())
+
+	return true, nil
+}
+
+func FindFreePort(startPort int, excludedPorts []int) (int, error) {
+	DebugFunc()
+
+	for port := startPort; port < 65536; port++ {
+		index, err := IndexOf(excludedPorts, port)
+		if Error(err) {
+			return -1, err
+		}
+
+		if index == -1 {
+			b, _ := IsPortAvailable(port)
+
+			if !b {
+				continue
+			}
+
+			DebugFunc("found: %d", port)
+
+			return port, nil
+		}
+	}
+
+	return -1, fmt.Errorf("cannot find free port")
+}
