@@ -15,10 +15,10 @@ type EventConfigurationReset struct {
 }
 
 type Configuration struct {
-	Flags map[string]interface{} `json:"flags"`
+	Flags map[string]string `json:"flags"`
 }
 
-func (this *Configuration) SetFlag(flagName string, flagValue interface{}) error {
+func (this *Configuration) SetFlag(flagName string, flagValue string) error {
 	if flag.Lookup(flagName) == nil {
 		return fmt.Errorf("unknown flag: %s", flagName)
 	}
@@ -28,12 +28,19 @@ func (this *Configuration) SetFlag(flagName string, flagValue interface{}) error
 	return nil
 }
 
-func (this *Configuration) GetFlag(flagName string) (interface{}, error) {
+func (this *Configuration) GetFlag(flagName string) (string, error) {
 	if flag.Lookup(flagName) == nil {
 		return "", fmt.Errorf("unknown flag: %s", flagName)
 	}
 
 	return this.Flags[flagName], nil
+}
+
+func NewConfiguration() *Configuration {
+	cfg := Configuration{}
+	cfg.Flags = make(map[string]string)
+
+	return &cfg
 }
 
 var (
@@ -113,13 +120,13 @@ func initConfiguration() error {
 func ResetConfiguration() error {
 	*reset = false
 
-	cfg := Configuration{}
-	cfg.Flags = make(map[string]interface{})
+	cfg := NewConfiguration()
+
 	for k, v := range mapFile {
 		cfg.Flags[k] = v
 	}
 
-	ba, err := json.Marshal(&cfg)
+	ba, err := json.Marshal(cfg)
 	if Error(err) {
 		return err
 	}
