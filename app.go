@@ -309,26 +309,26 @@ func (app *App) service() error {
 	restartCh = make(chan struct{})
 	restart = false
 
+	ctrlC := make(chan os.Signal, 1)
+	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
+
+	kbCh := make(chan struct{})
+
+	if service.Interactive() {
+		go func() {
+			r := bufio.NewReader(os.Stdin)
+
+			var s string
+
+			for len(s) == 0 {
+				s, _ = r.ReadString('\n')
+			}
+
+			kbCh <- struct{}{}
+		}()
+	}
+
 	for {
-		ctrlC := make(chan os.Signal, 1)
-		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-
-		kbCh := make(chan struct{})
-
-		if service.Interactive() {
-			go func() {
-				r := bufio.NewReader(os.Stdin)
-
-				var s string
-
-				for len(s) == 0 {
-					s, _ = r.ReadString('\n')
-				}
-
-				kbCh <- struct{}{}
-			}()
-		}
-
 		select {
 		//case <-time.After(time.Second):
 		//	Info("Restart on time")

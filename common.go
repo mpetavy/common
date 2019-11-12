@@ -4,9 +4,7 @@ import (
 	"runtime"
 	"sync"
 
-	"math/rand"
 	"strings"
-	"time"
 )
 
 var (
@@ -117,12 +115,6 @@ func Eval(b bool, trueFunc interface{}, falseFunc interface{}) interface{} {
 			return falseFunc
 		}
 	}
-}
-
-func Rnd(max int) int {
-	rand.Seed(time.Now().UnixNano())
-
-	return rand.Intn(max)
 }
 
 func Min(v ...int) int {

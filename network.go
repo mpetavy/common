@@ -247,18 +247,34 @@ func GetTLSConfig() (*tls.Config, error) {
 	return tlsConfig, err
 }
 
-func IsPortAvailable(port int) (bool, error) {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		return false, err
-	}
+func IsPortAvailable(network string, port int) (bool, error) {
+	DebugFunc("network: %s, port: %d", network, port)
 
-	DebugError(listener.Close())
+	switch network {
+	case "tcp":
+		if network == "tcp" {
+			tcpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+			if err != nil {
+				return false, err
+			}
+			DebugError(tcpListener.Close())
+		}
+	case "udp":
+		if network == "udp" {
+			udpListener, err := net.ListenPacket("udp4", fmt.Sprintf(":%d", port))
+			if err != nil {
+				return false, err
+			}
+			DebugError(udpListener.Close())
+		}
+	default:
+		return false, fmt.Errorf("unknown network: %s", network)
+	}
 
 	return true, nil
 }
 
-func FindFreePort(startPort int, excludedPorts []int) (int, error) {
+func FindFreePort(network string, startPort int, excludedPorts []int) (int, error) {
 	DebugFunc()
 
 	for port := startPort; port < 65536; port++ {
@@ -268,7 +284,7 @@ func FindFreePort(startPort int, excludedPorts []int) (int, error) {
 		}
 
 		if index == -1 {
-			b, _ := IsPortAvailable(port)
+			b, _ := IsPortAvailable(network, port)
 
 			if !b {
 				continue

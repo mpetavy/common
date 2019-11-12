@@ -121,7 +121,7 @@ func GetSystemLanguage() (string, error) {
 	return "", fmt.Errorf("cannot get system language")
 }
 
-func initLanguage() error {
+func initLanguage() {
 	filename := AppFilename(fmt.Sprintf(".i18n"))
 
 	b, _ := FileExists(filename)
@@ -131,24 +131,22 @@ func initLanguage() error {
 
 		i18nFile, err = ini.Load(filename)
 		if Error(err) {
-			return err
+			return
 		}
 
 		if *language == "" {
 			*language, err = GetSystemLanguage()
 			if Error(err) {
-				return err
+				return
 			}
 		}
 
 		if *language != "" {
 			WarnError(SetLanguage(*language))
 		}
-
-		return nil
 	}
 
-	return fmt.Errorf("language file %s does not exist", filename)
+	WarnError(fmt.Errorf("language file %s does not exist", filename))
 }
 
 func scanStruct(i18ns *[]string, data interface{}) error {
