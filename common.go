@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"runtime"
 	"sync"
 
@@ -145,4 +146,20 @@ func Max(v ...int) int {
 	}
 
 	return r
+}
+
+func DeepCopy(dst interface{}, src interface{}) error {
+	ba, err := json.Marshal(src)
+	if Error(err) {
+		return err
+	}
+
+	Debug(string(ba))
+
+	err = json.Unmarshal(ba, dst)
+	if Error(err) {
+		return err
+	}
+
+	return nil
 }
