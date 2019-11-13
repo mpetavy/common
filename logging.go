@@ -405,11 +405,15 @@ func ToString(cmd exec.Cmd) string {
 }
 
 func Logs(w io.Writer) error {
-	if logger != nil {
-		return logger.Logs(w)
+	if logger == nil {
+		return fmt.Errorf("no logger")
 	}
 
-	return nil
+	return logger.Logs(w)
+}
+
+func LogsAvailable() bool {
+	return logger != nil
 }
 
 func realLogFilename() string {
