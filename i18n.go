@@ -146,7 +146,7 @@ func initLanguage() {
 		}
 	}
 
-	WarnError(fmt.Errorf("language file %s does not exist", filename))
+	DebugError(fmt.Errorf("language file %s does not exist", filename))
 }
 
 func scanStruct(i18ns *[]string, data interface{}) error {

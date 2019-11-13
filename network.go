@@ -226,8 +226,8 @@ func createTLSConfig() (*tls.Config, error) {
 	return nil, fmt.Errorf("openssl not available")
 }
 
-func GetTLSConfig() (*tls.Config, error) {
-	DebugFunc()
+func GetTLSConfig(force bool) (*tls.Config, error) {
+	DebugFunc("force: %v", force)
 
 	muTLS.Lock()
 	defer muTLS.Unlock()
