@@ -17,15 +17,20 @@ import (
 )
 
 var (
-	TLSPemFile *string
-	TLSKeyFile *string
-	muTLS      sync.Mutex
-	tlsConfig  *tls.Config
+	TLSCertificate     *string
+	TLSKey             *string
+	TLSCertificateFile *string
+	TLSKeyFile         *string
+	muTLS              sync.Mutex
+	tlsConfig          *tls.Config
 )
 
 func init() {
-	TLSPemFile = flag.String("tls.pemfile", AppFilename(".cert.pem"), "TLS server PEM file")
-	TLSKeyFile = flag.String("tls.keyfile", AppFilename(".cert.key"), "TLS server KEY file")
+	TLSCertificate = flag.String("tls.cert", "", "TLS server certificate (PEM format)")
+	TLSKey = flag.String("tls.key", "", "TLS server private PEM (PEM format)")
+
+	TLSCertificateFile = flag.String("tls.certfile", AppFilename(".cert.pem"), "TLS server certificate file (PEM format)")
+	TLSKeyFile = flag.String("tls.keyfile", AppFilename(".key.pem"), "TLS server private key PEM (PEM format)")
 }
 
 type TimeoutSocket struct {
@@ -69,7 +74,14 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 	}
 }
 
-func FindMainIP() (string, error) {
+func GetMainIP() (string, error) {
+	ips, err := GetActiveIPs()
+	if len(ips) == 1 {
+		DebugFunc(ips[0])
+
+		return ips[0], nil
+	}
+
 	hostname, err := os.Hostname()
 	if Error(err) {
 		return "", err
@@ -111,6 +123,8 @@ func FindMainIP() (string, error) {
 
 			line = strings.TrimSpace(line[10:])
 
+			DebugFunc(line)
+
 			return line, nil
 		}
 	}
@@ -135,14 +149,18 @@ func FindMainIP() (string, error) {
 		ss := strings.Split(output, " ")
 
 		if len(ss) > 0 {
-			return strings.TrimSpace(ss[len(ss)-1]), nil
+			ip := strings.TrimSpace(ss[len(ss)-1])
+
+			DebugFunc(ip)
+
+			return ip, nil
 		}
 	}
 
 	return "", fmt.Errorf("cannot find main ip for %s", hostname)
 }
 
-func FindActiveIPs() ([]string, error) {
+func GetActiveIPs() ([]string, error) {
 	var addresses []string
 
 	intfs, err := net.Interfaces()
@@ -177,7 +195,7 @@ func FindActiveIPs() ([]string, error) {
 func verifyTLSConfig() (*tls.Config, error) {
 	DebugFunc()
 
-	b, err := FileExists(*TLSPemFile)
+	b, err := FileExists(*TLSCertificateFile)
 	if Error(err) || !b {
 		return nil, nil
 	}
@@ -187,9 +205,9 @@ func verifyTLSConfig() (*tls.Config, error) {
 		return nil, nil
 	}
 
-	Debug("generate TLS config from pem %s and key %s", *TLSPemFile, *TLSKeyFile)
+	Debug("generate TLS config from pem %s and key %s", *TLSCertificateFile, *TLSKeyFile)
 
-	cert, err := tls.LoadX509KeyPair(*TLSPemFile, *TLSKeyFile)
+	cert, err := tls.LoadX509KeyPair(*TLSCertificateFile, *TLSKeyFile)
 	if Error(err) {
 		return nil, err
 	}
@@ -213,7 +231,7 @@ func createTLSConfig() (*tls.Config, error) {
 	path, err := exec.LookPath("openssl")
 
 	if path != "" {
-		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *TLSPemFile, "-keyout", *TLSKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
+		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *TLSCertificateFile, "-keyout", *TLSKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
 
 		err := Watchdog(cmd, time.Second*3)
 		if Error(err) {
