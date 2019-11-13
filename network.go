@@ -3,35 +3,14 @@ package common
 import (
 	"bufio"
 	"bytes"
-	"crypto/rand"
-	"crypto/tls"
-	"flag"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 	"time"
 )
-
-var (
-	TLSCertificate     *string
-	TLSKey             *string
-	TLSCertificateFile *string
-	TLSKeyFile         *string
-	muTLS              sync.Mutex
-	tlsConfig          *tls.Config
-)
-
-func init() {
-	TLSCertificate = flag.String("tls.cert", "", "TLS server certificate (PEM format)")
-	TLSKey = flag.String("tls.key", "", "TLS server private PEM (PEM format)")
-
-	TLSCertificateFile = flag.String("tls.certfile", AppFilename(".cert.pem"), "TLS server certificate file (PEM format)")
-	TLSKeyFile = flag.String("tls.keyfile", AppFilename(".key.pem"), "TLS server private key PEM (PEM format)")
-}
 
 type TimeoutSocket struct {
 	io.ReadWriter
@@ -190,79 +169,6 @@ func GetActiveIPs() ([]string, error) {
 		}
 	}
 	return addresses, nil
-}
-
-func verifyTLSConfig() (*tls.Config, error) {
-	DebugFunc()
-
-	b, err := FileExists(*TLSCertificateFile)
-	if Error(err) || !b {
-		return nil, nil
-	}
-
-	b, err = FileExists(*TLSKeyFile)
-	if Error(err) || !b {
-		return nil, nil
-	}
-
-	Debug("generate TLS config from pem %s and key %s", *TLSCertificateFile, *TLSKeyFile)
-
-	cert, err := tls.LoadX509KeyPair(*TLSCertificateFile, *TLSKeyFile)
-	if Error(err) {
-		return nil, err
-	}
-
-	var tlsConfig tls.Config
-
-	tlsConfig = tls.Config{Certificates: []tls.Certificate{cert}}
-	tlsConfig.Rand = rand.Reader
-
-	return &tlsConfig, nil
-}
-
-func createTLSConfig() (*tls.Config, error) {
-	DebugFunc()
-
-	hostname, err := os.Hostname()
-	if WarnError(err) {
-		hostname = "localhost"
-	}
-
-	path, err := exec.LookPath("openssl")
-
-	if path != "" {
-		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *TLSCertificateFile, "-keyout", *TLSKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
-
-		err := Watchdog(cmd, time.Second*10)
-		if Error(err) {
-			return nil, nil
-		}
-
-		return verifyTLSConfig()
-	}
-
-	return nil, fmt.Errorf("openssl not available")
-}
-
-func GetTLSConfig(force bool) (*tls.Config, error) {
-	DebugFunc("force: %v", force)
-
-	muTLS.Lock()
-	defer muTLS.Unlock()
-
-	var err error
-
-	if tlsConfig == nil {
-		tlsConfig, _ = verifyTLSConfig()
-
-		if tlsConfig != nil {
-			return tlsConfig, nil
-		}
-
-		tlsConfig, err = createTLSConfig()
-	}
-
-	return tlsConfig, err
 }
 
 func IsPortAvailable(network string, port int) (bool, error) {

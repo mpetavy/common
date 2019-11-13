@@ -157,11 +157,30 @@ func ResetConfiguration() error {
 	return nil
 }
 
-func GetConfiguration() []byte {
+func GetConfiguration() *Configuration {
+	DebugFunc()
+
+	ba := GetConfigurationBuffer()
+
+	if ba == nil {
+		return nil
+	}
+
+	cfg := Configuration{}
+
+	err := json.Unmarshal(ba, &cfg)
+	if Error(err) {
+		return nil
+	}
+
+	return &cfg
+}
+
+func GetConfigurationBuffer() []byte {
 	return fileConfig
 }
 
-func SetConfiguration(ba []byte) error {
+func SetConfigurationBuffer(ba []byte) error {
 	err := writeFile(ba)
 	if Error(err) {
 		return err
