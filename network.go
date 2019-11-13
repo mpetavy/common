@@ -233,7 +233,7 @@ func createTLSConfig() (*tls.Config, error) {
 	if path != "" {
 		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *TLSCertificateFile, "-keyout", *TLSKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
 
-		err := Watchdog(cmd, time.Second*3)
+		err := Watchdog(cmd, time.Second*10)
 		if Error(err) {
 			return nil, nil
 		}
