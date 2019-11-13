@@ -206,10 +206,19 @@ func SetLanguage(lang string) error {
 func GetLanguages() ([]string, error) {
 	list := make([]string, 0)
 
-	secs := i18nFile.Sections()
-	for _, sec := range secs {
-		if sec.Name() != ini.DefaultSection {
-			list = append(list, sec.Name())
+	if i18nFile != nil {
+		secs := i18nFile.Sections()
+		for _, sec := range secs {
+			if sec.Name() != ini.DefaultSection {
+				list = append(list, sec.Name())
+			}
+		}
+	} else {
+		language, err := GetSystemLanguage()
+		WarnError(err)
+
+		if language != "" {
+			list = append(list, language)
 		}
 	}
 
