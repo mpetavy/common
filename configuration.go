@@ -87,7 +87,11 @@ func initConfiguration() error {
 
 	err = registerFileFlags(ba)
 	if Error(err) {
-		return err
+		if IsRunningAsService() {
+			*reset = true
+		} else {
+			return err
+		}
 	}
 
 	err = setFlags()
@@ -135,12 +139,12 @@ func ResetConfiguration() error {
 
 	Events.Emit(EventConfigurationReset{buf})
 
-	err = writeFile(ba)
+	err = writeFile(buf.Bytes())
 	if Error(err) {
 		return err
 	}
 
-	err = registerFileFlags(ba)
+	err = registerFileFlags(buf.Bytes())
 	if Error(err) {
 		return err
 	}
