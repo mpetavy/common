@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"sort"
@@ -122,7 +123,7 @@ func GetSystemLanguage() (string, error) {
 }
 
 func initLanguage() {
-	filename := AppFilename(fmt.Sprintf(".i18n"))
+	filename := filepath.Join("static", AppFilename(fmt.Sprintf(".i18n")))
 
 	b, _ := FileExists(filename)
 
@@ -207,8 +208,7 @@ func GetLanguages() ([]string, error) {
 	list := make([]string, 0)
 
 	if i18nFile != nil {
-		secs := i18nFile.Sections()
-		for _, sec := range secs {
+		for _, sec := range i18nFile.Sections() {
 			if sec.Name() != ini.DefaultSection {
 				list = append(list, sec.Name())
 			}
@@ -242,6 +242,8 @@ func Translate(msg string, args ...interface{}) string {
 }
 
 func CreateI18nFile(objs ...interface{}) error {
+	filename := filepath.Join("static", AppFilename(fmt.Sprintf(".i18n")))
+
 	i18ns := make([]string, 0)
 
 	//get i18n from source
@@ -321,28 +323,40 @@ func CreateI18nFile(objs ...interface{}) error {
 
 	// update all languages with found i18ns
 
-	for _, i18n := range i18ns {
-		secs := i18nFile.Sections()
+	secNames := []string{DEFAULT_LANGUAGE}
+	for _, sec := range i18nFile.Sections() {
+		if sec.Name() != ini.DefaultSection {
+			index, _ := IndexOf(sec, secNames)
+			if index == -1 {
+				secNames = append(secNames, sec.Name())
+			}
+		}
+	}
 
-		for _, sec := range secs {
-			if sec.Name() != ini.DefaultSection {
-				key, _ := sec.GetKey(i18n)
-				if key != nil {
-					if sec.Name() == DEFAULT_LANGUAGE {
-						key.SetValue(i18n)
-					}
+	for _, i18n := range i18ns {
+		for _, secName := range secNames {
+			sec, _ := i18nFile.GetSection(secName)
+			if sec == nil {
+				sec, _ = i18nFile.NewSection(secName)
+			}
+
+			key, _ := sec.GetKey(i18n)
+
+			if key != nil {
+				if sec.Name() == DEFAULT_LANGUAGE {
+					i18nFile.Section(sec.Name()).Key(i18n).SetValue(i18n)
+				}
+			} else {
+				if sec.Name() == DEFAULT_LANGUAGE {
+					Ignore(i18nFile.Section(sec.Name()).NewKey(i18n, i18n))
 				} else {
-					if sec.Name() == DEFAULT_LANGUAGE {
-						Ignore(sec.NewKey(i18n, i18n))
-					} else {
-						Ignore(sec.NewKey(i18n, ""))
-					}
+					Ignore(i18nFile.Section(sec.Name()).NewKey(i18n, ""))
 				}
 			}
 		}
 	}
 
-	newFile := ini.Empty()
+	sortedFile := ini.Empty()
 
 	for _, sec := range i18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
@@ -350,7 +364,7 @@ func CreateI18nFile(objs ...interface{}) error {
 
 			sort.Strings(keys)
 
-			newSec, err := newFile.NewSection(sec.Name())
+			newSec, err := sortedFile.NewSection(sec.Name())
 			if Error(err) {
 				return err
 			}
@@ -366,11 +380,11 @@ func CreateI18nFile(objs ...interface{}) error {
 		}
 	}
 
-	i18nFile = newFile
+	i18nFile = sortedFile
 
-	Debug("update i18n file: %s", AppFilename(fmt.Sprintf(".i18n")))
+	Debug("update i18n file: %s", filename)
 
-	err = i18nFile.SaveTo(AppFilename(fmt.Sprintf(".i18n")))
+	err = i18nFile.SaveTo(filename)
 	if Error(err) {
 		return err
 	}
