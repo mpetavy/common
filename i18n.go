@@ -124,13 +124,12 @@ func GetSystemLanguage() (string, error) {
 
 func initLanguage() {
 	filename := AppFilename(fmt.Sprintf(".i18n"))
+	ba := GetResource(filename)
 
-	b, _ := FileExists(filename)
-
-	if b {
+	if ba != nil {
 		var err error
 
-		i18nFile, err = ini.Load(filename)
+		i18nFile, err = ini.Load(ba)
 		if Error(err) {
 			return
 		}
