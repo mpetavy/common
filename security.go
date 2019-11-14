@@ -73,7 +73,7 @@ func GenerateRandomString(s int) (string, error) {
 }
 
 func TLSConfigFromFile(certFile string, keyFile string) (*TLSPackage, error) {
-	DebugFunc("certFile: %s keyFile_ %s", certFile, keyFile)
+	DebugFunc("certFile: %s keyFile: %s", certFile, keyFile)
 
 	certOk, err := FileExists(certFile)
 	if Error(err) || !certOk {
