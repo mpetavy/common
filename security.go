@@ -159,7 +159,7 @@ func createTLSConfig() (*TLSPackage, error) {
 	return nil, fmt.Errorf("openssl not available")
 }
 
-func GetTLSConfig(force bool) (*TLSPackage, error) {
+func GetTLSPackage(force bool) (*TLSPackage, error) {
 	DebugFunc("force: %v", force)
 
 	muTLS.Lock()
