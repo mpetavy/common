@@ -123,7 +123,7 @@ func GetSystemLanguage() (string, error) {
 }
 
 func initLanguage() {
-	filename := filepath.Join("static", AppFilename(fmt.Sprintf(".i18n")))
+	filename := AppFilename(fmt.Sprintf(".i18n"))
 
 	b, _ := FileExists(filename)
 
