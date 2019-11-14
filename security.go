@@ -14,13 +14,18 @@ import (
 	"time"
 )
 
+type TLSPackage struct {
+	CertificateAsPem, PrivateKeyAsPem []byte
+	Config                            tls.Config
+}
+
 var (
 	tlsCertificate     *string
 	tlsKey             *string
-	TLSCertificateFile *string
-	TLSKeyFile         *string
+	tlsCertificateFile *string
+	tlsKeyFile         *string
 	muTLS              sync.Mutex
-	tlsConfig          *tls.Config
+	tlsPack            *TLSPackage
 )
 
 const (
@@ -32,8 +37,8 @@ func init() {
 	tlsCertificate = flag.String(flagCert, "", "TLS server certificate (PEM format)")
 	tlsKey = flag.String(flagKey, "", "TLS server private PEM (PEM format)")
 
-	TLSCertificateFile = flag.String("tls.certfile", AppFilename(".cert.pem"), "TLS server certificate file (PEM format)")
-	TLSKeyFile = flag.String("tls.keyfile", AppFilename(".key.pem"), "TLS server private key PEM (PEM format)")
+	tlsCertificateFile = flag.String("tls.certfile", AppFilename(".cert.pem"), "TLS server certificate file (PEM format)")
+	tlsKeyFile = flag.String("tls.keyfile", AppFilename(".key.pem"), "TLS server private key PEM (PEM format)")
 }
 
 func Rnd(max int) int {
@@ -67,7 +72,7 @@ func GenerateRandomString(s int) (string, error) {
 	return base64.URLEncoding.EncodeToString(b), err
 }
 
-func TLSConfigFromFile(certFile string, keyFile string) (*tls.Config, error) {
+func TLSConfigFromFile(certFile string, keyFile string) (*TLSPackage, error) {
 	DebugFunc("certFile: %s keyFile_ %s", certFile, keyFile)
 
 	certOk, err := FileExists(certFile)
@@ -80,53 +85,57 @@ func TLSConfigFromFile(certFile string, keyFile string) (*tls.Config, error) {
 		return nil, err
 	}
 
-	var pemCert []byte
-	var pemKey []byte
+	var certAsPem []byte
+	var keyAsPem []byte
 
-	pemCert, err = ioutil.ReadFile(certFile)
+	certAsPem, err = ioutil.ReadFile(certFile)
 	if Error(err) {
 		return nil, err
 	}
 
-	pemKey, err = ioutil.ReadFile(keyFile)
+	keyAsPem, err = ioutil.ReadFile(keyFile)
 	if Error(err) {
 		return nil, err
 	}
 
 	Debug("generate TLS config from cert file %s and key file %s", certFile, keyFile)
 
-	cert, err := tls.X509KeyPair([]byte(pemCert), []byte(pemKey))
+	x509, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
 	if Error(err) {
 		return nil, err
 	}
 
-	var tlsConfig tls.Config
-
-	tlsConfig = tls.Config{Certificates: []tls.Certificate{cert}}
+	tlsConfig := tls.Config{Certificates: []tls.Certificate{x509}}
 	tlsConfig.Rand = rand.Reader
 
-	return &tlsConfig, nil
+	return &TLSPackage{
+		CertificateAsPem: certAsPem,
+		PrivateKeyAsPem:  keyAsPem,
+		Config:           tlsConfig,
+	}, nil
 }
 
-func TLSConfigFromPem(pemCert []byte, pemKey []byte) (*tls.Config, error) {
+func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 	DebugFunc()
 
 	Debug("generate TLS config from given cert and key %s")
 
-	cert, err := tls.X509KeyPair([]byte(pemCert), []byte(pemKey))
+	x509, err := tls.X509KeyPair(certAsPem, keyAsPem)
 	if Error(err) {
 		return nil, err
 	}
 
-	var tlsConfig tls.Config
-
-	tlsConfig = tls.Config{Certificates: []tls.Certificate{cert}}
+	tlsConfig := tls.Config{Certificates: []tls.Certificate{x509}}
 	tlsConfig.Rand = rand.Reader
 
-	return &tlsConfig, nil
+	return &TLSPackage{
+		CertificateAsPem: certAsPem,
+		PrivateKeyAsPem:  keyAsPem,
+		Config:           tlsConfig,
+	}, nil
 }
 
-func createTLSConfig() (*tls.Config, error) {
+func createTLSConfig() (*TLSPackage, error) {
 	DebugFunc()
 
 	hostname, err := os.Hostname()
@@ -137,20 +146,20 @@ func createTLSConfig() (*tls.Config, error) {
 	path, err := exec.LookPath("openssl")
 
 	if path != "" {
-		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *TLSCertificateFile, "-keyout", *TLSKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
+		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *tlsCertificateFile, "-keyout", *tlsKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
 
 		err := Watchdog(cmd, time.Second*10)
 		if Error(err) {
 			return nil, nil
 		}
 
-		return TLSConfigFromFile(*TLSCertificateFile, *TLSKeyFile)
+		return TLSConfigFromFile(*tlsCertificateFile, *tlsKeyFile)
 	}
 
 	return nil, fmt.Errorf("openssl not available")
 }
 
-func GetTLSConfig(force bool) (*tls.Config, error) {
+func GetTLSConfig(force bool) (*TLSPackage, error) {
 	DebugFunc("force: %v", force)
 
 	muTLS.Lock()
@@ -158,9 +167,9 @@ func GetTLSConfig(force bool) (*tls.Config, error) {
 
 	var err error
 
-	if tlsConfig == nil || force {
-		if *TLSCertificateFile != "" && *TLSKeyFile != "" {
-			tlsConfig, _ = TLSConfigFromFile(*TLSCertificateFile, *TLSKeyFile)
+	if tlsPack == nil || force {
+		if *tlsCertificateFile != "" && *tlsKeyFile != "" {
+			tlsConfig, _ := TLSConfigFromFile(*tlsCertificateFile, *tlsKeyFile)
 
 			if tlsConfig != nil {
 				return tlsConfig, nil
@@ -168,7 +177,7 @@ func GetTLSConfig(force bool) (*tls.Config, error) {
 		}
 
 		if *tlsCertificate != "" && *tlsKey != "" {
-			tlsConfig, _ = TLSConfigFromPem([]byte(*tlsCertificate), []byte(*tlsKey))
+			tlsConfig, _ := TLSConfigFromPem([]byte(*tlsCertificate), []byte(*tlsKey))
 
 			if tlsConfig != nil {
 				return tlsConfig, nil
@@ -179,15 +188,15 @@ func GetTLSConfig(force bool) (*tls.Config, error) {
 		tlsKey, _ := GetConfiguration().GetFlag(flagKey)
 
 		if tlsCert != "" && tlsKey != "" {
-			tlsConfig, _ = TLSConfigFromPem([]byte(tlsCert), []byte(tlsKey))
+			tlsConfig, _ := TLSConfigFromPem([]byte(tlsCert), []byte(tlsKey))
 
 			if tlsConfig != nil {
 				return tlsConfig, nil
 			}
 		}
 
-		tlsConfig, err = createTLSConfig()
+		tlsPack, err = createTLSConfig()
 	}
 
-	return tlsConfig, err
+	return tlsPack, err
 }
