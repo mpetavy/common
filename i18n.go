@@ -135,15 +135,18 @@ func initLanguage() {
 			return
 		}
 
-		if *language == "" {
-			*language, err = GetSystemLanguage()
+		lang := *language
+		if lang == "" {
+			var err error
+
+			lang, err = GetSystemLanguage()
 			if Error(err) {
 				return
 			}
 		}
 
-		if *language != "" {
-			WarnError(SetLanguage(*language))
+		if lang != "" {
+			WarnError(SetLanguage(lang))
 		}
 	}
 
@@ -198,6 +201,10 @@ func SetLanguage(lang string) error {
 		return fmt.Errorf("no language file available")
 	}
 
+	if i18nFile.Section(lang) == nil {
+		return fmt.Errorf("language %s is not available", lang)
+	}
+
 	*language = lang
 
 	return nil
@@ -214,12 +221,7 @@ func GetLanguages() ([]string, error) {
 			}
 		}
 	} else {
-		language, err := GetSystemLanguage()
-		WarnError(err)
-
-		if language != "" {
-			list = append(list, language)
-		}
+		list = append(list, DEFAULT_LANGUAGE)
 	}
 
 	return list, nil
