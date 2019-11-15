@@ -227,10 +227,10 @@ func GetSystemInfo() (SystemInfo, error) {
 
 	wg.Wait()
 
-	si.KernelName = kernelNameRunner.output
-	si.KernelRelease = kernelReleaseRunner.output
-	si.KernelVersion = kernelVersionRunner.output
-	si.Platform = machineRunner.output
+	si.KernelName = strings.TrimSpace(kernelNameRunner.output)
+	si.KernelRelease = strings.TrimSpace(kernelReleaseRunner.output)
+	si.KernelVersion = strings.TrimSpace(kernelVersionRunner.output)
+	si.Platform = strings.TrimSpace(machineRunner.output)
 
 	return si, nil
 }
