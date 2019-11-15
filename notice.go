@@ -31,7 +31,7 @@ func (this *Notice) Set() bool {
 	if this.isSet == 0 {
 		this.isSet = 1
 
-		close(this.ch)
+		this.ch = make(chan struct{})
 
 		return true
 	}
@@ -46,7 +46,7 @@ func (this *Notice) Unset() bool {
 	if this.isSet == 1 {
 		this.isSet = 0
 
-		this.ch = make(chan struct{})
+		close(this.ch)
 
 		return true
 	}

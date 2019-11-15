@@ -4,17 +4,14 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"github.com/kardianos/service"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-	"unicode"
-
-	"github.com/kardianos/service"
 )
 
 const (
@@ -73,7 +70,7 @@ var (
 	usage               *bool
 	NoBanner            bool
 	ticker              *time.Ticker
-	appLifecycle        *Notice
+	appLifecycle        = NewNotice()
 	onceBanner          sync.Once
 	onceDone            sync.Once
 	restart             bool
@@ -177,74 +174,6 @@ func Run(mandatoryFlags []string) {
 	}
 }
 
-func AppFilename(newExt string) string {
-	filename := Title()
-	ext := filepath.Ext(filename)
-
-	if len(ext) > 0 {
-		filename = string(filename[:len(filename)-len(ext)])
-	}
-
-	return filename + newExt
-}
-
-func Title() string {
-	path, err := os.Executable()
-	if err != nil {
-		path = os.Args[0]
-	}
-
-	path = filepath.Base(path)
-	path = path[0:(len(path) - len(filepath.Ext(path)))]
-
-	runes := []rune(path)
-	for len(runes) > 0 && !unicode.IsLetter(runes[0]) {
-		runes = runes[1:]
-	}
-
-	title := string(runes)
-
-	DebugFunc(title)
-
-	return title
-}
-
-func Version(major bool, minor bool, patch bool) string {
-	if strings.Count(app.Version, ".") == 2 {
-		s := strings.Split(app.Version, ".")
-
-		sb := strings.Builder{}
-
-		if major {
-			sb.WriteString(s[0])
-		}
-
-		if minor {
-			if sb.Len() > 0 {
-				sb.WriteString(".")
-			}
-
-			sb.WriteString(s[1])
-		}
-
-		if patch {
-			if sb.Len() > 0 {
-				sb.WriteString(".")
-			}
-
-			sb.WriteString(s[2])
-		}
-
-		return sb.String()
-	}
-
-	return ""
-}
-
-func TitleVersion(major bool, minor bool, patch bool) string {
-	return Title() + "-" + Version(major, minor, patch)
-}
-
 func Exit(code int) {
 	Done()
 
@@ -282,6 +211,8 @@ func showBanner() {
 func (app *App) service() error {
 	if IsRunningAsService() {
 		Info("Service()")
+	} else {
+		DebugFunc()
 	}
 
 	sleep := time.Second
@@ -334,6 +265,9 @@ func (app *App) service() error {
 		//	Info("Restart on time")
 		//	restart = true
 		//	return nil
+		case <-appLifecycle.Channel():
+			Info("Stop on request")
+			return nil
 		case <-restartCh:
 			Info("Restart on request")
 			restart = true
@@ -366,20 +300,54 @@ func (app *App) service() error {
 }
 
 func (app *App) Start(s service.Service) error {
-	appLifecycle = NewNotice()
-	appLifecycle.Set()
-
 	if IsRunningAsService() {
 		Info("Start()")
+	} else {
+		DebugFunc()
 	}
 
+	appLifecycle.Set()
+
 	if app.StartFunc != nil {
-		if err := app.StartFunc(); err != nil {
+		err := app.StartFunc()
+		if Error(err) {
 			return err
 		}
 	}
 
+	if !service.Interactive() {
+		go func() {
+			app.loop()
+		}()
+	}
+
 	return nil
+}
+
+func (app *App) loop() {
+	DebugFunc()
+
+	for {
+		Error(app.service())
+
+		if restart {
+			if app.StopFunc != nil {
+				err := app.StopFunc()
+				if Error(err) {
+					return
+				}
+			}
+
+			if app.StartFunc != nil {
+				err := app.StartFunc()
+				if Error(err) {
+					return
+				}
+			}
+		} else {
+			break
+		}
+	}
 }
 
 func AppLifecycle() *Notice {
@@ -389,6 +357,8 @@ func AppLifecycle() *Notice {
 func (app *App) Stop(s service.Service) error {
 	if IsRunningAsService() {
 		Info("Stop()")
+	} else {
+		DebugFunc()
 	}
 
 	appLifecycle.Unset()
@@ -398,7 +368,8 @@ func (app *App) Stop(s service.Service) error {
 	}
 
 	if app.StopFunc != nil {
-		if err := app.StopFunc(); err != nil {
+		err := app.StopFunc()
+		if Error(err) {
 			return err
 		}
 	}
@@ -412,7 +383,7 @@ func run() error {
 	app.ServiceConfig = &service.Config{
 		Name:        Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
 		DisplayName: Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-		Description: app.Description,
+		Description: Capitalize(app.Description),
 	}
 
 	app.Service, err = service.New(app, app.ServiceConfig)
@@ -503,13 +474,27 @@ func run() error {
 
 	// run as service
 
-	if app.IsService && !service.Interactive() {
-		return app.Service.Run()
-	}
+	if IsRunningAsService() {
+		if service.Interactive() {
+			// simulated service
 
-	for {
-		// run as app
+			if err := app.Start(app.Service); err != nil {
+				return err
+			}
 
+			app.loop()
+
+			if err := app.Stop(app.Service); err != nil {
+				return err
+			}
+
+			return nil
+		} else {
+			// OS service
+
+			return app.Service.Run()
+		}
+	} else {
 		if err := app.Start(app.Service); err != nil {
 			return err
 		}
@@ -520,22 +505,12 @@ func run() error {
 			}
 		}
 
-		if IsRunningAsService() {
-			if err := app.service(); err != nil {
-				return err
-			}
-		}
-
 		if err := app.Stop(app.Service); err != nil {
 			return err
 		}
 
-		if !restart {
-			break
-		}
+		return nil
 	}
-
-	return nil
 }
 
 func AppRestart() {

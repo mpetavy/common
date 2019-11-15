@@ -2,8 +2,11 @@ package common
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
+	"unicode"
 
 	"strings"
 )
@@ -74,6 +77,74 @@ func AddShutdownHook(f func()) {
 	shutdownHooks = append(shutdownHooks, nil)
 	copy(shutdownHooks[1:], shutdownHooks[0:])
 	shutdownHooks[0] = f
+}
+
+func AppFilename(newExt string) string {
+	filename := Title()
+	ext := filepath.Ext(filename)
+
+	if len(ext) > 0 {
+		filename = string(filename[:len(filename)-len(ext)])
+	}
+
+	return filename + newExt
+}
+
+func Title() string {
+	path, err := os.Executable()
+	if err != nil {
+		path = os.Args[0]
+	}
+
+	path = filepath.Base(path)
+	path = path[0:(len(path) - len(filepath.Ext(path)))]
+
+	runes := []rune(path)
+	for len(runes) > 0 && !unicode.IsLetter(runes[0]) {
+		runes = runes[1:]
+	}
+
+	title := string(runes)
+
+	DebugFunc(title)
+
+	return title
+}
+
+func Version(major bool, minor bool, patch bool) string {
+	if strings.Count(app.Version, ".") == 2 {
+		s := strings.Split(app.Version, ".")
+
+		sb := strings.Builder{}
+
+		if major {
+			sb.WriteString(s[0])
+		}
+
+		if minor {
+			if sb.Len() > 0 {
+				sb.WriteString(".")
+			}
+
+			sb.WriteString(s[1])
+		}
+
+		if patch {
+			if sb.Len() > 0 {
+				sb.WriteString(".")
+			}
+
+			sb.WriteString(s[2])
+		}
+
+		return sb.String()
+	}
+
+	return ""
+}
+
+func TitleVersion(major bool, minor bool, patch bool) string {
+	return Title() + "-" + Version(major, minor, patch)
 }
 
 // IsWindowsOS reports true if underlying OS is MS Windows
