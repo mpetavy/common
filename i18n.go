@@ -3,12 +3,17 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"cloud.google.com/go/translate"
+	"context"
 	"flag"
 	"fmt"
 	"github.com/fatih/structtag"
 	"github.com/go-ini/ini"
+	googlelanguage "golang.org/x/text/language"
+	"google.golang.org/api/option"
 	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -200,7 +205,8 @@ func SetLanguage(lang string) error {
 		return fmt.Errorf("no language file available")
 	}
 
-	if i18nFile.Section(lang) == nil {
+	sec, _ := i18nFile.GetSection(lang)
+	if sec == nil {
 		return fmt.Errorf("language %s is not available", lang)
 	}
 
@@ -240,6 +246,39 @@ func Translate(msg string, args ...interface{}) string {
 	}
 
 	return fmt.Sprintf(msg, args...)
+}
+
+func googleTranslate(text string, foreignLanguage string) (string, error) {
+	DebugFunc("%s -> %s ...", text, foreignLanguage)
+
+	ctx := context.Background()
+
+	googleApiKey, ok := os.LookupEnv("GOOGLE_API_KEY")
+	if !ok {
+		return "", fmt.Errorf("Failed to get Google API key from env: GOOGLE_API_KEY")
+	}
+
+	// Creates a client.
+	client, err := translate.NewClient(ctx, option.WithAPIKey(googleApiKey))
+	if err != nil {
+		return "", fmt.Errorf("Failed to create client: %v", err)
+	}
+
+	// Sets the target language.
+	target, err := googlelanguage.Parse(foreignLanguage)
+	if err != nil {
+		return "", fmt.Errorf("Failed to parse target language: %v", err)
+	}
+
+	// Translates the text into Russian.
+	translations, err := client.Translate(ctx, []string{text}, target, nil)
+	if err != nil {
+		return "", fmt.Errorf("Failed to translate text: %v", err)
+	}
+
+	DebugFunc("%s -> %s: %s", text, foreignLanguage, translations[0].Text)
+
+	return translations[0].Text, nil
 }
 
 func CreateI18nFile(objs ...interface{}) error {
@@ -324,7 +363,7 @@ func CreateI18nFile(objs ...interface{}) error {
 
 	// update all languages with found i18ns
 
-	secNames := []string{DEFAULT_LANGUAGE}
+	secNames := []string{DEFAULT_LANGUAGE, "zh-Google", "fr-Google"}
 	for _, sec := range i18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
 			index, _ := IndexOf(sec, secNames)
@@ -351,7 +390,17 @@ func CreateI18nFile(objs ...interface{}) error {
 				if sec.Name() == DEFAULT_LANGUAGE {
 					Ignore(i18nFile.Section(sec.Name()).NewKey(i18n, i18n))
 				} else {
-					Ignore(i18nFile.Section(sec.Name()).NewKey(i18n, ""))
+					foreignLanguage, err := googleTranslate(strings.ReplaceAll(i18n, "%v", "XXX"), secName[:strings.Index(secName, "-")])
+					if WarnError(err) {
+						foreignLanguage = ""
+					} else {
+						foreignLanguage = strings.ReplaceAll(foreignLanguage, "XXX", "%v")
+					}
+
+					_, err = i18nFile.Section(secName).NewKey(i18n, foreignLanguage)
+					if Error(err) {
+						return err
+					}
 				}
 			}
 		}
