@@ -381,27 +381,34 @@ func CreateI18nFile(objs ...interface{}) error {
 			}
 
 			key, _ := sec.GetKey(i18n)
+			value := ""
 
 			if key != nil {
-				if sec.Name() == DEFAULT_LANGUAGE {
-					i18nFile.Section(sec.Name()).Key(i18n).SetValue(i18n)
+				value = key.Value()
+			}
+
+			if value == "" {
+				if secName == DEFAULT_LANGUAGE {
+					value = i18n
+				} else {
+					var err error
+
+					value, err = googleTranslate(strings.ReplaceAll(i18n, "%v", "XXX"), secName[:strings.Index(secName, "-")])
+					if WarnError(err) {
+						value = ""
+					} else {
+						value = strings.ReplaceAll(value, "XXX", "%v")
+					}
+				}
+			}
+
+			if key == nil {
+				_, err := i18nFile.Section(sec.Name()).NewKey(i18n, value)
+				if Error(err) {
+					return err
 				}
 			} else {
-				if sec.Name() == DEFAULT_LANGUAGE {
-					Ignore(i18nFile.Section(sec.Name()).NewKey(i18n, i18n))
-				} else {
-					foreignLanguage, err := googleTranslate(strings.ReplaceAll(i18n, "%v", "XXX"), secName[:strings.Index(secName, "-")])
-					if WarnError(err) {
-						foreignLanguage = ""
-					} else {
-						foreignLanguage = strings.ReplaceAll(foreignLanguage, "XXX", "%v")
-					}
-
-					_, err = i18nFile.Section(secName).NewKey(i18n, foreignLanguage)
-					if Error(err) {
-						return err
-					}
-				}
+				i18nFile.Section(sec.Name()).Key(i18n).SetValue(value)
 			}
 		}
 	}
