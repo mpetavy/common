@@ -32,15 +32,22 @@ type SystemInfo struct {
 	MemFree       string
 }
 
-type runner struct {
-	cmd *exec.Cmd
-	wg  *sync.WaitGroup
+type Runner struct {
+	cmd     *exec.Cmd
+	timeout time.Duration
 
-	err    error
-	output string
+	Err    error
+	Output string
 }
 
-func (this *runner) execute(cmd *exec.Cmd, timeout time.Duration, wg *sync.WaitGroup) {
+func NewRunner(cmd *exec.Cmd, timeout time.Duration) *Runner {
+	return &Runner{
+		cmd:     cmd,
+		timeout: timeout,
+	}
+}
+
+func (this *Runner) execute(wg *sync.WaitGroup) (string, error) {
 	defer func() {
 		if wg != nil {
 			wg.Done()
@@ -50,15 +57,36 @@ func (this *runner) execute(cmd *exec.Cmd, timeout time.Duration, wg *sync.WaitG
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	this.cmd.Stdout = &stdout
+	this.cmd.Stderr = &stderr
 
-	this.err = Watchdog(cmd, timeout)
-	if Error(this.err) {
-		return
+	this.Err = Watchdog(this.cmd, this.timeout)
+	if Error(this.Err) {
+		return "", this.Err
 	}
 
-	this.output = string(stdout.Bytes())
+	this.Output = string(stdout.Bytes())
+
+	return this.Output, nil
+}
+
+func MultRunner(runners []Runner) error {
+	chErr := ChannelError{}
+
+	wg := sync.WaitGroup{}
+
+	for i := range runners {
+		go func(r *Runner) {
+			_, err := r.execute(&wg)
+			if err != nil {
+				chErr.Add(err)
+			}
+		}(&runners[i])
+	}
+
+	wg.Wait()
+
+	return chErr.Get()
 }
 
 func (r RuntimeInfo) toString(asFilename bool) string {
@@ -147,11 +175,9 @@ func GetSystemInfo() (SystemInfo, error) {
 	si := SystemInfo{}
 
 	if IsWindowsOS() {
-		var wmicOSRunner runner
+		output, err := NewRunner(exec.Command("wmic", "os"), time.Second*3).execute(nil)
 
-		wmicOSRunner.execute(exec.Command("wmic", "os"), time.Second, nil)
-
-		splits := readStringTable(wmicOSRunner.output, "  ")
+		splits := readStringTable(output, "  ")
 
 		si.MemFree = splits[20] + "+" + splits[22]
 		mem0, err := strconv.Atoi(splits[20])
@@ -186,15 +212,15 @@ func GetSystemInfo() (SystemInfo, error) {
 
 	wg.Add(5)
 
-	var kernelNameRunner runner
-	var kernelReleaseRunner runner
-	var kernelVersionRunner runner
-	var machineRunner runner
+	kernelNameRunner := NewRunner(exec.Command("uname", "-s"), time.Second)
+	kernelReleaseRunner := NewRunner(exec.Command("uname", "-r"), time.Second)
+	kernelVersionRunner := NewRunner(exec.Command("uname", "-v"), time.Second)
+	machineRunner := NewRunner(exec.Command("uname", "-m"), time.Second)
 
-	go kernelNameRunner.execute(exec.Command("uname", "-s"), time.Second, &wg)
-	go kernelReleaseRunner.execute(exec.Command("uname", "-r"), time.Second, &wg)
-	go kernelVersionRunner.execute(exec.Command("uname", "-v"), time.Second, &wg)
-	go machineRunner.execute(exec.Command("uname", "-m"), time.Second, &wg)
+	go kernelNameRunner.execute(&wg)
+	go kernelReleaseRunner.execute(&wg)
+	go kernelVersionRunner.execute(&wg)
+	go machineRunner.execute(&wg)
 	go func(si *SystemInfo) {
 		ba, err := ioutil.ReadFile("/proc/meminfo")
 		if err != nil {
@@ -227,10 +253,10 @@ func GetSystemInfo() (SystemInfo, error) {
 
 	wg.Wait()
 
-	si.KernelName = strings.TrimSpace(kernelNameRunner.output)
-	si.KernelRelease = strings.TrimSpace(kernelReleaseRunner.output)
-	si.KernelVersion = strings.TrimSpace(kernelVersionRunner.output)
-	si.Platform = strings.TrimSpace(machineRunner.output)
+	si.KernelName = strings.TrimSpace(kernelNameRunner.Output)
+	si.KernelRelease = strings.TrimSpace(kernelReleaseRunner.Output)
+	si.KernelVersion = strings.TrimSpace(kernelVersionRunner.Output)
+	si.Platform = strings.TrimSpace(machineRunner.Output)
 
 	return si, nil
 }
