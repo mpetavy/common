@@ -180,7 +180,7 @@ func Exit(code int) {
 	os.Exit(code)
 }
 
-func ErrExitOrError(err error) error {
+func ExitOrError(err error) error {
 	if err != nil {
 		return err
 	} else {

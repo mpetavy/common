@@ -312,7 +312,7 @@ func errorString(err error) string {
 
 // Warn prints out the error
 func WarnError(err error) bool {
-	if err != nil {
+	if err != nil && !isErrExit(err) {
 		log(LEVEL_WARN, GetRuntimeInfo(1), errorString(err))
 	}
 
@@ -354,7 +354,7 @@ func Ignore(arg ...interface{}) bool {
 
 // Debug prints out the information
 func DebugError(err error) bool {
-	if err != nil {
+	if err != nil && !isErrExit(err) {
 		log(LEVEL_DEBUG, GetRuntimeInfo(1), fmt.Sprintf("DebugError: %s", errorString(err)))
 	}
 
@@ -363,21 +363,28 @@ func DebugError(err error) bool {
 
 // Error prints out the error
 func Error(err error) bool {
-	if err != nil {
+	if err != nil && !isErrExit(err) {
 		log(LEVEL_ERROR, GetRuntimeInfo(1), errorString(err))
 	}
 
 	return err != nil
 }
 
+func isErrExit(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	_, ok := err.(*ErrExit)
+	return ok
+}
+
 // Fatal prints out the error
 func Fatal(err error) bool {
-	if err != nil {
-		if _, ok := err.(*ErrExit); !ok {
-			log(LEVEL_FATAL, GetRuntimeInfo(1), errorString(err))
+	if err != nil && !isErrExit(err) {
+		log(LEVEL_FATAL, GetRuntimeInfo(1), errorString(err))
 
-			panic(err)
-		}
+		panic(err)
 	}
 
 	return err != nil
