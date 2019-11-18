@@ -38,7 +38,7 @@ func init() {
 	tlsKey = flag.String(flagKey, "", "TLS server private PEM (PEM format)")
 
 	tlsCertificateFile = flag.String("tls.certfile", CleanPath(AppFilename(".cert.pem")), "TLS server certificate file (PEM format)")
-	tlsKeyFile = flag.String("tls.keyfile", CleanPath(AppFilename(".key.pem")), "TLS server private key PEM (PEM format)")
+	tlsKeyFile = flag.String("tls.keyfile", CleanPath(AppFilename(".cert.key")), "TLS server private key PEM (PEM format)")
 }
 
 func Rnd(max int) int {
