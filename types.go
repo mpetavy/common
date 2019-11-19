@@ -300,6 +300,13 @@ func IterateStruct(data interface{}, function func(typ reflect.StructField, val 
 
 	DebugFunc("struct: %s", typ.Name())
 
+	if function != nil {
+		err := function(reflect.StructField{}, val)
+		if Error(err) {
+			return err
+		}
+	}
+
 	for i := 0; i < val.NumField(); i++ {
 		DebugFunc("field #$d: %s = %s : %s", typ.Field(i).Name, val.Field(i).Type().Name(), val.Field(i).Kind().String())
 
