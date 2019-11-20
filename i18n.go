@@ -372,7 +372,7 @@ func CreateI18nFile(objs ...interface{}) error {
 
 	// update all languages with found i18ns
 
-	secNames := []string{DEFAULT_LANGUAGE, "zh-Google", "fr-Google"}
+	secNames := []string{DEFAULT_LANGUAGE, "zh-Google", "fr-Google", "eo-Google"}
 	for _, sec := range i18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
 			index, _ := IndexOf(sec, secNames)
