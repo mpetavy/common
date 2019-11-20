@@ -248,15 +248,10 @@ func Translate(msg string, args ...interface{}) string {
 	return fmt.Sprintf(msg, args...)
 }
 
-func googleTranslate(text string, foreignLanguage string) (string, error) {
+func googleTranslate(googleApiKey string, text string, foreignLanguage string) (string, error) {
 	DebugFunc("%s -> %s ...", text, foreignLanguage)
 
 	ctx := context.Background()
-
-	googleApiKey, ok := os.LookupEnv("GOOGLE_API_KEY")
-	if !ok {
-		return "", fmt.Errorf("Failed to get Google API key from env: GOOGLE_API_KEY")
-	}
 
 	// Creates a client.
 	client, err := translate.NewClient(ctx, option.WithAPIKey(googleApiKey))
@@ -282,13 +277,19 @@ func googleTranslate(text string, foreignLanguage string) (string, error) {
 }
 
 func CreateI18nFile(objs ...interface{}) error {
+	googleApiKey, ok := os.LookupEnv("GOOGLE_API_KEY")
+	if !ok {
+		return fmt.Errorf("Failed to get Google API key from env: GOOGLE_API_KEY")
+	}
+
 	filename := filepath.Join("static", AppFilename(fmt.Sprintf(".i18n")))
 
 	i18ns := make([]string, 0)
 
 	//get i18n from source
 
-	re := regexp.MustCompile("Translate\\(\"(.*?)\"")
+	regexTranslate := regexp.MustCompile("Translate\\(\"(.*?)\"")
+	regexSubstitution := regexp.MustCompile("\\%[^v]")
 
 	err := WalkFilepath("*.go", true, func(path string) error {
 		Debug("extract i18n from source file: %s", path)
@@ -298,20 +299,28 @@ func CreateI18nFile(objs ...interface{}) error {
 			return err
 		}
 
-		findings := re.FindAll(ba, -1)
+		findings := regexTranslate.FindAll(ba, -1)
 		if findings == nil {
 			return nil
 		}
 
 		for _, f := range findings {
 			finding := string(f)
+
 			finding = finding[strings.Index(finding, "\"")+1 : len(finding)-1]
+
+			if regexSubstitution.Match([]byte(finding)) {
+				return fmt.Errorf("invalid substitution: %s", finding)
+			}
 
 			i18ns = append(i18ns, finding)
 		}
 
 		return nil
 	})
+	if Error(err) {
+		return err
+	}
 
 	for _, obj := range objs {
 		err = scanStruct(&i18ns, obj)
@@ -375,6 +384,12 @@ func CreateI18nFile(objs ...interface{}) error {
 
 	for _, i18n := range i18ns {
 		for _, secName := range secNames {
+			foreignLanguage := secName
+			p := strings.Index(foreignLanguage, "-")
+			if p != -1 {
+				foreignLanguage = foreignLanguage[:p]
+			}
+
 			sec, _ := i18nFile.GetSection(secName)
 			if sec == nil {
 				sec, _ = i18nFile.NewSection(secName)
@@ -393,7 +408,7 @@ func CreateI18nFile(objs ...interface{}) error {
 				} else {
 					var err error
 
-					value, err = googleTranslate(strings.ReplaceAll(i18n, "%v", "XXX"), secName[:strings.Index(secName, "-")])
+					value, err = googleTranslate(googleApiKey, strings.ReplaceAll(i18n, "%v", "XXX"), foreignLanguage)
 					if WarnError(err) {
 						value = ""
 					} else {
