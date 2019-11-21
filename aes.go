@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"strings"
 )
 
 func AESEncrypt(key []byte, message string) (encmess string, err error) {
@@ -62,4 +63,26 @@ func AESDecrypt(key []byte, securemess string) (decodedmess string, err error) {
 	decodedmess = string(cipherText)
 
 	return
+}
+
+func IsStringEnrypted(password string) bool {
+	return strings.HasPrefix(password, "enc:")
+}
+
+func DecryptString(key []byte, txt string) (string, error) {
+	if IsStringEnrypted(txt) {
+		return AESDecrypt(key, txt[4:])
+	} else {
+		return txt, nil
+	}
+}
+
+func EncryptString(key []byte, txt string) (string, error) {
+	if !IsStringEnrypted(txt) {
+		password, err := AESEncrypt(key, txt)
+
+		return "enc:" + password, err
+	} else {
+		return txt, nil
+	}
 }
