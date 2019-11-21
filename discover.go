@@ -67,7 +67,7 @@ func (server *DiscoverServer) Start() error {
 						break
 					} else {
 						if AppLifecycle().IsSet() {
-							DebugError(err)
+							WarnError(err)
 						}
 
 						break
@@ -101,7 +101,7 @@ func (server *DiscoverServer) Stop() error {
 
 	close(server.quitCh)
 
-	DebugError(server.listener.Close())
+	WarnError(server.listener.Close())
 
 	return nil
 }
