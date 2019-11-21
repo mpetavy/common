@@ -229,6 +229,8 @@ func GetLanguages() ([]string, error) {
 		list = append(list, DEFAULT_LANGUAGE)
 	}
 
+	sort.Strings(list)
+
 	return list, nil
 }
 
@@ -372,7 +374,7 @@ func CreateI18nFile(objs ...interface{}) error {
 
 	// update all languages with found i18ns
 
-	secNames := []string{DEFAULT_LANGUAGE, "zh-Google", "fr-Google", "eo-Google"}
+	secNames := []string{DEFAULT_LANGUAGE, "zh-Google", "fr-Google", "eo-Google", "cs-Google"}
 	for _, sec := range i18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
 			index, _ := IndexOf(sec, secNames)
