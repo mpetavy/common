@@ -352,15 +352,6 @@ func Ignore(arg ...interface{}) bool {
 	return b
 }
 
-// Debug prints out the information
-func DebugError(err error) bool {
-	if err != nil && !isErrExit(err) {
-		log(LEVEL_DEBUG, GetRuntimeInfo(1), fmt.Sprintf("DebugError: %s", errorString(err)))
-	}
-
-	return err != nil
-}
-
 // Error prints out the error
 func Error(err error) bool {
 	if err != nil && !isErrExit(err) {

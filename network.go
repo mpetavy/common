@@ -181,7 +181,7 @@ func IsPortAvailable(network string, port int) (bool, error) {
 			if err != nil {
 				return false, err
 			}
-			DebugError(tcpListener.Close())
+			WarnError(tcpListener.Close())
 		}
 	case "udp":
 		if network == "udp" {
@@ -189,7 +189,7 @@ func IsPortAvailable(network string, port int) (bool, error) {
 			if err != nil {
 				return false, err
 			}
-			DebugError(udpListener.Close())
+			WarnError(udpListener.Close())
 		}
 	default:
 		return false, fmt.Errorf("unknown network: %s", network)
