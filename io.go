@@ -555,3 +555,58 @@ func FileMode(read, write, execute bool) os.FileMode {
 		},
 	)
 }
+
+type lineBuffer struct {
+	buf   bytes.Buffer
+	count int
+	lines []string
+	f     func(string) string
+	ba    io.Reader
+}
+
+func NewLineBuffer(count int, f func(string) string) *lineBuffer {
+	return &lineBuffer{
+		buf:   bytes.Buffer{},
+		count: count,
+		lines: make([]string, 0),
+		f:     f,
+	}
+}
+
+func (this *lineBuffer) Read(p []byte) (n int, err error) {
+	if this.ba == nil {
+		this.ba = strings.NewReader(strings.Join(this.lines, ""))
+	}
+
+	return this.ba.Read(p)
+}
+
+func (this *lineBuffer) Write(p []byte) (int, error) {
+	for _, b := range p {
+		err := this.buf.WriteByte(b)
+		if Error(err) {
+			return -1, err
+		}
+
+		if b == '\n' {
+			line := string(this.buf.Bytes())
+			if this.f != nil {
+				line = this.f(line)
+			}
+
+			if len(this.lines) < this.count {
+				this.lines = append(this.lines, line)
+			} else {
+				copy(this.lines, this.lines[1:])
+				this.lines[len(this.lines)-1] = line
+			}
+			this.buf.Reset()
+		}
+	}
+
+	return len(p), nil
+}
+
+func (this *lineBuffer) Lines() []string {
+	return this.lines
+}
