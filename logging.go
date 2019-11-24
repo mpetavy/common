@@ -67,7 +67,11 @@ func (l *logEntry) String() string {
 		return string(ba)
 
 	} else {
-		return fmt.Sprintf("%s %-5s %-40.40s %s", l.Clock, l.LevelStr, l.Ri, l.Msg)
+		if logVerbose == nil || *logVerbose {
+			return fmt.Sprintf("%s %-5s %-40.40s %s", l.Clock, l.LevelStr, l.Ri, l.Msg)
+		} else {
+			return fmt.Sprintf("%-5s: %s", l.LevelStr, l.Msg)
+		}
 	}
 }
 
@@ -237,13 +241,6 @@ func initLog() {
 func writeEntry(entry logEntry) {
 	if entry.levelInt != LEVEL_FILE {
 		s := entry.String()
-		if logVerbose == nil || !*logVerbose {
-			if entry.levelInt > LEVEL_WARN && len(s) > 71 {
-				s = s[24:]
-			} else {
-				s = s[71:]
-			}
-		}
 
 		switch entry.levelInt {
 		case LEVEL_WARN:
@@ -307,7 +304,7 @@ func Warn(t string, arg ...interface{}) {
 }
 
 func errorString(err error) string {
-	return fmt.Sprintf("[%T] %s", err, err.Error())
+	return fmt.Sprintf("%s [%T]", err.Error(), err)
 }
 
 // Warn prints out the error
