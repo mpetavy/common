@@ -135,7 +135,7 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 	}, nil
 }
 
-func createTLSConfig() (*TLSPackage, error) {
+func createTLSPackage() (*TLSPackage, error) {
 	DebugFunc()
 
 	hostname, err := os.Hostname()
@@ -195,7 +195,7 @@ func GetTLSPackage(force bool) (*TLSPackage, error) {
 			}
 		}
 
-		tlsPack, err = createTLSConfig()
+		tlsPack, err = createTLSPackage()
 	}
 
 	return tlsPack, err

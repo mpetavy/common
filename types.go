@@ -329,3 +329,15 @@ func IterateStruct(data interface{}, function func(typ reflect.StructField, val 
 
 	return nil
 }
+
+func FillString(txt string, length int, asPrefix bool, add string) string {
+	for len(txt) < length {
+		if asPrefix {
+			txt = add + txt
+		} else {
+			txt = txt + add
+		}
+	}
+
+	return txt[:length]
+}
