@@ -153,8 +153,6 @@ func initLanguage() {
 			WarnError(SetLanguage(lang))
 		}
 	}
-
-	WarnError(fmt.Errorf("language file %s does not exist", filename))
 }
 
 func scanStruct(i18ns *[]string, data interface{}) error {

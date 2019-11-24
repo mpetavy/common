@@ -68,9 +68,9 @@ func (l *logEntry) String() string {
 
 	} else {
 		if logVerbose == nil || *logVerbose {
-			return fmt.Sprintf("%s %-5s %-40.40s %s", l.Clock, l.LevelStr, l.Ri, l.Msg)
+			return fmt.Sprintf("%s %s %-40.40s %s", l.Clock, FillString(l.LevelStr+":", 6, false, " "), l.Ri, l.Msg)
 		} else {
-			return fmt.Sprintf("%-5s: %s", l.LevelStr, l.Msg)
+			return fmt.Sprintf("%s %s", FillString(l.LevelStr+":", 6, false, " "), l.Msg)
 		}
 	}
 }
