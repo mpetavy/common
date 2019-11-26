@@ -74,7 +74,9 @@ var (
 	onceBanner          sync.Once
 	onceDone            sync.Once
 	restart             bool
-	restartCh           chan struct{}
+	restartCh           = make(chan struct{})
+	kbCh                = make(chan struct{})
+	ctrlC               = make(chan os.Signal, 1)
 )
 
 func init() {
@@ -168,6 +170,22 @@ func Run(mandatoryFlags []string) {
 		Exit(1)
 	}
 
+	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
+
+	if service.Interactive() {
+		go func() {
+			r := bufio.NewReader(os.Stdin)
+
+			var s string
+
+			for len(s) == 0 {
+				s, _ = r.ReadString('\n')
+			}
+
+			kbCh <- struct{}{}
+		}()
+	}
+
 	err = run()
 	if err != nil {
 		Fatal(err)
@@ -237,32 +255,13 @@ func (app *App) service() error {
 
 	info()
 
-	restartCh = make(chan struct{})
 	restart = false
-
-	ctrlC := make(chan os.Signal, 1)
-	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-
-	kbCh := make(chan struct{})
-
-	if service.Interactive() {
-		go func() {
-			r := bufio.NewReader(os.Stdin)
-
-			var s string
-
-			for len(s) == 0 {
-				s, _ = r.ReadString('\n')
-			}
-
-			kbCh <- struct{}{}
-		}()
-	}
 
 	for {
 		select {
 		//case <-time.After(time.Second):
-		//	Info("Restart on time")
+		//	Info("Restart on time %d", runtime.NumGoroutine())
+		//	fmt.Printf("Restart on time %d\n", runtime.NumGoroutine())
 		//	restart = true
 		//	return nil
 		case <-appLifecycle.Channel():
@@ -519,9 +518,7 @@ func AppRestart() {
 	go func() {
 		time.Sleep(time.Second)
 
-		if restartCh != nil {
-			close(restartCh)
-		}
+		restartCh <- struct{}{}
 	}()
 }
 
