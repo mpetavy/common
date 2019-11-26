@@ -383,3 +383,7 @@ func registerFileFlags(ba []byte) error {
 
 	return nil
 }
+
+func GetConfigurationFile() string {
+	return *file
+}

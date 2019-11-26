@@ -66,7 +66,9 @@ func (server *DiscoverServer) Start() error {
 					if err, ok := err.(net.Error); ok && err.Timeout() {
 						break
 					} else {
-						if AppLifecycle().IsSet() {
+						_, isOpen := <-server.quitCh
+
+						if AppLifecycle().IsSet() && isOpen {
 							WarnError(err)
 						}
 
