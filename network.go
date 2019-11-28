@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
@@ -140,7 +141,7 @@ func GetMainIP() (string, error) {
 }
 
 func GetActiveIPs() ([]string, error) {
-	var addresses []string
+	var ips []string
 
 	intfs, err := net.Interfaces()
 	if err != nil {
@@ -161,14 +162,18 @@ func GetActiveIPs() ([]string, error) {
 		}
 
 		for _, addr := range addrs {
-			if addr == nil || addr.(*net.IPNet).IP.IsLoopback() {
+			ip, ok := addr.(*net.IPNet)
+			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || ip.String() == "127.0.0.1" {
 				continue
 			}
 
-			addresses = append(addresses, addr.String())
+			ips = append(ips, addr.String())
 		}
 	}
-	return addresses, nil
+
+	sort.Strings(ips)
+
+	return ips, nil
 }
 
 func IsPortAvailable(network string, port int) (bool, error) {
