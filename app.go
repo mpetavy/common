@@ -337,6 +337,13 @@ func (app *App) loop() {
 				}
 			}
 
+			if *FlagCfgReset {
+				err := ResetConfiguration()
+				if Error(err) {
+					return
+				}
+			}
+
 			if app.StartFunc != nil {
 				err := app.StartFunc()
 				if Error(err) {

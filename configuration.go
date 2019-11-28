@@ -44,9 +44,9 @@ func NewConfiguration() *Configuration {
 }
 
 var (
-	reset   *bool
-	file    *string
-	timeout *int
+	FlagCfgReset   *bool
+	FlagCfgFile    *string
+	FlagCfgTimeout *int
 
 	fileChecker *time.Ticker
 	fileInfo    os.FileInfo
@@ -58,9 +58,9 @@ var (
 )
 
 func init() {
-	file = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
-	reset = flag.Bool("cfg.reset", false, "Reset configuration file")
-	timeout = flag.Int("cfg.timeout", 0, "rescan timeout for configuration change") // FIXME
+	FlagCfgFile = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
+	FlagCfgReset = flag.Bool("cfg.reset", false, "Reset configuration file")
+	FlagCfgTimeout = flag.Int("cfg.timeout", 0, "rescan timeout for configuration change") // FIXME
 
 	mapFlag = make(map[string]string)
 	mapEnv = make(map[string]string)
@@ -88,7 +88,7 @@ func initConfiguration() error {
 	err = registerFileFlags(ba)
 	if Error(err) {
 		if IsRunningAsService() {
-			*reset = true
+			*FlagCfgReset = true
 		} else {
 			return err
 		}
@@ -99,15 +99,15 @@ func initConfiguration() error {
 		return err
 	}
 
-	if *reset {
+	if *FlagCfgReset {
 		err = ResetConfiguration()
 		if Error(err) {
 			return err
 		}
 	}
 
-	if *file != "" && *timeout > 0 {
-		fileChecker = time.NewTicker(MsecToDuration(*timeout))
+	if *FlagCfgFile != "" && *FlagCfgTimeout > 0 {
+		fileChecker = time.NewTicker(MsecToDuration(*FlagCfgTimeout))
 		go func() {
 			for AppLifecycle().IsSet() {
 				select {
@@ -122,7 +122,7 @@ func initConfiguration() error {
 }
 
 func ResetConfiguration() error {
-	*reset = false
+	*FlagCfgReset = false
 
 	cfg := NewConfiguration()
 
@@ -200,9 +200,9 @@ func SetConfigurationBuffer(ba []byte) error {
 }
 
 func readFile() ([]byte, error) {
-	DebugFunc(*file)
+	DebugFunc(*FlagCfgFile)
 
-	b, err := FileExists(*file)
+	b, err := FileExists(*FlagCfgFile)
 	if Error(err) {
 		return nil, err
 	}
@@ -211,14 +211,14 @@ func readFile() ([]byte, error) {
 		return nil, nil
 	}
 
-	ba, err := ioutil.ReadFile(*file)
+	ba, err := ioutil.ReadFile(*FlagCfgFile)
 	if Error(err) {
 		return nil, err
 	}
 
 	fileConfig = ba
 
-	fileInfo, err = os.Stat(*file)
+	fileInfo, err = os.Stat(*FlagCfgFile)
 	if Error(err) {
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func readFile() ([]byte, error) {
 }
 
 func writeFile(ba []byte) error {
-	DebugFunc(*file)
+	DebugFunc(*FlagCfgFile)
 
 	buf := bytes.Buffer{}
 
@@ -239,14 +239,14 @@ func writeFile(ba []byte) error {
 	if string(buf.Bytes()) != string(fileConfig) {
 		Debug("Reformat of configuration file done")
 
-		Error(FileBackup(*file))
+		Error(FileBackup(*FlagCfgFile))
 
-		err = ioutil.WriteFile(*file, buf.Bytes(), DefaultFileMode)
+		err = ioutil.WriteFile(*FlagCfgFile, buf.Bytes(), DefaultFileMode)
 		if Error(err) {
 			return err
 		}
 
-		fileInfo, err = os.Stat(*file)
+		fileInfo, err = os.Stat(*FlagCfgFile)
 		if Error(err) {
 			return err
 		}
@@ -302,7 +302,7 @@ func setFlags() error {
 }
 
 func checkChanged() error {
-	fi, _ := os.Stat(*file)
+	fi, _ := os.Stat(*FlagCfgFile)
 	if fi == nil {
 		return nil
 	}
@@ -330,7 +330,7 @@ func checkChanged() error {
 }
 
 func registerArgsFlags() error {
-	DebugFunc(*file)
+	DebugFunc(*FlagCfgFile)
 
 	mapFlag = make(map[string]string)
 
@@ -342,7 +342,7 @@ func registerArgsFlags() error {
 }
 
 func registerEnvFlags() error {
-	DebugFunc(*file)
+	DebugFunc(*FlagCfgFile)
 
 	mapEnv = make(map[string]string)
 
@@ -358,7 +358,7 @@ func registerEnvFlags() error {
 }
 
 func registerFileFlags(ba []byte) error {
-	DebugFunc(*file)
+	DebugFunc(*FlagCfgFile)
 
 	mapFile = make(map[string]string)
 
@@ -382,8 +382,4 @@ func registerFileFlags(ba []byte) error {
 	}
 
 	return nil
-}
-
-func GetConfigurationFile() string {
-	return *file
 }
