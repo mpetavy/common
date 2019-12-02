@@ -2,12 +2,17 @@ package common
 
 import (
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"net"
 	"os"
 	"os/exec"
 	"sync"
@@ -100,12 +105,12 @@ func TLSConfigFromFile(certFile string, keyFile string) (*TLSPackage, error) {
 
 	Debug("generate TLS config from cert file %s and key file %s", certFile, keyFile)
 
-	x509, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
+	certificate, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
 	if Error(err) {
 		return nil, err
 	}
 
-	tlsConfig := tls.Config{Certificates: []tls.Certificate{x509}}
+	tlsConfig := tls.Config{Certificates: []tls.Certificate{certificate}}
 	tlsConfig.Rand = rand.Reader
 
 	return &TLSPackage{
@@ -120,12 +125,12 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 
 	Debug("generate TLS config from given cert and key %s")
 
-	x509, err := tls.X509KeyPair(certAsPem, keyAsPem)
+	certificate, err := tls.X509KeyPair(certAsPem, keyAsPem)
 	if Error(err) {
 		return nil, err
 	}
 
-	tlsConfig := tls.Config{Certificates: []tls.Certificate{x509}}
+	tlsConfig := tls.Config{Certificates: []tls.Certificate{certificate}}
 	tlsConfig.Rand = rand.Reader
 
 	return &TLSPackage{
@@ -135,7 +140,7 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 	}, nil
 }
 
-func createTLSPackage() (*TLSPackage, error) {
+func createTLSPackageByOpenSSL() (*TLSPackage, error) {
 	DebugFunc()
 
 	hostname, err := os.Hostname()
@@ -157,6 +162,101 @@ func createTLSPackage() (*TLSPackage, error) {
 	}
 
 	return nil, fmt.Errorf("openssl not available")
+}
+
+// https://ericchiang.github.io/post/go-tls/
+func CertTemplate() (*x509.Certificate, error) {
+	// generate a random serial number (a real cert authority would have some logic behind this)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if Error(err) {
+		return nil, err
+	}
+
+	tmpl := x509.Certificate{
+		SerialNumber:          serialNumber,
+		Subject:               pkix.Name{Organization: []string{Title()}},
+		SignatureAlgorithm:    x509.SHA256WithRSA,
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Duration(10) * 365 * 24 * time.Hour),
+		BasicConstraintsValid: true,
+	}
+
+	return &tmpl, nil
+}
+
+func createCert(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}) (
+	cert *x509.Certificate, certPEM []byte, err error) {
+
+	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
+	if err != nil {
+		return
+	}
+	// parse the resulting certificate so we can use it again
+	cert, err = x509.ParseCertificate(certDER)
+	if err != nil {
+		return
+	}
+	// PEM encode the certificate (this is a standard TLS encoding)
+	b := pem.Block{Type: "CERTIFICATE", Bytes: certDER}
+	certPEM = pem.EncodeToMemory(&b)
+	return
+}
+
+func createTLSPackage() (*TLSPackage, error) {
+	// generate a new key-pair
+	rootKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if Error(err) {
+		return nil, err
+	}
+
+	rootCertTmpl, err := CertTemplate()
+	if Error(err) {
+		return nil, err
+	}
+
+	ips, err := GetActiveIPs(true)
+	if Error(err) {
+		return nil, err
+	}
+
+	parsedIps := make([]net.IP, 0)
+	for _, ip := range ips {
+		ip, _, err := net.ParseCIDR(ip)
+		if Error(err) {
+			return nil, err
+		}
+
+		parsedIps = append(parsedIps, ip)
+	}
+
+	// describe what the certificate will be used for
+	rootCertTmpl.IsCA = true
+	rootCertTmpl.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature
+	rootCertTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
+	rootCertTmpl.IPAddresses = parsedIps
+
+	_, rootCertPEM, err := createCert(rootCertTmpl, rootCertTmpl, &rootKey.PublicKey, rootKey)
+	if Error(err) {
+		return nil, err
+	}
+
+	err = ioutil.WriteFile(*tlsCertificateFile, rootCertPEM, DefaultFileMode)
+	if Error(err) {
+		return nil, err
+	}
+
+	// PEM encode the private key
+	rootKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(rootKey),
+	})
+
+	err = ioutil.WriteFile(*tlsKeyFile, rootKeyPEM, DefaultFileMode)
+	if Error(err) {
+		return nil, err
+	}
+
+	return TLSConfigFromFile(*tlsCertificateFile, *tlsKeyFile)
 }
 
 func GetTLSPackage(force bool) (*TLSPackage, error) {
