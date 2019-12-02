@@ -113,7 +113,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 
 	discoveredIps := make(map[string]string)
 
-	localIps, err := GetActiveIPs()
+	localIps, err := GetActiveIPs(false)
 	if err != nil {
 		return discoveredIps, err
 	}

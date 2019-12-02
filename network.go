@@ -55,7 +55,7 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 }
 
 func GetMainIP() (string, error) {
-	ips, err := GetActiveIPs()
+	ips, err := GetActiveIPs(true)
 	if len(ips) == 1 {
 		DebugFunc(ips[0])
 
@@ -140,7 +140,7 @@ func GetMainIP() (string, error) {
 	return "", fmt.Errorf("cannot find main ip for %s", hostname)
 }
 
-func GetActiveIPs() ([]string, error) {
+func GetActiveIPs(inclLocalhost bool) ([]string, error) {
 	var ips []string
 
 	intfs, err := net.Interfaces()
@@ -163,7 +163,7 @@ func GetActiveIPs() ([]string, error) {
 
 		for _, addr := range addrs {
 			ip, ok := addr.(*net.IPNet)
-			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || ip.String() == "127.0.0.1" {
+			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && (ip.String() == "127.0.0.1" || ip.String() == "::1")) {
 				continue
 			}
 
