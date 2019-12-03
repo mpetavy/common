@@ -15,6 +15,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"software.sslmate.com/src/go-pkcs12"
 	"sync"
 	"time"
 )
@@ -29,6 +30,7 @@ var (
 	tlsKey             *string
 	tlsCertificateFile *string
 	tlsKeyFile         *string
+	tlsP12File         *string
 	muTLS              sync.Mutex
 	tlsPack            *TLSPackage
 )
@@ -44,6 +46,8 @@ func init() {
 
 	tlsCertificateFile = flag.String("tls.certfile", CleanPath(AppFilename(".cert.pem")), "TLS server certificate file (PEM format)")
 	tlsKeyFile = flag.String("tls.keyfile", CleanPath(AppFilename(".cert.key")), "TLS server private key PEM (PEM format)")
+
+	tlsP12File = flag.String("tls.p12file", CleanPath(AppFilename(".p12")), "TLS server PKCS12 container file (P12 format)")
 }
 
 func Rnd(max int) int {
@@ -104,6 +108,54 @@ func TLSConfigFromFile(certFile string, keyFile string) (*TLSPackage, error) {
 	}
 
 	Debug("generate TLS config from cert file %s and key file %s", certFile, keyFile)
+
+	certificate, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
+	if Error(err) {
+		return nil, err
+	}
+
+	tlsConfig := tls.Config{Certificates: []tls.Certificate{certificate}}
+	tlsConfig.Rand = rand.Reader
+
+	return &TLSPackage{
+		CertificateAsPem: certAsPem,
+		PrivateKeyAsPem:  keyAsPem,
+		Config:           tlsConfig,
+	}, nil
+}
+
+// the priority on entities inside p12 must be honored
+// 1st	  private key
+// 2nd	  computer certificate
+// 3d..n  CA certificates (will be ignored by app)
+func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
+	DebugFunc("p12File: %s", p12File)
+
+	ok, err := FileExists(p12File)
+	if Error(err) || !ok {
+		return nil, err
+	}
+
+	ba, err := ioutil.ReadFile(p12File)
+	if Error(err) || !ok {
+		return nil, err
+	}
+
+	key, cert, err := pkcs12.Decode(ba, Title())
+	if Error(err) || !ok {
+		return nil, err
+	}
+
+	keyAsPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(key.(*rsa.PrivateKey)),
+		},
+	)
+
+	certAsPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+
+	Debug("generate TLS config from given cert and key %s")
 
 	certificate, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
 	if Error(err) {
@@ -268,6 +320,14 @@ func GetTLSPackage(force bool) (*TLSPackage, error) {
 	var err error
 
 	if tlsPack == nil || force {
+		if *tlsP12File != "" {
+			tlsConfig, _ := TLSConfigFromP12File(*tlsP12File)
+
+			if tlsConfig != nil {
+				return tlsConfig, nil
+			}
+		}
+
 		if *tlsCertificateFile != "" && *tlsKeyFile != "" {
 			tlsConfig, _ := TLSConfigFromFile(*tlsCertificateFile, *tlsKeyFile)
 
