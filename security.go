@@ -42,6 +42,8 @@ var (
 )
 
 const (
+	PKCS12_PASSWORD = pkcs12.DefaultPassword
+
 	flagCert = "tls.cert"
 	flagKey  = "tls.key"
 )
@@ -53,7 +55,7 @@ func init() {
 	tlsCertificateFile = flag.String("tls.certfile", CleanPath(AppFilename(".cert.pem")), "TLS server certificate file (PEM format)")
 	tlsKeyFile = flag.String("tls.keyfile", CleanPath(AppFilename(".cert.key")), "TLS server private key PEM (PEM format)")
 
-	tlsP12File = flag.String("tls.p12file", CleanPath(AppFilename(".p12")), "TLS server PKCS12 container file (P12 format)")
+	tlsP12File = flag.String("tls.p12file", CleanPath(AppFilename(".p12")), "TLS PKCS12 container file (P12 format)")
 }
 
 func Rnd(max int) int {
@@ -147,9 +149,14 @@ func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
 		return nil, err
 	}
 
-	key, cert, err := pkcs12.Decode(ba, Title())
+	key, cert, err := pkcs12.Decode(ba, PKCS12_PASSWORD)
 	if Error(err) || !ok {
 		return nil, err
+	}
+
+	_, ok = key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("Expected RSA private key type")
 	}
 
 	keyAsPem := pem.EncodeToMemory(
@@ -219,7 +226,7 @@ func createTLSPackageByOpenSSL() (*TLSPackage, error) {
 		return TLSConfigFromFile(*tlsCertificateFile, *tlsKeyFile)
 	}
 
-	return nil, fmt.Errorf("openssl not available")
+	return nil, fmt.Errorf("Openssl not available")
 }
 
 // https://ericchiang.github.io/post/go-tls/
@@ -233,7 +240,7 @@ func CertTemplate() (*x509.Certificate, error) {
 
 	tmpl := x509.Certificate{
 		SerialNumber:          serialNumber,
-		Subject:               pkix.Name{Organization: []string{Title()}},
+		Subject:               pkix.Name{Organization: []string{TitleVersion(true, true, true)}},
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(time.Duration(10) * 365 * 24 * time.Hour),
@@ -260,13 +267,12 @@ func createCert(template, parent *x509.Certificate, pub interface{}, parentPriv 
 }
 
 func createTLSPackage() (*TLSPackage, error) {
-	// generate a new key-pair
-	rootKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if Error(err) {
 		return nil, err
 	}
 
-	rootCertTmpl, err := CertTemplate()
+	certTmpl, err := CertTemplate()
 	if Error(err) {
 		return nil, err
 	}
@@ -286,33 +292,32 @@ func createTLSPackage() (*TLSPackage, error) {
 		parsedIps = append(parsedIps, ip)
 	}
 
-	// describe what the certificate will be used for
-	rootCertTmpl.IsCA = true
-	rootCertTmpl.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature
-	rootCertTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
-	rootCertTmpl.IPAddresses = parsedIps
+	certTmpl.IsCA = true
+	certTmpl.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature
+	certTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
+	certTmpl.IPAddresses = parsedIps
 
-	rootCert, rootCertPEM, err := createCert(rootCertTmpl, rootCertTmpl, &rootKey.PublicKey, rootKey)
+	cert, certPEM, err := createCert(certTmpl, certTmpl, &key.PublicKey, key)
 	if Error(err) {
 		return nil, err
 	}
 
-	err = ioutil.WriteFile(*tlsCertificateFile, rootCertPEM, DefaultFileMode)
-	if Error(err) {
-		return nil, err
-	}
+	//err = ioutil.WriteFile(*tlsCertificateFile, certPEM, DefaultFileMode)
+	//if Error(err) {
+	//	return nil, err
+	//}
 
 	// PEM encode the private key
-	rootKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(rootKey),
+	keyPEM := pem.EncodeToMemory(&pem.Block{
+		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key),
 	})
 
-	err = ioutil.WriteFile(*tlsKeyFile, rootKeyPEM, DefaultFileMode)
-	if Error(err) {
-		return nil, err
-	}
+	//err = ioutil.WriteFile(*tlsKeyFile, keyPEM, DefaultFileMode)
+	//if Error(err) {
+	//	return nil, err
+	//}
 
-	pfx, err := pkcs12.Encode(rand.Reader, rootKey, rootCert, nil, Title())
+	pfx, err := pkcs12.Encode(rand.Reader, key, cert, nil, PKCS12_PASSWORD)
 	if Error(err) {
 		return nil, err
 	}
@@ -322,7 +327,7 @@ func createTLSPackage() (*TLSPackage, error) {
 		return nil, err
 	}
 
-	return TLSConfigFromFile(*tlsCertificateFile, *tlsKeyFile)
+	return TLSConfigFromPem(certPEM, keyPEM)
 }
 
 func GetTLSPackage(force bool) (*TLSPackage, error) {
@@ -373,4 +378,42 @@ func GetTLSPackage(force bool) (*TLSPackage, error) {
 	}
 
 	return tlsConfig, err
+}
+
+func VerifyP12(p12 []byte, password string) (*x509.Certificate, *rsa.PrivateKey, error) {
+	privateKey, cert, err := pkcs12.Decode(p12, password)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := VerifyCertificate(cert); err != nil {
+		return nil, nil, err
+	}
+
+	priv, ok := privateKey.(*rsa.PrivateKey)
+	if !ok {
+		return nil, nil, fmt.Errorf("Expected RSA private key type")
+	}
+
+	return cert, priv, nil
+}
+
+func VerifyCertificate(cert *x509.Certificate) error {
+	_, err := cert.Verify(x509.VerifyOptions{})
+	if err == nil {
+		return nil
+	}
+
+	switch e := err.(type) {
+	case x509.CertificateInvalidError:
+		switch e.Reason {
+		case x509.Expired:
+			return fmt.Errorf("Certificate has expired or is not yet valid")
+		default:
+			return err
+		}
+	case x509.UnknownAuthorityError:
+		return nil
+	default:
+		return err
+	}
 }
