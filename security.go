@@ -20,6 +20,12 @@ import (
 	"time"
 )
 
+// https://ericchiang.github.io/post/go-tls/
+// https://blog.kowalczyk.info/article/Jl3G/https-for-free-in-go-with-little-help-of-lets-encrypt.html
+// https://stackoverflow.com/questions/13555085/save-and-load-crypto-rsa-privatekey-to-and-from-the-disk
+// https://knowledge.digicert.com/solution/SO25985.html
+// https://github.com/SSLMate/go-pkcs12/blob/master/pkcs12.go
+
 type TLSPackage struct {
 	CertificateAsPem, PrivateKeyAsPem []byte
 	Config                            tls.Config
@@ -32,7 +38,7 @@ var (
 	tlsKeyFile         *string
 	tlsP12File         *string
 	muTLS              sync.Mutex
-	tlsPack            *TLSPackage
+	tlsConfig          *TLSPackage
 )
 
 const (
@@ -237,9 +243,7 @@ func CertTemplate() (*x509.Certificate, error) {
 	return &tmpl, nil
 }
 
-func createCert(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}) (
-	cert *x509.Certificate, certPEM []byte, err error) {
-
+func createCert(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}) (cert *x509.Certificate, certPEM []byte, err error) {
 	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
 	if err != nil {
 		return
@@ -288,7 +292,7 @@ func createTLSPackage() (*TLSPackage, error) {
 	rootCertTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 	rootCertTmpl.IPAddresses = parsedIps
 
-	_, rootCertPEM, err := createCert(rootCertTmpl, rootCertTmpl, &rootKey.PublicKey, rootKey)
+	rootCert, rootCertPEM, err := createCert(rootCertTmpl, rootCertTmpl, &rootKey.PublicKey, rootKey)
 	if Error(err) {
 		return nil, err
 	}
@@ -308,6 +312,16 @@ func createTLSPackage() (*TLSPackage, error) {
 		return nil, err
 	}
 
+	pfx, err := pkcs12.Encode(rand.Reader, rootKey, rootCert, nil, Title())
+	if Error(err) {
+		return nil, err
+	}
+
+	err = ioutil.WriteFile(*tlsP12File, pfx, DefaultFileMode)
+	if Error(err) {
+		return nil, err
+	}
+
 	return TLSConfigFromFile(*tlsCertificateFile, *tlsKeyFile)
 }
 
@@ -319,9 +333,9 @@ func GetTLSPackage(force bool) (*TLSPackage, error) {
 
 	var err error
 
-	if tlsPack == nil || force {
+	if tlsConfig == nil || force {
 		if *tlsP12File != "" {
-			tlsConfig, _ := TLSConfigFromP12File(*tlsP12File)
+			tlsConfig, _ = TLSConfigFromP12File(*tlsP12File)
 
 			if tlsConfig != nil {
 				return tlsConfig, nil
@@ -355,8 +369,8 @@ func GetTLSPackage(force bool) (*TLSPackage, error) {
 			}
 		}
 
-		tlsPack, err = createTLSPackage()
+		tlsConfig, err = createTLSPackage()
 	}
 
-	return tlsPack, err
+	return tlsConfig, err
 }
