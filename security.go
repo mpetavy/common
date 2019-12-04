@@ -231,6 +231,11 @@ func createTLSPackageByOpenSSL() (*TLSPackage, error) {
 
 // https://ericchiang.github.io/post/go-tls/
 func CertTemplate() (*x509.Certificate, error) {
+	hostname, err := os.Hostname()
+	if Error(err) {
+		return nil, err
+	}
+
 	// generate a random serial number (a real cert authority would have some logic behind this)
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
@@ -244,6 +249,7 @@ func CertTemplate() (*x509.Certificate, error) {
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(time.Duration(10) * 365 * 24 * time.Hour),
+		DNSNames:              []string{hostname},
 		BasicConstraintsValid: true,
 	}
 
