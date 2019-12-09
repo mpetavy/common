@@ -20,7 +20,7 @@ type TimeoutSocket struct {
 	Socket       *net.Conn
 }
 
-func (this *TimeoutSocket) Read(p []byte) (n int, err error) {
+func (this TimeoutSocket) Read(p []byte) (n int, err error) {
 	err = (*this.Socket).SetReadDeadline(DeadlineByDuration(this.ReadTimeout))
 	if err != nil {
 		return 0, err
@@ -29,7 +29,7 @@ func (this *TimeoutSocket) Read(p []byte) (n int, err error) {
 	return (*this.Socket).Read(p)
 }
 
-func (this *TimeoutSocket) Write(p []byte) (n int, err error) {
+func (this TimeoutSocket) Write(p []byte) (n int, err error) {
 	err = (*this.Socket).SetWriteDeadline(DeadlineByDuration(this.WriteTimeout))
 	if err != nil {
 		return 0, err
