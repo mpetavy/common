@@ -14,7 +14,6 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.3.0
-	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
 	golang.org/x/text v0.3.2
 	google.golang.org/api v0.13.0
 	gopkg.in/ini.v1 v1.49.0 // indirect
