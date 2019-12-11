@@ -10,12 +10,14 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"github.com/grantae/certinfo"
 	"io/ioutil"
 	"math/big"
 	"net"
 	"os"
 	"os/exec"
 	"software.sslmate.com/src/go-pkcs12"
+	"strings"
 	"sync"
 	"time"
 )
@@ -28,6 +30,7 @@ import (
 
 type TLSPackage struct {
 	CertificateAsPem, PrivateKeyAsPem []byte
+	Info                              string
 	Config                            tls.Config
 }
 
@@ -149,7 +152,7 @@ func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
 		return nil, err
 	}
 
-	key, cert, err := pkcs12.Decode(ba, PKCS12_PASSWORD)
+	key, cert, caCerts, err := pkcs12.DecodeChain(ba, PKCS12_PASSWORD)
 	if Error(err) || !ok {
 		return nil, err
 	}
@@ -178,9 +181,15 @@ func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
 	tlsConfig := tls.Config{Certificates: []tls.Certificate{certificate}}
 	tlsConfig.Rand = rand.Reader
 
+	certInfos, err := CertificateInfoFromX509(append(caCerts, cert))
+	if Error(err) {
+		return nil, err
+	}
+
 	return &TLSPackage{
 		CertificateAsPem: certAsPem,
 		PrivateKeyAsPem:  keyAsPem,
+		Info:             certInfos,
 		Config:           tlsConfig,
 	}, nil
 }
@@ -422,4 +431,42 @@ func VerifyCertificate(cert *x509.Certificate) error {
 	default:
 		return err
 	}
+}
+
+func CertificateInfoFromConnection(con *tls.Conn) (string, error) {
+	txt := ""
+	for i, cert := range con.ConnectionState().PeerCertificates {
+		header := fmt.Sprintf("#%d ", i)
+		info := fmt.Sprintf("%s%s\n", header, strings.Repeat("-", 100-len(header)))
+
+		certInfo, err := certinfo.CertificateText(cert)
+		if Error(err) {
+			continue
+		}
+
+		info += fmt.Sprintf("%s\n", certInfo)
+
+		txt += info
+	}
+
+	return txt, nil
+}
+
+func CertificateInfoFromX509(certs []*x509.Certificate) (string, error) {
+	txt := ""
+	for i, cert := range certs {
+		header := fmt.Sprintf("#%d ", i)
+		info := fmt.Sprintf("%s%s\n", header, strings.Repeat("-", 100-len(header)))
+
+		certInfo, err := certinfo.CertificateText(cert)
+		if Error(err) {
+			continue
+		}
+
+		info += fmt.Sprintf("%s\n", certInfo)
+
+		txt += info
+	}
+
+	return txt, nil
 }
