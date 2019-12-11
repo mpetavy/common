@@ -3,7 +3,9 @@ package common
 import (
 	"io"
 	"io/ioutil"
+	"math"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"fmt"
@@ -340,4 +342,46 @@ func FillString(txt string, length int, asPrefix bool, add string) string {
 	}
 
 	return txt[:length]
+}
+
+func MemoryToString(mem int) string {
+	neg := mem < 0
+
+	f := math.Abs(float64(mem))
+	h := []string{"Bytes", "KB", "MB", "GB", "TB"}
+
+	var r float64
+	var i int
+
+	for i = len(h) - 1; i >= 0; i-- {
+		d := math.Pow(1024, float64(i))
+
+		r = f / d
+
+		if int(r) > 0 {
+			break
+		}
+	}
+
+	if neg {
+		r = r * -1
+	}
+
+	return fmt.Sprintf("%.1f %s", r, h[i])
+}
+
+func ExtractNumber(txt string) (float64, error) {
+	r := regexp.MustCompile("[\\d.-]*")
+	s := r.FindString(txt)
+
+	if s == "" {
+		return -1, fmt.Errorf("cannot getNumber() from %s", txt)
+	}
+
+	f, err := strconv.ParseFloat(s, 64)
+	if Error(err) {
+		return -1, err
+	}
+
+	return f, nil
 }
