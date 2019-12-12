@@ -35,13 +35,12 @@ type TLSPackage struct {
 }
 
 var (
-	tlsCertificate     *string
-	tlsKey             *string
-	tlsCertificateFile *string
-	tlsKeyFile         *string
-	tlsP12File         *string
-	muTLS              sync.Mutex
-	tlsConfig          *TLSPackage
+	FlagTlsCertificate     *string
+	FlagTlsKey             *string
+	FlagTlsCertificateFile *string
+	FlagTlsKeyFile         *string
+	FlagTlsP12File         *string
+	muTLS                  sync.Mutex
 )
 
 const (
@@ -52,13 +51,13 @@ const (
 )
 
 func init() {
-	tlsCertificate = flag.String(flagCert, "", "TLS server certificate (PEM format)")
-	tlsKey = flag.String(flagKey, "", "TLS server private PEM (PEM format)")
+	FlagTlsCertificate = flag.String(flagCert, "", "TLS server certificate (PEM format)")
+	FlagTlsKey = flag.String(flagKey, "", "TLS server private PEM (PEM format)")
 
-	tlsCertificateFile = flag.String("tls.certfile", CleanPath(AppFilename(".cert.pem")), "TLS server certificate file (PEM format)")
-	tlsKeyFile = flag.String("tls.keyfile", CleanPath(AppFilename(".cert.key")), "TLS server private key PEM (PEM format)")
+	FlagTlsCertificateFile = flag.String("tls.certfile", CleanPath(AppFilename(".cert.pem")), "TLS server certificate file (PEM format)")
+	FlagTlsKeyFile = flag.String("tls.keyfile", CleanPath(AppFilename(".cert.key")), "TLS server private key PEM (PEM format)")
 
-	tlsP12File = flag.String("tls.p12file", CleanPath(AppFilename(".p12")), "TLS PKCS12 container file (P12 format)")
+	FlagTlsP12File = flag.String("tls.p12file", CleanPath(AppFilename(".p12")), "TLS PKCS12 container file (P12 format)")
 }
 
 func Rnd(max int) int {
@@ -225,14 +224,14 @@ func createTLSPackageByOpenSSL() (*TLSPackage, error) {
 	path, err := exec.LookPath("openssl")
 
 	if path != "" {
-		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *tlsCertificateFile, "-keyout", *tlsKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
+		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *FlagTlsCertificateFile, "-keyout", *FlagTlsKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
 
 		err := Watchdog(cmd, time.Second*10)
 		if Error(err) {
 			return nil, nil
 		}
 
-		return TLSConfigFromFile(*tlsCertificateFile, *tlsKeyFile)
+		return TLSConfigFromFile(*FlagTlsCertificateFile, *FlagTlsKeyFile)
 	}
 
 	return nil, fmt.Errorf("Openssl not available")
@@ -337,7 +336,7 @@ func createTLSPackage() (*TLSPackage, error) {
 		return nil, err
 	}
 
-	err = ioutil.WriteFile(*tlsP12File, pfx, DefaultFileMode)
+	err = ioutil.WriteFile(*FlagTlsP12File, pfx, DefaultFileMode)
 	if Error(err) {
 		return nil, err
 	}
@@ -345,54 +344,50 @@ func createTLSPackage() (*TLSPackage, error) {
 	return TLSConfigFromPem(certPEM, keyPEM)
 }
 
-func GetTLSPackage(force bool) (*TLSPackage, error) {
-	DebugFunc("force: %v", force)
+func GetTLSPackage() (*TLSPackage, error) {
+	DebugFunc()
 
 	muTLS.Lock()
 	defer muTLS.Unlock()
 
-	var err error
+	var tlsPackage *TLSPackage
 
-	if tlsConfig == nil || force {
-		if *tlsP12File != "" {
-			tlsConfig, _ = TLSConfigFromP12File(*tlsP12File)
+	if *FlagTlsP12File != "" {
+		tlsPackage, _ = TLSConfigFromP12File(*FlagTlsP12File)
 
-			if tlsConfig != nil {
-				return tlsConfig, nil
-			}
+		if tlsPackage != nil {
+			return tlsPackage, nil
 		}
-
-		if *tlsCertificateFile != "" && *tlsKeyFile != "" {
-			tlsConfig, _ := TLSConfigFromFile(*tlsCertificateFile, *tlsKeyFile)
-
-			if tlsConfig != nil {
-				return tlsConfig, nil
-			}
-		}
-
-		if *tlsCertificate != "" && *tlsKey != "" {
-			tlsConfig, _ := TLSConfigFromPem([]byte(*tlsCertificate), []byte(*tlsKey))
-
-			if tlsConfig != nil {
-				return tlsConfig, nil
-			}
-		}
-
-		tlsCert, _ := GetConfiguration().GetFlag(flagCert)
-		tlsKey, _ := GetConfiguration().GetFlag(flagKey)
-
-		if tlsCert != "" && tlsKey != "" {
-			tlsConfig, _ := TLSConfigFromPem([]byte(tlsCert), []byte(tlsKey))
-
-			if tlsConfig != nil {
-				return tlsConfig, nil
-			}
-		}
-
-		tlsConfig, err = createTLSPackage()
 	}
 
-	return tlsConfig, err
+	if *FlagTlsCertificateFile != "" && *FlagTlsKeyFile != "" {
+		tlsConfig, _ := TLSConfigFromFile(*FlagTlsCertificateFile, *FlagTlsKeyFile)
+
+		if tlsConfig != nil {
+			return tlsConfig, nil
+		}
+	}
+
+	if *FlagTlsCertificate != "" && *FlagTlsKey != "" {
+		tlsConfig, _ := TLSConfigFromPem([]byte(*FlagTlsCertificate), []byte(*FlagTlsKey))
+
+		if tlsConfig != nil {
+			return tlsConfig, nil
+		}
+	}
+
+	tlsCert, _ := GetConfiguration().GetFlag(flagCert)
+	tlsKey, _ := GetConfiguration().GetFlag(flagKey)
+
+	if tlsCert != "" && tlsKey != "" {
+		tlsConfig, _ := TLSConfigFromPem([]byte(tlsCert), []byte(tlsKey))
+
+		if tlsConfig != nil {
+			return tlsConfig, nil
+		}
+	}
+
+	return createTLSPackage()
 }
 
 func VerifyP12(p12 []byte, password string) (*x509.Certificate, *rsa.PrivateKey, error) {
