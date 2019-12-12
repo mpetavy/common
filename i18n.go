@@ -276,13 +276,13 @@ func googleTranslate(googleApiKey string, text string, foreignLanguage string) (
 	return translations[0].Text, nil
 }
 
-func CreateI18nFile(objs ...interface{}) error {
+func CreateI18nFile(path string, objs ...interface{}) error {
 	googleApiKey, ok := os.LookupEnv("GOOGLE_API_KEY")
 	if !ok {
 		return fmt.Errorf("Failed to get Google API key from env: GOOGLE_API_KEY")
 	}
 
-	filename := filepath.Join("static", AppFilename(fmt.Sprintf(".i18n")))
+	filename := filepath.Join(path, AppFilename(fmt.Sprintf(".i18n")))
 
 	i18ns := make([]string, 0)
 

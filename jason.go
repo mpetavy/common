@@ -147,7 +147,7 @@ func (jason *Jason) Array(key string, index int) (*Jason, error) {
 
 func (jason *Jason) String(key string, def ...string) (string, error) {
 	v, err := jason.get(key)
-	if err != nil {
+	if v == nil || err != nil {
 		if len(def) > 0 {
 			return def[0], nil
 		} else {
