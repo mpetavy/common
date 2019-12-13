@@ -121,9 +121,9 @@ func CreateModLicenseFile(path string) error {
 				paths = append(paths, filepath.SplitList(req.Name)...)
 				paths[len(paths)-1] = filepath.Join(fmt.Sprintf("%s@%s", paths[len(paths)-1], req.Version), "LICENSE")
 
-				req.LicenseName = "custom"
-				req.LicenseUrl = "not available"
-				req.LicenseText = "not available"
+				req.LicenseName = "Custom"
+				req.LicenseUrl = ""
+				req.LicenseText = ""
 
 				licenseFile := filepath.Join(paths...)
 
@@ -188,6 +188,15 @@ func CreateModLicenseFile(path string) error {
 						}
 
 						req.LicenseText = body
+
+						url, err = j.String("html_url")
+						if Error(err) {
+							return err
+						}
+
+						if url != "" {
+							req.LicenseUrl = url
+						}
 					}
 
 					name, _ := e.String("name")
@@ -229,4 +238,20 @@ func CreateModLicenseFile(path string) error {
 	}
 
 	return ioutil.WriteFile(filepath.Join(path, AppFilename("-opensource.json")), ba, DefaultFileMode)
+}
+
+func GetModLicenseInfo(path string) (*gomodInfo, error) {
+	ba, err := ioutil.ReadFile(filepath.Join(path, AppFilename("-opensource.json")))
+	if Error(err) {
+		return nil, err
+	}
+
+	info := gomodInfo{}
+
+	err = json.Unmarshal(ba, &info)
+	if Error(err) {
+		return nil, err
+	}
+
+	return &info, err
 }
