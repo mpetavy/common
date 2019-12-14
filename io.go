@@ -3,12 +3,14 @@ package common
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/kardianos/service"
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -609,4 +611,50 @@ func (this *lineBuffer) Write(p []byte) (int, error) {
 
 func (this *lineBuffer) Lines() []string {
 	return this.lines
+}
+
+func URLGet(url string) ([]byte, error) {
+	h := &http.Client{}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if Error(err) {
+		return nil, err
+	}
+
+	var r *http.Response
+
+	r, err = h.Do(req)
+	if Error(err) {
+		return nil, err
+	}
+
+	ba, err := ioutil.ReadAll(r.Body)
+
+	defer func() {
+		Error(r.Body.Close())
+	}()
+
+	if Error(err) {
+		return nil, err
+	}
+
+	return ba, nil
+}
+
+func WriteJsonFile(filename string, v interface{}, fileMode os.FileMode) error {
+	ba, err := json.MarshalIndent(v, "", "    ")
+	if Error(err) {
+		return err
+	}
+
+	return ioutil.WriteFile(filename, ba, fileMode)
+}
+
+func ReadJsonFile(filename string, v interface{}) error {
+	ba, err := ioutil.ReadFile(filename)
+	if Error(err) {
+		return err
+	}
+
+	return json.Unmarshal(ba, v)
 }

@@ -3,10 +3,8 @@ package common
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,73 +19,44 @@ type require struct {
 	LicenseText string
 }
 
-type gomodInfo struct {
+type ModuleInfo struct {
 	Module  string
 	Version string
 	Require []require
 }
 
-func URLGet(url string) ([]byte, error) {
-	h := &http.Client{}
-
-	username := os.Getenv("GITHUB_USERNAME")
-	password := os.Getenv("GITHUB_PASSWORD")
-
-	if username == "" || password == "" {
-		return nil, fmt.Errorf("Failed to get GITHUB credentials API key from env: GITHUB_USERNAME, GITHUB_PASSWORD")
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if Error(err) {
-		return nil, err
-	}
-
-	req.SetBasicAuth(username, password)
-
-	var r *http.Response
-
-	r, err = h.Do(req)
-	if Error(err) {
-		return nil, err
-	}
-
-	ba, err := ioutil.ReadAll(r.Body)
-
-	defer func() {
-		Error(r.Body.Close())
-	}()
-
-	if Error(err) {
-		return nil, err
-	}
-
-	return ba, nil
-}
-
-func CreateModLicenseFile(path string) error {
+func CreateModuleInfo() (*ModuleInfo, error) {
 	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
-		return fmt.Errorf("undefined GOPATH")
+		return nil, fmt.Errorf("undefined GOPATH")
+	}
+	username := os.Getenv("GITHUB_USERNAME")
+	if username == "" {
+		return nil, fmt.Errorf("undefined GITHUB_USERNAME")
+	}
+	password := os.Getenv("GITHUB_PASSWORD")
+	if password == "" {
+		return nil, fmt.Errorf("undefined GITHUB_PASSWORD")
 	}
 
 	filename := "go.mod"
 
 	b, err := FileExists(filename)
 	if Error(err) {
-		return err
+		return nil, err
 	}
 
 	if !b {
-		return &ErrFileNotFound{FileName: filename}
+		return nil, &ErrFileNotFound{FileName: filename}
 	}
 
 	ba, err := ioutil.ReadFile(filename)
 	if Error(err) {
-		return err
+		return nil, err
 	}
 
-	gomod := gomodInfo{}
-	gomod.Require = make([]require, 0)
+	moduleInfo := ModuleInfo{}
+	moduleInfo.Require = make([]require, 0)
 
 	scanner := bufio.NewScanner(bytes.NewReader(ba))
 	inRequire := false
@@ -129,13 +98,13 @@ func CreateModLicenseFile(path string) error {
 
 				b, err := FileExists(licenseFile)
 				if Error(err) {
-					return err
+					return nil, err
 				}
 
 				if b {
 					ba, err := ioutil.ReadFile(licenseFile)
 					if Error(err) {
-						return err
+						return nil, err
 					}
 
 					req.LicenseText = string(ba)
@@ -152,21 +121,21 @@ func CreateModLicenseFile(path string) error {
 					url = splits[0] + "/" + splits[1]
 				}
 
-				ba, err := URLGet("https://api.github.com/repos/" + url)
+				ba, err := URLGet(fmt.Sprintf("https://%s:%s@api.github.com/repos/%s", username, password, url))
 				if Error(err) {
-					return err
+					return nil, err
 				}
 
 				j, err := NewJason(string(ba))
 				if Error(err) {
-					return err
+					return nil, err
 				}
 
 				e, _ := j.Element("license")
 				if e != nil {
 					url, err = e.String("url")
 					if Error(err) {
-						return err
+						return nil, err
 					}
 
 					if url != "" {
@@ -174,24 +143,24 @@ func CreateModLicenseFile(path string) error {
 
 						ba, err := URLGet(req.LicenseUrl)
 						if Error(err) {
-							return err
+							return nil, err
 						}
 
 						j, err := NewJason(string(ba))
 						if Error(err) {
-							return err
+							return nil, err
 						}
 
 						body, err := j.String("body")
 						if Error(err) {
-							return err
+							return nil, err
 						}
 
 						req.LicenseText = body
 
 						url, err = j.String("html_url")
 						if Error(err) {
-							return err
+							return nil, err
 						}
 
 						if url != "" {
@@ -205,7 +174,7 @@ func CreateModLicenseFile(path string) error {
 					}
 				}
 
-				gomod.Require = append(gomod.Require, req)
+				moduleInfo.Require = append(moduleInfo.Require, req)
 
 				continue
 			} else {
@@ -214,13 +183,13 @@ func CreateModLicenseFile(path string) error {
 		}
 
 		if strings.HasPrefix(line, "module") {
-			gomod.Module = strings.TrimSpace(line[len("module"):])
+			moduleInfo.Module = strings.TrimSpace(line[len("module"):])
 
 			continue
 		}
 
 		if strings.HasPrefix(line, "go ") {
-			gomod.Version = strings.TrimSpace(line[len("go "):])
+			moduleInfo.Version = strings.TrimSpace(line[len("go "):])
 
 			continue
 		}
@@ -232,26 +201,5 @@ func CreateModLicenseFile(path string) error {
 		}
 	}
 
-	ba, err = json.MarshalIndent(gomod, "", "    ")
-	if Error(err) {
-		return err
-	}
-
-	return ioutil.WriteFile(filepath.Join(path, AppFilename("-opensource.json")), ba, DefaultFileMode)
-}
-
-func GetModLicenseInfo(path string) (*gomodInfo, error) {
-	ba, err := ioutil.ReadFile(filepath.Join(path, AppFilename("-opensource.json")))
-	if Error(err) {
-		return nil, err
-	}
-
-	info := gomodInfo{}
-
-	err = json.Unmarshal(ba, &info)
-	if Error(err) {
-		return nil, err
-	}
-
-	return &info, err
+	return &moduleInfo, nil
 }
