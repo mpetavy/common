@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	logVerbose         *bool
+	FlagLogVerbose     *bool
 	logFilename        *string
 	logFilesize        *int64
 	logJson            *bool
@@ -44,7 +44,7 @@ func init() {
 
 	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
 	logFilesize = flag.Int64("log.filesize", 5*1024*1024, "max log file size")
-	logVerbose = flag.Bool("log.verbose", false, "verbose logging")
+	FlagLogVerbose = flag.Bool("log.verbose", false, "verbose logging")
 	logJson = flag.Bool("log.json", false, "JSON output")
 }
 
@@ -67,7 +67,7 @@ func (l *logEntry) String() string {
 		return string(ba)
 
 	} else {
-		if logVerbose == nil || *logVerbose {
+		if FlagLogVerbose == nil || *FlagLogVerbose {
 			return fmt.Sprintf("%s %s %-40.40s %s", l.Clock, FillString(l.LevelStr+":", 6, false, " "), l.Ri, l.Msg)
 		} else {
 			return fmt.Sprintf("%s %s", FillString(l.LevelStr+":", 6, false, " "), l.Msg)
@@ -382,7 +382,7 @@ func log(level int, ri RuntimeInfo, msg string) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if level == LEVEL_FILE || (logVerbose != nil && *logVerbose) || level > LEVEL_DEBUG {
+	if level == LEVEL_FILE || (FlagLogVerbose != nil && *FlagLogVerbose) || level > LEVEL_DEBUG {
 		writeEntry(logEntry{
 			levelInt: level,
 			LevelStr: levelToString(level),
