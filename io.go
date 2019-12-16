@@ -478,7 +478,7 @@ func ScanLinesWithLF(data []byte, atEOF bool) (advance int, token []byte, err er
 	return 0, nil, nil
 }
 
-func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader, bufferSize int) (int64, error) {
+func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader, bufferSize int, verboseLogging bool) (int64, error) {
 	Debug("%s copyWithContext: start", name)
 
 	var written int64
@@ -496,7 +496,13 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 			Debug("%s cancel!", name)
 			cancel()
 		}()
-		*written, err = io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf)
+
+		if verboseLogging {
+			*written, err = io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf)
+		} else {
+			*written, err = io.CopyBuffer(writer, reader, buf)
+		}
+
 		if err != nil {
 			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
 				err = fmt.Errorf("Timeoutout error")
