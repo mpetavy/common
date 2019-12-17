@@ -109,7 +109,7 @@ func GetSystemLanguage() (string, error) {
 				break
 			}
 
-			if strings.HasPrefix(line, "LANGUAGE=") {
+			if strings.HasPrefix(line, "LANGUAGE=") || strings.HasPrefix(line, "LANG=") {
 				systemLanguage := strings.TrimSpace(line[strings.Index(line, "=")+1:])
 
 				p := strings.Index(systemLanguage, "_")
