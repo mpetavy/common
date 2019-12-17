@@ -478,7 +478,7 @@ func ScanLinesWithLF(data []byte, atEOF bool) (advance int, token []byte, err er
 	return 0, nil, nil
 }
 
-func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader, bufferSize int, verboseLogging bool) (int64, error) {
+func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader, bufferSize int) (int64, error) {
 	Debug("%s copyWithContext: start", name)
 
 	var written int64
@@ -497,10 +497,10 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 			cancel()
 		}()
 
-		if verboseLogging {
-			*written, err = io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf)
+		if *FlagLogVerbose {
+			*written, err = copyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf)
 		} else {
-			*written, err = io.CopyBuffer(writer, reader, buf)
+			*written, err = copyBuffer(writer, reader, buf)
 		}
 
 		if err != nil {
@@ -670,4 +670,101 @@ func ReadJsonFile(filename string, v interface{}) error {
 	}
 
 	return json.Unmarshal(ba, v)
+}
+
+func copyBuffer(dst io.Writer, src io.Reader, buf []byte) (written int64, err error) {
+	return CopyBufferAsynch(dst, src, buf, 1)
+}
+
+func CopyBufferAsynch(dst io.Writer, src io.Reader, buf []byte, countBuf int) (written int64, err error) {
+	if countBuf < 1 {
+		countBuf = 1
+	}
+	// If the reader has a WriteTo method, use it to do the copy.
+	// Avoids an allocation and a copy.
+	if wt, ok := src.(io.WriterTo); ok {
+		return wt.WriteTo(dst)
+	}
+	// Similarly, if the writer has a ReadFrom method, use it to do the copy.
+	if rt, ok := dst.(io.ReaderFrom); ok {
+		return rt.ReadFrom(src)
+	}
+	if buf == nil {
+		size := 32 * 1024
+		if l, ok := src.(*io.LimitedReader); ok && int64(size) > l.N {
+			if l.N < 1 {
+				size = 1
+			} else {
+				size = int(l.N)
+			}
+		}
+		buf = make([]byte, size)
+	}
+
+	bufCh := make(chan []byte, countBuf)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var er error
+	var ew error
+
+	go func() {
+		var nr int
+
+		select {
+		case <-ctx.Done():
+		default:
+			for {
+				nr, er = src.Read(buf)
+				if nr > 0 {
+					bufCh <- buf[:nr]
+				} else {
+					close(bufCh)
+					break
+				}
+			}
+		}
+	}()
+
+	go func() {
+		defer cancel()
+
+		var nw int
+
+		select {
+		case <-ctx.Done():
+		default:
+			for {
+				buf := <-bufCh
+
+				if buf == nil {
+					break
+				}
+
+				nw, ew = dst.Write(buf)
+
+				written += int64(nw)
+
+				if len(buf) != nw {
+					ew = io.ErrShortWrite
+					break
+				}
+			}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+	}
+
+	if er != nil {
+		if er != io.EOF {
+			err = er
+		}
+	}
+
+	if err == nil && ew != nil {
+		err = ew
+	}
+
+	return written, err
 }
