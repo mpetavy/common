@@ -497,8 +497,10 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 
 		if *FlagLogVerbose {
 			*written, err = Stream(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}))
+			//*written, err = io.Copy(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}))
 		} else {
 			*written, err = Stream(writer, reader)
+			//*written, err = io.Copy(writer, reader)
 		}
 
 		if err != nil {
@@ -673,10 +675,10 @@ func ReadJsonFile(filename string, v interface{}) error {
 func Stream(dst io.Writer, src io.Reader, _blkCount ...int) (written int64, err error) {
 	type tblock struct {
 		size int
-		data [1024]byte
+		data [64 * 1024]byte
 	}
 
-	blkCount := 32
+	blkCount := 10
 
 	if len(_blkCount) > 0 {
 		blkCount = _blkCount[0]
@@ -684,9 +686,17 @@ func Stream(dst io.Writer, src io.Reader, _blkCount ...int) (written int64, err 
 
 	blkCount = Max(blkCount, 1)
 
-	blockCh := make(chan *tblock, blkCount)
+	blocks := make([]tblock, blkCount)
+
+	readCh := make(chan *tblock, blkCount)
+	writeCh := make(chan *tblock, blkCount)
+
+	for i := 0; i < len(blocks); i++ {
+		readCh <- &blocks[i]
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
-	buf := make([]byte, 1024)
+	buf := make([]byte, 64*1024)
 
 	var er error
 	var ew error
@@ -700,12 +710,12 @@ func Stream(dst io.Writer, src io.Reader, _blkCount ...int) (written int64, err 
 			for {
 				nr, er = src.Read(buf)
 				if nr > 0 {
-					block := &tblock{}
+					block := <-readCh
 					block.size = nr
 					copy(block.data[:], buf[:nr])
-					blockCh <- block
+					writeCh <- block
 				} else {
-					close(blockCh)
+					close(writeCh)
 					break
 				}
 			}
@@ -721,7 +731,7 @@ func Stream(dst io.Writer, src io.Reader, _blkCount ...int) (written int64, err 
 		case <-ctx.Done():
 		default:
 			for {
-				block := <-blockCh
+				block := <-writeCh
 
 				if block == nil {
 					break
@@ -735,6 +745,8 @@ func Stream(dst io.Writer, src io.Reader, _blkCount ...int) (written int64, err 
 					ew = io.ErrShortWrite
 					break
 				}
+
+				readCh <- block
 			}
 		}
 	}()
