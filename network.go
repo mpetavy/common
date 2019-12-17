@@ -86,26 +86,26 @@ func GetMainIP() (string, error) {
 
 		scanner := bufio.NewScanner(strings.NewReader(output))
 		line := ""
-		found := false
 
 		for scanner.Scan() {
 			line = strings.TrimSpace(scanner.Text())
 
-			found = strings.Index(line, "Name:") != -1
+			if strings.HasPrefix(line, "Name:") {
+				if scanner.Scan() {
+					line = strings.TrimSpace(scanner.Text())
 
-			if found {
-				break
+					if strings.HasPrefix(line, "Address:") {
+
+						line = strings.TrimSpace(line[10:])
+
+						DebugFunc(line)
+
+						return line, nil
+					}
+				} else {
+					break
+				}
 			}
-		}
-
-		if found && scanner.Scan() {
-			line = strings.TrimSpace(scanner.Text())
-
-			line = strings.TrimSpace(line[10:])
-
-			DebugFunc(line)
-
-			return line, nil
 		}
 	}
 
