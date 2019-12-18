@@ -376,14 +376,18 @@ func GetTLSPackage() (*TLSPackage, error) {
 		}
 	}
 
-	tlsCert, _ := GetConfiguration().GetFlag(flagCert)
-	tlsKey, _ := GetConfiguration().GetFlag(flagKey)
+	cfg := GetConfiguration()
 
-	if tlsCert != "" && tlsKey != "" {
-		tlsConfig, _ := TLSConfigFromPem([]byte(tlsCert), []byte(tlsKey))
+	if cfg != nil {
+		tlsCert, _ := cfg.GetFlag(flagCert)
+		tlsKey, _ := cfg.GetFlag(flagKey)
 
-		if tlsConfig != nil {
-			return tlsConfig, nil
+		if tlsCert != "" && tlsKey != "" {
+			tlsConfig, _ := TLSConfigFromPem([]byte(tlsCert), []byte(tlsKey))
+
+			if tlsConfig != nil {
+				return tlsConfig, nil
+			}
 		}
 	}
 
