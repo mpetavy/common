@@ -496,11 +496,11 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 		}()
 
 		if *FlagLogVerbose {
-			*written, err = Stream(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}))
-			//*written, err = io.Copy(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}))
+			//*written, err = Stream(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}))
+			*written, err = io.Copy(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}))
 		} else {
-			*written, err = Stream(writer, reader)
-			//*written, err = io.Copy(writer, reader)
+			//*written, err = Stream(writer, reader)
+			*written, err = io.Copy(writer, reader)
 		}
 
 		if err != nil {
