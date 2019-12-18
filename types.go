@@ -43,6 +43,10 @@ const (
 	WINDOWS_1252 = "windows-1252"
 )
 
+var (
+	MEMORY_UNITS = []string{"Bytes", "KB", "MB", "GB", "TB"}
+)
+
 // Trim4Path trims given path to be usefully as filename
 func Trim4Path(path string) string {
 	spath := []rune(path)
@@ -344,16 +348,32 @@ func FillString(txt string, length int, asPrefix bool, add string) string {
 	return txt[:length]
 }
 
-func MemoryToString(mem int) string {
+func ParseMemory(txt string) (int64, error) {
+	txt = strings.ToLower(txt)
+
+	f, err := ExtractNumber(txt)
+	if Error(err) {
+		return 0, err
+	}
+
+	for i := 0; i < len(MEMORY_UNITS); i++ {
+		if strings.HasSuffix(txt, strings.ToLower(MEMORY_UNITS[i])) || strings.HasSuffix(txt, strings.ToLower(MEMORY_UNITS[i][:1])) {
+			return int64(f * math.Pow(1024, float64(i))), nil
+		}
+	}
+
+	return 0, fmt.Errorf("unknown unit: %s", txt)
+}
+
+func FormatMemory(mem int) string {
 	neg := mem < 0
 
 	f := math.Abs(float64(mem))
-	h := []string{"Bytes", "KB", "MB", "GB", "TB"}
 
 	var r float64
 	var i int
 
-	for i = len(h) - 1; i >= 0; i-- {
+	for i = len(MEMORY_UNITS) - 1; i >= 0; i-- {
 		d := math.Pow(1024, float64(i))
 
 		r = f / d
@@ -367,7 +387,7 @@ func MemoryToString(mem int) string {
 		r = r * -1
 	}
 
-	return fmt.Sprintf("%.1f %s", r, h[i])
+	return fmt.Sprintf("%.3f %s", r, MEMORY_UNITS[i])
 }
 
 func ExtractNumber(txt string) (float64, error) {
