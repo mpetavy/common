@@ -370,24 +370,24 @@ func FormatMemory(mem int) string {
 
 	f := math.Abs(float64(mem))
 
-	var r float64
 	var i int
+	var d float64
 
 	for i = len(MEMORY_UNITS) - 1; i >= 0; i-- {
-		d := math.Pow(1024, float64(i))
+		d = math.Pow(1024, float64(i))
 
-		r = f / d
-
-		if int(r) > 0 {
+		if f > d {
 			break
 		}
 	}
+
+	r := f / d
 
 	if neg {
 		r = r * -1
 	}
 
-	return fmt.Sprintf("%.3f %s", r, MEMORY_UNITS[i])
+	return fmt.Sprintf("%.3f %s", r, MEMORY_UNITS[Max(i, 0)])
 }
 
 func ExtractNumber(txt string) (float64, error) {
