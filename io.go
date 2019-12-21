@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/kardianos/service"
 	"io"
 	"io/ioutil"
 	"net"
@@ -441,7 +440,7 @@ func CleanPath(path string) string {
 		var dir string
 		var err error
 
-		if service.Interactive() {
+		if IsRunningInteractive() {
 			dir, err = os.Getwd()
 		} else {
 			dir, err = os.Executable()
