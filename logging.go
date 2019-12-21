@@ -70,7 +70,11 @@ func (l *logEntry) String() string {
 		if FlagLogVerbose == nil || *FlagLogVerbose {
 			return fmt.Sprintf("%s %s %-40.40s %s", l.Clock, FillString(l.LevelStr+":", 6, false, " "), l.Ri, l.Msg)
 		} else {
-			return fmt.Sprintf("%s %s", FillString(l.LevelStr+":", 6, false, " "), l.Msg)
+			if l.levelInt == LEVEL_INFO {
+				return l.Msg
+			} else {
+				return fmt.Sprintf("%s %s", FillString(l.LevelStr+":", 6, false, " "), l.Msg)
+			}
 		}
 	}
 }

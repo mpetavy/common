@@ -172,7 +172,7 @@ func Run(mandatoryFlags []string) {
 
 	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
-	if service.Interactive() {
+	if IsRunningInteractive() {
 		go func() {
 			r := bufio.NewReader(os.Stdin)
 
@@ -314,7 +314,7 @@ func (app *App) Start(s service.Service) error {
 		}
 	}
 
-	if !service.Interactive() {
+	if !IsRunningInteractive() {
 		go func() {
 			app.loop()
 		}()
@@ -386,102 +386,104 @@ func (app *App) Stop(s service.Service) error {
 func run() error {
 	var err error
 
-	app.ServiceConfig = &service.Config{
-		Name:        Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-		DisplayName: Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-		Description: Capitalize(app.Description),
-	}
-
-	app.Service, err = service.New(app, app.ServiceConfig)
-	if err != nil {
-		return err
-	}
-
-	if *serviceFlag != "" && *serviceFlag != "simulate" {
-		args := os.Args[1:]
-
-		for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
-			for i := range args {
-				if args[i] == "-"+item {
-					args = append(args[:i], args[i+2:]...)
-					break
-				}
-
-				if strings.HasPrefix(args[i], "-"+item) {
-					args = append(args[:i], args[i+1:]...)
-					break
-				}
-			}
+	if app.IsService {
+		app.ServiceConfig = &service.Config{
+			Name:        Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
+			DisplayName: Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
+			Description: Capitalize(app.Description),
 		}
 
-		if len(args) > 0 {
-			app.ServiceConfig.Arguments = args
-		}
-
-		if *serviceUser != "" {
-			app.ServiceConfig.UserName = *serviceUser
-		}
-
-		if *servicePassword != "" {
-			option := service.KeyValue{}
-			option["Password"] = *servicePassword
-
-			app.ServiceConfig.Option = option
-		}
-
-		i, err := IndexOf(serviceActions, *serviceFlag)
+		app.Service, err = service.New(app, app.ServiceConfig)
 		if err != nil {
 			return err
 		}
 
-		if i == -1 {
-			return fmt.Errorf("invalid service action: %s", *serviceFlag)
-		}
+		if *serviceFlag != "" && *serviceFlag != "simulate" {
+			args := os.Args[1:]
 
-		if *serviceFlag == "uninstall" {
-			status, err := app.Service.Status()
+			for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
+				for i := range args {
+					if args[i] == "-"+item {
+						args = append(args[:i], args[i+2:]...)
+						break
+					}
+
+					if strings.HasPrefix(args[i], "-"+item) {
+						args = append(args[:i], args[i+1:]...)
+						break
+					}
+				}
+			}
+
+			if len(args) > 0 {
+				app.ServiceConfig.Arguments = args
+			}
+
+			if *serviceUser != "" {
+				app.ServiceConfig.UserName = *serviceUser
+			}
+
+			if *servicePassword != "" {
+				option := service.KeyValue{}
+				option["Password"] = *servicePassword
+
+				app.ServiceConfig.Option = option
+			}
+
+			i, err := IndexOf(serviceActions, *serviceFlag)
 			if err != nil {
 				return err
 			}
 
-			if status == service.StatusRunning {
-				err = service.Control(app.Service, "stop")
+			if i == -1 {
+				return fmt.Errorf("invalid service action: %s", *serviceFlag)
+			}
+
+			if *serviceFlag == "uninstall" {
+				status, err := app.Service.Status()
 				if err != nil {
 					return err
 				}
+
+				if status == service.StatusRunning {
+					err = service.Control(app.Service, "stop")
+					if err != nil {
+						return err
+					}
+				}
 			}
-		}
 
-		err = service.Control(app.Service, *serviceFlag)
-		if err != nil {
-			return err
-		}
+			err = service.Control(app.Service, *serviceFlag)
+			if err != nil {
+				return err
+			}
 
-		switch *serviceFlag {
-		case "install":
-			Info(fmt.Sprintf("Service %s successfully installed", app.ServiceConfig.Name))
-			return nil
-		case "uninstall":
-			Info(fmt.Sprintf("Service %s successfully uninstalled", app.ServiceConfig.Name))
-			return nil
-		case "start":
-			Info(fmt.Sprintf("Service %s successfully started", app.ServiceConfig.Name))
-			return nil
-		case "stop":
-			Info(fmt.Sprintf("Service %s successfully stopped", app.ServiceConfig.Name))
-			return nil
-		case "restart":
-			Info(fmt.Sprintf("Service %s successfully restarted", app.ServiceConfig.Name))
+			switch *serviceFlag {
+			case "install":
+				Info(fmt.Sprintf("Service %s successfully installed", app.ServiceConfig.Name))
+				return nil
+			case "uninstall":
+				Info(fmt.Sprintf("Service %s successfully uninstalled", app.ServiceConfig.Name))
+				return nil
+			case "start":
+				Info(fmt.Sprintf("Service %s successfully started", app.ServiceConfig.Name))
+				return nil
+			case "stop":
+				Info(fmt.Sprintf("Service %s successfully stopped", app.ServiceConfig.Name))
+				return nil
+			case "restart":
+				Info(fmt.Sprintf("Service %s successfully restarted", app.ServiceConfig.Name))
+				return nil
+			}
+
 			return nil
 		}
-
-		return nil
 	}
 
 	// run as service
 
 	if IsRunningAsService() {
-		if service.Interactive() {
+		if IsRunningInteractive() {
 			// simulated service
 
 			if err := app.Start(app.Service); err != nil {
@@ -530,7 +532,7 @@ func AppRestart() {
 }
 
 func IsRunningAsService() bool {
-	return app.IsService && (!service.Interactive() || *serviceFlag == "simulate")
+	return app.IsService && (!IsRunningInteractive() || *serviceFlag == "simulate")
 }
 
 func IsRunningAsExecutable() bool {
@@ -540,4 +542,8 @@ func IsRunningAsExecutable() bool {
 	}
 
 	return !strings.HasPrefix(path, os.TempDir())
+}
+
+func IsRunningInteractive() bool {
+	return !app.IsService || service.Interactive()
 }
