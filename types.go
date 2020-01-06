@@ -362,7 +362,7 @@ func ParseMemory(txt string) (int64, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("unknown unit: %s", txt)
+	return int64(f * math.Pow(1024, float64(0))), nil
 }
 
 func FormatMemory(mem int) string {

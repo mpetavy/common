@@ -485,9 +485,11 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 
 	go func(written *int64, err error) {
 
-		if bufferSize < 0 {
+		if bufferSize <= 0 {
 			bufferSize = 32 * 1024
 		}
+
+		buf := make([]byte, bufferSize)
 
 		defer func() {
 			Debug("%s cancel!", name)
@@ -495,11 +497,9 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 		}()
 
 		if *FlagLogVerbose {
-			//*written, err = Stream(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}))
-			*written, err = io.Copy(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}))
+			*written, err = io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf)
 		} else {
-			//*written, err = Stream(writer, reader)
-			*written, err = io.Copy(writer, reader)
+			*written, err = io.CopyBuffer(writer, reader, buf)
 		}
 
 		if err != nil {
