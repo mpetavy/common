@@ -64,10 +64,10 @@ func (this *throttledWriter) Write(p []byte) (n int, err error) {
 }
 
 func NewThrottledWriter(writer io.Writer, bytesPerSecs int) io.Writer {
-	lw := &throttledWriter{
+	w := &throttledWriter{
 		writer:       writer,
 		bytesPerSecs: bytesPerSecs,
 	}
 
-	return lw
+	return w
 }
