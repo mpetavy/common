@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -13,14 +12,17 @@ import (
 	"time"
 )
 
-type TimeoutSocket struct {
-	io.ReadWriter
-	ReadTimeout  time.Duration
+type TimeoutSocketReader struct {
+	ReadTimeout time.Duration
+	Socket      *net.Conn
+}
+
+type TimeoutSocketWriter struct {
 	WriteTimeout time.Duration
 	Socket       *net.Conn
 }
 
-func (this TimeoutSocket) Read(p []byte) (n int, err error) {
+func (this TimeoutSocketReader) Read(p []byte) (n int, err error) {
 	err = (*this.Socket).SetReadDeadline(DeadlineByDuration(this.ReadTimeout))
 	if err != nil {
 		return 0, err
@@ -29,7 +31,7 @@ func (this TimeoutSocket) Read(p []byte) (n int, err error) {
 	return (*this.Socket).Read(p)
 }
 
-func (this TimeoutSocket) Write(p []byte) (n int, err error) {
+func (this TimeoutSocketWriter) Write(p []byte) (n int, err error) {
 	err = (*this.Socket).SetWriteDeadline(DeadlineByDuration(this.WriteTimeout))
 	if err != nil {
 		return 0, err
