@@ -169,13 +169,16 @@ func readStringTable(txt string, separator string) []string {
 	return splits
 }
 
-func GetSystemInfo() (SystemInfo, error) {
+func GetSystemInfo() (*SystemInfo, error) {
 	DebugFunc()
 
-	si := SystemInfo{}
+	si := &SystemInfo{}
 
 	if IsWindowsOS() {
-		output, err := NewRunner(exec.Command("wmic", "os"), time.Second*3).execute(nil)
+		output, err := NewRunner(exec.Command("wmic", "os"), time.Second*5).execute(nil)
+		if err != nil {
+			return nil, err
+		}
 
 		splits := readStringTable(output, "  ")
 
@@ -249,7 +252,7 @@ func GetSystemInfo() (SystemInfo, error) {
 		}
 
 		wg.Done()
-	}(&si)
+	}(si)
 
 	wg.Wait()
 
@@ -257,6 +260,8 @@ func GetSystemInfo() (SystemInfo, error) {
 	si.KernelRelease = strings.TrimSpace(kernelReleaseRunner.Output)
 	si.KernelVersion = strings.TrimSpace(kernelVersionRunner.Output)
 	si.Platform = strings.TrimSpace(machineRunner.Output)
+
+	DebugFunc("result: %v", *si)
 
 	return si, nil
 }

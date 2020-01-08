@@ -7,6 +7,7 @@ import (
 	"github.com/kardianos/service"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -384,13 +385,17 @@ func (app *App) Stop(s service.Service) error {
 }
 
 func run() error {
-	var err error
-
 	if app.IsService {
+		executable, err := os.Executable()
+		if err != nil {
+			return err
+		}
+
 		app.ServiceConfig = &service.Config{
-			Name:        Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-			DisplayName: Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-			Description: Capitalize(app.Description),
+			Name:             Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
+			DisplayName:      Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
+			Description:      Capitalize(app.Description),
+			WorkingDirectory: filepath.Dir(executable),
 		}
 
 		app.Service, err = service.New(app, app.ServiceConfig)
