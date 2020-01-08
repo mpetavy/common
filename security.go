@@ -15,7 +15,6 @@ import (
 	"math/big"
 	"net"
 	"os"
-	"os/exec"
 	"software.sslmate.com/src/go-pkcs12"
 	"strings"
 	"sync"
@@ -35,12 +34,10 @@ type TLSPackage struct {
 }
 
 var (
-	FlagTlsCertificate     *string
-	FlagTlsKey             *string
-	FlagTlsCertificateFile *string
-	FlagTlsKeyFile         *string
-	FlagTlsP12File         *string
-	muTLS                  sync.Mutex
+	FlagTlsCertificate *string
+	FlagTlsKey         *string
+	FlagTlsP12File     *string
+	muTLS              sync.Mutex
 )
 
 const (
@@ -54,10 +51,7 @@ func init() {
 	FlagTlsCertificate = flag.String(flagCert, "", "TLS server certificate (PEM format)")
 	FlagTlsKey = flag.String(flagKey, "", "TLS server private PEM (PEM format)")
 
-	FlagTlsCertificateFile = flag.String("tls.certfile", CleanPath(AppFilename(".cert.pem")), "TLS server certificate file (PEM format)")
-	FlagTlsKeyFile = flag.String("tls.keyfile", CleanPath(AppFilename(".cert.key")), "TLS server private key PEM (PEM format)")
-
-	FlagTlsP12File = flag.String("tls.p12file", CleanPath(AppFilename(".p12")), "TLS PKCS12 container file (P12 format)")
+	FlagTlsP12File = flag.String("tls.p12file", CleanPath(AppFilename(".p12")), "TLS PKCS12 certificates & privkey container file (P12 format)")
 }
 
 func Rnd(max int) int {
@@ -89,49 +83,6 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 func GenerateRandomString(s int) (string, error) {
 	b, err := GenerateRandomBytes(s)
 	return base64.URLEncoding.EncodeToString(b), err
-}
-
-func TLSConfigFromFile(certFile string, keyFile string) (*TLSPackage, error) {
-	DebugFunc("certFile: %s keyFile: %s", certFile, keyFile)
-
-	certOk, err := FileExists(certFile)
-	if Error(err) || !certOk {
-		return nil, err
-	}
-
-	keyOk, err := FileExists(keyFile)
-	if Error(err) || !keyOk {
-		return nil, err
-	}
-
-	var certAsPem []byte
-	var keyAsPem []byte
-
-	certAsPem, err = ioutil.ReadFile(certFile)
-	if Error(err) {
-		return nil, err
-	}
-
-	keyAsPem, err = ioutil.ReadFile(keyFile)
-	if Error(err) {
-		return nil, err
-	}
-
-	Debug("generate TLS config from cert file %s and key file %s", certFile, keyFile)
-
-	certificate, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
-	if Error(err) {
-		return nil, err
-	}
-
-	tlsConfig := tls.Config{Certificates: []tls.Certificate{certificate}}
-	tlsConfig.Rand = rand.Reader
-
-	return &TLSPackage{
-		CertificateAsPem: certAsPem,
-		PrivateKeyAsPem:  keyAsPem,
-		Config:           tlsConfig,
-	}, nil
 }
 
 // the priority on entities inside p12 must be honored
@@ -170,8 +121,6 @@ func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
 
 	certAsPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 
-	Debug("generate TLS config from given cert and key %s")
-
 	certificate, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
 	if Error(err) {
 		return nil, err
@@ -194,9 +143,7 @@ func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
 }
 
 func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
-	DebugFunc()
-
-	Debug("generate TLS config from given cert and key %s")
+	DebugFunc("generate TLS config from given cert and key flags")
 
 	certificate, err := tls.X509KeyPair(certAsPem, keyAsPem)
 	if Error(err) {
@@ -211,30 +158,6 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 		PrivateKeyAsPem:  keyAsPem,
 		Config:           tlsConfig,
 	}, nil
-}
-
-func createTLSPackageByOpenSSL() (*TLSPackage, error) {
-	DebugFunc()
-
-	hostname, err := os.Hostname()
-	if WarnError(err) {
-		hostname = "localhost"
-	}
-
-	path, err := exec.LookPath("openssl")
-
-	if path != "" {
-		cmd := exec.Command(path, "req", "-new", "-nodes", "-x509", "-out", *FlagTlsCertificateFile, "-keyout", *FlagTlsKeyFile, "-days", "7300", "-subj", "/CN="+hostname)
-
-		err := Watchdog(cmd, time.Second*10)
-		if Error(err) {
-			return nil, nil
-		}
-
-		return TLSConfigFromFile(*FlagTlsCertificateFile, *FlagTlsKeyFile)
-	}
-
-	return nil, fmt.Errorf("Openssl not available")
 }
 
 // https://ericchiang.github.io/post/go-tls/
@@ -357,14 +280,6 @@ func GetTLSPackage() (*TLSPackage, error) {
 
 		if tlsPackage != nil {
 			return tlsPackage, nil
-		}
-	}
-
-	if *FlagTlsCertificateFile != "" && *FlagTlsKeyFile != "" {
-		tlsConfig, _ := TLSConfigFromFile(*FlagTlsCertificateFile, *FlagTlsKeyFile)
-
-		if tlsConfig != nil {
-			return tlsConfig, nil
 		}
 	}
 
