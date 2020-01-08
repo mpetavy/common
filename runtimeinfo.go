@@ -225,6 +225,8 @@ func GetSystemInfo() (*SystemInfo, error) {
 	go kernelVersionRunner.execute(&wg)
 	go machineRunner.execute(&wg)
 	go func(si *SystemInfo) {
+		defer wg.Done()
+
 		ba, err := ioutil.ReadFile("/proc/meminfo")
 		if err != nil {
 			return
@@ -250,8 +252,6 @@ func GetSystemInfo() (*SystemInfo, error) {
 				si.MemFree = splits[1]
 			}
 		}
-
-		wg.Done()
 	}(si)
 
 	wg.Wait()
