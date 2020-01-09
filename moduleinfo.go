@@ -141,7 +141,12 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 					if url != "" {
 						req.LicenseUrl = url
 
-						ba, err := URLGet(req.LicenseUrl)
+						i := strings.Index(url, "//")
+						if i != -1 {
+							url = fmt.Sprintf("%s%s:%s@%s", url[:i+2], username, password, url[i+2:])
+						}
+
+						ba, err := URLGet(url)
 						if Error(err) {
 							return nil, err
 						}
