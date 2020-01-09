@@ -557,6 +557,7 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 				htmlRange.CreateAttr("class", INPUT_WIDTH_NORMAL)
 
 				htmlRange.CreateAttr("type", "range")
+				htmlRange.CreateAttr("tabIndex", "-1")
 				htmlRange.CreateAttr("value", fmt.Sprintf("%d", fieldValue.Int()))
 				option, err = fieldTags.Get("html_min")
 				if err == nil {
