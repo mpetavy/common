@@ -45,9 +45,9 @@ type App struct {
 	//StopFunc
 	StopFunc func() error
 	//TickFunc
-	TickFunc func() error
+	runFunc func() error
 	//TickTime
-	TickTime time.Duration
+	runTime time.Duration
 	//Service
 	Service service.Service
 	//ServiceConfig
@@ -89,19 +89,19 @@ func init() {
 	usage = flag.Bool("?", false, "show usage")
 }
 
-func Init(Version string, Date string, Description string, Developer string, License string, IsService bool, StartFunc func() error, StopFunc func() error, TickFunc func() error, TickTime time.Duration) {
+func Init(version string, date string, description string, developer string, homepage string, license string, isService bool, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	app.Name = Title()
-	app.Version = Version
-	app.Date = Date
-	app.Description = Description
-	app.Developer = Developer
-	app.License = License
-	app.Homepage = fmt.Sprintf("https://github.com/mpetavy/%s", Title())
-	app.IsService = IsService
-	app.StartFunc = StartFunc
-	app.StopFunc = StopFunc
-	app.TickFunc = TickFunc
-	app.TickTime = TickTime
+	app.Version = version
+	app.Date = date
+	app.Description = description
+	app.Developer = developer
+	app.License = license
+	app.Homepage = homepage
+	app.IsService = isService
+	app.StartFunc = startFunc
+	app.StopFunc = stopFunc
+	app.runFunc = runFunc
+	app.runTime = runTime
 }
 
 // Run struct for copyright information
@@ -217,7 +217,7 @@ func showBanner() {
 			}
 
 			fmt.Printf("\n")
-			fmt.Printf("%s %s - %s\n", strings.ToUpper(app.Name), app.Version, app.Description)
+			fmt.Printf("%s %s %s\n", strings.ToUpper(app.Name), app.Version, app.Description)
 			fmt.Printf("\n")
 			fmt.Printf("Copyright: © %s %s\n", date, app.Developer)
 			fmt.Printf("Homepage:  %s\n", app.Homepage)
@@ -236,20 +236,20 @@ func (app *App) service() error {
 
 	sleep := time.Second
 
-	if app.TickTime > 0 {
-		nextTick := time.Now().Truncate(app.TickTime).Add(app.TickTime)
+	if app.runTime > 0 {
+		nextTick := time.Now().Truncate(app.runTime).Add(app.runTime)
 		sleep = nextTick.Sub(time.Now())
 	}
 
 	ticker = time.NewTicker(sleep)
 
-	if app.TickTime == 0 {
+	if app.runTime == 0 {
 		ticker.Stop()
 	}
 
 	info := func() {
-		if app.TickTime > 0 {
-			Debug("next tick: %s\n", time.Now().Add(sleep).Truncate(app.TickTime).Format(DateTimeMilliMask))
+		if app.runTime > 0 {
+			Debug("next tick: %s\n", time.Now().Add(sleep).Truncate(app.runTime).Format(DateTimeMilliMask))
 			Debug("sleep for %v ...", sleep)
 		}
 	}
@@ -283,12 +283,12 @@ func (app *App) service() error {
 
 			ticker.Stop()
 
-			if err := app.TickFunc(); err != nil {
+			if err := app.runFunc(); err != nil {
 				WarnError(err)
 			}
 
 			ti := time.Now()
-			ti = ti.Add(app.TickTime)
+			ti = ti.Add(app.runTime)
 			ti = TruncateTime(ti, Second)
 
 			sleep = ti.Sub(time.Now())
@@ -512,8 +512,8 @@ func run() error {
 			return err
 		}
 
-		if app.TickFunc != nil {
-			if err := app.TickFunc(); err != nil {
+		if app.runFunc != nil {
+			if err := app.runFunc(); err != nil {
 				return err
 			}
 		}
