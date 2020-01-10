@@ -52,19 +52,15 @@ var (
 	fileInfo    os.FileInfo
 	fileConfig  []byte
 
-	mapFlag map[string]string
-	mapEnv  map[string]string
-	mapFile map[string]string
+	mapFlag = make(map[string]string)
+	mapEnv  = make(map[string]string)
+	mapFile = make(map[string]string)
 )
 
 func init() {
 	FlagCfgFile = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
 	FlagCfgReset = flag.Bool("cfg.reset", false, "Reset configuration file")
 	FlagCfgTimeout = flag.Int("cfg.timeout", 0, "rescan timeout for configuration change") // FIXME
-
-	mapFlag = make(map[string]string)
-	mapEnv = make(map[string]string)
-	mapFile = make(map[string]string)
 }
 
 func initConfiguration() error {
@@ -84,6 +80,8 @@ func initConfiguration() error {
 	if Error(err) {
 		return err
 	}
+
+	*FlagCfgReset = ba == nil
 
 	err = registerFileFlags(ba)
 	if Error(err) {
