@@ -271,9 +271,16 @@ func googleTranslate(googleApiKey string, text string, foreignLanguage string) (
 		return "", fmt.Errorf("Failed to translate text: %v", err)
 	}
 
-	DebugFunc("%s -> %s: %s", text, foreignLanguage, translations[0].Text)
+	term := translations[0].Text
 
-	return translations[0].Text, nil
+	if strings.Index(foreignLanguage, "-") == -1 {
+		term = strings.ReplaceAll(term, "-", " ")
+	}
+	term = strings.ReplaceAll(term, " / ", "/")
+
+	DebugFunc("%s -> %s: %s", text, foreignLanguage, term)
+
+	return term, nil
 }
 
 func CreateI18nFile(path string, objs ...interface{}) error {

@@ -194,7 +194,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 		}
 
 		if strings.HasPrefix(line, "go ") {
-			moduleInfo.Version = strings.TrimSpace(line[len("go "):])
+			moduleInfo.Version = TitleVersion(true, true, true)
 
 			continue
 		}
