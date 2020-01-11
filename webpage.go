@@ -234,10 +234,10 @@ func IsCookieAuthenticated(context echo.Context, passwords []string, hashFunc fu
 func NewMenu(page *Webpage, menuItems []ActionItem, selectedTitle string) {
 	page.HtmlMenu.CreateAttr("class", "pure-menu pure-menu-horizontal")
 
-	newMenuitem(true, page.HtmlMenu, menuItems, selectedTitle)
+	newMenuitem(page.HtmlMenu, true, menuItems, selectedTitle)
 }
 
-func newMenuitem(mainMenu bool, parent *etree.Element, menuItems []ActionItem, selectedTitle string) {
+func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, selectedTitle string) {
 	htmlUl := parent.CreateElement("ul")
 	if mainMenu {
 		htmlUl.CreateAttr("class", "pure-menu-list")
@@ -283,7 +283,7 @@ func newMenuitem(mainMenu bool, parent *etree.Element, menuItems []ActionItem, s
 		}
 
 		if len(menu.SubItems) > 0 {
-			newMenuitem(false, htmlMenu, menu.SubItems, selectedTitle)
+			newMenuitem(htmlMenu, false, menu.SubItems, selectedTitle)
 		}
 
 		if menu.File != "" {
@@ -308,7 +308,7 @@ func NewRefreshPage(name string, url string) (*Webpage, error) {
 	return &p, nil
 }
 
-func NewForm(parent *etree.Element, name string, data interface{}, method string, encType string, action string, actions []ActionItem, funcDatalist FuncDatalist, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
+func NewForm(parent *etree.Element, name string, data interface{}, method string, encType string, formAction string, actions []ActionItem, funcDatalist FuncDatalist, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
 	if encType != "" {
@@ -316,7 +316,7 @@ func NewForm(parent *etree.Element, name string, data interface{}, method string
 	}
 	htmlForm.CreateAttr("class", "pure-form pure-form-aligned")
 
-	htmlForm.CreateAttr("action", action)
+	htmlForm.CreateAttr("action", formAction)
 	htmlForm.CreateAttr("method", method)
 
 	htmlFieldset := htmlForm.CreateElement("fieldset")
@@ -329,8 +329,8 @@ func NewForm(parent *etree.Element, name string, data interface{}, method string
 	htmlGroup := htmlForm.CreateElement("div")
 	htmlGroup.CreateAttr("class", "pure-controls")
 
-	for i, menu := range actions {
-		NewButton(htmlGroup, menu.Caption, menu.Action, i == 0)
+	for i, action := range actions {
+		NewButton(htmlGroup, i == 0, action)
 	}
 
 	htmlFooter := parent.CreateElement("div")
@@ -636,6 +636,53 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 
 	return nil
 }
+func NewButton(parent *etree.Element, primary bool, actionItem ActionItem) {
+	button := parent.CreateElement("input")
+
+	button.CreateAttr("value", actionItem.Caption)
+
+	if actionItem.Action != "submit" && actionItem.Action != "reset" {
+		button.CreateAttr("type", "button")
+		button.CreateAttr("onclick", "location.href=--$"+actionItem.Action+"$--")
+	} else {
+		button.CreateAttr("type", actionItem.Action)
+	}
+
+	if primary {
+		button.CreateAttr("class", "pure-button pure-button-primary")
+	} else {
+		button.CreateAttr("class", "pure-button")
+	}
+}
+
+func NewTable(parent *etree.Element, cells [][]string) {
+	htmlTable := parent.CreateElement("table")
+	htmlTable.CreateAttr("class", "pure-table pure-table.bordered")
+
+	var htmlHeader, htmlRow *etree.Element
+	var tagName string
+
+	for rowIndex, row := range cells {
+		if rowIndex == 0 {
+			htmlHeader = htmlTable.CreateElement("thead")
+			htmlRow = htmlHeader.CreateElement("tr")
+			tagName = "th"
+		} else {
+			htmlHeader = htmlTable.CreateElement("tbody")
+			htmlRow = htmlHeader.CreateElement("tr")
+			tagName = "td"
+		}
+
+		if rowIndex%2 == 1 {
+			htmlRow.CreateAttr("class", "pure-table-odd")
+		}
+
+		for _, cell := range row {
+			htmlCell := htmlRow.CreateElement(tagName)
+			htmlCell.SetText(cell)
+		}
+	}
+}
 
 func (this *Webpage) HTML() (string, error) {
 	this.doc.Indent(4)
@@ -674,52 +721,4 @@ func (this *Webpage) HTML() (string, error) {
 	html = fmt.Sprintf("<!DOCTYPE html>\n%s", html)
 
 	return html, nil
-}
-
-func NewButton(parent *etree.Element, caption string, action string, primary bool) {
-	button := parent.CreateElement("input")
-
-	button.CreateAttr("value", caption)
-
-	if action != "submit" && action != "reset" {
-		button.CreateAttr("type", "button")
-		button.CreateAttr("onclick", "location.href=--$"+action+"$--")
-	} else {
-		button.CreateAttr("type", action)
-	}
-
-	if primary {
-		button.CreateAttr("class", "pure-button pure-button-primary")
-	} else {
-		button.CreateAttr("class", "pure-button")
-	}
-}
-
-func NewTable(parent *etree.Element, cells [][]string) {
-	htmlTable := parent.CreateElement("table")
-	htmlTable.CreateAttr("class", "pure-table pure-table.bordered")
-
-	var htmlHeader, htmlRow *etree.Element
-	var tagName string
-
-	for rowIndex, row := range cells {
-		if rowIndex == 0 {
-			htmlHeader = htmlTable.CreateElement("thead")
-			htmlRow = htmlHeader.CreateElement("tr")
-			tagName = "th"
-		} else {
-			htmlHeader = htmlTable.CreateElement("tbody")
-			htmlRow = htmlHeader.CreateElement("tr")
-			tagName = "td"
-		}
-
-		if rowIndex%2 == 1 {
-			htmlRow.CreateAttr("class", "pure-table-odd")
-		}
-
-		for _, cell := range row {
-			htmlCell := htmlRow.CreateElement(tagName)
-			htmlCell.SetText(cell)
-		}
-	}
 }
