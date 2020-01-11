@@ -16,14 +16,11 @@ import (
 )
 
 const (
-	// Apache license
 	APACHE string = "https://www.apache.org/licenses/LICENSE-2.0.html"
-	// GPL2 license
-	//GPL2 string = "https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html"
 )
 
 //Info information of the application
-type App struct {
+type application struct {
 	// Name of the application
 	Name string
 	// Version of the application
@@ -62,7 +59,7 @@ const (
 )
 
 var (
-	app                 *App
+	app                 *application
 	serviceFlag         *string
 	serviceUser         *string
 	servicePassword     *string
@@ -81,7 +78,7 @@ var (
 )
 
 func init() {
-	app = &App{}
+	app = &application{}
 
 	serviceFlag = new(string)
 	serviceActions = service.ControlAction[:]
@@ -227,7 +224,7 @@ func showBanner() {
 	})
 }
 
-func (app *App) service() error {
+func (app *application) service() error {
 	if IsRunningAsService() {
 		Info("Service()")
 	} else {
@@ -299,7 +296,7 @@ func (app *App) service() error {
 	}
 }
 
-func (app *App) Start(s service.Service) error {
+func (app *application) Start(s service.Service) error {
 	if IsRunningAsService() {
 		Info("Start()")
 	} else {
@@ -324,7 +321,7 @@ func (app *App) Start(s service.Service) error {
 	return nil
 }
 
-func (app *App) loop() {
+func (app *application) loop() {
 	DebugFunc()
 
 	for {
@@ -361,7 +358,7 @@ func AppLifecycle() *Notice {
 	return appLifecycle
 }
 
-func (app *App) Stop(s service.Service) error {
+func (app *application) Stop(s service.Service) error {
 	if IsRunningAsService() {
 		Info("Stop()")
 	} else {
@@ -551,4 +548,8 @@ func IsRunningAsExecutable() bool {
 
 func IsRunningInteractive() bool {
 	return !app.IsService || service.Interactive()
+}
+
+func Application() *application {
+	return app
 }
