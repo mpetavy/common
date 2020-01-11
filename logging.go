@@ -228,12 +228,10 @@ func levelToString(level int) string {
 func initLog() {
 	DebugFunc()
 
-	if realLogFilename() != "" {
-		if realLogFilename() == "memory" {
-			logger = newLogMemoryWriter()
-		} else {
-			logger = newLogFileWriter()
-		}
+	if realLogFilename() == "" {
+		logger = newLogMemoryWriter()
+	} else {
+		logger = newLogFileWriter()
 	}
 
 	if app != nil {
