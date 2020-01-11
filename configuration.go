@@ -81,7 +81,7 @@ func initConfiguration() error {
 		return err
 	}
 
-	*FlagCfgReset = ba == nil
+	*FlagCfgReset = *FlagCfgReset || ba == nil
 
 	err = registerFileFlags(ba)
 	if Error(err) {
