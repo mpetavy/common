@@ -231,13 +231,13 @@ func IsCookieAuthenticated(context echo.Context, passwords []string, hashFunc fu
 	return found
 }
 
-func NewMenu(page *Webpage, menuItems []ActionItem, selectedTitle string) {
+func NewMenu(page *Webpage, menuItems []ActionItem, selectedTitle string, disableMenues bool) {
 	page.HtmlMenu.CreateAttr("class", "pure-menu pure-menu-horizontal")
 
-	newMenuitem(page.HtmlMenu, true, menuItems, selectedTitle)
+	newMenuitem(page.HtmlMenu, true, menuItems, selectedTitle, disableMenues)
 }
 
-func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, selectedTitle string) {
+func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, selectedTitle string, disableMenues bool) {
 	htmlUl := parent.CreateElement("ul")
 	if mainMenu {
 		htmlUl.CreateAttr("class", "pure-menu-list")
@@ -246,31 +246,29 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 	}
 
 	for _, menu := range menuItems {
-		htmlMenu := htmlUl.CreateElement("li")
-
 		classes := []string{"pure-menu-item"}
 
-		if menu.Caption == selectedTitle {
-			classes = append(classes, "pure-menu-selected")
-		}
-		if len(menu.SubItems) > 0 {
-			classes = append(classes, "pure-menu-has-children")
-			classes = append(classes, "pure-menu-allow-hover")
-		}
-
-		htmlMenu.CreateAttr("class", strings.Join(classes, " "))
-
-		htmlAhref := htmlMenu.CreateElement("a")
-		if len(menu.SubItems) > 0 {
-			htmlAhref.CreateAttr("onClick", "return false;")
+		isMenuDisabled := !menu.Enabled || disableMenues
+		if isMenuDisabled {
+			classes = append(classes, "pure-menu-disabled")
 		} else {
-			if strings.Index(menu.Action, ";") != -1 {
-				htmlAhref.CreateAttr("onClick", menu.Action)
-			} else {
-				htmlAhref.CreateAttr("href", menu.Action)
+			if menu.Caption == selectedTitle {
+				classes = append(classes, "pure-menu-selected")
+			}
+
+			if len(menu.SubItems) > 0 {
+				classes = append(classes, "pure-menu-has-children")
+				classes = append(classes, "pure-menu-allow-hover")
 			}
 		}
 
+		htmlMenu := htmlUl.CreateElement("li")
+		htmlMenu.CreateAttr("class", strings.Join(classes, " "))
+		if isMenuDisabled {
+			htmlMenu.CreateAttr("style", "padding: 0;")
+		}
+
+		htmlAhref := htmlMenu.CreateElement("a")
 		htmlAhref.CreateAttr("class", "pure-menu-link")
 
 		if menu.Caption != "" {
@@ -282,12 +280,24 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 			htmlAhref.SetText(caption)
 		}
 
-		if len(menu.SubItems) > 0 {
-			newMenuitem(htmlMenu, false, menu.SubItems, selectedTitle)
-		}
+		if !isMenuDisabled {
+			if len(menu.SubItems) > 0 {
+				htmlAhref.CreateAttr("onClick", "return false;")
+			} else {
+				if strings.Index(menu.Action, ";") != -1 {
+					htmlAhref.CreateAttr("onClick", menu.Action)
+				} else {
+					htmlAhref.CreateAttr("href", menu.Action)
+				}
+			}
 
-		if menu.File != "" {
-			htmlAhref.CreateAttr("download", menu.File)
+			if len(menu.SubItems) > 0 {
+				newMenuitem(htmlMenu, false, menu.SubItems, selectedTitle, disableMenues)
+			}
+
+			if menu.File != "" {
+				htmlAhref.CreateAttr("download", menu.File)
+			}
 		}
 	}
 }
