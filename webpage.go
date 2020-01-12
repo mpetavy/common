@@ -722,3 +722,11 @@ func (this *Webpage) HTML() (string, error) {
 
 	return html, nil
 }
+
+func Hack4BrowserUpdate() string {
+	if IsRunningAsExecutable() {
+		return ""
+	}
+
+	return "?" + strconv.Itoa(Rnd(999999999))
+}
