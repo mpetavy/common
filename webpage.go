@@ -89,7 +89,7 @@ func NewPage(context echo.Context, contentStyle string, title string, scrollable
 	p.HtmlRoot = p.doc.CreateElement("html")
 
 	lang, err := GetConfiguration().GetFlag("language")
-	if WarnError(err) {
+	if Error(err) {
 		lang = DEFAULT_LANGUAGE
 	}
 	p.HtmlRoot.CreateAttr("lang", lang)

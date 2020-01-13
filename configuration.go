@@ -110,7 +110,7 @@ func initConfiguration() error {
 			for AppLifecycle().IsSet() {
 				select {
 				case <-fileChecker.C:
-					WarnError(checkChanged())
+					Error(checkChanged())
 				}
 			}
 		}()
@@ -135,11 +135,11 @@ func ResetConfiguration() error {
 
 	buf := bytes.NewBuffer(ba)
 
-	Events.Emit(EventConfigurationReset{buf})
-
-	err = writeFile(buf.Bytes())
-	if Error(err) {
-		return err
+	if Events.Emit(EventConfigurationReset{buf}) || len(cfg.Flags) > 0 {
+		err = writeFile(buf.Bytes())
+		if Error(err) {
+			return err
+		}
 	}
 
 	err = registerFileFlags(buf.Bytes())
@@ -292,7 +292,7 @@ func setFlags() error {
 
 			Debug("Set flag %s : %s [%s]", f.Name, value, origin)
 
-			WarnError(flag.Set(f.Name, value))
+			Error(flag.Set(f.Name, value))
 		}
 	})
 

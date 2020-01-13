@@ -74,7 +74,7 @@ func init() {
 	}
 
 	AddShutdownHook(func() {
-		WarnError(deleteTempDir())
+		Error(deleteTempDir())
 	})
 
 	countBackups = flag.Int("filebackup", 3, "amount of file backups")
@@ -450,7 +450,7 @@ func CleanPath(path string) string {
 		}
 
 		if err != nil {
-			WarnError(err)
+			Error(err)
 		} else {
 			result = filepath.Join(dir, result)
 		}
@@ -506,7 +506,7 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
 				err = fmt.Errorf("Timeoutout error")
 			}
-			WarnError(err)
+			Error(err)
 		}
 	}(&written, err)
 
