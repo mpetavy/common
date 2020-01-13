@@ -309,15 +309,6 @@ func errorString(err error) string {
 	return fmt.Sprintf("%s [%T]", err.Error(), err)
 }
 
-// Warn prints out the error
-func WarnError(err error) bool {
-	if err != nil && !isErrExit(err) {
-		log(LEVEL_WARN, GetRuntimeInfo(1), errorString(err))
-	}
-
-	return err != nil
-}
-
 // DebugFunc prints out the current executon func
 func DebugFunc(arg ...interface{}) {
 	ri := GetRuntimeInfo(1)

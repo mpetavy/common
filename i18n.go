@@ -150,7 +150,7 @@ func initLanguage() {
 		}
 
 		if lang != "" {
-			WarnError(SetLanguage(lang))
+			Error(SetLanguage(lang))
 		}
 	}
 }
@@ -416,7 +416,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 					var err error
 
 					value, err = googleTranslate(googleApiKey, strings.ReplaceAll(i18n, "%v", "XXX"), foreignLanguage)
-					if WarnError(err) {
+					if Error(err) {
 						value = ""
 					} else {
 						value = strings.ReplaceAll(value, "XXX", "%v")

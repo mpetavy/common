@@ -148,7 +148,7 @@ func Run(mandatoryFlags []string) {
 
 			if fl == nil {
 				showBanner()
-				WarnError(fmt.Errorf("unknown mandatory flag: %s", f))
+				Error(fmt.Errorf("unknown mandatory flag: %s", f))
 
 				flagErr = true
 
@@ -157,7 +157,7 @@ func Run(mandatoryFlags []string) {
 
 			if len(fl.Value.String()) == 0 {
 				showBanner()
-				WarnError(fmt.Errorf("mandatory flag needed: \"-%s\" - %s", fl.Name, fl.Usage))
+				Error(fmt.Errorf("mandatory flag needed: \"-%s\" - %s", fl.Name, fl.Usage))
 
 				flagErr = true
 			}
@@ -281,7 +281,7 @@ func (app *application) service() error {
 			ticker.Stop()
 
 			if err := app.runFunc(); err != nil {
-				WarnError(err)
+				Error(err)
 			}
 
 			ti := time.Now()

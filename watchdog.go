@@ -52,7 +52,7 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 	select {
 	case <-time.After(timeout):
 		Debug("Watchdog: process killed! pid: %d timeout: %v cmd: %s time: %s", cmd.Process.Pid, timeout, ToString(*cmd), time.Since(start))
-		WarnError(cmd.Process.Kill())
+		Error(cmd.Process.Kill())
 
 		return &ErrWatchdog{cmd.Process.Pid, start, cmd}
 	case err = <-doneCh:

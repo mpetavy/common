@@ -103,9 +103,11 @@ func (this *EventManager) DestroyFuncReceiver(eventFunc *EventFunc) {
 }
 
 // Emit emits an event on the Dog struct instance
-func (this *EventManager) Emit(event interface{}) {
+func (this *EventManager) Emit(event interface{}) bool {
 	this.mu.Lock()
 	defer this.mu.Unlock()
+
+	bool := false
 
 	eventType := reflect.TypeOf(event)
 
@@ -114,12 +116,16 @@ func (this *EventManager) Emit(event interface{}) {
 	if chans, ok := this.chans[eventType]; ok {
 		for _, receiver := range chans {
 			receiver <- event
+			bool = true
 		}
 	}
 
 	if funcs, ok := this.funcs[eventType]; ok {
 		for _, receiver := range funcs {
 			(*receiver)(event)
+			bool = true
 		}
 	}
+
+	return bool
 }
