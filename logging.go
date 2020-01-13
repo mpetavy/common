@@ -68,7 +68,7 @@ func (l *logEntry) String() string {
 
 	} else {
 		if FlagLogVerbose == nil || *FlagLogVerbose {
-			return fmt.Sprintf("%s %s %-40.40s %s", l.Clock, FillString(l.LevelStr+":", 6, false, " "), l.Ri, l.Msg)
+			return fmt.Sprintf("%s %s %-40.40s %s", l.Clock, FillString(l.LevelStr, 5, false, " "), l.Ri, l.Msg)
 		} else {
 			if l.levelInt == LEVEL_INFO {
 				return l.Msg
