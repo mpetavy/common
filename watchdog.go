@@ -30,8 +30,8 @@ func (e *ErrWatchdog) Error() string {
 }
 
 func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
-	if MsecToDuration(*flagTimeout) > timeout {
-		timeout = MsecToDuration(*flagTimeout)
+	if MillisecondToDuration(*flagTimeout) > timeout {
+		timeout = MillisecondToDuration(*flagTimeout)
 	}
 
 	doneCh := make(chan error)
