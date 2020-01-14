@@ -166,7 +166,7 @@ func TruncateTime(t time.Time, f string) time.Time {
 	return time.Date(y, m, d, h, mi, s, n, time.Local)
 }
 
-func MsecToDuration(msec int) time.Duration {
+func MillisecondToDuration(msec int) time.Duration {
 	return time.Millisecond * time.Duration(msec)
 }
 

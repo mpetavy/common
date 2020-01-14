@@ -76,19 +76,21 @@ func initConfiguration() error {
 		return err
 	}
 
-	ba, err := readFile()
-	if Error(err) {
-		return err
-	}
-
-	*FlagCfgReset = *FlagCfgReset || ba == nil
-
-	err = registerFileFlags(ba)
-	if Error(err) {
-		if IsRunningAsService() {
-			*FlagCfgReset = true
-		} else {
+	if !*FlagCfgReset {
+		ba, err := readFile()
+		if Error(err) {
 			return err
+		}
+
+		*FlagCfgReset = *FlagCfgReset || ba == nil
+
+		err = registerFileFlags(ba)
+		if Error(err) {
+			if IsRunningAsService() {
+				*FlagCfgReset = true
+			} else {
+				return err
+			}
 		}
 	}
 
@@ -105,7 +107,7 @@ func initConfiguration() error {
 	}
 
 	if *FlagCfgFile != "" && *FlagCfgTimeout > 0 {
-		fileChecker = time.NewTicker(MsecToDuration(*FlagCfgTimeout))
+		fileChecker = time.NewTicker(MillisecondToDuration(*FlagCfgTimeout))
 		go func() {
 			for AppLifecycle().IsSet() {
 				select {
@@ -120,6 +122,8 @@ func initConfiguration() error {
 }
 
 func ResetConfiguration() error {
+	DebugFunc()
+
 	*FlagCfgReset = false
 
 	cfg := NewConfiguration()
