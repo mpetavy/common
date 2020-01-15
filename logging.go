@@ -31,6 +31,7 @@ const (
 
 var (
 	FlagLogVerbose     *bool
+	FlagLogIO          *bool
 	logFilename        *string
 	logFilesize        *int64
 	logJson            *bool
@@ -45,6 +46,7 @@ func init() {
 	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
 	logFilesize = flag.Int64("log.filesize", 5*1024*1024, "max log file size")
 	FlagLogVerbose = flag.Bool("log.verbose", false, "verbose logging")
+	FlagLogIO = flag.Bool("log.io", false, "trace logging")
 	logJson = flag.Bool("log.json", false, "JSON output")
 }
 

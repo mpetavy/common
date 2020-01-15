@@ -76,22 +76,18 @@ func initConfiguration() error {
 		return err
 	}
 
-	if !*FlagCfgReset {
-		ba, err := readFile()
-		if Error(err) {
-			return err
-		}
+	ba, err := readFile()
+	if Error(err) {
+		return err
+	}
 
-		*FlagCfgReset = *FlagCfgReset || ba == nil
+	*FlagCfgReset = *FlagCfgReset || ba == nil
 
-		err = registerFileFlags(ba)
-		if Error(err) {
-			if IsRunningAsService() {
-				*FlagCfgReset = true
-			} else {
-				return err
-			}
-		}
+	err = registerFileFlags(ba)
+	if Error(err) {
+		Warn("Reset configuration to system defaults")
+
+		*FlagCfgReset = true
 	}
 
 	err = setFlags()
