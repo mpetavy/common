@@ -18,6 +18,7 @@ const (
 	OPTION_FILE          = "file"
 	OPTION_HIDDEN        = "hidden"
 	OPTION_SELECT        = "select"
+	OPTION_MULTISELECT   = "multiselect"
 	OPTION_DATALIST      = "datalist"
 	OPTION_PASSWORD      = "password"
 	OPTION_AUTOFOCUS     = "autofocus"
@@ -60,9 +61,7 @@ type Webpage struct {
 	HtmlContent       *etree.Element
 }
 
-type FuncDatalist func(string) []string
-
-type FuncFieldIterator func(reflect.StructField, reflect.Value) bool
+type FuncFieldIterator func(reflect.StructField, reflect.Value) (bool, []string)
 
 type ActionItem struct {
 	Caption  string
@@ -318,7 +317,7 @@ func NewRefreshPage(name string, url string) (*Webpage, error) {
 	return &p, nil
 }
 
-func NewForm(parent *etree.Element, name string, data interface{}, method string, encType string, formAction string, actions []ActionItem, funcDatalist FuncDatalist, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
+func NewForm(parent *etree.Element, name string, data interface{}, method string, encType string, formAction string, actions []ActionItem, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
 	if encType != "" {
@@ -331,7 +330,7 @@ func NewForm(parent *etree.Element, name string, data interface{}, method string
 
 	htmlFieldset := htmlForm.CreateElement("fieldset")
 
-	err := newFieldset(0, htmlFieldset, name, data, funcDatalist, funcFieldIterator)
+	err := newFieldset(0, htmlFieldset, name, data, funcFieldIterator)
 	if Error(err) {
 		return nil, err
 	}
@@ -372,6 +371,19 @@ func BindForm(context echo.Context, data interface{}) error {
 			val.SetBool(context.FormValue(tag.Name) != "")
 		}
 
+		if val.Kind() == reflect.String {
+			tag, err := fieldTags.Get("form")
+			if err != nil {
+				return nil
+			}
+
+			values := context.Request().Form[tag.Name]
+
+			if len(values) > 1 {
+				val.SetString(strings.Join(values, ";"))
+			}
+		}
+
 		if val.Kind() == reflect.Slice {
 			tagForm, err := fieldTags.Get("form")
 			if err != nil {
@@ -409,7 +421,7 @@ func BindForm(context echo.Context, data interface{}) error {
 	return err
 }
 
-func newFieldset(level int, parent *etree.Element, name string, data interface{}, funcDatalist FuncDatalist, funcFieldIterator FuncFieldIterator) error {
+func newFieldset(level int, parent *etree.Element, name string, data interface{}, funcFieldIterator FuncFieldIterator) error {
 	if reflect.TypeOf(data).Kind() == reflect.Ptr {
 		data = reflect.ValueOf(data).Elem()
 	}
@@ -422,9 +434,16 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 	for i := 0; i < structValue.NumField(); i++ {
 		fieldType := structValue.Type().Field(i)
 		fieldValue := structValue.Field(i)
+		fieldValues := []string{}
 
-		if funcFieldIterator != nil && !funcFieldIterator(fieldType, fieldValue) {
-			continue
+		if funcFieldIterator != nil {
+			var fieldVisible bool
+
+			fieldVisible, fieldValues = funcFieldIterator(fieldType, fieldValue)
+
+			if !fieldVisible {
+				continue
+			}
 		}
 
 		Debug("%+v", fieldType)
@@ -449,11 +468,7 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 				parent.RemoveChildAt(0)
 			}
 
-			if funcFieldIterator != nil && !funcFieldIterator(fieldType, fieldValue) {
-				continue
-			}
-
-			err = newFieldset(level+1, parent, tagHtml.Name, fieldValue.Interface(), funcDatalist, funcFieldIterator)
+			err = newFieldset(level+1, parent, tagHtml.Name, fieldValue.Interface(), funcFieldIterator)
 			if Error(err) {
 				return err
 			}
@@ -472,19 +487,6 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 
 		if indexOf(tagHtml.Options, OPTION_NOLABEL) == -1 {
 			htmlLabel.SetText(Translate(tagHtml.Name))
-		}
-
-		var values []string
-
-		if funcDatalist != nil {
-			values = funcDatalist(tagForm.Name)
-		}
-
-		if len(values) == 0 {
-			datalist, err := fieldTags.Get("html_list")
-			if err == nil {
-				values = strings.Split(datalist.Value(), ",")
-			}
 		}
 
 		var htmlInput *etree.Element
@@ -522,24 +524,41 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 				break
 			}
 
-			if indexOf(tagHtml.Options, OPTION_SELECT) != -1 {
+			if indexOf(tagHtml.Options, OPTION_SELECT) != -1 || indexOf(tagHtml.Options, OPTION_MULTISELECT) != -1 {
+				isMultiSelect := indexOf(tagHtml.Options, OPTION_MULTISELECT) != -1
 				htmlInput = htmlDiv.CreateElement("select")
-				htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
+
+				if isMultiSelect {
+					htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
+					htmlInput.CreateAttr("multiple", "")
+				} else {
+					htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
+				}
 
 				preselectValue := fieldValue.String()
 				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Int {
 					preselectValue = strconv.Itoa(int(fieldValue.Int()))
 				}
 
-				if len(values) > 0 {
-					for _, value := range values {
-						htmlOption := htmlInput.CreateElement("option")
-						htmlOption.CreateAttr("value", value)
-						htmlOption.SetText(value)
+				preselectedValues := make(map[string]bool)
 
-						if value == preselectValue {
-							htmlOption.CreateAttr("selected", "")
-						}
+				if isMultiSelect {
+					list := strings.Split(preselectValue, ";")
+
+					for _, v := range list {
+						preselectedValues[v] = true
+					}
+				} else {
+					preselectedValues[preselectValue] = true
+				}
+
+				for _, value := range fieldValues {
+					htmlOption := htmlInput.CreateElement("option")
+					htmlOption.CreateAttr("value", value)
+					htmlOption.SetText(value)
+
+					if preselectedValues[value] {
+						htmlOption.CreateAttr("selected", "")
 					}
 				}
 
@@ -603,12 +622,10 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 				htmlDatalist := htmlDiv.CreateElement("datalist")
 				htmlDatalist.CreateAttr("id", tagForm.Name+"_list")
 
-				if len(values) > 0 {
-					for _, value := range values {
-						htmlOption := htmlDatalist.CreateElement("option")
-						htmlOption.CreateAttr("value", value)
-						htmlOption.SetText(value)
-					}
+				for _, value := range fieldValues {
+					htmlOption := htmlDatalist.CreateElement("option")
+					htmlOption.CreateAttr("value", value)
+					htmlOption.SetText(value)
 				}
 			}
 		}

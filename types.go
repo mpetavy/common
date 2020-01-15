@@ -314,7 +314,7 @@ func IterateStruct(data interface{}, function func(typ reflect.StructField, val 
 	}
 
 	for i := 0; i < val.NumField(); i++ {
-		DebugFunc("field #$d: %s = %s : %s", typ.Field(i).Name, val.Field(i).Type().Name(), val.Field(i).Kind().String())
+		DebugFunc("field #%d: %s = %s : %s", typ.Field(i).Name, val.Field(i).Type().Name(), val.Field(i).Kind().String())
 
 		if function != nil {
 			err := function(typ.Field(i), val.Field(i))

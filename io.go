@@ -496,7 +496,7 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 			cancel()
 		}()
 
-		if *FlagLogVerbose {
+		if *FlagLogIO {
 			*written, err = io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf)
 		} else {
 			*written, err = io.CopyBuffer(writer, reader, buf)
