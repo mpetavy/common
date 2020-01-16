@@ -46,10 +46,6 @@ func (this *throttledReader) Read(p []byte) (n int, err error) {
 			return index, err
 		}
 
-		if index == lenP {
-			return index, nil
-		}
-
 		if sleep {
 			this.lastSec = this.lastSec.Add(time.Second)
 			this.lastSecRead = 0
@@ -59,6 +55,10 @@ func (this *throttledReader) Read(p []byte) (n int, err error) {
 			if d > 0 {
 				time.Sleep(d)
 			}
+		}
+
+		if index == Min(this.bytesPerSecs, lenP) {
+			return index, nil
 		}
 	}
 }
