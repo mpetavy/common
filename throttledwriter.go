@@ -6,10 +6,10 @@ import (
 )
 
 type throttledWriter struct {
-	writer       io.Writer
-	bytesPerSecs int
-	lastSec      time.Time
-	written      int
+	writer         io.Writer
+	bytesPerSecs   int
+	lastSec        time.Time
+	lastSecWritten int
 }
 
 func (this *throttledWriter) Write(p []byte) (n int, err error) {
@@ -17,50 +17,50 @@ func (this *throttledWriter) Write(p []byte) (n int, err error) {
 		return this.writer.Write(p)
 	}
 
-	curSec := time.Now()
 	lenP := len(p)
 	index := 0
 
-	var sleep bool
+	curSec := time.Now().Truncate(time.Second)
+	if this.lastSec.IsZero() || this.lastSec.Before(curSec) {
+		this.lastSec = curSec
+		this.lastSecWritten = 0
+	}
 
 	for {
-		sleep = false
+		sleep := false
 
-		if this.lastSec.IsZero() || this.lastSec.Before(curSec) {
-			this.lastSec = curSec
-			this.written = 0
-		}
+		remainAllowedLen := this.bytesPerSecs - this.lastSecWritten
+		remainBufferLen := lenP - index
 
-		remainAllowed := this.bytesPerSecs - this.written
-		writeLen := lenP - index
-
-		if writeLen > remainAllowed {
-			writeLen = remainAllowed
+		if remainBufferLen > remainAllowedLen {
+			remainBufferLen = remainAllowedLen
 			sleep = true
 		}
 
-		n, err := this.writer.Write(p[index : index+writeLen])
+		n, err := this.writer.Write(p[index : index+remainBufferLen])
+
 		index += n
+		this.lastSecWritten += n
 
 		if err != nil {
 			return index, err
 		}
 
 		if index == lenP {
-			break
+			return index, nil
 		}
 
 		if sleep {
-			curSec = this.lastSec.Add(time.Second)
-			d := curSec.Sub(time.Now())
+			this.lastSec = this.lastSec.Add(time.Second)
+			this.lastSecWritten = 0
+
+			d := this.lastSec.Sub(time.Now())
 
 			if d > 0 {
 				time.Sleep(d)
 			}
 		}
 	}
-
-	return index, nil
 }
 
 func NewThrottledWriter(writer io.Writer, bytesPerSecs int) io.Writer {
