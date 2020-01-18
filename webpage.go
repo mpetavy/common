@@ -41,6 +41,7 @@ const (
 	CSS_MARGIN_DIV   = "css-margin-div"
 	CSS_LOGVIEWER    = "css-logviewer"
 	CSS_CONTENT      = "css-content"
+	CSS_CHECKLIST    = "css-checklist"
 
 	FLASH_WARNING = "warning-flash"
 	FLASH_ERROR   = "error-flash"
@@ -496,6 +497,7 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 			htmlInput = htmlDiv.CreateElement("input")
 			htmlInput.CreateAttr("type", "checkbox")
 			htmlInput.CreateAttr("value", "true")
+			htmlInput.CreateAttr("style", "margin-top: 6px;margin-bottom: 6px;")
 			if fieldValue.Bool() {
 				htmlInput.CreateAttr("checked", "")
 			}
@@ -524,16 +526,9 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 				break
 			}
 
-			if indexOf(tagHtml.Options, OPTION_SELECT) != -1 || indexOf(tagHtml.Options, OPTION_MULTISELECT) != -1 {
-				isMultiSelect := indexOf(tagHtml.Options, OPTION_MULTISELECT) != -1
-				htmlInput = htmlDiv.CreateElement("select")
-
-				if isMultiSelect {
-					htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
-					htmlInput.CreateAttr("multiple", "")
-				} else {
-					htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
-				}
+			if indexOf(tagHtml.Options, OPTION_MULTISELECT) != -1 {
+				htmlSpan := htmlDiv.CreateElement("span")
+				htmlSpan.CreateAttr("class", CSS_CHECKLIST)
 
 				preselectValue := fieldValue.String()
 				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Int {
@@ -542,19 +537,56 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 
 				preselectedValues := make(map[string]bool)
 
-				if isMultiSelect {
-					list := strings.Split(preselectValue, ";")
+				list := strings.Split(preselectValue, ";")
 
-					for _, v := range list {
-						preselectedValues[v] = true
-					}
-				} else {
-					preselectedValues[preselectValue] = true
+				for _, v := range list {
+					preselectedValues[v] = true
 				}
+
+				htmlLabel.CreateAttr("style", "vertical-align: top;")
+
+				for _, value := range fieldValues {
+					htmlItem := htmlSpan.CreateElement("input")
+					htmlItem.CreateAttr("type", "checkbox")
+					htmlItem.CreateAttr("value", value)
+					htmlItem.CreateAttr("name", tagForm.Name)
+					htmlItem.CreateAttr("id", tagForm.Name)
+					htmlItem.SetText(value)
+
+					if preselectedValues[value] {
+						htmlItem.CreateAttr("checked", "")
+					}
+
+					if indexOf(tagHtml.Options, OPTION_AUTOFOCUS) != -1 {
+						htmlItem.CreateAttr("autofocus", "")
+					}
+
+					if indexOf(tagHtml.Options, OPTION_READONLY) != -1 {
+						htmlItem.CreateAttr("readonly", "")
+					}
+
+					htmlSpan.CreateElement("br")
+				}
+
+				continue
+			}
+
+			if indexOf(tagHtml.Options, OPTION_SELECT) != -1 {
+				htmlInput = htmlDiv.CreateElement("select")
+				htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
+
+				preselectValue := fieldValue.String()
+				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Int {
+					preselectValue = strconv.Itoa(int(fieldValue.Int()))
+				}
+
+				preselectedValues := make(map[string]bool)
+				preselectedValues[preselectValue] = true
 
 				for _, value := range fieldValues {
 					htmlOption := htmlInput.CreateElement("option")
 					htmlOption.CreateAttr("value", value)
+					//htmlOption.CreateAttr("name", tagForm.Name)
 					htmlOption.SetText(value)
 
 					if preselectedValues[value] {
