@@ -550,7 +550,9 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 					htmlItem.CreateAttr("type", "checkbox")
 					htmlItem.CreateAttr("value", value)
 					htmlItem.CreateAttr("name", tagForm.Name)
+					htmlItem.CreateAttr("class", tagForm.Name)
 					htmlItem.CreateAttr("id", tagForm.Name)
+					htmlItem.CreateAttr("onkeypress", "multiCheck(event);")
 					htmlItem.SetText(value)
 
 					if preselectedValues[value] {
