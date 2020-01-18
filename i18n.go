@@ -245,7 +245,7 @@ func Translate(msg string, args ...interface{}) string {
 		}
 	}
 
-	return fmt.Sprintf(msg, args...)
+	return Capitalize(fmt.Sprintf(msg, args...))
 }
 
 func googleTranslate(googleApiKey string, text string, foreignLanguage string) (string, error) {
