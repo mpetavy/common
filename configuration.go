@@ -260,8 +260,6 @@ func setFlags() error {
 
 	var err error
 
-	changed := false
-
 	flag.VisitAll(func(f *flag.Flag) {
 		if f.Name == "cfg.reset" {
 			return
@@ -288,8 +286,6 @@ func setFlags() error {
 		}
 
 		if value != "" && value != f.Value.String() {
-			changed = true
-
 			Debug("Set flag %s : %s [%s]", f.Name, value, origin)
 
 			Error(flag.Set(f.Name, value))

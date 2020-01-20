@@ -64,24 +64,17 @@ type OuterStruct struct {
 	Tel        InnerStruct
 }
 
-func fillNameOfStruct(data interface{}) {
-	adr := data.(*InnerStruct)
-	adr.InnerField = "bbb"
-}
-
 func TestIterateStruct(t *testing.T) {
 	s := OuterStruct{}
 
-	err := IterateStruct(&s, func(typ reflect.StructField, val reflect.Value) error {
-		switch val.Type().Kind() {
-		case reflect.Struct:
-			fillNameOfStruct(val.Addr().Interface())
-		default:
-			if val.Type().Kind() == reflect.String {
-				if val.String() == "" {
-					val.SetString("aaa")
-				}
-			}
+	err := IterateStruct(&s, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
+		outer, ok := fieldValue.Addr().Interface().(*OuterStruct)
+		if ok {
+			outer.OuterField = "aaa"
+		}
+		inner, ok := fieldValue.Addr().Interface().(*InnerStruct)
+		if ok {
+			inner.InnerField = "bbb"
 		}
 
 		return nil

@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 )
@@ -156,43 +155,27 @@ func initLanguage() {
 }
 
 func scanStruct(i18ns *[]string, data interface{}) error {
-	if reflect.TypeOf(data).Kind() == reflect.Ptr {
-		data = reflect.ValueOf(data).Elem()
-	}
-
-	structValue := reflect.ValueOf(data)
-
-	for i := 0; i < structValue.NumField(); i++ {
-		fieldType := structValue.Type().Field(i)
-		fieldValue := structValue.Field(i)
-
-		if fieldType.Type.Kind() == reflect.Struct {
-			err := scanStruct(i18ns, fieldValue.Interface())
-			if Error(err) {
-				return err
-			}
-		}
-
+	return IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
 		fieldTags, err := structtag.Parse(string(fieldType.Tag))
 		if err != nil {
 			return err
 		}
 
-		tag, err := fieldTags.Get("html")
+		tagHtml, err := fieldTags.Get("html")
 		if err != nil {
-			continue
+			return nil
 		}
 
 		for _, i18n := range *i18ns {
-			if i18n == tag.Name {
+			if i18n == tagHtml.Name {
 				continue
 			}
 		}
 
-		*i18ns = append(*i18ns, tag.Name)
-	}
+		*i18ns = append(*i18ns, tagHtml.Name)
 
-	return nil
+		return nil
+	})
 }
 
 //SetLanguage sets the language file to translation
@@ -227,7 +210,7 @@ func GetLanguages() ([]string, error) {
 		list = append(list, DEFAULT_LANGUAGE)
 	}
 
-	sort.Strings(list)
+	SortStringsCaseInsensitive(list)
 
 	return list, nil
 }
@@ -336,7 +319,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 		}
 	}
 
-	sort.Strings(i18ns)
+	SortStringsCaseInsensitive(i18ns)
 
 	// remove duplicates
 
@@ -346,9 +329,12 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 				i18ns = i18ns[0 : len(i18ns)-1]
 			} else {
 				i18ns = append(i18ns[:i], i18ns[i+1:]...)
+				i--
 			}
 		}
 	}
+
+	SortStringsCaseInsensitive(i18ns)
 
 	if i18nFile == nil {
 		i18nFile = ini.Empty()
@@ -441,7 +427,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 		if sec.Name() != ini.DefaultSection {
 			keys := sec.KeyStrings()
 
-			sort.Strings(keys)
+			SortStringsCaseInsensitive(keys)
 
 			newSec, err := sortedFile.NewSection(sec.Name())
 			if Error(err) {
