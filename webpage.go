@@ -362,7 +362,12 @@ func BindForm(context echo.Context, data interface{}) error {
 		case reflect.Bool:
 			fieldValue.SetBool(context.FormValue(fieldPath) != "")
 		case reflect.Int:
-			i, err := strconv.Atoi(context.FormValue(fieldPath))
+			formValue := context.FormValue(fieldPath)
+			if formValue == "" {
+				formValue = "0"
+			}
+
+			i, err := strconv.Atoi(formValue)
 			if Error(err) {
 				break
 			}
