@@ -1,19 +1,19 @@
 package common
 
 import (
-	"io"
-	"io/ioutil"
-	"math"
-	"regexp"
-	"strconv"
-	"strings"
-
 	"fmt"
-	"reflect"
-
 	"github.com/paulrosania/go-charset/charset"
 	_ "github.com/paulrosania/go-charset/data"
 	"github.com/pkg/errors"
+	"io"
+	"io/ioutil"
+	"math"
+	"reflect"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"unicode"
 )
 
 const (
@@ -98,16 +98,18 @@ func SplitWithQuotation(txt string) []string {
 
 // Capitalize the first letter
 func Capitalize(txt string) string {
-	if len(txt) > 0 {
-		lastCh := txt[len(txt)-1:]
-
-		if lastCh == strings.ToUpper(lastCh) {
-			return txt
-		} else {
-			return strings.ToUpper(string(txt[0])) + string(txt[1:])
-		}
-	} else {
+	if len(txt) == 0 {
 		return txt
+	}
+
+	runes := []rune(txt)
+	firstRune := runes[0]
+	lastRune := runes[len(runes)-1]
+
+	if lastRune == unicode.ToUpper(lastRune) {
+		return txt
+	} else {
+		return fmt.Sprintf("%s%s", string(unicode.ToUpper(firstRune)), string(runes[1:]))
 	}
 }
 
@@ -221,21 +223,17 @@ func ConvertToOSspecificLF(s string) string {
 	return s
 }
 
-func GetRune(s string, index int) (rune, error) {
-	var r rune
+func CountRunes(s string) int {
+	return len([]rune(s))
+}
 
-	for _, r = range s {
-		if index == 0 {
-			break
-		}
+func Rune(s string, index int) (rune, error) {
+	runes := []rune(s)
 
-		index--
-	}
-
-	if index == 0 {
-		return r, nil
+	if index < len(runes) {
+		return runes[index], nil
 	} else {
-		return r, fmt.Errorf("invalid rune position: %d", index)
+		return rune(' '), fmt.Errorf("invalid rune position: %d", index)
 	}
 }
 
@@ -291,7 +289,11 @@ func ReflectStructMethod(Iface interface{}, MethodName string) (*reflect.Value, 
 	return &method, nil
 }
 
-func IterateStruct(data interface{}, function func(typ reflect.StructField, val reflect.Value) error) error {
+func IterateStruct(data interface{}, function func(path string, fieldType reflect.StructField, fieldValue reflect.Value) error) error {
+	return iterateStruct("", data, function)
+}
+
+func iterateStruct(path string, data interface{}, funcStructIterator func(path string, fieldType reflect.StructField, fieldValue reflect.Value) error) error {
 	DebugFunc()
 
 	val, ok := data.(reflect.Value)
@@ -306,25 +308,30 @@ func IterateStruct(data interface{}, function func(typ reflect.StructField, val 
 
 	DebugFunc("struct: %s", typ.Name())
 
-	if function != nil {
-		err := function(reflect.StructField{}, val)
+	if funcStructIterator != nil {
+		err := funcStructIterator(path, reflect.StructField{}, val)
 		if Error(err) {
 			return err
 		}
 	}
 
 	for i := 0; i < val.NumField(); i++ {
-		DebugFunc("field #%d: %s = %s : %s", typ.Field(i).Name, val.Field(i).Type().Name(), val.Field(i).Kind().String())
+		fieldPath := typ.Field(i).Name
+		if path != "" {
+			fieldPath = strings.Join([]string{path, fieldPath}, "_")
+		}
 
-		if function != nil {
-			err := function(typ.Field(i), val.Field(i))
+		DebugFunc("field #%d: %s : type %s kind %s", i, typ.Field(i).Name, val.Field(i).Type().Name(), val.Field(i).Kind().String())
+
+		if funcStructIterator != nil {
+			err := funcStructIterator(fieldPath, typ.Field(i), val.Field(i))
 			if Error(err) {
 				return err
 			}
 		}
 
 		if val.Field(i).Kind() == reflect.Struct {
-			err := IterateStruct(val.Field(i), function)
+			err := iterateStruct(fieldPath, val.Field(i), funcStructIterator)
 			if err != nil {
 				return err
 			}
@@ -404,4 +411,10 @@ func ExtractNumber(txt string) (float64, error) {
 	}
 
 	return f, nil
+}
+
+func SortStringsCaseInsensitive(strs []string) {
+	sort.SliceStable(strs, func(i, j int) bool {
+		return strings.ToUpper(strs[i]) < strings.ToUpper(strs[j])
+	})
 }

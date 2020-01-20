@@ -62,7 +62,7 @@ type Webpage struct {
 	HtmlContent       *etree.Element
 }
 
-type FuncFieldIterator func(reflect.StructField, reflect.Value) (bool, []string)
+type FuncFieldIterator func(string, reflect.StructField, reflect.Value) (bool, []string)
 
 type ActionItem struct {
 	Caption  string
@@ -318,7 +318,7 @@ func NewRefreshPage(name string, url string) (*Webpage, error) {
 	return &p, nil
 }
 
-func NewForm(parent *etree.Element, name string, data interface{}, method string, encType string, formAction string, actions []ActionItem, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
+func NewForm(parent *etree.Element, caption string, data interface{}, method string, encType string, formAction string, actions []ActionItem, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
 	if encType != "" {
@@ -331,7 +331,7 @@ func NewForm(parent *etree.Element, name string, data interface{}, method string
 
 	htmlFieldset := htmlForm.CreateElement("fieldset")
 
-	err := newFieldset(0, htmlFieldset, name, data, funcFieldIterator)
+	err := newFieldset(0, htmlFieldset, caption, data, "", funcFieldIterator)
 	if Error(err) {
 		return nil, err
 	}
@@ -350,70 +350,53 @@ func NewForm(parent *etree.Element, name string, data interface{}, method string
 }
 
 func BindForm(context echo.Context, data interface{}) error {
-	err := IterateStruct(data, func(typ reflect.StructField, val reflect.Value) error {
-		if val.Kind() == reflect.Struct {
-			err := context.Bind(val.Addr().Interface())
+	err := context.Request().ParseForm()
+	if err != nil {
+		return err
+	}
+
+	err = IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
+		switch fieldValue.Kind() {
+		case reflect.Struct:
+			break
+		case reflect.Bool:
+			fieldValue.SetBool(context.FormValue(fieldPath) != "")
+		case reflect.Int:
+			i, err := strconv.Atoi(context.FormValue(fieldPath))
 			if Error(err) {
-				return err
+				break
 			}
-		}
+			fieldValue.SetInt(int64(i))
+		case reflect.String:
+			values := context.Request().Form[fieldPath]
 
-		fieldTags, err := structtag.Parse(string(typ.Tag))
-		if err != nil {
-			return err
-		}
-
-		if val.Kind() == reflect.Bool {
-			tag, err := fieldTags.Get("form")
-			if err != nil {
-				return nil
+			if len(values) > 0 {
+				fieldValue.SetString(strings.Join(values, ";"))
 			}
-
-			val.SetBool(context.FormValue(tag.Name) != "")
-		}
-
-		if val.Kind() == reflect.String {
-			tag, err := fieldTags.Get("form")
-			if err != nil {
-				return nil
-			}
-
-			values := context.Request().Form[tag.Name]
-
-			if len(values) > 1 {
-				val.SetString(strings.Join(values, ";"))
-			}
-		}
-
-		if val.Kind() == reflect.Slice {
-			tagForm, err := fieldTags.Get("form")
+		case reflect.Slice:
+			file, err := context.FormFile(fieldPath)
 			if err != nil {
 				return err
 			}
 
-			if tagForm.Name == "file" {
-				file, err := context.FormFile(tagForm.Name)
-				if err != nil {
-					return err
-				}
-
-				src, err := file.Open()
-				if err != nil {
-					return err
-				}
-				defer func() {
-					Error(src.Close())
-				}()
-
-				var buf bytes.Buffer
-
-				_, err = io.Copy(&buf, src)
-				if err != nil {
-					return err
-				}
-
-				val.SetBytes(buf.Bytes())
+			src, err := file.Open()
+			if err != nil {
+				return err
 			}
+			defer func() {
+				Error(src.Close())
+			}()
+
+			var buf bytes.Buffer
+
+			_, err = io.Copy(&buf, src)
+			if err != nil {
+				return err
+			}
+
+			fieldValue.SetBytes(buf.Bytes())
+		default:
+			return fmt.Errorf("unsupported field: %s", fieldPath)
 		}
 
 		return nil
@@ -422,25 +405,39 @@ func BindForm(context echo.Context, data interface{}) error {
 	return err
 }
 
-func newFieldset(level int, parent *etree.Element, name string, data interface{}, funcFieldIterator FuncFieldIterator) error {
+func newFieldset(level int, parent *etree.Element, caption string, data interface{}, path string, funcFieldIterator FuncFieldIterator) error {
 	if reflect.TypeOf(data).Kind() == reflect.Ptr {
 		data = reflect.ValueOf(data).Elem()
 	}
 
 	htmlLegend := parent.CreateElement("legend")
-	htmlLegend.SetText(Translate(name))
+	htmlLegend.SetText(Translate(caption))
 
 	structValue := reflect.ValueOf(data)
 
 	for i := 0; i < structValue.NumField(); i++ {
 		fieldType := structValue.Type().Field(i)
+		fieldPath := fieldType.Name
+		if path != "" {
+			fieldPath = strings.Join([]string{path, fieldPath}, "_")
+		}
 		fieldValue := structValue.Field(i)
 		fieldValues := []string{}
+
+		fieldTags, err := structtag.Parse(string(fieldType.Tag))
+		if Error(err) {
+			return err
+		}
+
+		tagHtml, err := fieldTags.Get("html")
+		if err != nil {
+			continue
+		}
 
 		if funcFieldIterator != nil {
 			var fieldVisible bool
 
-			fieldVisible, fieldValues = funcFieldIterator(fieldType, fieldValue)
+			fieldVisible, fieldValues = funcFieldIterator(fieldPath, fieldType, fieldValue)
 
 			if !fieldVisible {
 				continue
@@ -449,27 +446,12 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 
 		Debug("%+v", fieldType)
 
-		fieldTags, err := structtag.Parse(string(fieldType.Tag))
-		if Error(err) {
-			return err
-		}
-
-		tagForm, err := fieldTags.Get("form")
-		if err != nil {
-			continue
-		}
-
-		tagHtml, err := fieldTags.Get("html")
-		if err != nil {
-			continue
-		}
-
 		if fieldType.Type.Kind() == reflect.Struct {
 			if i == 0 {
 				parent.RemoveChildAt(0)
 			}
 
-			err = newFieldset(level+1, parent, tagHtml.Name, fieldValue.Interface(), funcFieldIterator)
+			err = newFieldset(level+1, parent, tagHtml.Name, fieldValue.Interface(), fieldPath, funcFieldIterator)
 			if Error(err) {
 				return err
 			}
@@ -484,7 +466,7 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 		}
 
 		htmlLabel := htmlDiv.CreateElement("label")
-		htmlLabel.CreateAttr("for", tagForm.Name)
+		htmlLabel.CreateAttr("for", fieldPath)
 
 		if indexOf(tagHtml.Options, OPTION_NOLABEL) == -1 {
 			htmlLabel.SetText(Translate(tagHtml.Name))
@@ -549,9 +531,9 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 					htmlItem := htmlSpan.CreateElement("input")
 					htmlItem.CreateAttr("type", "checkbox")
 					htmlItem.CreateAttr("value", value)
-					htmlItem.CreateAttr("name", tagForm.Name)
-					htmlItem.CreateAttr("class", tagForm.Name)
-					htmlItem.CreateAttr("id", tagForm.Name)
+					htmlItem.CreateAttr("name", fieldPath)
+					htmlItem.CreateAttr("class", fieldPath)
+					htmlItem.CreateAttr("id", fieldPath)
 					htmlItem.CreateAttr("onkeypress", "multiCheck(event);")
 					htmlItem.SetText(value)
 
@@ -588,7 +570,6 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 				for _, value := range fieldValues {
 					htmlOption := htmlInput.CreateElement("option")
 					htmlOption.CreateAttr("value", value)
-					//htmlOption.CreateAttr("name", tagForm.Name)
 					htmlOption.SetText(value)
 
 					if preselectedValues[value] {
@@ -613,10 +594,10 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 				if err == nil {
 					htmlInput.CreateAttr("max", fmt.Sprintf("%s", option.Value()))
 				}
-				htmlInput.CreateAttr("onchange", fmt.Sprintf("document.getElementById(--$%s.range$--).value = this.value;", tagForm.Name))
+				htmlInput.CreateAttr("onchange", fmt.Sprintf("document.getElementById(--$%s.range$--).value = this.value;", fieldPath))
 
 				htmlRange := htmlDiv.CreateElement("input")
-				htmlRange.CreateAttr("id", fmt.Sprintf("%s.range", tagForm.Name))
+				htmlRange.CreateAttr("id", fmt.Sprintf("%s.range", fieldPath))
 				htmlRange.CreateAttr("class", INPUT_WIDTH_NORMAL)
 
 				htmlRange.CreateAttr("type", "range")
@@ -631,7 +612,7 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 					htmlRange.CreateAttr("max", fmt.Sprintf("%s", option.Value()))
 				}
 
-				htmlRange.CreateAttr("oninput", fmt.Sprintf("document.getElementById(--$%s$--).value = this.value;", tagForm.Name))
+				htmlRange.CreateAttr("oninput", fmt.Sprintf("document.getElementById(--$%s$--).value = this.value;", fieldPath))
 			} else {
 				if indexOf(tagHtml.Options, OPTION_FILE) != -1 {
 					htmlInput.CreateAttr("type", "file")
@@ -651,10 +632,10 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 			}
 
 			if indexOf(tagHtml.Options, OPTION_DATALIST) != -1 {
-				htmlInput.CreateAttr("list", tagForm.Name+"_list")
+				htmlInput.CreateAttr("list", fieldPath+"_list")
 
 				htmlDatalist := htmlDiv.CreateElement("datalist")
-				htmlDatalist.CreateAttr("id", tagForm.Name+"_list")
+				htmlDatalist.CreateAttr("id", fieldPath+"_list")
 
 				for _, value := range fieldValues {
 					htmlOption := htmlDatalist.CreateElement("option")
@@ -664,8 +645,8 @@ func newFieldset(level int, parent *etree.Element, name string, data interface{}
 			}
 		}
 
-		htmlInput.CreateAttr("name", tagForm.Name)
-		htmlInput.CreateAttr("id", tagForm.Name)
+		htmlInput.CreateAttr("name", fieldPath)
+		htmlInput.CreateAttr("id", fieldPath)
 		htmlInput.CreateAttr("spellcheck", "false")
 
 		if indexOf(tagHtml.Options, OPTION_NOPLACEHOLDER) == -1 {

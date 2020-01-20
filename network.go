@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"sort"
 	"strings"
 	"time"
 )
@@ -173,7 +172,7 @@ func GetActiveIPs(inclLocalhost bool) ([]string, error) {
 		}
 	}
 
-	sort.Strings(ips)
+	SortStringsCaseInsensitive(ips)
 
 	return ips, nil
 }
