@@ -530,7 +530,7 @@ func newFieldset(level int, parent *etree.Element, caption string, data interfac
 					preselectedValues[v] = true
 				}
 
-				htmlLabel.CreateAttr("style", "vertical-align: top;")
+				htmlLabel.CreateAttr("style", "margin-top: 6px;vertical-align: top;")
 
 				for _, value := range fieldValues {
 					htmlItem := htmlSpan.CreateElement("input")
