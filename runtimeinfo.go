@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,8 +20,8 @@ import (
 const UNKNOWN = "unknwon"
 
 type RuntimeInfo struct {
-	Dir, Pack, File, Fn string
-	Line                int
+	Dir, Pack, File, Fn, Stack string
+	Line                       int
 }
 
 type SystemInfo struct {
@@ -70,7 +71,7 @@ func (this *Runner) execute(wg *sync.WaitGroup) (string, error) {
 	return this.Output, nil
 }
 
-func MultRunner(runners []Runner) error {
+func MultiRunner(runners []Runner) error {
 	chErr := ChannelError{}
 
 	wg := sync.WaitGroup{}
@@ -108,8 +109,23 @@ func (r RuntimeInfo) Filename() string {
 func GetRuntimeInfo(pos int) RuntimeInfo {
 	pc, _, _, ok := runtime.Caller(1 + pos)
 
+	scanner := bufio.NewScanner(strings.NewReader(string(debug.Stack())))
+	scanner.Split(ScanLinesWithLF)
+
+	for i := 0; i < 1+((2+pos)*2); i++ {
+		scanner.Scan()
+	}
+
+	stack := ""
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "\t") {
+			stack += line
+		}
+	}
+
 	if !ok {
-		return RuntimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, 0}
+		return RuntimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, 0}
 	}
 
 	f := runtime.FuncForPC(pc)
@@ -127,7 +143,7 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 	pack = pack[strings.LastIndex(pack, "/")+1:]
 	pack = pack[0:strings.Index(pack, ".")]
 
-	return RuntimeInfo{dir, pack, file, fn, line}
+	return RuntimeInfo{dir, pack, file, fn, stack, line}
 }
 
 func readStringTable(txt string, separator string) []string {
