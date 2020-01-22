@@ -221,7 +221,7 @@ func readFile() ([]byte, error) {
 		return nil, err
 	}
 
-	return ba, nil
+	return []byte(RemoveJsonComments(string(ba))), nil
 }
 
 func writeFile(ba []byte) error {

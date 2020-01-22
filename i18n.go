@@ -88,12 +88,18 @@ func GetSystemLanguage() (string, error) {
 	} else {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
+
+		_, err := exec.LookPath("locale")
+		if err != nil {
+			return "en", nil
+		}
+
 		cmd := exec.Command("locale")
 
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		err := Watchdog(cmd, time.Second)
+		err = Watchdog(cmd, time.Second)
 		if Error(err) {
 			return "", err
 		}
