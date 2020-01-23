@@ -41,7 +41,7 @@ func (server *DiscoverServer) Start() error {
 	var err error
 
 	server.listener, err = net.ListenPacket("udp4", server.address)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -55,9 +55,7 @@ func (server *DiscoverServer) Start() error {
 				break loop
 			default:
 				err := server.listener.SetDeadline(DeadlineByDuration(server.timeout))
-				if err != nil {
-					Error(err)
-
+				if Error(err) {
 					break
 				}
 
@@ -111,33 +109,33 @@ func (server *DiscoverServer) Stop() error {
 func Discover(address string, timeout time.Duration, uid string) (map[string]string, error) {
 	DebugFunc("discover uid: %s", uid)
 
+	_, discoverPort, err := net.SplitHostPort(address)
+	if Error(err) {
+		return nil, err
+	}
+
 	discoveredIps := make(map[string]string)
 
-	localIps, err := GetActiveIPs(false)
-	if err != nil {
-		return discoveredIps, err
+	ips, err := GetActiveIPs(true)
+	if Error(err) {
+		return nil, err
 	}
 
 	var wg sync.WaitGroup
 	var errs ChannelError
 
 	c, err := net.ListenPacket("udp4", ":0")
-	if err != nil {
-		return discoveredIps, err
+	if Error(err) {
+		return nil, err
 	}
 	defer func() {
 		Ignore(c.Close())
 	}()
 
-	_, discoverPort, err := net.SplitHostPort(address)
-	if err != nil {
-		return discoveredIps, err
-	}
-
-	for _, localIp := range localIps {
+	for _, localIp := range ips {
 		ip, ipNet, err := net.ParseCIDR(localIp)
-		if err != nil {
-			return discoveredIps, err
+		if Error(err) {
+			return nil, err
 		}
 
 		ip = ip.To4()
@@ -179,7 +177,9 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 	wg.Wait()
 
 	if errs.Exists() {
-		return discoveredIps, errs.Get()
+		Error(errs.Get())
+
+		return nil, errs.Get()
 	}
 
 	Debug("reading answers ...")
@@ -187,9 +187,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 	b := make([]byte, maxInfoLength)
 	for {
 		err := c.SetDeadline(DeadlineByDuration(timeout))
-		if err != nil {
-			Error(err)
-
+		if Error(err) {
 			break
 		}
 
@@ -203,9 +201,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 		}
 
 		host, port, err := net.SplitHostPort(peer.String())
-		if err != nil {
-			Error(err)
-
+		if Error(err) {
 			continue
 		}
 
