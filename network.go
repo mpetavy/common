@@ -80,31 +80,30 @@ func GetMainIP() (string, error) {
 		cmd.Stderr = &stderr
 
 		err := Watchdog(cmd, time.Second*3)
-		if Error(err) {
-			return "", nil
-		}
-		output := string(stdout.Bytes())
+		if err == nil {
+			output := string(stdout.Bytes())
 
-		scanner := bufio.NewScanner(strings.NewReader(output))
-		line := ""
+			scanner := bufio.NewScanner(strings.NewReader(output))
+			line := ""
 
-		for scanner.Scan() {
-			line = strings.TrimSpace(scanner.Text())
+			for scanner.Scan() {
+				line = strings.TrimSpace(scanner.Text())
 
-			if strings.HasPrefix(line, "Name:") {
-				if scanner.Scan() {
-					line = strings.TrimSpace(scanner.Text())
+				if strings.HasPrefix(line, "Name:") {
+					if scanner.Scan() {
+						line = strings.TrimSpace(scanner.Text())
 
-					if strings.HasPrefix(line, "Address:") {
+						if strings.HasPrefix(line, "Address:") {
 
-						line = strings.TrimSpace(line[10:])
+							line = strings.TrimSpace(line[10:])
 
-						DebugFunc(line)
+							DebugFunc(line)
 
-						return line, nil
+							return line, nil
+						}
+					} else {
+						break
 					}
-				} else {
-					break
 				}
 			}
 		}
