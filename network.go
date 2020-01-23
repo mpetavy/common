@@ -154,9 +154,6 @@ func GetActiveIPs(inclLocalhost bool) ([]string, error) {
 			continue
 		}
 
-		if intf.Flags&net.FlagLoopback != 0 {
-			continue
-		}
 		addrs, err := intf.Addrs()
 		if err != nil {
 			return nil, err
