@@ -17,6 +17,7 @@ import (
 
 const (
 	APACHE string = "https://www.apache.org/licenses/LICENSE-2.0.html"
+	GPL2   string = "https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html"
 )
 
 //Info information of the application
