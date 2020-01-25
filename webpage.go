@@ -102,6 +102,9 @@ func NewPage(context echo.Context, contentStyle string, title string, scrollable
 	htmlMeta.CreateAttr("name", "viewport")
 	htmlMeta.CreateAttr("content", "width = device-width, initial-scale = 1")
 
+	htmlMeta = p.HtmlHead.CreateElement("meta")
+	htmlMeta.CreateAttr("charset", "UTF-8")
+
 	p.HtmlBody = p.HtmlRoot.CreateElement("body")
 
 	p.HtmlMenu = p.HtmlBody.CreateElement("div")
@@ -587,6 +590,7 @@ func newFieldset(level int, parent *etree.Element, caption string, data interfac
 
 			htmlInput = htmlDiv.CreateElement("input")
 			htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
+			htmlInput.CreateAttr("onclick", "this.select();")
 
 			if fieldType.Type.Kind() == reflect.Int {
 				htmlInput.CreateAttr("type", "number")
