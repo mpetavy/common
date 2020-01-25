@@ -11,6 +11,7 @@ import (
 	"github.com/go-ini/ini"
 	googlelanguage "golang.org/x/text/language"
 	"google.golang.org/api/option"
+	"html"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,7 +34,7 @@ const (
 )
 
 func init() {
-	language = flag.String("language", "", "language for messages")
+	language = flag.String("language", "en", "language for messages")
 }
 
 //GetSystemLanguage return BCP 47 standard language name
@@ -221,23 +222,29 @@ func GetLanguages() ([]string, error) {
 	return list, nil
 }
 
-// Translate a message to the current set language
-func Translate(msg string, args ...interface{}) string {
-	if i18nFile != nil && *language != "" {
-		sec, _ := i18nFile.GetSection(*language)
+func TranslateFor(language, msg string) string {
+	if i18nFile != nil && language != "" {
+		sec, _ := i18nFile.GetSection(language)
 		if sec != nil {
 			m, err := sec.GetKey(msg)
 
 			if err == nil && m.Value() != "" {
-				msg = m.Value()
+				return m.Value()
 			}
 		}
 	}
 
+	return msg
+}
+
+// Translate a message to the current set language
+func Translate(msg string, args ...interface{}) string {
+	msg = TranslateFor(*language, msg)
+
 	return Capitalize(fmt.Sprintf(msg, args...))
 }
 
-func googleTranslate(googleApiKey string, text string, foreignLanguage string) (string, error) {
+func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (string, error) {
 	DebugFunc("%s -> %s ...", text, foreignLanguage)
 
 	ctx := context.Background()
@@ -260,7 +267,7 @@ func googleTranslate(googleApiKey string, text string, foreignLanguage string) (
 		return "", fmt.Errorf("Failed to translate text: %v", err)
 	}
 
-	term := translations[0].Text
+	term := html.UnescapeString(translations[0].Text)
 
 	if strings.Index(foreignLanguage, "-") == -1 {
 		term = strings.ReplaceAll(term, "-", " ")
@@ -284,7 +291,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 
 	//get i18n from source
 
-	regexTranslate := regexp.MustCompile("Translate\\(\"(.*?)\"")
+	rxs := []*regexp.Regexp{regexp.MustCompile("Translate\\(\"(.*?)\""), regexp.MustCompile("TranslateFor\\(.*,\"(.*?)\"")}
 	regexSubstitution := regexp.MustCompile("\\%[^v]")
 
 	err := WalkFilepath("*.go", true, func(path string) error {
@@ -295,21 +302,23 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 			return err
 		}
 
-		findings := regexTranslate.FindAll(ba, -1)
-		if findings == nil {
-			return nil
-		}
-
-		for _, f := range findings {
-			finding := string(f)
-
-			finding = finding[strings.Index(finding, "\"")+1 : len(finding)-1]
-
-			if regexSubstitution.Match([]byte(finding)) {
-				return fmt.Errorf("invalid substitution: %s", finding)
+		for _, regexTranslate := range rxs {
+			findings := regexTranslate.FindAll(ba, -1)
+			if findings == nil {
+				return nil
 			}
 
-			i18ns = append(i18ns, finding)
+			for _, f := range findings {
+				finding := string(f)
+
+				finding = finding[strings.Index(finding, "\"")+1 : len(finding)-1]
+
+				if regexSubstitution.Match([]byte(finding)) {
+					return fmt.Errorf("invalid substitution: %s", finding)
+				}
+
+				i18ns = append(i18ns, finding)
+			}
 		}
 
 		return nil
@@ -398,7 +407,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 			value := ""
 
 			if key != nil {
-				value = key.Value()
+				value = key.String()
 			}
 
 			if value == "" {
@@ -407,7 +416,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 				} else {
 					var err error
 
-					value, err = googleTranslate(googleApiKey, strings.ReplaceAll(i18n, "%v", "XXX"), foreignLanguage)
+					value, err = GoogleTranslate(googleApiKey, strings.ReplaceAll(i18n, "%v", "XXX"), foreignLanguage)
 					if Error(err) {
 						value = ""
 					} else {
@@ -446,7 +455,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 					return err
 				}
 
-				Ignore(newSec.NewKey(key, k.Value()))
+				Ignore(newSec.NewKey(key, k.String()))
 			}
 		}
 	}
