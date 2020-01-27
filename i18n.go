@@ -291,7 +291,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 
 	//get i18n from source
 
-	rxs := []*regexp.Regexp{regexp.MustCompile("Translate\\(\"(.*?)\""), regexp.MustCompile("TranslateFor\\(.*,\"(.*?)\"")}
+	rxs := []*regexp.Regexp{regexp.MustCompile("Translate\\(\"(.*?)\""), regexp.MustCompile("TranslateFor\\(.*\"(.*?)\"")}
 	regexSubstitution := regexp.MustCompile("\\%[^v]")
 
 	err := WalkFilepath("*.go", true, func(path string) error {
