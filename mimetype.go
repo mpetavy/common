@@ -200,10 +200,10 @@ func DetectMimeType(filename string, buf []byte) MimetypeExtension {
 		return MimetypeExtension{t.MIME.Value, t.Extension}
 	}
 
-	mime, ext := mimetype.Detect(buf)
+	mime := mimetype.Detect(buf)
 
-	if len(mime) > 0 {
-		return MimetypeExtension{mime, ext}
+	if mime != nil {
+		return MimetypeExtension{mime.String(), mime.Extension()}
 	}
 
 	return MimetypeApplicationOctetStream
