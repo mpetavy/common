@@ -7,14 +7,12 @@ require (
 	github.com/beevik/etree v1.1.0
 	github.com/fatih/structtag v1.2.0
 	github.com/gabriel-vasile/mimetype v1.0.2
-	github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1 // indirect
 	github.com/go-ini/ini v1.51.1
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/gookit/color v1.2.2
 	github.com/gorilla/sessions v1.2.0 // indirect
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/h2non/filetype v1.0.10
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/kardianos/service v1.0.0
 	github.com/labstack/echo-contrib v0.8.0
 	github.com/labstack/echo/v4 v4.1.14
