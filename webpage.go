@@ -434,6 +434,7 @@ func newCheckbox(parent *etree.Element, checked bool) *etree.Element {
 	}
 
 	htmlInput.CreateAttr("type", "checkbox")
+	htmlInput.CreateAttr("class", "css-checkbox")
 	htmlInput.CreateAttr("value", "true")
 	if checked {
 		htmlInput.CreateAttr("checked", "")
