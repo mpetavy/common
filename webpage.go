@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"io"
+	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
@@ -181,6 +182,8 @@ func RefreshCookie(context echo.Context, timeout time.Duration) error {
 	cookie.Options.Path = "/"
 	cookie.Options.MaxAge = int(timeout.Seconds())
 	cookie.Options.HttpOnly = true
+	cookie.Options.Secure = true
+	cookie.Options.SameSite = http.SameSiteStrictMode
 
 	err := cookie.Save(context.Request(), context.Response())
 	if Error(err) {
@@ -198,6 +201,8 @@ func AuthenticateCookie(context echo.Context, password string, timeout time.Dura
 	cookie.Options.Path = "/"
 	cookie.Options.MaxAge = int(timeout.Seconds())
 	cookie.Options.HttpOnly = true
+	cookie.Options.Secure = true
+	cookie.Options.SameSite = http.SameSiteStrictMode
 
 	cookie.Values[COOKIE_PASSWORD] = password
 
