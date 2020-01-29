@@ -334,6 +334,11 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 	htmlForm.CreateAttr("action", formAction)
 	htmlForm.CreateAttr("method", method)
 
+	htmlGroup := htmlForm.CreateElement("div")
+	htmlGroup.CreateAttr("style", "position: sticky; top: 0; background-color: #CFCFCF; padding: 8px; margin-bottom: 16px;")
+
+	htmlGroupCenter := htmlGroup.CreateElement("center")
+
 	htmlFieldset := htmlForm.CreateElement("fieldset")
 	htmlFieldset.CreateAttr("id", "fieldset")
 
@@ -342,23 +347,19 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 		return nil, err
 	}
 
+	for i, action := range actions {
+		NewButton(htmlGroupCenter, i == 0, action)
+	}
+
 	if isFieldExpertView {
-		expertViewCheckbox := newCheckbox(nil, isExpertViewActive)
+		expertViewCheckbox := newCheckbox(htmlGroupCenter, isExpertViewActive)
 		expertViewCheckbox.SetText(Translate("Expert view"))
 		expertViewCheckbox.CreateAttr("onClick", fmt.Sprintf("setExpertViewVisible(--$fieldset$--);"))
-
-		htmlForm.InsertChildAt(0, expertViewCheckbox)
+	} else {
+		if len(actions) == 0 {
+			htmlForm.RemoveChild(htmlGroup)
+		}
 	}
-
-	htmlGroup := htmlForm.CreateElement("div")
-	htmlGroup.CreateAttr("class", "pure-controls")
-
-	for i, action := range actions {
-		NewButton(htmlGroup, i == 0, action)
-	}
-
-	htmlFooter := parent.CreateElement("div")
-	htmlFooter.CreateAttr("class", "css-margin-div")
 
 	return htmlForm, nil
 }
