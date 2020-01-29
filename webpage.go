@@ -34,8 +34,8 @@ const (
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
 	INPUT_WIDTH_WIDE   = "pure-input-2-4"
 
-	CSS_DIALOG_CONTENT  = "css-dialog-content"
-	CSS_DEFAULT_CONTENT = "css-default-content"
+	CSS_DIALOG_CONTENT  = "css-dialog-content pure-controls"
+	CSS_DEFAULT_CONTENT = "css-default-content pure-controls"
 	CSS_ERROR_BOX       = "css-error-box"
 	CSS_WARNING_BOX     = "css-warning-box"
 	CSS_SUCCESS_BOX     = "css-success-box"
