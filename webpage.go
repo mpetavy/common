@@ -27,6 +27,7 @@ const (
 	OPTION_MULTILINE     = "multiline"
 	OPTION_MEGALINE      = "megaline"
 	OPTION_NOLABEL       = "nolabel"
+	OPTION_EXPERTVIEW    = "expertview"
 	OPTION_NOPLACEHOLDER = "noplaceholder"
 
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
@@ -116,6 +117,7 @@ func NewPage(context echo.Context, contentStyle string, title string, scrollable
 
 	p.HtmlContent = p.HtmlScrollContent.CreateElement("div")
 	p.HtmlContent.CreateAttr("class", contentStyle)
+	p.HtmlContent.CreateAttr("style", "padding-left: calc(100vw - 100%);")
 
 	msg := PullFlash(context, FLASH_WARNING)
 	if msg != "" {
@@ -321,7 +323,7 @@ func NewRefreshPage(name string, url string) (*Webpage, error) {
 	return &p, nil
 }
 
-func NewForm(parent *etree.Element, caption string, data interface{}, method string, encType string, formAction string, actions []ActionItem, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
+func NewForm(parent *etree.Element, caption string, data interface{}, method string, encType string, formAction string, actions []ActionItem, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
 	if encType != "" {
@@ -333,10 +335,19 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 	htmlForm.CreateAttr("method", method)
 
 	htmlFieldset := htmlForm.CreateElement("fieldset")
+	htmlFieldset.CreateAttr("id", "fieldset")
 
-	err := newFieldset(0, htmlFieldset, caption, data, "", funcFieldIterator)
+	isFieldExpertView, err := newFieldset(0, htmlFieldset, caption, data, "", isExpertViewActive, funcFieldIterator)
 	if Error(err) {
 		return nil, err
+	}
+
+	if isFieldExpertView {
+		expertViewCheckbox := newCheckbox(nil, isExpertViewActive)
+		expertViewCheckbox.SetText(Translate("Expert view"))
+		expertViewCheckbox.CreateAttr("onClick", fmt.Sprintf("setExpertViewVisible(--$fieldset$--);"))
+
+		htmlForm.InsertChildAt(0, expertViewCheckbox)
 	}
 
 	htmlGroup := htmlForm.CreateElement("div")
@@ -413,7 +424,28 @@ func BindForm(context echo.Context, data interface{}) error {
 	return err
 }
 
-func newFieldset(level int, parent *etree.Element, caption string, data interface{}, path string, funcFieldIterator FuncFieldIterator) error {
+func newCheckbox(parent *etree.Element, checked bool) *etree.Element {
+	var htmlInput *etree.Element
+
+	if parent == nil {
+		htmlInput = etree.NewElement("input")
+	} else {
+		htmlInput = parent.CreateElement("input")
+	}
+
+	htmlInput.CreateAttr("type", "checkbox")
+	htmlInput.CreateAttr("value", "true")
+	htmlInput.CreateAttr("style", "margin-top: 6px;margin-bottom: 6px;margin-right: 6px;")
+	if checked {
+		htmlInput.CreateAttr("checked", "")
+	}
+
+	return htmlInput
+}
+
+func newFieldset(index int, parent *etree.Element, caption string, data interface{}, path string, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
+	expertViewFieldExists := false
+
 	if reflect.TypeOf(data).Kind() == reflect.Ptr {
 		data = reflect.ValueOf(data).Elem()
 	}
@@ -434,7 +466,7 @@ func newFieldset(level int, parent *etree.Element, caption string, data interfac
 
 		fieldTags, err := structtag.Parse(string(fieldType.Tag))
 		if Error(err) {
-			return err
+			return expertViewFieldExists, err
 		}
 
 		tagHtml, err := fieldTags.Get("html")
@@ -459,17 +491,33 @@ func newFieldset(level int, parent *etree.Element, caption string, data interfac
 				parent.RemoveChildAt(0)
 			}
 
-			err = newFieldset(level+1, parent, tagHtml.Name, fieldValue.Interface(), fieldPath, funcFieldIterator)
+			var ev bool
+
+			ev, err = newFieldset(index+1, parent, tagHtml.Name, fieldValue.Interface(), fieldPath, isExpertViewActive, funcFieldIterator)
 			if Error(err) {
-				return err
+				return expertViewFieldExists, err
 			}
+
+			expertViewFieldExists = expertViewFieldExists || ev
 
 			continue
 		}
 
 		htmlDiv := parent.CreateElement("div")
-		htmlDiv.CreateAttr("class", "pure-control-group")
-		if indexOf(tagHtml.Options, OPTION_HIDDEN) != -1 {
+
+		classes := []string{"pure-control-group"}
+
+		isFieldExpertView := indexOf(tagHtml.Options, OPTION_EXPERTVIEW) != -1
+		isFieldHidden := (indexOf(tagHtml.Options, OPTION_HIDDEN) != -1) || (isFieldExpertView && !isExpertViewActive)
+
+		expertViewFieldExists = expertViewFieldExists || isFieldExpertView
+
+		if isFieldExpertView {
+			classes = append(classes, OPTION_EXPERTVIEW)
+		}
+		htmlDiv.CreateAttr("class", strings.Join(classes, " "))
+
+		if isFieldHidden {
 			htmlDiv.CreateAttr("style", "display: none;")
 		}
 
@@ -484,13 +532,7 @@ func newFieldset(level int, parent *etree.Element, caption string, data interfac
 
 		switch fieldType.Type.Kind() {
 		case reflect.Bool:
-			htmlInput = htmlDiv.CreateElement("input")
-			htmlInput.CreateAttr("type", "checkbox")
-			htmlInput.CreateAttr("value", "true")
-			htmlInput.CreateAttr("style", "margin-top: 6px;margin-bottom: 6px;")
-			if fieldValue.Bool() {
-				htmlInput.CreateAttr("checked", "")
-			}
+			htmlInput = newCheckbox(htmlDiv, fieldValue.Bool())
 		default:
 			if indexOf(tagHtml.Options, OPTION_MULTILINE) != -1 {
 				htmlInput = htmlDiv.CreateElement("textarea")
@@ -541,7 +583,6 @@ func newFieldset(level int, parent *etree.Element, caption string, data interfac
 					htmlItem.CreateAttr("value", value)
 					htmlItem.CreateAttr("name", fieldPath)
 					htmlItem.CreateAttr("class", fieldPath)
-					htmlItem.CreateAttr("id", fieldPath)
 					htmlItem.CreateAttr("onkeypress", "multiCheck(event);")
 					htmlItem.SetText(value)
 
@@ -685,16 +726,20 @@ func newFieldset(level int, parent *etree.Element, caption string, data interfac
 		}
 	}
 
-	return nil
+	return expertViewFieldExists, nil
 }
-func NewButton(parent *etree.Element, primary bool, actionItem ActionItem) {
+func NewButton(parent *etree.Element, primary bool, actionItem ActionItem) *etree.Element {
 	button := parent.CreateElement("input")
 
 	button.CreateAttr("value", actionItem.Caption)
 
 	if actionItem.Action != "submit" && actionItem.Action != "reset" {
 		button.CreateAttr("type", "button")
-		button.CreateAttr("onclick", "location.href=--$"+actionItem.Action+"$--")
+		if strings.Index(actionItem.Action, ";") != -1 {
+			button.CreateAttr("onclick", actionItem.Action)
+		} else {
+			button.CreateAttr("onclick", "location.href=--$"+actionItem.Action+"$--")
+		}
 	} else {
 		button.CreateAttr("type", actionItem.Action)
 	}
@@ -704,6 +749,8 @@ func NewButton(parent *etree.Element, primary bool, actionItem ActionItem) {
 	} else {
 		button.CreateAttr("class", "pure-button")
 	}
+
+	return button
 }
 
 func NewTable(parent *etree.Element, cells [][]string) {
