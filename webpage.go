@@ -34,16 +34,16 @@ const (
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
 	INPUT_WIDTH_WIDE   = "pure-input-2-4"
 
-	CSS_DIALOG_WIDTH = "css-dialog-width"
-	CSS_FULL_WIDTH   = "css-full-width"
-	CSS_ERROR_BOX    = "css-error-box"
-	CSS_WARNING_BOX  = "css-warning-box"
-	CSS_SUCCESS_BOX  = "css-success-box"
-	CSS_VERTICAL_DIV = "css-vertical-div"
-	CSS_MARGIN_DIV   = "css-margin-div"
-	CSS_LOGVIEWER    = "css-logviewer"
-	CSS_CONTENT      = "css-content"
-	CSS_CHECKLIST    = "css-checklist"
+	CSS_DIALOG_CONTENT  = "css-dialog-content"
+	CSS_DEFAULT_CONTENT = "css-default-content"
+	CSS_ERROR_BOX       = "css-error-box"
+	CSS_WARNING_BOX     = "css-warning-box"
+	CSS_SUCCESS_BOX     = "css-success-box"
+	CSS_VERTICAL_DIV    = "css-vertical-div"
+	CSS_MARGIN_DIV      = "css-margin-div"
+	CSS_LOGVIEWER       = "css-logviewer"
+	CSS_CONTENT         = "css-content"
+	CSS_CHECKLIST       = "css-checklist"
 
 	FLASH_WARNING = "warning-flash"
 	FLASH_ERROR   = "error-flash"
@@ -118,7 +118,6 @@ func NewPage(context echo.Context, contentStyle string, title string, scrollable
 
 	p.HtmlContent = p.HtmlScrollContent.CreateElement("div")
 	p.HtmlContent.CreateAttr("class", contentStyle)
-	p.HtmlContent.CreateAttr("style", "padding-left: calc(100vw - 100%);")
 
 	msg := PullFlash(context, FLASH_WARNING)
 	if msg != "" {
@@ -274,9 +273,6 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 
 		htmlMenu := htmlUl.CreateElement("li")
 		htmlMenu.CreateAttr("class", strings.Join(classes, " "))
-		if isMenuDisabled {
-			htmlMenu.CreateAttr("style", "padding: 0;")
-		}
 
 		htmlAhref := htmlMenu.CreateElement("a")
 		htmlAhref.CreateAttr("class", "pure-menu-link")
@@ -440,7 +436,6 @@ func newCheckbox(parent *etree.Element, checked bool) *etree.Element {
 
 	htmlInput.CreateAttr("type", "checkbox")
 	htmlInput.CreateAttr("value", "true")
-	htmlInput.CreateAttr("style", "margin-top: 6px;margin-bottom: 6px;margin-right: 6px;")
 	if checked {
 		htmlInput.CreateAttr("checked", "")
 	}
@@ -579,8 +574,6 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				for _, v := range list {
 					preselectedValues[v] = true
 				}
-
-				htmlLabel.CreateAttr("style", "margin-top: 6px;vertical-align: top;")
 
 				for _, value := range fieldValues {
 					htmlItem := htmlSpan.CreateElement("input")
