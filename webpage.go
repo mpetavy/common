@@ -43,6 +43,7 @@ const (
 	CSS_LOGVIEWER       = "css-logviewer"
 	CSS_CONTENT         = "css-content"
 	CSS_CHECKLIST       = "css-checklist"
+	CSS_BUTTON_GROUP    = "css-button-group"
 
 	FLASH_WARNING = "warning-flash"
 	FLASH_ERROR   = "error-flash"
@@ -84,7 +85,7 @@ func indexOf(options []string, option string) int {
 	return -1
 }
 
-func NewPage(context echo.Context, contentStyle string, title string, scrollable bool) (*Webpage, error) {
+func NewPage(context echo.Context, contentStyle string, title string) (*Webpage, error) {
 	p := Webpage{doc: etree.NewDocument()}
 
 	p.HtmlRoot = p.doc.CreateElement("html")
@@ -111,9 +112,7 @@ func NewPage(context echo.Context, contentStyle string, title string, scrollable
 	p.HtmlMenu = p.HtmlBody.CreateElement("div")
 
 	p.HtmlScrollContent = p.HtmlBody.CreateElement("div")
-	if scrollable {
-		p.HtmlScrollContent.CreateAttr("class", CSS_CONTENT)
-	}
+	p.HtmlScrollContent.CreateAttr("class", CSS_CONTENT)
 
 	p.HtmlContent = p.HtmlScrollContent.CreateElement("div")
 	p.HtmlContent.CreateAttr("class", contentStyle)
@@ -335,7 +334,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 	htmlForm.CreateAttr("method", method)
 
 	htmlGroup := htmlForm.CreateElement("div")
-	htmlGroup.CreateAttr("style", "position: sticky; top: 0; background-color: #CFCFCF; padding: 8px; margin-bottom: 16px;")
+	htmlGroup.CreateAttr("class", CSS_BUTTON_GROUP)
 
 	htmlGroupCenter := htmlGroup.CreateElement("center")
 
