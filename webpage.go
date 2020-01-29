@@ -40,7 +40,6 @@ const (
 	CSS_WARNING_BOX     = "css-warning-box"
 	CSS_SUCCESS_BOX     = "css-success-box"
 	CSS_VERTICAL_DIV    = "css-vertical-div"
-	CSS_MARGIN_DIV      = "css-margin-div"
 	CSS_LOGVIEWER       = "css-logviewer"
 	CSS_CONTENT         = "css-content"
 	CSS_CHECKLIST       = "css-checklist"
