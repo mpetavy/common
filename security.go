@@ -102,12 +102,18 @@ func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
 		return nil, err
 	}
 
+	return TLSConfigFromP12Buffer(ba)
+}
+
+func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
+	DebugFunc()
+
 	key, cert, caCerts, err := pkcs12.DecodeChain(ba, PKCS12_PASSWORD)
-	if Error(err) || !ok {
+	if Error(err) {
 		return nil, err
 	}
 
-	_, ok = key.(*rsa.PrivateKey)
+	_, ok := key.(*rsa.PrivateKey)
 	if !ok {
 		return nil, fmt.Errorf("Expected RSA private key type")
 	}
@@ -370,7 +376,7 @@ func CertificateInfoFromX509(certs []*x509.Certificate) (string, error) {
 	txt := ""
 	for i, cert := range certs {
 		header := fmt.Sprintf("#%d ", i)
-		info := fmt.Sprintf("%s%s\n", header, strings.Repeat("-", 100-len(header)))
+		info := fmt.Sprintf("%s%s\n", header, strings.Repeat("-", 40-len(header)))
 
 		certInfo, err := certinfo.CertificateText(cert)
 		if Error(err) {

@@ -2,6 +2,7 @@ package common
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"github.com/beevik/etree"
 	"github.com/fatih/structtag"
@@ -322,12 +323,10 @@ func NewRefreshPage(name string, url string) (*Webpage, error) {
 	return &p, nil
 }
 
-func NewForm(parent *etree.Element, caption string, data interface{}, method string, encType string, formAction string, actions []ActionItem, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
+func NewForm(parent *etree.Element, caption string, data interface{}, method string, formAction string, actions []ActionItem, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
-	if encType != "" {
-		htmlForm.CreateAttr("enctype", encType)
-	}
+	htmlForm.CreateAttr("enctype", echo.MIMEMultipartForm)
 	htmlForm.CreateAttr("class", "pure-form pure-form-aligned")
 
 	htmlForm.CreateAttr("action", formAction)
@@ -363,9 +362,13 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 	return htmlForm, nil
 }
 
-func BindForm(context echo.Context, data interface{}) error {
-	err := context.Request().ParseForm()
-	if err != nil {
+func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
+	if strings.Index(context.Request().Header.Get("Content-Type"), "multipart/form-data") == -1 {
+		return fmt.Errorf("no multipart/form-data request: %+v", context.Request())
+	}
+
+	err := context.Request().ParseMultipartForm(int64(bodyLimit))
+	if Error(err) {
 		return err
 	}
 
@@ -374,9 +377,9 @@ func BindForm(context echo.Context, data interface{}) error {
 		case reflect.Struct:
 			break
 		case reflect.Bool:
-			fieldValue.SetBool(context.FormValue(fieldPath) != "")
+			fieldValue.SetBool(context.Request().FormValue(fieldPath) != "")
 		case reflect.Int:
-			formValue := context.FormValue(fieldPath)
+			formValue := context.Request().FormValue(fieldPath)
 			if formValue == "" {
 				formValue = "0"
 			}
@@ -393,13 +396,16 @@ func BindForm(context echo.Context, data interface{}) error {
 				fieldValue.SetString(strings.Join(values, ";"))
 			}
 		case reflect.Slice:
-			file, err := context.FormFile(fieldPath)
-			if err != nil {
+			_, file, err := context.Request().FormFile(fieldPath)
+			if file == nil {
+				return nil
+			}
+			if Error(err) {
 				return err
 			}
 
 			src, err := file.Open()
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 			defer func() {
@@ -409,11 +415,11 @@ func BindForm(context echo.Context, data interface{}) error {
 			var buf bytes.Buffer
 
 			_, err = io.Copy(&buf, src)
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 
-			fieldValue.SetBytes(buf.Bytes())
+			fieldValue.SetBytes([]byte(base64.StdEncoding.EncodeToString(buf.Bytes())))
 		default:
 			return fmt.Errorf("unsupported field: %s", fieldPath)
 		}
