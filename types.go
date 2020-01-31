@@ -321,7 +321,11 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 			fieldPath = strings.Join([]string{path, fieldPath}, "_")
 		}
 
-		DebugFunc("field #%d: %s : type %s kind %s", i, typ.Field(i).Name, val.Field(i).Type().Name(), val.Field(i).Kind().String())
+		DebugFunc("field #%d %s : fieldpath: %s type: %s",
+			i,
+			typ.Field(i).Name,
+			fieldPath,
+			val.Field(i).Type().Name())
 
 		if funcStructIterator != nil {
 			err := funcStructIterator(fieldPath, typ.Field(i), val.Field(i))
