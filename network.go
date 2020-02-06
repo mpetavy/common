@@ -204,12 +204,7 @@ func FindFreePort(network string, startPort int, excludedPorts []int) (int, erro
 	DebugFunc()
 
 	for port := startPort; port < 65536; port++ {
-		index, err := IndexOf(excludedPorts, port)
-		if Error(err) {
-			return -1, err
-		}
-
-		if index == -1 {
+		if IndexOf(excludedPorts, port) == -1 {
 			b, _ := IsPortAvailable(network, port)
 
 			if !b {

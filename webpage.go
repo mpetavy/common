@@ -76,16 +76,6 @@ type ActionItem struct {
 	SubItems []ActionItem
 }
 
-func indexOf(options []string, option string) int {
-	for i, v := range options {
-		if v == option {
-			return i
-		}
-	}
-
-	return -1
-}
-
 func NewPage(context echo.Context, contentStyle string, title string) (*Webpage, error) {
 	p := Webpage{doc: etree.NewDocument()}
 
@@ -513,8 +503,8 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 
 		classes := []string{"pure-control-group"}
 
-		isFieldExpertView := indexOf(tagHtml.Options, OPTION_EXPERTVIEW) != -1
-		isFieldHidden := (indexOf(tagHtml.Options, OPTION_HIDDEN) != -1) || (isFieldExpertView && !isExpertViewActive)
+		isFieldExpertView := IndexOf(tagHtml.Options, OPTION_EXPERTVIEW) != -1
+		isFieldHidden := (IndexOf(tagHtml.Options, OPTION_HIDDEN) != -1) || (isFieldExpertView && !isExpertViewActive)
 
 		expertViewFieldExists = expertViewFieldExists || isFieldExpertView
 
@@ -530,7 +520,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 		htmlLabel := htmlDiv.CreateElement("label")
 		htmlLabel.CreateAttr("for", fieldPath)
 
-		if indexOf(tagHtml.Options, OPTION_NOLABEL) == -1 {
+		if IndexOf(tagHtml.Options, OPTION_NOLABEL) == -1 {
 			htmlLabel.SetText(Translate(tagHtml.Name))
 		}
 
@@ -540,7 +530,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 		case reflect.Bool:
 			htmlInput = newCheckbox(htmlDiv, fieldValue.Bool())
 		default:
-			if indexOf(tagHtml.Options, OPTION_MULTILINE) != -1 {
+			if IndexOf(tagHtml.Options, OPTION_MULTILINE) != -1 {
 				htmlInput = htmlDiv.CreateElement("textarea")
 				htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
 				htmlInput.CreateAttr("cols", "65")
@@ -552,7 +542,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				break
 			}
 
-			if indexOf(tagHtml.Options, OPTION_MEGALINE) != -1 {
+			if IndexOf(tagHtml.Options, OPTION_MEGALINE) != -1 {
 				htmlInput = htmlDiv.CreateElement("textarea")
 				htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
 				htmlInput.CreateAttr("cols", "65")
@@ -564,7 +554,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				break
 			}
 
-			if indexOf(tagHtml.Options, OPTION_MULTISELECT) != -1 {
+			if IndexOf(tagHtml.Options, OPTION_MULTISELECT) != -1 {
 				htmlSpan := htmlDiv.CreateElement("span")
 				htmlSpan.CreateAttr("class", CSS_CHECKLIST)
 
@@ -594,11 +584,11 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 						htmlItem.CreateAttr("checked", "")
 					}
 
-					if indexOf(tagHtml.Options, OPTION_AUTOFOCUS) != -1 {
+					if IndexOf(tagHtml.Options, OPTION_AUTOFOCUS) != -1 {
 						htmlItem.CreateAttr("autofocus", "")
 					}
 
-					if indexOf(tagHtml.Options, OPTION_READONLY) != -1 {
+					if IndexOf(tagHtml.Options, OPTION_READONLY) != -1 {
 						htmlItem.CreateAttr("readonly", "")
 					}
 
@@ -608,7 +598,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				continue
 			}
 
-			if indexOf(tagHtml.Options, OPTION_SELECT) != -1 {
+			if IndexOf(tagHtml.Options, OPTION_SELECT) != -1 {
 				htmlInput = htmlDiv.CreateElement("select")
 				htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
 
@@ -668,7 +658,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 
 				htmlRange.CreateAttr("oninput", fmt.Sprintf("document.getElementById(--$%s$--).value = this.value;", fieldPath))
 			} else {
-				if indexOf(tagHtml.Options, OPTION_FILE) != -1 {
+				if IndexOf(tagHtml.Options, OPTION_FILE) != -1 {
 					htmlInput.CreateAttr("type", "file")
 
 					tagAccept, err := fieldTags.Get("accept")
@@ -676,7 +666,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 						htmlInput.CreateAttr("accept", tagAccept.Name)
 					}
 				} else {
-					if indexOf(tagHtml.Options, OPTION_PASSWORD) != -1 {
+					if IndexOf(tagHtml.Options, OPTION_PASSWORD) != -1 {
 						htmlInput.CreateAttr("type", "password")
 					} else {
 						htmlInput.CreateAttr("type", "text")
@@ -685,7 +675,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				}
 			}
 
-			if indexOf(tagHtml.Options, OPTION_DATALIST) != -1 {
+			if IndexOf(tagHtml.Options, OPTION_DATALIST) != -1 {
 				htmlInput.CreateAttr("list", fieldPath+"_list")
 
 				htmlDatalist := htmlDiv.CreateElement("datalist")
@@ -703,19 +693,19 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 		htmlInput.CreateAttr("id", fieldPath)
 		htmlInput.CreateAttr("spellcheck", "false")
 
-		if indexOf(tagHtml.Options, OPTION_NOPLACEHOLDER) == -1 {
+		if IndexOf(tagHtml.Options, OPTION_NOPLACEHOLDER) == -1 {
 			htmlInput.CreateAttr("placeholder", Translate(tagHtml.Name))
 		}
 
-		if indexOf(tagHtml.Options, OPTION_AUTOFOCUS) != -1 {
+		if IndexOf(tagHtml.Options, OPTION_AUTOFOCUS) != -1 {
 			htmlInput.CreateAttr("autofocus", "")
 		}
 
-		if indexOf(tagHtml.Options, OPTION_REQUIRED) != -1 {
+		if IndexOf(tagHtml.Options, OPTION_REQUIRED) != -1 {
 			htmlInput.CreateAttr("required", "")
 		}
 
-		if indexOf(tagHtml.Options, OPTION_READONLY) != -1 {
+		if IndexOf(tagHtml.Options, OPTION_READONLY) != -1 {
 			htmlInput.CreateAttr("readonly", "")
 		}
 
