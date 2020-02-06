@@ -172,15 +172,15 @@ func ToUTF8(r io.Reader, cs string) ([]byte, error) {
 	return b, nil
 }
 
-func IndexOf(slice interface{}, search interface{}) (int, error) {
+func IndexOf(slice interface{}, search interface{}) int {
 	if reflect.TypeOf(slice).Kind() != reflect.Slice {
-		return -1, errors.WithStack(fmt.Errorf("not a slice: %v", slice))
+		panic(fmt.Errorf("not a slice: %v", slice))
 	}
 
 	sl := reflect.ValueOf(slice)
 
 	if sl.Len() == 0 {
-		return -1, nil
+		return -1
 	}
 
 	s := fmt.Sprintf("%v", search)
@@ -188,11 +188,11 @@ func IndexOf(slice interface{}, search interface{}) (int, error) {
 	for i := 0; i < sl.Len(); i++ {
 		c := fmt.Sprintf("%v", sl.Index(i))
 		if c == s {
-			return i, nil
+			return i
 		}
 	}
 
-	return -1, nil
+	return -1
 }
 
 func ToStrings(slice interface{}) ([]string, error) {
@@ -211,7 +211,6 @@ func ToStrings(slice interface{}) ([]string, error) {
 	for i := 0; i < sl.Len(); i++ {
 		result = append(result, fmt.Sprintf("%v", sl.Index(i).Interface()))
 	}
-
 	return result, nil
 }
 

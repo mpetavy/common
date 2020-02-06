@@ -433,12 +433,7 @@ func run() error {
 				app.ServiceConfig.Option = option
 			}
 
-			i, err := IndexOf(serviceActions, *serviceFlag)
-			if err != nil {
-				return err
-			}
-
-			if i == -1 {
+			if IndexOf(serviceActions, *serviceFlag) == -1 {
 				return fmt.Errorf("invalid service action: %s", *serviceFlag)
 			}
 

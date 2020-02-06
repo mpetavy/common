@@ -383,8 +383,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	secNames := []string{DEFAULT_LANGUAGE, "zh-Google", "fr-Google", "th-Google"}
 	for _, sec := range i18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
-			index, _ := IndexOf(sec, secNames)
-			if index == -1 {
+			if IndexOf(sec, secNames) == -1 {
 				secNames = append(secNames, sec.Name())
 			}
 		}
