@@ -30,6 +30,7 @@ import (
 type TLSPackage struct {
 	CertificateAsPem, PrivateKeyAsPem []byte
 	Info                              string
+	RootCA                            *x509.CertPool
 	Config                            tls.Config
 }
 
@@ -127,6 +128,9 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 
 	certAsPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(certAsPem)
+
 	certificate, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
 	if Error(err) {
 		return nil, err
@@ -144,6 +148,7 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 		CertificateAsPem: certAsPem,
 		PrivateKeyAsPem:  keyAsPem,
 		Info:             certInfos,
+		RootCA:           caCertPool,
 		Config:           tlsConfig,
 	}, nil
 }
