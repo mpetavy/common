@@ -338,7 +338,16 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 
 	// remove duplicates
 
+	r, err := regexp.Compile("\\%[^v%]")
+	if Error(err) {
+		return err
+	}
+
 	for i := 1; i < len(i18ns); i++ {
+		if r.Match([]byte(i18ns[i])) {
+			return fmt.Errorf("invalid substitution parameter foud: %s", i18ns[i])
+		}
+
 		if i18ns[i] == i18ns[i-1] {
 			if i+1 == len(i18ns) {
 				i18ns = i18ns[0 : len(i18ns)-1]
@@ -383,7 +392,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	secNames := []string{DEFAULT_LANGUAGE, "zh-Google", "fr-Google", "th-Google"}
 	for _, sec := range i18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
-			if IndexOf(sec, secNames) == -1 {
+			if IndexOf(secNames, sec) == -1 {
 				secNames = append(secNames, sec.Name())
 			}
 		}
