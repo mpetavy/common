@@ -506,7 +506,10 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
 				err = fmt.Errorf("Timeoutout error")
 			}
-			Error(err)
+
+			if IsErrNetClosing(err) {
+				err = nil
+			}
 		}
 	}(&written, err)
 
