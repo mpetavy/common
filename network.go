@@ -4,39 +4,49 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 )
 
 type TimeoutSocketReader struct {
 	ReadTimeout time.Duration
-	Socket      *net.Conn
+	Socket      net.Conn
 }
 
 type TimeoutSocketWriter struct {
 	WriteTimeout time.Duration
-	Socket       *net.Conn
+	Socket       net.Conn
 }
 
 func (this TimeoutSocketReader) Read(p []byte) (n int, err error) {
-	err = (*this.Socket).SetReadDeadline(DeadlineByDuration(this.ReadTimeout))
+	if this.Socket == nil {
+		return 0, io.EOF
+	}
+
+	err = this.Socket.SetReadDeadline(DeadlineByDuration(this.ReadTimeout))
 	if err != nil {
 		return 0, err
 	}
 
-	return (*this.Socket).Read(p)
+	return this.Socket.Read(p)
 }
 
 func (this TimeoutSocketWriter) Write(p []byte) (n int, err error) {
-	err = (*this.Socket).SetWriteDeadline(DeadlineByDuration(this.WriteTimeout))
+	if this.Socket == nil {
+		return 0, nil
+	}
+
+	err = this.Socket.SetWriteDeadline(DeadlineByDuration(this.WriteTimeout))
 	if err != nil {
 		return 0, err
 	}
 
-	return (*this.Socket).Write(p)
+	return this.Socket.Write(p)
 }
 
 func DeadlineByMsec(msec int) time.Time {
@@ -56,11 +66,16 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 }
 
 func GetMainIP() (string, error) {
-	ips, err := GetActiveIPs(true)
-	if len(ips) == 1 {
-		DebugFunc(ips[0])
+	addrs, err := GetActiveAddrs(true)
+	if len(addrs) == 1 {
+		ip, _, err := net.ParseCIDR(addrs[0].String())
+		if Error(err) {
+			return "", err
+		}
 
-		return ips[0], nil
+		DebugFunc(ip.String())
+
+		return ip.String(), nil
 	}
 
 	hostname, err := os.Hostname()
@@ -140,8 +155,8 @@ func GetMainIP() (string, error) {
 	return "", fmt.Errorf("cannot find main ip for %s", hostname)
 }
 
-func GetActiveIPs(inclLocalhost bool) ([]string, error) {
-	var ips []string
+func GetActiveAddrs(inclLocalhost bool) ([]net.Addr, error) {
+	var list []net.Addr
 
 	intfs, err := net.Interfaces()
 	if err != nil {
@@ -164,13 +179,15 @@ func GetActiveIPs(inclLocalhost bool) ([]string, error) {
 				continue
 			}
 
-			ips = append(ips, addr.String())
+			list = append(list, addr)
 		}
 	}
 
-	SortStringsCaseInsensitive(ips)
+	sort.SliceStable(list, func(i, j int) bool {
+		return strings.ToUpper(list[i].String()) < strings.ToUpper(list[j].String())
+	})
 
-	return ips, nil
+	return list, nil
 }
 
 func IsPortAvailable(network string, port int) (bool, error) {
