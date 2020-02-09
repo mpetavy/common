@@ -69,6 +69,8 @@ func Rnd(max int) int {
 // number generator fails to function correctly, in which
 // case the caller should not continue.
 func GenerateRandomBytes(n int) ([]byte, error) {
+	DebugFunc()
+
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	// Note that err == nil only if we read len(b) bytes.
@@ -82,6 +84,8 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 // GenerateRandomString returns a URL-safe, base64 encoded
 // securely generated random string.
 func GenerateRandomString(s int) (string, error) {
+	DebugFunc()
+
 	b, err := GenerateRandomBytes(s)
 	return base64.URLEncoding.EncodeToString(b), err
 }
@@ -172,7 +176,9 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 }
 
 // https://ericchiang.github.io/post/go-tls/
-func CertTemplate() (*x509.Certificate, error) {
+func createCertificateTemplate() (*x509.Certificate, error) {
+	DebugFunc()
+
 	hostname, err := os.Hostname()
 	if Error(err) {
 		return nil, err
@@ -198,7 +204,9 @@ func CertTemplate() (*x509.Certificate, error) {
 	return &tmpl, nil
 }
 
-func createCert(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}) (cert *x509.Certificate, certPEM []byte, err error) {
+func createCertiticate(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}) (cert *x509.Certificate, certPEM []byte, err error) {
+	DebugFunc()
+
 	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
 	if err != nil {
 		return
@@ -215,24 +223,26 @@ func createCert(template, parent *x509.Certificate, pub interface{}, parentPriv 
 }
 
 func createTLSPackage() (*TLSPackage, error) {
+	DebugFunc()
+
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if Error(err) {
 		return nil, err
 	}
 
-	certTmpl, err := CertTemplate()
+	certTmpl, err := createCertificateTemplate()
 	if Error(err) {
 		return nil, err
 	}
 
-	ips, err := GetActiveIPs(true)
+	addrs, err := GetActiveAddrs(true)
 	if Error(err) {
 		return nil, err
 	}
 
 	parsedIps := make([]net.IP, 0)
-	for _, ip := range ips {
-		ip, _, err := net.ParseCIDR(ip)
+	for _, addr := range addrs {
+		ip, _, err := net.ParseCIDR(addr.String())
 		if Error(err) {
 			return nil, err
 		}
@@ -245,7 +255,7 @@ func createTLSPackage() (*TLSPackage, error) {
 	certTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 	certTmpl.IPAddresses = parsedIps
 
-	cert, certPEM, err := createCert(certTmpl, certTmpl, &key.PublicKey, key)
+	cert, certPEM, err := createCertiticate(certTmpl, certTmpl, &key.PublicKey, key)
 	if Error(err) {
 		return nil, err
 	}
@@ -338,6 +348,8 @@ func VerifyP12(p12 []byte, password string) (*x509.Certificate, *rsa.PrivateKey,
 }
 
 func VerifyCertificate(cert *x509.Certificate) error {
+	DebugFunc()
+
 	_, err := cert.Verify(x509.VerifyOptions{})
 	if err == nil {
 		return nil
@@ -359,6 +371,8 @@ func VerifyCertificate(cert *x509.Certificate) error {
 }
 
 func CertificateInfoFromConnection(con *tls.Conn) (string, error) {
+	DebugFunc()
+
 	txt := ""
 	for i, cert := range con.ConnectionState().PeerCertificates {
 		header := fmt.Sprintf("#%d ", i)
@@ -378,6 +392,8 @@ func CertificateInfoFromConnection(con *tls.Conn) (string, error) {
 }
 
 func CertificateInfoFromX509(certs []*x509.Certificate) (string, error) {
+	DebugFunc()
+
 	txt := ""
 	for i, cert := range certs {
 		header := fmt.Sprintf("#%d ", i)

@@ -116,7 +116,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 
 	discoveredIps := make(map[string]string)
 
-	ips, err := GetActiveIPs(true)
+	addrs, err := GetActiveAddrs(true)
 	if Error(err) {
 		return nil, err
 	}
@@ -132,8 +132,8 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 		Ignore(c.Close())
 	}()
 
-	for _, localIp := range ips {
-		ip, ipNet, err := net.ParseCIDR(localIp)
+	for _, addr := range addrs {
+		ip, ipNet, err := net.ParseCIDR(addr.String())
 		if Error(err) {
 			return nil, err
 		}
