@@ -313,12 +313,6 @@ func (app *application) Start(s service.Service) error {
 		}
 	}
 
-	if IsRunningAsService() {
-		go func() {
-			app.loop()
-		}()
-	}
-
 	return nil
 }
 
@@ -496,6 +490,10 @@ func run() error {
 
 			return nil
 		} else {
+			go func() {
+				app.loop()
+			}()
+
 			// OS service
 
 			return app.Service.Run()
