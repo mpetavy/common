@@ -313,7 +313,7 @@ func (app *application) Start(s service.Service) error {
 		}
 	}
 
-	if !IsRunningInteractive() {
+	if IsRunningAsService() {
 		go func() {
 			app.loop()
 		}()
@@ -530,7 +530,11 @@ func AppRestart() {
 }
 
 func IsRunningAsService() bool {
-	return app.IsService && (!IsRunningInteractive() || *serviceFlag == "simulate")
+	b := !IsRunningInteractive() || *serviceFlag == "simulate"
+
+	DebugFunc("%v", b)
+
+	return b
 }
 
 func IsRunningAsExecutable() bool {
@@ -539,11 +543,15 @@ func IsRunningAsExecutable() bool {
 		path = os.Args[0]
 	}
 
-	return !strings.HasPrefix(path, os.TempDir())
+	b := !strings.HasPrefix(path, os.TempDir())
+
+	DebugFunc("%v", b)
+
+	return b
 }
 
 func IsRunningInteractive() bool {
-	return !app.IsService || service.Interactive()
+	return service.Interactive()
 }
 
 func Application() *application {
