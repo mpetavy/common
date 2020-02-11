@@ -64,7 +64,7 @@ type logEntry struct {
 }
 
 func (l *logEntry) String() string {
-	if *logJson {
+	if logJson != nil && *logJson {
 		ba, _ := json.Marshal(l)
 		return string(ba)
 
@@ -382,13 +382,15 @@ func log(level int, ri RuntimeInfo, msg string) {
 	defer mu.Unlock()
 
 	if level == LEVEL_FILE || (FlagLogVerbose != nil && *FlagLogVerbose) || level > LEVEL_DEBUG {
-		writeEntry(logEntry{
+		le := logEntry{
 			levelInt: level,
 			LevelStr: levelToString(level),
 			Clock:    time.Now().Format(DateTimeMilliMask),
 			Ri:       ri.String(),
 			Msg:      Capitalize(strings.TrimRight(strings.TrimSpace(msg), "\r\n")),
-		})
+		}
+
+		writeEntry(le)
 	}
 }
 
