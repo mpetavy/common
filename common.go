@@ -22,6 +22,23 @@ const (
 	MinInt  = -MaxInt - 1
 )
 
+type MultiValueFlag []string
+
+func (this *MultiValueFlag) String() string {
+	if this == nil {
+		return ""
+	}
+
+	return strings.Join(*this, ",")
+}
+
+func (this *MultiValueFlag) Set(value string) error {
+	splits := strings.Split(value, ",")
+	*this = append(*this, splits...)
+
+	return nil
+}
+
 func init() {
 	shutdownHooks = make([]func(), 0)
 }
