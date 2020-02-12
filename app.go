@@ -478,13 +478,15 @@ func run() error {
 		if IsRunningInteractive() {
 			// simulated service
 
-			if err := app.Start(app.Service); err != nil {
-				return err
+			err := app.Start(app.Service)
+
+			Error(err)
+
+			if err == nil {
+				app.loop()
 			}
 
-			app.loop()
-
-			if err := app.Stop(app.Service); err != nil {
+			if Error(app.Stop(app.Service)) {
 				return err
 			}
 
