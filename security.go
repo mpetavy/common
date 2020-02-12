@@ -140,8 +140,14 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 		return nil, err
 	}
 
-	tlsConfig := tls.Config{Certificates: []tls.Certificate{certificate}}
+	tlsConfig := tls.Config{
+		Certificates: []tls.Certificate{certificate},
+		CurvePreferences: []tls.CurveID{
+			tls.CurveP256,
+		},
+	}
 	tlsConfig.Rand = rand.Reader
+	tlsConfig.PreferServerCipherSuites = true
 
 	certInfos, err := CertificateInfoFromX509(append(caCerts, cert))
 	if Error(err) {
@@ -165,8 +171,14 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 		return nil, err
 	}
 
-	tlsConfig := tls.Config{Certificates: []tls.Certificate{certificate}}
+	tlsConfig := tls.Config{
+		Certificates: []tls.Certificate{certificate},
+		CurvePreferences: []tls.CurveID{
+			tls.CurveP256,
+		},
+	}
 	tlsConfig.Rand = rand.Reader
+	tlsConfig.PreferServerCipherSuites = true
 
 	return &TLSPackage{
 		CertificateAsPem: certAsPem,
