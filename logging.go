@@ -370,8 +370,6 @@ func Fatal(err error) bool {
 		ri := GetRuntimeInfo(1)
 
 		log(LEVEL_FATAL, ri, errorString(ri, err))
-
-		panic(err)
 	}
 
 	return err != nil
