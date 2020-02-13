@@ -116,6 +116,8 @@ func Run(mandatoryFlags []string) {
 	err := initConfiguration()
 	if err != nil {
 		Fatal(err)
+
+		Exit(1)
 	}
 
 	initLog()
@@ -188,6 +190,8 @@ func Run(mandatoryFlags []string) {
 	err = run()
 	if err != nil {
 		Fatal(err)
+
+		Exit(1)
 	}
 }
 
