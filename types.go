@@ -326,13 +326,6 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 			fieldPath,
 			val.Field(i).Type().Name())
 
-		if funcStructIterator != nil {
-			err := funcStructIterator(fieldPath, typ.Field(i), val.Field(i))
-			if Error(err) {
-				return err
-			}
-		}
-
 		if val.Field(i).Kind() == reflect.Struct {
 			err := iterateStruct(fieldPath, val.Field(i), funcStructIterator)
 			if err != nil {
@@ -340,6 +333,38 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 			}
 
 			continue
+		}
+
+		if val.Field(i).Kind() == reflect.Slice {
+			for j := 0; j < val.Field(i).Len(); j++ {
+				sliceFieldPath := fmt.Sprintf("%s[%d]", fieldPath, j)
+				sliceElement := val.Field(i).Index(j).Elem()
+
+				if sliceElement.Kind() == reflect.Struct {
+					err := iterateStruct(sliceFieldPath, sliceElement, funcStructIterator)
+					if err != nil {
+						return err
+					}
+
+					continue
+				}
+
+				if funcStructIterator != nil {
+					err := funcStructIterator(sliceFieldPath, reflect.StructField{}, sliceElement)
+					if Error(err) {
+						return err
+					}
+				}
+			}
+
+			continue
+		}
+
+		if funcStructIterator != nil {
+			err := funcStructIterator(fieldPath, typ.Field(i), val.Field(i))
+			if Error(err) {
+				return err
+			}
 		}
 	}
 

@@ -363,6 +363,11 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 	}
 
 	err = IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
+		_, ok := context.Request().Form[fieldPath]
+		if !ok {
+			return nil
+		}
+
 		switch fieldValue.Kind() {
 		case reflect.Struct:
 			break
