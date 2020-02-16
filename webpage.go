@@ -364,57 +364,64 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 
 	err = IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
 		_, ok := context.Request().Form[fieldPath]
-		if !ok {
-			return nil
-		}
 
 		switch fieldValue.Kind() {
 		case reflect.Struct:
 			break
 		case reflect.Bool:
-			fieldValue.SetBool(context.Request().FormValue(fieldPath) != "")
+			if ok {
+				fieldValue.SetBool(true)
+			} else {
+				fieldValue.SetBool(false)
+			}
 		case reflect.Int:
-			formValue := context.Request().FormValue(fieldPath)
-			if formValue == "" {
-				formValue = "0"
-			}
+			if ok {
+				formValue := context.Request().FormValue(fieldPath)
+				if formValue == "" {
+					formValue = "0"
+				}
 
-			i, err := strconv.Atoi(formValue)
-			if Error(err) {
-				break
+				i, err := strconv.Atoi(formValue)
+				if Error(err) {
+					break
+				}
+				fieldValue.SetInt(int64(i))
 			}
-			fieldValue.SetInt(int64(i))
 		case reflect.String:
-			values := context.Request().Form[fieldPath]
+			if ok {
+				values := context.Request().Form[fieldPath]
 
-			if len(values) > 0 {
-				fieldValue.SetString(strings.Join(values, ";"))
+				if len(values) > 0 {
+					fieldValue.SetString(strings.Join(values, ";"))
+				}
 			}
 		case reflect.Slice:
-			_, file, err := context.Request().FormFile(fieldPath)
-			if file == nil {
-				return nil
-			}
-			if Error(err) {
-				return err
-			}
+			if ok {
+				_, file, err := context.Request().FormFile(fieldPath)
+				if file == nil {
+					return nil
+				}
+				if Error(err) {
+					return err
+				}
 
-			src, err := file.Open()
-			if Error(err) {
-				return err
+				src, err := file.Open()
+				if Error(err) {
+					return err
+				}
+				defer func() {
+					Error(src.Close())
+				}()
+
+				var buf bytes.Buffer
+
+				_, err = io.Copy(&buf, src)
+				if Error(err) {
+					return err
+				}
+
+				fieldValue.SetBytes([]byte(base64.StdEncoding.EncodeToString(buf.Bytes())))
 			}
-			defer func() {
-				Error(src.Close())
-			}()
-
-			var buf bytes.Buffer
-
-			_, err = io.Copy(&buf, src)
-			if Error(err) {
-				return err
-			}
-
-			fieldValue.SetBytes([]byte(base64.StdEncoding.EncodeToString(buf.Bytes())))
 		default:
 			return fmt.Errorf("unsupported field: %s", fieldPath)
 		}

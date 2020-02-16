@@ -34,9 +34,9 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 	if username == "" {
 		return nil, fmt.Errorf("undefined GITHUB_USERNAME")
 	}
-	password := os.Getenv("GITHUB_PASSWORD")
-	if password == "" {
-		return nil, fmt.Errorf("undefined GITHUB_PASSWORD")
+	pat := os.Getenv("GITHUB_PAT")
+	if pat == "" {
+		return nil, fmt.Errorf("undefined GITHUB_PAT")
 	}
 
 	filename := "go.mod"
@@ -121,7 +121,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 					url = splits[0] + "/" + splits[1]
 				}
 
-				ba, err := URLGet(fmt.Sprintf("https://%s:%s@api.github.com/repos/%s", username, password, url))
+				ba, err := URLGet(fmt.Sprintf("https://%s:%s@api.github.com/repos/%s", username, pat, url))
 				if Error(err) {
 					return nil, err
 				}
@@ -143,7 +143,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 
 						i := strings.Index(url, "//")
 						if i != -1 {
-							url = fmt.Sprintf("%s%s:%s@%s", url[:i+2], username, password, url[i+2:])
+							url = fmt.Sprintf("%s%s:%s@%s", url[:i+2], username, pat, url[i+2:])
 						}
 
 						ba, err := URLGet(url)
