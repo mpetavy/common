@@ -313,7 +313,7 @@ func NewRefreshPage(name string, url string) (*Webpage, error) {
 	return &p, nil
 }
 
-func NewForm(parent *etree.Element, caption string, data interface{}, method string, formAction string, actions []ActionItem, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
+func NewForm(parent *etree.Element, caption string, data interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
 	htmlForm.CreateAttr("enctype", echo.MIMEMultipartForm)
@@ -330,7 +330,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 	htmlFieldset := htmlForm.CreateElement("fieldset")
 	htmlFieldset.CreateAttr("id", "fieldset")
 
-	isFieldExpertView, err := newFieldset(0, htmlFieldset, caption, data, "", isExpertViewActive, funcFieldIterator)
+	isFieldExpertView, err := newFieldset(0, htmlFieldset, caption, data, "", readOnly, isExpertViewActive, funcFieldIterator)
 	if Error(err) {
 		return nil, err
 	}
@@ -451,7 +451,7 @@ func newCheckbox(parent *etree.Element, checked bool) *etree.Element {
 	return htmlInput
 }
 
-func newFieldset(index int, parent *etree.Element, caption string, data interface{}, path string, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
+func newFieldset(index int, parent *etree.Element, caption string, data interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
 	expertViewFieldExists := false
 
 	if reflect.TypeOf(data).Kind() == reflect.Ptr {
@@ -501,7 +501,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 
 			var ev bool
 
-			ev, err = newFieldset(index+1, parent, tagHtml.Name, fieldValue.Interface(), fieldPath, isExpertViewActive, funcFieldIterator)
+			ev, err = newFieldset(index+1, parent, tagHtml.Name, fieldValue.Interface(), fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
 			if Error(err) {
 				return expertViewFieldExists, err
 			}
@@ -650,25 +650,28 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				if err == nil {
 					htmlInput.CreateAttr("max", fmt.Sprintf("%s", option.Value()))
 				}
-				htmlInput.CreateAttr("onchange", fmt.Sprintf("document.getElementById(--$%s.range$--).value = this.value;", fieldPath))
 
-				htmlRange := htmlDiv.CreateElement("input")
-				htmlRange.CreateAttr("id", fmt.Sprintf("%s.range", fieldPath))
-				htmlRange.CreateAttr("class", INPUT_WIDTH_NORMAL)
+				if !readOnly {
+					htmlInput.CreateAttr("onchange", fmt.Sprintf("document.getElementById(--$%s.range$--).value = this.value;", fieldPath))
 
-				htmlRange.CreateAttr("type", "range")
-				htmlRange.CreateAttr("tabIndex", "-1")
-				htmlRange.CreateAttr("value", fmt.Sprintf("%d", fieldValue.Int()))
-				option, err = fieldTags.Get("html_min")
-				if err == nil {
-					htmlRange.CreateAttr("min", fmt.Sprintf("%s", option.Value()))
+					htmlRange := htmlDiv.CreateElement("input")
+					htmlRange.CreateAttr("id", fmt.Sprintf("%s.range", fieldPath))
+					htmlRange.CreateAttr("class", INPUT_WIDTH_NORMAL)
+
+					htmlRange.CreateAttr("type", "range")
+					htmlRange.CreateAttr("tabIndex", "-1")
+					htmlRange.CreateAttr("value", fmt.Sprintf("%d", fieldValue.Int()))
+					option, err = fieldTags.Get("html_min")
+					if err == nil {
+						htmlRange.CreateAttr("min", fmt.Sprintf("%s", option.Value()))
+					}
+					option, err = fieldTags.Get("html_max")
+					if err == nil {
+						htmlRange.CreateAttr("max", fmt.Sprintf("%s", option.Value()))
+					}
+
+					htmlRange.CreateAttr("oninput", fmt.Sprintf("document.getElementById(--$%s$--).value = this.value;", fieldPath))
 				}
-				option, err = fieldTags.Get("html_max")
-				if err == nil {
-					htmlRange.CreateAttr("max", fmt.Sprintf("%s", option.Value()))
-				}
-
-				htmlRange.CreateAttr("oninput", fmt.Sprintf("document.getElementById(--$%s$--).value = this.value;", fieldPath))
 			} else {
 				if IndexOf(tagHtml.Options, OPTION_FILE) != -1 {
 					htmlInput.CreateAttr("type", "file")
@@ -717,7 +720,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 			htmlInput.CreateAttr("required", "")
 		}
 
-		if IndexOf(tagHtml.Options, OPTION_READONLY) != -1 {
+		if readOnly || IndexOf(tagHtml.Options, OPTION_READONLY) != -1 {
 			htmlInput.CreateAttr("readonly", "")
 		}
 
