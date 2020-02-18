@@ -509,6 +509,8 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 
 			if IsErrNetClosing(err) {
 				err = nil
+			} else {
+				Error(err)
 			}
 		}
 	}(&written, err)
