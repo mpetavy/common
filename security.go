@@ -32,7 +32,6 @@ import (
 type TLSPackage struct {
 	CertificateAsPem, PrivateKeyAsPem []byte
 	Info                              string
-	RootCA                            *x509.CertPool
 	Config                            tls.Config
 }
 
@@ -143,13 +142,15 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 	}
 
 	tlsConfig := tls.Config{
-		Certificates: []tls.Certificate{certificate},
+		Rand:                     rand.Reader,
+		PreferServerCipherSuites: true,
+		Certificates:             []tls.Certificate{certificate},
+		RootCAs:                  caCertPool,
+		ClientCAs:                caCertPool,
 		CurvePreferences: []tls.CurveID{
 			tls.CurveP256,
 		},
 	}
-	tlsConfig.Rand = rand.Reader
-	tlsConfig.PreferServerCipherSuites = true
 
 	certInfos, err := CertificateInfoFromX509(append(caCerts, cert))
 	if Error(err) {
@@ -160,35 +161,38 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 		CertificateAsPem: certAsPem,
 		PrivateKeyAsPem:  keyAsPem,
 		Info:             certInfos,
-		RootCA:           caCertPool,
 		Config:           tlsConfig,
 	}, nil
 }
 
 func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
-	//FIXME must be equal to TLSConfigFromP12Buffer
-
 	DebugFunc("generate TLS config from given cert and key flags")
 
-	certificate, err := tls.X509KeyPair(certAsPem, keyAsPem)
+	certBytes, _ := pem.Decode(certAsPem)
+	if certBytes == nil {
+		return nil, fmt.Errorf("cannot find PEM block with certificate")
+	}
+	keyBytes, _ := pem.Decode(keyAsPem)
+	if keyBytes == nil {
+		return nil, fmt.Errorf("cannot find PEM block with key")
+	}
+
+	cert, err := x509.ParseCertificate(certBytes.Bytes)
+	if err != nil {
+		panic("failed to parse certificate: " + err.Error())
+	}
+
+	priv, err := x509.ParsePKCS1PrivateKey(keyBytes.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	pfx, err := pkcs12.Encode(rand.Reader, priv, cert, nil, PKCS12_PASSWORD)
 	if Error(err) {
 		return nil, err
 	}
 
-	tlsConfig := tls.Config{
-		Certificates: []tls.Certificate{certificate},
-		CurvePreferences: []tls.CurveID{
-			tls.CurveP256,
-		},
-	}
-	tlsConfig.Rand = rand.Reader
-	tlsConfig.PreferServerCipherSuites = true
-
-	return &TLSPackage{
-		CertificateAsPem: certAsPem,
-		PrivateKeyAsPem:  keyAsPem,
-		Config:           tlsConfig,
-	}, nil
+	return TLSConfigFromP12Buffer(pfx)
 }
 
 // https://ericchiang.github.io/post/go-tls/
@@ -208,12 +212,14 @@ func createCertificateTemplate() (*x509.Certificate, error) {
 	}
 
 	tmpl := x509.Certificate{
-		SerialNumber:          serialNumber,
-		Subject:               pkix.Name{Organization: []string{TitleVersion(true, true, true)}},
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			CommonName:   hostname,
+			Organization: []string{TitleVersion(true, true, true)}},
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(time.Duration(10) * 365 * 24 * time.Hour),
-		DNSNames:              []string{hostname},
+		DNSNames:              []string{hostname, "localhost"},
 		BasicConstraintsValid: true,
 	}
 
@@ -267,7 +273,7 @@ func createTLSPackage() (*TLSPackage, error) {
 	}
 
 	certTmpl.IsCA = true
-	certTmpl.KeyUsage = x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature
+	certTmpl.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature
 	certTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 	certTmpl.IPAddresses = parsedIps
 
@@ -426,4 +432,64 @@ func CertificateInfoFromX509(certs []*x509.Certificate) (string, error) {
 	}
 
 	return txt, nil
+}
+
+func ExportRsaPrivateKeyAsPemStr(privkey *rsa.PrivateKey) string {
+	privkey_bytes := x509.MarshalPKCS1PrivateKey(privkey)
+	privkey_pem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: privkey_bytes,
+		},
+	)
+	return string(privkey_pem)
+}
+
+func ParseRsaPrivateKeyFromPemStr(privPEM string) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode([]byte(privPEM))
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse PEM block containing the key")
+	}
+
+	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return priv, nil
+}
+
+func ExportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {
+	pubkey_bytes, err := x509.MarshalPKIXPublicKey(pubkey)
+	if err != nil {
+		return "", err
+	}
+	pubkey_pem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "RSA PUBLIC KEY",
+			Bytes: pubkey_bytes,
+		},
+	)
+
+	return string(pubkey_pem), nil
+}
+
+func ParseRsaPublicKeyFromPemStr(pubPEM string) (*rsa.PublicKey, error) {
+	block, _ := pem.Decode([]byte(pubPEM))
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse PEM block containing the key")
+	}
+
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	switch pub := pub.(type) {
+	case *rsa.PublicKey:
+		return pub, nil
+	default:
+		break // fall through
+	}
+	return nil, fmt.Errorf("Key type is not RSA")
 }
