@@ -335,7 +335,7 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 			continue
 		}
 
-		if val.Field(i).Kind() == reflect.Slice {
+		if val.Field(i).Kind() == reflect.Slice && val.Field(i).Type().Kind() == reflect.Struct {
 			for j := 0; j < val.Field(i).Len(); j++ {
 				sliceFieldPath := fmt.Sprintf("%s[%d]", fieldPath, j)
 				sliceElement := val.Field(i).Index(j).Elem()

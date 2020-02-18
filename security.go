@@ -22,6 +22,8 @@ import (
 )
 
 // https://ericchiang.github.io/post/go-tls/
+//
+// https://ericchiang.github.io/post/go-tls/
 // https://blog.kowalczyk.info/article/Jl3G/https-for-free-in-go-with-little-help-of-lets-encrypt.html
 // https://stackoverflow.com/questions/13555085/save-and-load-crypto-rsa-privatekey-to-and-from-the-disk
 // https://knowledge.digicert.com/solution/SO25985.html
@@ -164,6 +166,8 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 }
 
 func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
+	//FIXME must be equal to TLSConfigFromP12Buffer
+
 	DebugFunc("generate TLS config from given cert and key flags")
 
 	certificate, err := tls.X509KeyPair(certAsPem, keyAsPem)
