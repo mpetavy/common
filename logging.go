@@ -198,16 +198,23 @@ func (this *logFileWriter) Close() {
 	}
 }
 
-func newLogFileWriter() *logFileWriter {
-	filesize, _ := FileSize(realLogFilename())
-	logFile, _ := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
+func newLogFileWriter() (*logFileWriter, error) {
+	filesize, err := FileSize(realLogFilename())
+	if err != nil {
+		return nil, err
+	}
+
+	logFile, err := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
+	if err != nil {
+		return nil, err
+	}
 
 	writer := logFileWriter{
 		file:     logFile,
 		filesize: filesize,
 	}
 
-	return &writer
+	return &writer, nil
 }
 
 func levelToString(level int) string {
@@ -230,10 +237,17 @@ func levelToString(level int) string {
 func initLog() {
 	DebugFunc()
 
-	if realLogFilename() == "" {
+	if realLogFilename() != "" {
+		var err error
+
+		logger, err = newLogFileWriter()
+		if err != nil {
+			Error(err)
+		}
+	}
+
+	if logger == nil {
 		logger = newLogMemoryWriter()
-	} else {
-		logger = newLogFileWriter()
 	}
 
 	if app != nil {

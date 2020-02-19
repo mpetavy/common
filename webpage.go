@@ -343,6 +343,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 		expertViewCheckbox := newCheckbox(htmlGroupCenter, isExpertViewActive)
 		expertViewCheckbox.SetText(Translate("Expert view"))
 		expertViewCheckbox.CreateAttr("onClick", fmt.Sprintf("setExpertViewVisible(--$fieldset$--);"))
+		expertViewCheckbox.CreateAttr("style", "display: flex; justify-content: flex-end")
 	} else {
 		if len(actions) == 0 {
 			htmlForm.RemoveChild(htmlGroup)
