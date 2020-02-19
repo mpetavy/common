@@ -31,6 +31,8 @@ import (
 
 type TLSPackage struct {
 	CertificateAsPem, PrivateKeyAsPem []byte
+	Certificate                       *x509.Certificate
+	CaCerts                           []*x509.Certificate
 	Info                              string
 	Config                            tls.Config
 }
@@ -133,7 +135,11 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 
 	certAsPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 
-	caCertPool := x509.NewCertPool()
+	caCertPool, _ := x509.SystemCertPool()
+	if caCertPool == nil {
+		caCertPool = x509.NewCertPool()
+	}
+
 	caCertPool.AppendCertsFromPEM(certAsPem)
 
 	certificate, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
@@ -152,7 +158,10 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 		},
 	}
 
-	certInfos, err := CertificateInfoFromX509(append(caCerts, cert))
+	list := []*x509.Certificate{cert}
+	list = append(list, caCerts...)
+
+	certInfos, err := CertificateInfoFromX509(list)
 	if Error(err) {
 		return nil, err
 	}
@@ -160,6 +169,8 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 	return &TLSPackage{
 		CertificateAsPem: certAsPem,
 		PrivateKeyAsPem:  keyAsPem,
+		Certificate:      cert,
+		CaCerts:          caCerts,
 		Info:             certInfos,
 		Config:           tlsConfig,
 	}, nil
@@ -418,7 +429,13 @@ func CertificateInfoFromX509(certs []*x509.Certificate) (string, error) {
 
 	txt := ""
 	for i, cert := range certs {
-		header := fmt.Sprintf("#%d ", i)
+		var header string
+		if i == 0 {
+			header = Translate("Certificate")
+		} else {
+			header = fmt.Sprintf("%s #%d ", Translate("Certificate"), i-1)
+		}
+
 		info := fmt.Sprintf("%s%s\n", header, strings.Repeat("-", 40-len(header)))
 
 		certInfo, err := certinfo.CertificateText(cert)
@@ -492,4 +509,8 @@ func ParseRsaPublicKeyFromPemStr(pubPEM string) (*rsa.PublicKey, error) {
 		break // fall through
 	}
 	return nil, fmt.Errorf("Key type is not RSA")
+}
+
+func IsCertificateSelfSigned(cert *x509.Certificate) bool {
+	return cert.Issuer.String() == cert.Subject.String()
 }
