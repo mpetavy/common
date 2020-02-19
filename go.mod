@@ -3,16 +3,15 @@ module github.com/mpetavy/common
 go 1.12
 
 require (
-	cloud.google.com/go v0.52.0
+	cloud.google.com/go v0.53.0
 	github.com/beevik/etree v1.1.0
 	github.com/fatih/structtag v1.2.0
 	github.com/gabriel-vasile/mimetype v1.0.2
-	github.com/go-ini/ini v1.51.1
-	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
+	github.com/go-ini/ini v1.52.0
 	github.com/gookit/color v1.2.2
 	github.com/gorilla/sessions v1.2.0 // indirect
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
-	github.com/h2non/filetype v1.0.10
+	github.com/h2non/filetype v1.0.12
 	github.com/kardianos/service v1.0.0
 	github.com/labstack/echo-contrib v0.8.0
 	github.com/labstack/echo/v4 v4.1.14
@@ -21,11 +20,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.4.0
-	golang.org/x/crypto v0.0.0-20200117160349-530e935923ad // indirect
-	golang.org/x/sys v0.0.0-20200124204421-9fbb57f87de9 // indirect
+	golang.org/x/crypto v0.0.0-20200214034016-1d94cc7ab1c6 // indirect
+	golang.org/x/sys v0.0.0-20200219091948-cb0a6d8edb6c // indirect
 	golang.org/x/text v0.3.2
-	google.golang.org/api v0.15.0
-	google.golang.org/genproto v0.0.0-20200122232147-0452cf42e150 // indirect
+	google.golang.org/api v0.17.0
+	google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5 // indirect
 	gopkg.in/ini.v1 v1.49.0 // indirect
 	software.sslmate.com/src/go-pkcs12 v0.0.0-20190322163127-6e380ad96778
 )
