@@ -65,22 +65,21 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 	}
 }
 
-func GetMainIP() (string, error) {
+func GetHost() (string, string, error) {
+	var ip, hostname string
+
 	addrs, err := GetActiveAddrs(true)
 	if len(addrs) == 1 {
-		ip, _, err := net.ParseCIDR(addrs[0].String())
+		foundIp, _, err := net.ParseCIDR(addrs[0].String())
 		if Error(err) {
-			return "", err
+			return "", "", err
 		}
-
-		DebugFunc(ip.String())
-
-		return ip.String(), nil
+		ip = foundIp.String()
 	}
 
-	hostname, err := os.Hostname()
+	hostname, err = os.Hostname()
 	if Error(err) {
-		return "", err
+		return "", "", err
 	}
 
 	path, err := exec.LookPath("nslookup")
@@ -101,58 +100,70 @@ func GetMainIP() (string, error) {
 			scanner := bufio.NewScanner(strings.NewReader(output))
 			line := ""
 
+			hasNameFound := false
+
 			for scanner.Scan() {
 				line = strings.TrimSpace(scanner.Text())
 
-				if strings.HasPrefix(line, "Name:") {
-					if scanner.Scan() {
-						line = strings.TrimSpace(scanner.Text())
+				if !hasNameFound {
+					hasNameFound = strings.HasPrefix(line, "Name:")
 
-						if strings.HasPrefix(line, "Address:") {
-
-							line = strings.TrimSpace(line[10:])
-
-							DebugFunc(line)
-
-							return line, nil
+					if hasNameFound {
+						p := strings.LastIndex(line, " ")
+						if p != -1 {
+							hostname = strings.TrimSpace(line[p+1:])
 						}
-					} else {
-						break
 					}
+				} else {
+					if strings.HasPrefix(line, "Address:") {
+						p := strings.LastIndex(line, " ")
+						if p != -1 {
+							ip = strings.TrimSpace(line[p+1:])
+						}
+					}
+				}
+
+				if ip != "" && hostname != "" {
+					break
 				}
 			}
 		}
 	}
 
-	path, err = exec.LookPath("host")
+	if ip == "" {
+		path, err = exec.LookPath("host")
 
-	if path != "" {
-		cmd := exec.Command(path, hostname)
+		if path != "" {
+			cmd := exec.Command(path, hostname)
 
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
 
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
 
-		err = Watchdog(cmd, time.Second*3)
-		if Error(err) {
-			return "", nil
-		}
-		output := string(stdout.Bytes())
+			err = Watchdog(cmd, time.Second*3)
+			if Error(err) {
+				return "", "", nil
+			}
 
-		ss := strings.Split(output, " ")
+			output := string(stdout.Bytes())
 
-		if len(ss) > 0 {
-			ip := strings.TrimSpace(ss[len(ss)-1])
+			ss := strings.Split(output, " ")
 
-			DebugFunc(ip)
-
-			return ip, nil
+			if len(ss) > 0 {
+				ip = strings.TrimSpace(ss[len(ss)-1])
+			}
 		}
 	}
 
-	return "", fmt.Errorf("cannot find main ip for %s", hostname)
+	DebugFunc("IP: %s, FQDN: %s", ip, hostname)
+
+	if ip == "" {
+		return "", "", fmt.Errorf("cannot find main ip for %s", hostname)
+	}
+
+	return ip, hostname, nil
 }
 
 func GetActiveAddrs(inclLocalhost bool) ([]net.Addr, error) {
