@@ -14,7 +14,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net"
-	"os"
 	"software.sslmate.com/src/go-pkcs12"
 	"strings"
 	"sync"
@@ -210,7 +209,7 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 func createCertificateTemplate() (*x509.Certificate, error) {
 	DebugFunc()
 
-	hostname, err := os.Hostname()
+	_, hostname, err := GetHost()
 	if Error(err) {
 		return nil, err
 	}
