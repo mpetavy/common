@@ -153,6 +153,8 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 		RootCAs:                  caCertPool,
 		ClientCAs:                caCertPool,
 		CurvePreferences: []tls.CurveID{
+			tls.CurveP521,
+			tls.CurveP384,
 			tls.CurveP256,
 		},
 	}
