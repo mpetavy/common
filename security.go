@@ -20,41 +20,30 @@ import (
 	"time"
 )
 
-// https://ericchiang.github.io/post/go-tls/
-//
-// https://ericchiang.github.io/post/go-tls/
-// https://blog.kowalczyk.info/article/Jl3G/https-for-free-in-go-with-little-help-of-lets-encrypt.html
-// https://stackoverflow.com/questions/13555085/save-and-load-crypto-rsa-privatekey-to-and-from-the-disk
-// https://knowledge.digicert.com/solution/SO25985.html
-// https://github.com/SSLMate/go-pkcs12/blob/master/pkcs12.go
-
 type TLSPackage struct {
 	CertificateAsPem, PrivateKeyAsPem []byte
 	Certificate                       *x509.Certificate
+	PrivateKey                        interface{}
 	CaCerts                           []*x509.Certificate
+	P12                               []byte
 	Info                              string
 	Config                            tls.Config
 }
 
 var (
-	FlagTlsCertificate *string
-	FlagTlsKey         *string
-	FlagTlsP12File     *string
-	muTLS              sync.Mutex
+	FlagTlsP12File *string
+	FlagTlsP12     *string
+	muTLS          sync.Mutex
 )
 
 const (
-	PKCS12_PASSWORD = pkcs12.DefaultPassword
-
-	flagCert = "tls.cert"
-	flagKey  = "tls.key"
+	FlagNameP12File = "tls.p12file"
+	FlagNameP12     = "tls.p12"
 )
 
 func init() {
-	FlagTlsCertificate = flag.String(flagCert, "", "TLS server certificate (PEM format)")
-	FlagTlsKey = flag.String(flagKey, "", "TLS server private PEM (PEM format)")
-
-	FlagTlsP12File = flag.String("tls.p12file", CleanPath(AppFilename(".p12")), "TLS PKCS12 certificates & privkey container file (P12 format)")
+	FlagTlsP12File = flag.String(FlagNameP12File, "", "TLS PKCS12 certificates & privkey container file (P12 format)")
+	FlagTlsP12 = flag.String(FlagNameP12, "", "TLS PKCS12 certificates & privkey container stream (P12,Base64 format)")
 }
 
 func Rnd(max int) int {
@@ -115,7 +104,12 @@ func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
 func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 	DebugFunc()
 
-	key, cert, caCerts, err := pkcs12.DecodeChain(ba, PKCS12_PASSWORD)
+	_, _, err := VerifyP12(ba, pkcs12.DefaultPassword)
+	if Error(err) {
+		return nil, err
+	}
+
+	key, cert, caCerts, err := pkcs12.DecodeChain(ba, pkcs12.DefaultPassword)
 	if Error(err) {
 		return nil, err
 	}
@@ -171,6 +165,8 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 		CertificateAsPem: certAsPem,
 		PrivateKeyAsPem:  keyAsPem,
 		Certificate:      cert,
+		PrivateKey:       key,
+		P12:              ba,
 		CaCerts:          caCerts,
 		Info:             certInfos,
 		Config:           tlsConfig,
@@ -199,15 +195,14 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 		return nil, err
 	}
 
-	pfx, err := pkcs12.Encode(rand.Reader, priv, cert, nil, PKCS12_PASSWORD)
+	p12, err := pkcs12.Encode(rand.Reader, priv, cert, nil, pkcs12.DefaultPassword)
 	if Error(err) {
 		return nil, err
 	}
 
-	return TLSConfigFromP12Buffer(pfx)
+	return TLSConfigFromP12Buffer(p12)
 }
 
-// https://ericchiang.github.io/post/go-tls/
 func createCertificateTemplate() (*x509.Certificate, error) {
 	DebugFunc()
 
@@ -289,35 +284,14 @@ func createTLSPackage() (*TLSPackage, error) {
 	certTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 	certTmpl.IPAddresses = parsedIps
 
-	cert, certPEM, err := createCertiticate(certTmpl, certTmpl, &key.PublicKey, key)
+	_, certPEM, err := createCertiticate(certTmpl, certTmpl, &key.PublicKey, key)
 	if Error(err) {
 		return nil, err
 	}
 
-	//err = ioutil.WriteFile(*tlsCertificateFile, certPEM, DefaultFileMode)
-	//if Error(err) {
-	//	return nil, err
-	//}
-
-	// PEM encode the private key
 	keyPEM := pem.EncodeToMemory(&pem.Block{
 		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key),
 	})
-
-	//err = ioutil.WriteFile(*tlsKeyFile, keyPEM, DefaultFileMode)
-	//if Error(err) {
-	//	return nil, err
-	//}
-
-	pfx, err := pkcs12.Encode(rand.Reader, key, cert, nil, PKCS12_PASSWORD)
-	if Error(err) {
-		return nil, err
-	}
-
-	err = ioutil.WriteFile(*FlagTlsP12File, pfx, DefaultFileMode)
-	if Error(err) {
-		return nil, err
-	}
 
 	return TLSConfigFromPem(certPEM, keyPEM)
 }
@@ -338,30 +312,29 @@ func GetTLSPackage() (*TLSPackage, error) {
 		}
 	}
 
-	if *FlagTlsCertificate != "" && *FlagTlsKey != "" {
-		tlsConfig, _ := TLSConfigFromPem([]byte(*FlagTlsCertificate), []byte(*FlagTlsKey))
-
-		if tlsConfig != nil {
-			return tlsConfig, nil
-		}
-	}
-
 	cfg := GetConfiguration()
 
 	if cfg != nil {
-		tlsCert, _ := cfg.GetFlag(flagCert)
-		tlsKey, _ := cfg.GetFlag(flagKey)
+		p12, _ := cfg.GetFlag(FlagNameP12)
+		if p12 != "" {
+			ba, _ := base64.StdEncoding.DecodeString(p12)
 
-		if tlsCert != "" && tlsKey != "" {
-			tlsConfig, _ := TLSConfigFromPem([]byte(tlsCert), []byte(tlsKey))
+			if ba != nil {
+				tlsPackage, _ = TLSConfigFromP12Buffer(ba)
 
-			if tlsConfig != nil {
-				return tlsConfig, nil
+				if tlsPackage != nil {
+					return tlsPackage, nil
+				}
 			}
 		}
 	}
 
-	return createTLSPackage()
+	tlsPackage, err := createTLSPackage()
+	if Error(err) {
+		return nil, err
+	}
+
+	return tlsPackage, nil
 }
 
 func VerifyP12(p12 []byte, password string) (*x509.Certificate, *rsa.PrivateKey, error) {
