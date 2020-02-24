@@ -248,8 +248,10 @@ func (jason *Jason) Pretty() (string, error) {
 }
 
 func RemoveJsonComments(s string) string {
-	s = regexp.MustCompile("(?s)\\/\\*.*?\\*\\/").ReplaceAllString(s, "")
-	s = regexp.MustCompile("[^:]\\/\\/.*").ReplaceAllString(s, "")
+	// enable multiline mode
+	// skip from start of line to the first \\ and remove the remaining characters
+
+	s = regexp.MustCompile("(?m)(^ *\t*)\\/\\/.*").ReplaceAllString(s, "")
 
 	return s
 }
