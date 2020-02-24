@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	LOCALHOST_IP4 = "127.0.0.1"
+	LOCALHOST_IP6 = "::1"
+)
+
 type TimeoutSocketReader struct {
 	ReadTimeout time.Duration
 	Socket      net.Conn
@@ -69,12 +74,16 @@ func GetHost() (string, string, error) {
 	var ip, hostname string
 
 	addrs, err := GetActiveAddrs(true)
-	if len(addrs) == 1 {
-		foundIp, _, err := net.ParseCIDR(addrs[0].String())
+	for _, addr := range addrs {
+		addrIp, _, err := net.ParseCIDR(addr.String())
 		if Error(err) {
-			return "", "", err
+			continue
 		}
-		ip = foundIp.String()
+
+		if !IsLocalhost(addrIp.String()) {
+			ip = addrIp.String()
+			break
+		}
 	}
 
 	hostname, err = os.Hostname()
@@ -186,7 +195,7 @@ func GetActiveAddrs(inclLocalhost bool) ([]net.Addr, error) {
 
 		for _, addr := range addrs {
 			ip, ok := addr.(*net.IPNet)
-			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && (ip.String() == "127.0.0.1" || ip.String() == "::1")) {
+			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && IsLocalhost(ip.String())) {
 				continue
 			}
 
@@ -246,4 +255,17 @@ func FindFreePort(network string, startPort int, excludedPorts []int) (int, erro
 	}
 
 	return -1, fmt.Errorf("cannot find free port")
+}
+
+func IsLocalhost(ip string) bool {
+	list := []string{LOCALHOST_IP6, LOCALHOST_IP4, "localhost"}
+
+	for _, k := range list {
+		if ip == k {
+			return true
+		}
+	}
+
+	return false
+
 }
