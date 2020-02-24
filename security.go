@@ -251,7 +251,7 @@ func createCertiticate(template, parent *x509.Certificate, pub interface{}, pare
 	return
 }
 
-func createTLSPackage() (*TLSPackage, error) {
+func CreateTLSPackage() (*TLSPackage, error) {
 	DebugFunc()
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -329,7 +329,7 @@ func GetTLSPackage() (*TLSPackage, error) {
 		}
 	}
 
-	tlsPackage, err := createTLSPackage()
+	tlsPackage, err := CreateTLSPackage()
 	if Error(err) {
 		return nil, err
 	}
