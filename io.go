@@ -507,7 +507,7 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 				err = fmt.Errorf("Timeoutout error")
 			}
 
-			if IsErrNetClosing(err) {
+			if IsErrNetClosing(err) || IsErrUnexpectedEOF(err) {
 				err = nil
 			} else {
 				Error(err)
