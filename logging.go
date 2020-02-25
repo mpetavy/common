@@ -406,7 +406,7 @@ func log(level int, ri RuntimeInfo, msg string) {
 	}
 }
 
-func ToString(cmd exec.Cmd) string {
+func CmdToString(cmd *exec.Cmd) string {
 	s := SurroundWith(cmd.Args, "\"")
 
 	return strings.Join(s, " ")

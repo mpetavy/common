@@ -26,7 +26,7 @@ func init() {
 }
 
 func (e *ErrWatchdog) Error() string {
-	return fmt.Sprintf("watchdog killed process pid: %d cmd: %s after: %v", e.Cmd.Process.Pid, ToString(*e.Cmd), time.Since(e.Start))
+	return fmt.Sprintf("watchdog killed process pid: %d cmd: %s after: %v", e.Cmd.Process.Pid, CmdToString(e.Cmd), time.Since(e.Start))
 }
 
 func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
@@ -43,7 +43,7 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 		return err
 	}
 
-	Debug("Watchdog observe process pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, ToString(*cmd))
+	Debug("Watchdog observe process pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
 
 	go func() {
 		doneCh <- cmd.Wait()
@@ -51,7 +51,7 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 
 	select {
 	case <-time.After(timeout):
-		Debug("Watchdog: process killed! pid: %d timeout: %v cmd: %s time: %s", cmd.Process.Pid, timeout, ToString(*cmd), time.Since(start))
+		Debug("Watchdog: process killed! pid: %d timeout: %v cmd: %s time: %s", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
 		Error(cmd.Process.Kill())
 
 		return &ErrWatchdog{cmd.Process.Pid, start, cmd}
@@ -71,7 +71,7 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 		default:
 			exitstate = "failed"
 		}
-		Debug("Watchdog: process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s", exitstate, cmd.Process.Pid, exitcode, timeout, ToString(*cmd), time.Since(start))
+		Debug("Watchdog: process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start))
 		return err
 	}
 }
