@@ -510,7 +510,7 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 			if IsErrNetClosing(err) || IsErrUnexpectedEOF(err) {
 				err = nil
 			} else {
-				Error(err)
+				DebugError(err)
 			}
 		}
 	}(&written, err)

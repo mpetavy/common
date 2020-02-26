@@ -303,6 +303,17 @@ func Debug(t string, arg ...interface{}) {
 	log(LEVEL_DEBUG, GetRuntimeInfo(1), t)
 }
 
+// DebugError prints out the error
+func DebugError(err error) bool {
+	if err != nil && !isErrExit(err) {
+		ri := GetRuntimeInfo(1)
+
+		log(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)))
+	}
+
+	return err != nil
+}
+
 // Info prints out the information
 func Info(t string, arg ...interface{}) {
 	if len(arg) > 0 {
