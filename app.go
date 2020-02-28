@@ -2,7 +2,6 @@ package common
 
 import (
 	"bufio"
-	"context"
 	"flag"
 	"fmt"
 	"github.com/kardianos/service"
@@ -77,8 +76,6 @@ var (
 	restartCh           = make(chan struct{})
 	kbCh                = make(chan struct{})
 	ctrlC               = make(chan os.Signal, 1)
-	ctx                 context.Context
-	cancel              context.CancelFunc
 )
 
 func init() {
@@ -108,8 +105,6 @@ func Init(version string, date string, description string, developer string, hom
 // Run struct for copyright information
 func Run(mandatoryFlags []string) {
 	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-
-	ctx, cancel = context.WithCancel(context.Background())
 
 	if app.IsService {
 		serviceFlag = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
@@ -518,22 +513,21 @@ func run() error {
 
 		go func() {
 			err = app.runFunc()
-			cancel()
+			appLifecycle.Unset()
 		}()
 
 		select {
-		case <-ctx.Done():
-			Error(err)
+		case <-appLifecycle.Channel():
 		case <-ctrlC:
 			Info("Terminate: CTRL-C pressed")
-			cancel()
+			appLifecycle.Unset()
 		}
 
 		if err := app.Stop(app.Service); err != nil {
 			return err
 		}
 
-		return nil
+		return err
 	}
 }
 
@@ -545,14 +539,6 @@ func AppRestart() {
 
 		restartCh <- struct{}{}
 	}()
-}
-
-func AppContext() *context.Context {
-	return &ctx
-}
-
-func AppCancel() {
-	cancel()
 }
 
 func IsRunningAsService() bool {
