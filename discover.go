@@ -99,9 +99,17 @@ func (server *DiscoverServer) Start() error {
 func (server *DiscoverServer) Stop() error {
 	DebugFunc(*server)
 
-	close(server.quitCh)
+	if server != nil {
+		if server.quitCh != nil {
+			close(server.quitCh)
+		}
 
-	Error(server.listener.Close())
+		if server.listener != nil {
+			Error(server.listener.Close())
+		}
+
+		server = nil
+	}
 
 	return nil
 }
