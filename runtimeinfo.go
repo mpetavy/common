@@ -48,7 +48,7 @@ func NewRunner(cmd *exec.Cmd, timeout time.Duration) *Runner {
 	}
 }
 
-func (this *Runner) execute(wg *sync.WaitGroup) (string, error) {
+func (this *Runner) execute(wg *sync.WaitGroup) error {
 	defer func() {
 		if wg != nil {
 			wg.Done()
@@ -63,12 +63,12 @@ func (this *Runner) execute(wg *sync.WaitGroup) (string, error) {
 
 	this.Err = WatchdogCmd(this.cmd, this.timeout)
 	if Error(this.Err) {
-		return "", this.Err
+		return this.Err
 	}
 
 	this.Output = string(stdout.Bytes())
 
-	return this.Output, nil
+	return nil
 }
 
 func MultiRunner(runners []Runner) error {
@@ -78,7 +78,7 @@ func MultiRunner(runners []Runner) error {
 
 	for i := range runners {
 		go func(r *Runner) {
-			_, err := r.execute(&wg)
+			err := r.execute(&wg)
 			if err != nil {
 				chErr.Add(err)
 			}
@@ -191,12 +191,14 @@ func GetSystemInfo() (*SystemInfo, error) {
 	si := &SystemInfo{}
 
 	if IsWindowsOS() {
-		output, err := NewRunner(exec.Command("wmic", "os"), time.Second*5).execute(nil)
+		r := NewRunner(exec.Command("wmic", "os"), time.Second*5)
+
+		err := r.execute(nil)
 		if err != nil {
 			return nil, err
 		}
 
-		splits := readStringTable(output, "  ")
+		splits := readStringTable(r.Output, "  ")
 
 		si.MemFree = splits[20] + "+" + splits[22]
 		mem0, err := strconv.Atoi(splits[20])
@@ -236,10 +238,18 @@ func GetSystemInfo() (*SystemInfo, error) {
 	kernelVersionRunner := NewRunner(exec.Command("uname", "-v"), time.Second)
 	machineRunner := NewRunner(exec.Command("uname", "-m"), time.Second)
 
-	go kernelNameRunner.execute(&wg)
-	go kernelReleaseRunner.execute(&wg)
-	go kernelVersionRunner.execute(&wg)
-	go machineRunner.execute(&wg)
+	go func() {
+		Error(kernelNameRunner.execute(&wg))
+	}()
+	go func() {
+		Error(kernelReleaseRunner.execute(&wg))
+	}()
+	go func() {
+		Error(kernelVersionRunner.execute(&wg))
+	}()
+	go func() {
+		Error(machineRunner.execute(&wg))
+	}()
 	go func(si *SystemInfo) {
 		defer wg.Done()
 
