@@ -15,6 +15,7 @@ type ErrWatchdog struct {
 	Pid   int
 	Start time.Time
 	Cmd   *exec.Cmd
+	Msg   string
 }
 
 var (
@@ -26,10 +27,14 @@ func init() {
 }
 
 func (e *ErrWatchdog) Error() string {
+	if e.Msg != "" {
+		return e.Msg
+	}
+
 	return fmt.Sprintf("watchdog killed process pid: %d cmd: %s after: %v", e.Cmd.Process.Pid, CmdToString(e.Cmd), time.Since(e.Start))
 }
 
-func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
+func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 	if MillisecondToDuration(*flagTimeout) > timeout {
 		timeout = MillisecondToDuration(*flagTimeout)
 	}
@@ -51,10 +56,10 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 
 	select {
 	case <-time.After(timeout):
-		Debug("Watchdog: process killed! pid: %d timeout: %v cmd: %s time: %s", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
+		Debug("Watchdog: process killed! pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
 		Error(cmd.Process.Kill())
 
-		return &ErrWatchdog{cmd.Process.Pid, start, cmd}
+		return &ErrWatchdog{cmd.Process.Pid, start, cmd, ""}
 	case err = <-doneCh:
 		exitcode := 0
 		if err != nil {
@@ -72,6 +77,39 @@ func Watchdog(cmd *exec.Cmd, timeout time.Duration) error {
 			exitstate = "failed"
 		}
 		Debug("Watchdog: process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start))
+		return err
+	}
+}
+
+func WatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
+	if MillisecondToDuration(*flagTimeout) > timeout {
+		timeout = MillisecondToDuration(*flagTimeout)
+	}
+
+	doneCh := make(chan error)
+
+	start := time.Now()
+
+	var err error
+
+	go func() {
+		doneCh <- fn()
+	}()
+
+	select {
+	case <-time.After(timeout):
+		Debug("Watchdog: function killed! time: %v", time.Since(start))
+
+		return &ErrWatchdog{Msg: msg}
+	case err = <-doneCh:
+		exitstate := ""
+		if err != nil {
+			exitstate = "failed"
+		} else {
+			exitstate = "successfull"
+		}
+
+		Debug("Watchdog: function %s! time: %s", exitstate, time.Since(start))
 		return err
 	}
 }
