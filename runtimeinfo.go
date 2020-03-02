@@ -61,7 +61,7 @@ func (this *Runner) execute(wg *sync.WaitGroup) (string, error) {
 	this.cmd.Stdout = &stdout
 	this.cmd.Stderr = &stderr
 
-	this.Err = Watchdog(this.cmd, this.timeout)
+	this.Err = WatchdogCmd(this.cmd, this.timeout)
 	if Error(this.Err) {
 		return "", this.Err
 	}

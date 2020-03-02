@@ -50,7 +50,7 @@ func GetSystemLanguage() (string, error) {
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		err := Watchdog(cmd, time.Second*3)
+		err := WatchdogCmd(cmd, time.Second*3)
 		if Error(err) {
 			return "", err
 		}
@@ -100,7 +100,7 @@ func GetSystemLanguage() (string, error) {
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		err = Watchdog(cmd, time.Second)
+		err = WatchdogCmd(cmd, time.Second)
 		if Error(err) {
 			return "", err
 		}

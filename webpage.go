@@ -465,6 +465,21 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 	htmlLegend := parent.CreateElement("legend")
 	htmlLegend.SetText(Translate(caption))
 
+	//FIXME
+	//id := uuid.New().String()
+	//
+	//NewButton(parent,false,ActionItem{
+	//	Caption:  "display!!!",
+	//	Icon:     "",
+	//	Action:   fmt.Sprintf("setVisible(--$%s$--);",id),
+	//	File:     "",
+	//	Enabled:  false,
+	//	SubItems: nil,
+	//})
+	//
+	//parent = parent.CreateElement("div")
+	//parent.CreateAttr("id",id)
+
 	structValue := reflect.ValueOf(data)
 
 	for i := 0; i < structValue.NumField(); i++ {
@@ -501,6 +516,8 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 		if fieldType.Type.Kind() == reflect.Struct {
 			if i == 0 {
 				parent.RemoveChildAt(0)
+				//FIXME
+				//parent.Parent().RemoveChildAt(0)
 			}
 
 			var ev bool
