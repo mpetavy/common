@@ -59,6 +59,11 @@ const (
 	SERVICE_TIMEOUT  = "service.timeout"
 )
 
+type goTesting interface {
+	Logf(format string, args ...interface{})
+	Fatalf(format string, args ...interface{})
+}
+
 var (
 	app                 *application
 	serviceFlag         *string
@@ -76,6 +81,7 @@ var (
 	restartCh           = make(chan struct{})
 	kbCh                = make(chan struct{})
 	ctrlC               = make(chan os.Signal, 1)
+	gotest              goTesting
 )
 
 func init() {
@@ -100,6 +106,10 @@ func Init(version string, date string, description string, developer string, hom
 	app.StopFunc = stopFunc
 	app.runFunc = runFunc
 	app.runTime = runTime
+}
+
+func InitTesting(v goTesting) {
+	gotest = v
 }
 
 // Run struct for copyright information
@@ -508,10 +518,12 @@ func run() error {
 			return err
 		}
 
-		go func() {
-			err = app.runFunc()
-			appLifecycle.Unset()
-		}()
+		if app.runFunc != nil {
+			go func() {
+				err = app.runFunc()
+				appLifecycle.Unset()
+			}()
+		}
 
 		select {
 		case <-appLifecycle.Channel():
