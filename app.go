@@ -285,9 +285,7 @@ func (app *application) service() error {
 
 			ticker.Stop()
 
-			if err := app.runFunc(); err != nil {
-				Error(err)
-			}
+			Error(app.runFunc())
 
 			ti := time.Now()
 			ti = ti.Add(app.runTime)
@@ -505,11 +503,10 @@ func run() error {
 			return app.Service.Run()
 		}
 	} else {
-		if err := app.Start(app.Service); err != nil {
+		err := app.Start(app.Service)
+		if Error(err) {
 			return err
 		}
-
-		var err error
 
 		go func() {
 			err = app.runFunc()
@@ -523,11 +520,12 @@ func run() error {
 			appLifecycle.Unset()
 		}
 
-		if err := app.Stop(app.Service); err != nil {
+		err = app.Stop(app.Service)
+		if Error(err) {
 			return err
 		}
 
-		return err
+		return nil
 	}
 }
 
