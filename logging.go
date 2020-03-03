@@ -262,13 +262,29 @@ func writeEntry(entry logEntry) {
 
 		switch entry.levelInt {
 		case LEVEL_WARN:
-			color.Warn.Println(s)
+			if gotest != nil {
+				gotest.Logf(s)
+			} else {
+				color.Warn.Println(s)
+			}
 		case LEVEL_ERROR:
-			color.Error.Println(s)
+			if gotest != nil {
+				gotest.Fatalf(s)
+			} else {
+				color.Error.Println(s)
+			}
 		case LEVEL_FATAL:
-			color.Error.Println(s)
+			if gotest != nil {
+				gotest.Fatalf(s)
+			} else {
+				color.Error.Println(s)
+			}
 		default:
-			fmt.Printf("%s\n", s)
+			if gotest != nil {
+				gotest.Logf(s)
+			} else {
+				fmt.Printf("%s\n", s)
+			}
 		}
 	}
 
