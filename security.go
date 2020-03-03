@@ -296,7 +296,7 @@ func CreateTLSPackage() (*TLSPackage, error) {
 	return TLSConfigFromPem(certPEM, keyPEM)
 }
 
-func GetTLSPackage() (*TLSPackage, error) {
+func GetTLSPackage() (bool, *TLSPackage, error) {
 	DebugFunc()
 
 	muTLS.Lock()
@@ -308,7 +308,7 @@ func GetTLSPackage() (*TLSPackage, error) {
 		tlsPackage, _ = TLSConfigFromP12File(*FlagTlsP12File)
 
 		if tlsPackage != nil {
-			return tlsPackage, nil
+			return false, tlsPackage, nil
 		}
 	}
 
@@ -323,7 +323,7 @@ func GetTLSPackage() (*TLSPackage, error) {
 				tlsPackage, _ = TLSConfigFromP12Buffer(ba)
 
 				if tlsPackage != nil {
-					return tlsPackage, nil
+					return false, tlsPackage, nil
 				}
 			}
 		}
@@ -331,10 +331,10 @@ func GetTLSPackage() (*TLSPackage, error) {
 
 	tlsPackage, err := CreateTLSPackage()
 	if Error(err) {
-		return nil, err
+		return false, nil, err
 	}
 
-	return tlsPackage, nil
+	return true, tlsPackage, nil
 }
 
 func VerifyP12(p12 []byte, password string) (*x509.Certificate, *rsa.PrivateKey, error) {
@@ -342,7 +342,9 @@ func VerifyP12(p12 []byte, password string) (*x509.Certificate, *rsa.PrivateKey,
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := VerifyCertificate(cert); err != nil {
+
+	err = VerifyCertificate(cert)
+	if Error(err) {
 		return nil, nil, err
 	}
 
@@ -359,9 +361,6 @@ func VerifyCertificate(cert *x509.Certificate) error {
 
 	var err error
 
-	fmt.Printf("%v\n", cert.NotBefore)
-	fmt.Printf("%v\n", cert.NotAfter)
-
 	if !IsCertificateSelfSigned(cert) {
 		_, err = cert.Verify(x509.VerifyOptions{})
 	}
@@ -370,27 +369,11 @@ func VerifyCertificate(cert *x509.Certificate) error {
 		now := time.Now()
 
 		if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
-			err = &x509.CertificateInvalidError{
-				Cert:   cert,
-				Reason: x509.Expired,
-				Detail: "",
-			}
+			err = fmt.Errorf("Certificate is not valid (NotBefore: %v, NotAfter: %v)", cert.NotBefore, cert.NotAfter)
 		}
 	}
 
-	switch e := err.(type) {
-	case x509.CertificateInvalidError:
-		switch e.Reason {
-		case x509.Expired:
-			return fmt.Errorf("Certificate has expired or is not yet valid")
-		default:
-			return err
-		}
-	case x509.UnknownAuthorityError:
-		return nil
-	default:
-		return err
-	}
+	return err
 }
 
 func CertificateInfoFromConnection(con *tls.Conn) (string, error) {
