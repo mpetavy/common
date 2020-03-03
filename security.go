@@ -233,7 +233,7 @@ func createCertificateTemplate() (*x509.Certificate, error) {
 	return &tmpl, nil
 }
 
-func createCertiticate(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}) (cert *x509.Certificate, certPEM []byte, err error) {
+func createCertificate(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}) (cert *x509.Certificate, certPEM []byte, err error) {
 	DebugFunc()
 
 	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
@@ -284,7 +284,7 @@ func CreateTLSPackage() (*TLSPackage, error) {
 	certTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 	certTmpl.IPAddresses = parsedIps
 
-	_, certPEM, err := createCertiticate(certTmpl, certTmpl, &key.PublicKey, key)
+	_, certPEM, err := createCertificate(certTmpl, certTmpl, &key.PublicKey, key)
 	if Error(err) {
 		return nil, err
 	}
@@ -357,9 +357,25 @@ func VerifyP12(p12 []byte, password string) (*x509.Certificate, *rsa.PrivateKey,
 func VerifyCertificate(cert *x509.Certificate) error {
 	DebugFunc()
 
-	_, err := cert.Verify(x509.VerifyOptions{})
+	var err error
+
+	fmt.Printf("%v\n", cert.NotBefore)
+	fmt.Printf("%v\n", cert.NotAfter)
+
+	if !IsCertificateSelfSigned(cert) {
+		_, err = cert.Verify(x509.VerifyOptions{})
+	}
+
 	if err == nil {
-		return nil
+		now := time.Now()
+
+		if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
+			err = &x509.CertificateInvalidError{
+				Cert:   cert,
+				Reason: x509.Expired,
+				Detail: "",
+			}
+		}
 	}
 
 	switch e := err.(type) {
