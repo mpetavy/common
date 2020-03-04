@@ -446,3 +446,18 @@ func SortStringsCaseInsensitive(strs []string) {
 		return strings.ToUpper(strs[i]) < strings.ToUpper(strs[j])
 	})
 }
+
+func Join(strs []string, sep string) string {
+	sb := strings.Builder{}
+	for i := 0; i < len(strs); i++ {
+		if strs[i] != "" {
+			if sb.Len() > 0 {
+				sb.WriteString(sep)
+			}
+			sb.WriteString(strs[i])
+
+		}
+	}
+
+	return sb.String()
+}
