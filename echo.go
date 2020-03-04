@@ -20,10 +20,12 @@ func (this echoLogger) Write(p []byte) (int, error) {
 		isError = ok && fmt.Sprintf("%v", v) != ""
 	}
 
-	if isError {
-		Error(fmt.Errorf("Echo: %s", msg))
-	} else {
-		Debug("Echo: %s", msg)
+	if !IsSuppressedErrorMessage(msg) {
+		if isError {
+			Error(fmt.Errorf("Echo: %s", msg))
+		} else {
+			Debug("Echo: %s", msg)
+		}
 	}
 
 	return len(p), nil

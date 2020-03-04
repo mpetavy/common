@@ -58,12 +58,21 @@ var DateTimeMilliMask = DateMask + Separator + TimeMask + Msec
 // ParseDateTime parses only date, but no time
 func ParseDateTime(mask string, v string) (time.Time, error) {
 	l, err := time.LoadLocation("Local")
-
-	if err != nil {
+	if Error(err) {
 		return time.Time{}, err
 	}
 
 	return time.ParseInLocation(string(mask), v, l)
+}
+
+// ParseJsonDateTime parses only date, but no time
+func ParseJsonDateTime(v string) (time.Time, error) {
+	l, err := time.Parse(time.RFC3339, v)
+	if Error(err) {
+		return time.Time{}, err
+	}
+
+	return l, nil
 }
 
 // EqualDateTime checks for equality of parts
