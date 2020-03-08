@@ -406,10 +406,10 @@ func CertificateInfoFromX509(certs []*x509.Certificate) (string, error) {
 		if i == 0 {
 			header = Translate("Certificate")
 		} else {
-			header = fmt.Sprintf("%s #%d ", Translate("Certificate"), i-1)
+			header = fmt.Sprintf("%s #%d ", Translate("CA Certificate"), i-1)
 		}
 
-		info := fmt.Sprintf("%s%s\n", header, strings.Repeat("-", 40-len(header)))
+		info := fmt.Sprintf("%s %s\n", header, strings.Repeat("-", 60-len(header)))
 
 		certInfo, err := certinfo.CertificateText(cert)
 		if Error(err) {
