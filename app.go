@@ -52,6 +52,9 @@ type application struct {
 	ServiceConfig *service.Config
 }
 
+type EventFlagsParsed struct {
+}
+
 const (
 	SERVICE          = "service"
 	SERVICE_USERNAME = "service.username"
@@ -125,15 +128,16 @@ func Run(mandatoryFlags []string) {
 
 	flag.Parse()
 
+	initLog()
+
+	Events.Emit(EventFlagsParsed{})
+
 	err := initConfiguration()
 	if err != nil {
 		Fatal(err)
 
 		Exit(1)
 	}
-
-	initLog()
-	initLanguage()
 
 	flag.VisitAll(func(fl *flag.Flag) {
 		if fl.Value.String() != "" && fl.Value.String() != fl.DefValue {
@@ -348,6 +352,8 @@ func (app *application) loop() {
 					return
 				}
 			}
+
+			Events.Emit(EventAppRestart{})
 
 			if app.StartFunc != nil {
 				err := app.StartFunc()

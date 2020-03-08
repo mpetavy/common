@@ -14,6 +14,9 @@ type EventConfigurationReset struct {
 	Cfg *bytes.Buffer
 }
 
+type EventAppRestart struct {
+}
+
 type Configuration struct {
 	Flags map[string]string `json:"flags"`
 }
