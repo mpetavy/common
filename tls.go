@@ -140,23 +140,23 @@ func initTls() {
 		priorityInfo := ""
 
 		if i < len(topCipherSuites) {
-			topInfo = TLSCipherSuiteToInfo(TLSIdToCipherSuite(topCipherSuites[i]))
+			topInfo = TlsCipherSuiteToInfo(TlsIdToCipherSuite(topCipherSuites[i]))
 		}
 
 		if i < len(cipherSuites) {
-			priorityInfo = TLSCipherSuiteToInfo(cipherSuites[i])
+			priorityInfo = TlsCipherSuiteToInfo(cipherSuites[i])
 		}
 
 		Debug("Cipher #%2d: %s %s", i, FillString(priorityInfo, 70, false, " "), FillString(topInfo, 70, false, " "))
 	}
 }
 
-func TLSAllCipherSuites() []*tls.CipherSuite {
+func TlsCipherSuites() []*tls.CipherSuite {
 	return cipherSuites
 }
 
-func TLSIdToCipherSuite(id uint16) *tls.CipherSuite {
-	for _, cs := range TLSAllCipherSuites() {
+func TlsIdToCipherSuite(id uint16) *tls.CipherSuite {
+	for _, cs := range TlsCipherSuites() {
 		if cs.ID == id {
 			return cs
 		}
@@ -165,22 +165,22 @@ func TLSIdToCipherSuite(id uint16) *tls.CipherSuite {
 	return nil
 }
 
-func TLSCipherSuiteToInfo(cs *tls.CipherSuite) string {
+func TlsCipherSuiteToInfo(cs *tls.CipherSuite) string {
 	tlsVersion := make([]string, 0)
 	for _, v := range cs.SupportedVersions {
-		tlsVersion = append(tlsVersion, TLSIdToVersion(v))
+		tlsVersion = append(tlsVersion, TlsIdToVersion(v))
 	}
 
 	return fmt.Sprintf("%s [%s]%s", cs.Name, Join(tlsVersion, ","), Eval(cs.Insecure, fmt.Sprintf("[%s]", Translate("Insecure")), "").(string))
 }
 
-func TLSInfoToCipherSuite(name string) *tls.CipherSuite {
+func TlsInfoToCipherSuite(name string) *tls.CipherSuite {
 	p := strings.Index(name, " ")
 	if p != -1 {
 		name = name[:p]
 	}
 
-	for _, cs := range TLSAllCipherSuites() {
+	for _, cs := range TlsCipherSuites() {
 		if cs.Name == name {
 			return cs
 		}
@@ -199,25 +199,20 @@ func orderOfCipherSuite(id uint16) int {
 	return -1
 }
 
-func TLSSortCipherSuites(list []uint16) []uint16 {
-
-	return list
-}
-
-func TLSInfosToCipherSuites(s string) []uint16 {
+func TlsInfosToCipherSuites(s string) []uint16 {
 	list := make([]uint16, 0)
 
 	for _, name := range strings.Split(s, ";") {
-		cs := TLSInfoToCipherSuite(name)
+		cs := TlsInfoToCipherSuite(name)
 		if cs != nil {
 			list = append(list, cs.ID)
 		}
 	}
 
-	return TLSSortCipherSuites(list)
+	return list
 }
 
-func TLSVersionToId(s string) uint16 {
+func TlsVersionToId(s string) uint16 {
 	switch s {
 	default:
 		return tls.VersionTLS10
@@ -230,7 +225,7 @@ func TLSVersionToId(s string) uint16 {
 	}
 }
 
-func TLSIdToVersion(id uint16) string {
+func TlsIdToVersion(id uint16) string {
 	switch id {
 	default:
 		return tlsVersion10
@@ -243,10 +238,10 @@ func TLSIdToVersion(id uint16) string {
 	}
 }
 
-func TLSVersions() []string {
+func TlsVersions() []string {
 	list := make([]string, 0)
 	for i := range versions {
-		list = append(list, TLSIdToVersion(versions[i]))
+		list = append(list, TlsIdToVersion(versions[i]))
 	}
 
 	return list
@@ -255,8 +250,8 @@ func TLSVersions() []string {
 func DebugTlsConnectionInfo(typ string, tlsConn *tls.Conn) {
 	connstate := tlsConn.ConnectionState()
 
-	Debug("TLS connection info %s: Version : %s\n", typ, TLSIdToVersion(connstate.Version))
-	Debug("TLS connection info %s: CipherSuite : %v\n", typ, TLSCipherSuiteToInfo(TLSIdToCipherSuite(connstate.CipherSuite)))
+	Debug("TLS connection info %s: Version : %s\n", typ, TlsIdToVersion(connstate.Version))
+	Debug("TLS connection info %s: CipherSuite : %v\n", typ, TlsCipherSuiteToInfo(TlsIdToCipherSuite(connstate.CipherSuite)))
 	Debug("TLS connection info %s: HandshakeComplete : %v\n", typ, connstate.HandshakeComplete)
 	Debug("TLS connection info %s: DidResume : %v\n", typ, connstate.DidResume)
 	Debug("TLS connection info %s: NegotiatedProtocol : %x\n", typ, connstate.NegotiatedProtocol)

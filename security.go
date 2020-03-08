@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-type TLSPackage struct {
+type TlsPackage struct {
 	CertificateAsPem, PrivateKeyAsPem []byte
 	Certificate                       *x509.Certificate
 	PrivateKey                        interface{}
@@ -85,7 +85,7 @@ func GenerateRandomString(s int) (string, error) {
 // 1st	  private key
 // 2nd	  computer certificate
 // 3d..n  CA certificates (will be ignored by app)
-func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
+func TLSConfigFromP12File(p12File string) (*TlsPackage, error) {
 	DebugFunc("p12File: %s", p12File)
 
 	ok, err := FileExists(p12File)
@@ -98,10 +98,10 @@ func TLSConfigFromP12File(p12File string) (*TLSPackage, error) {
 		return nil, err
 	}
 
-	return TLSConfigFromP12Buffer(ba)
+	return TlsConfigFromP12Buffer(ba)
 }
 
-func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
+func TlsConfigFromP12Buffer(ba []byte) (*TlsPackage, error) {
 	DebugFunc()
 
 	_, _, err := VerifyP12(ba, pkcs12.DefaultPassword)
@@ -161,7 +161,7 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 		return nil, err
 	}
 
-	return &TLSPackage{
+	return &TlsPackage{
 		CertificateAsPem: certAsPem,
 		PrivateKeyAsPem:  keyAsPem,
 		Certificate:      cert,
@@ -173,7 +173,7 @@ func TLSConfigFromP12Buffer(ba []byte) (*TLSPackage, error) {
 	}, nil
 }
 
-func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
+func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TlsPackage, error) {
 	DebugFunc("generate TLS config from given cert and key flags")
 
 	certBytes, _ := pem.Decode(certAsPem)
@@ -200,7 +200,7 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TLSPackage, error) {
 		return nil, err
 	}
 
-	return TLSConfigFromP12Buffer(p12)
+	return TlsConfigFromP12Buffer(p12)
 }
 
 func createCertificateTemplate() (*x509.Certificate, error) {
@@ -251,7 +251,7 @@ func createCertificate(template, parent *x509.Certificate, pub interface{}, pare
 	return
 }
 
-func CreateTLSPackage() (*TLSPackage, error) {
+func CreateTlsPackage() (*TlsPackage, error) {
 	DebugFunc()
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -296,13 +296,13 @@ func CreateTLSPackage() (*TLSPackage, error) {
 	return TLSConfigFromPem(certPEM, keyPEM)
 }
 
-func GetTLSPackage() (bool, *TLSPackage, error) {
+func GetTlsPackage() (bool, *TlsPackage, error) {
 	DebugFunc()
 
 	muTLS.Lock()
 	defer muTLS.Unlock()
 
-	var tlsPackage *TLSPackage
+	var tlsPackage *TlsPackage
 
 	if *FlagTlsP12File != "" {
 		tlsPackage, _ = TLSConfigFromP12File(*FlagTlsP12File)
@@ -320,7 +320,7 @@ func GetTLSPackage() (bool, *TLSPackage, error) {
 			ba, _ := base64.StdEncoding.DecodeString(p12)
 
 			if ba != nil {
-				tlsPackage, _ = TLSConfigFromP12Buffer(ba)
+				tlsPackage, _ = TlsConfigFromP12Buffer(ba)
 
 				if tlsPackage != nil {
 					return false, tlsPackage, nil
@@ -329,7 +329,7 @@ func GetTLSPackage() (bool, *TLSPackage, error) {
 		}
 	}
 
-	tlsPackage, err := CreateTLSPackage()
+	tlsPackage, err := CreateTlsPackage()
 	if Error(err) {
 		return false, nil, err
 	}
