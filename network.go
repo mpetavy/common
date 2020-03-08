@@ -109,15 +109,15 @@ func GetHost() (string, string, error) {
 			scanner := bufio.NewScanner(strings.NewReader(output))
 			line := ""
 
-			hasNameFound := false
+			nslookupHostnameFound := false
 
 			for scanner.Scan() {
 				line = strings.TrimSpace(scanner.Text())
 
-				if !hasNameFound {
-					hasNameFound = strings.HasPrefix(line, "Name:")
+				if !nslookupHostnameFound {
+					nslookupHostnameFound = strings.HasPrefix(line, "Name:")
 
-					if hasNameFound {
+					if nslookupHostnameFound {
 						p := strings.LastIndex(line, " ")
 						if p != -1 {
 							hostname = strings.TrimSpace(line[p+1:])
@@ -130,10 +130,6 @@ func GetHost() (string, string, error) {
 							ip = strings.TrimSpace(line[p+1:])
 						}
 					}
-				}
-
-				if ip != "" && hostname != "" {
-					break
 				}
 			}
 		}
