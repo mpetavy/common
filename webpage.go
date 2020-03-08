@@ -169,7 +169,7 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 func getCookie(context echo.Context) *sessions.Session {
 	cookie, err := session.Get(Title(), context)
 
-	Error(err)
+	DebugError(err)
 
 	// Ignore the error (maybe the current cookie was encrypted with an outdated httpServer.store key)
 

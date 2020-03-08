@@ -35,6 +35,10 @@ const (
 
 func init() {
 	language = flag.String("language", "en", "language for messages")
+
+	Events.NewFuncReceiver(EventFlagsParsed{}, func(ev Event) {
+		initLanguage()
+	})
 }
 
 //GetSystemLanguage return BCP 47 standard language name
