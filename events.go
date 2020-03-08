@@ -14,6 +14,7 @@ type EventManager struct {
 	chans map[EventType][]EventChan
 	funcs map[EventType][]*EventFunc
 }
+type AllEvents struct{}
 
 var (
 	Events *EventManager
@@ -92,12 +93,18 @@ func (this *EventManager) DestroyFuncReceiver(eventFunc *EventFunc) {
 
 	DebugFunc()
 
-	for _, funcs := range this.funcs {
+	for eventType, funcs := range this.funcs {
 		for i := range funcs {
 			if funcs[i] == eventFunc {
 				funcs = append(funcs[:i], funcs[i+1:]...)
 				break
 			}
+		}
+
+		if len(funcs) == 0 {
+			delete(this.funcs, eventType)
+		} else {
+			this.funcs[eventType] = funcs
 		}
 	}
 }
@@ -107,7 +114,7 @@ func (this *EventManager) Emit(event interface{}) bool {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
-	bool := false
+	b := false
 
 	eventType := reflect.TypeOf(event)
 
@@ -116,16 +123,23 @@ func (this *EventManager) Emit(event interface{}) bool {
 	if chans, ok := this.chans[eventType]; ok {
 		for _, receiver := range chans {
 			receiver <- event
-			bool = true
+			b = true
 		}
 	}
 
 	if funcs, ok := this.funcs[eventType]; ok {
 		for _, receiver := range funcs {
 			(*receiver)(event)
-			bool = true
+			b = true
 		}
 	}
 
-	return bool
+	if funcs, ok := this.funcs[reflect.TypeOf(AllEvents{})]; ok {
+		for _, receiver := range funcs {
+			(*receiver)(event)
+			b = true
+		}
+	}
+
+	return b
 }

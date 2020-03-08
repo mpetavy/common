@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/beevik/etree"
 	"github.com/fatih/structtag"
+	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -165,13 +166,47 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 	return nil
 }
 
+func getCookie(context echo.Context) *sessions.Session {
+	cookie, err := session.Get(Title(), context)
+
+	Error(err)
+
+	// Ignore the error (maybe the current cookie was encrypted with an outdated httpServer.store key)
+
+	if cookie.IsNew {
+		cookie.Options.Path = "/"
+		cookie.Options.MaxAge = 0
+		cookie.Options.HttpOnly = true
+		if context.IsTLS() {
+			cookie.Options.Secure = true
+			cookie.Options.SameSite = http.SameSiteStrictMode
+		} else {
+			cookie.Options.Secure = false
+			cookie.Options.SameSite = http.SameSiteDefaultMode
+		}
+	}
+
+	return cookie
+}
+
+func DisableCookie(context echo.Context) error {
+	cookie := getCookie(context)
+
+	cookie.Options.MaxAge = -1
+	cookie.Values[COOKIE_PASSWORD] = ""
+
+	err := cookie.Save(context.Request(), context.Response())
+	if Error(err) {
+		return err
+	}
+
+	return nil
+}
+
 func RefreshCookie(context echo.Context, timeout time.Duration) error {
-	cookie, _ := session.Get(Title(), context)
-	cookie.Options.Path = "/"
+	cookie := getCookie(context)
+
 	cookie.Options.MaxAge = int(timeout.Seconds())
-	cookie.Options.HttpOnly = true
-	cookie.Options.Secure = true
-	cookie.Options.SameSite = http.SameSiteStrictMode
 
 	err := cookie.Save(context.Request(), context.Response())
 	if Error(err) {
@@ -182,15 +217,11 @@ func RefreshCookie(context echo.Context, timeout time.Duration) error {
 }
 
 func AuthenticateCookie(context echo.Context, password string, timeout time.Duration) error {
-	cookie, _ := session.Get(Title(), context)
+	cookie := getCookie(context)
 
 	// Ignore the error (maybe the current cookie was encrypted with an outdated httpServer.store key)
 
-	cookie.Options.Path = "/"
 	cookie.Options.MaxAge = int(timeout.Seconds())
-	cookie.Options.HttpOnly = true
-	cookie.Options.Secure = true
-	cookie.Options.SameSite = http.SameSiteStrictMode
 
 	cookie.Values[COOKIE_PASSWORD] = password
 
@@ -516,8 +547,6 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 		if fieldType.Type.Kind() == reflect.Struct {
 			if i == 0 {
 				parent.RemoveChildAt(0)
-				//FIXME
-				//parent.Parent().RemoveChildAt(0)
 			}
 
 			var ev bool

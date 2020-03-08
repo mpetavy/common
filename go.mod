@@ -11,7 +11,7 @@ require (
 	github.com/golang/protobuf v1.3.4 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/gookit/color v1.2.2
-	github.com/gorilla/sessions v1.2.0 // indirect
+	github.com/gorilla/sessions v1.2.0
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/h2non/filetype v1.0.12
 	github.com/kardianos/service v1.0.0
