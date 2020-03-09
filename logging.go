@@ -348,6 +348,16 @@ func Warn(t string, arg ...interface{}) {
 	log(LEVEL_WARN, GetRuntimeInfo(1), t)
 }
 
+func WarnError(err error) bool {
+	if err != nil && !isErrExit(err) {
+		ri := GetRuntimeInfo(1)
+
+		log(LEVEL_WARN, ri, fmt.Sprintf("Error: %s", errorString(ri, err)))
+	}
+
+	return err != nil
+}
+
 func errorString(ri RuntimeInfo, err error) string {
 	return fmt.Sprintf("%s [%T]\n%s", err.Error(), err, ri.Stack)
 }
