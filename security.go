@@ -37,13 +37,13 @@ var (
 )
 
 const (
-	FlagNameP12File = "tls.p12file"
-	FlagNameP12     = "tls.p12"
+	FlagNameTlsP12File = "tls.p12file"
+	FlagNameTlsP12     = "tls.p12"
 )
 
 func init() {
-	FlagTlsP12File = flag.String(FlagNameP12File, "", "TLS PKCS12 certificates & privkey container file (P12 format)")
-	FlagTlsP12 = flag.String(FlagNameP12, "", "TLS PKCS12 certificates & privkey container stream (P12,Base64 format)")
+	FlagTlsP12File = flag.String(FlagNameTlsP12File, "", "TLS PKCS12 certificates & privkey container file (P12 format)")
+	FlagTlsP12 = flag.String(FlagNameTlsP12, "", "TLS PKCS12 certificates & privkey container stream (P12,Base64 format)")
 }
 
 func Rnd(max int) int {
@@ -315,7 +315,7 @@ func GetTlsPackage() (bool, *TlsPackage, error) {
 	cfg := GetConfiguration()
 
 	if cfg != nil {
-		p12, _ := cfg.GetFlag(FlagNameP12)
+		p12, _ := cfg.GetFlag(FlagNameTlsP12)
 		if p12 != "" {
 			ba, _ := base64.StdEncoding.DecodeString(p12)
 
