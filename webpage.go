@@ -335,7 +335,7 @@ func NewRefreshPage(name string, url string) (*Webpage, error) {
 	return &p, nil
 }
 
-func NewForm(parent *etree.Element, caption string, data interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewAvailable bool, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
+func NewForm(parent *etree.Element, caption string, data interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewAvailable bool, funcFieldIterator FuncFieldIterator) (*etree.Element, *etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
 	htmlForm.CreateAttr("enctype", echo.MIMEMultipartForm)
@@ -354,7 +354,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 
 	isFieldExpertView, err := newFieldset(0, htmlFieldset, caption, data, "", readOnly, isExpertViewAvailable, funcFieldIterator)
 	if Error(err) {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for i, action := range actions {
@@ -372,7 +372,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 		}
 	}
 
-	return htmlForm, nil
+	return htmlForm, htmlGroup, nil
 }
 
 func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
@@ -486,21 +486,6 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 
 	htmlLegend := parent.CreateElement("legend")
 	htmlLegend.SetText(Translate(caption))
-
-	//FIXME
-	//id := uuid.New().String()
-	//
-	//NewButton(parent,false,ActionItem{
-	//	Caption:  "display!!!",
-	//	Icon:     "",
-	//	Action:   fmt.Sprintf("setVisible(--$%s$--);",id),
-	//	File:     "",
-	//	Enabled:  false,
-	//	SubItems: nil,
-	//})
-	//
-	//parent = parent.CreateElement("div")
-	//parent.CreateAttr("id",id)
 
 	structValue := reflect.ValueOf(data)
 

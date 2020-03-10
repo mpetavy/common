@@ -213,18 +213,23 @@ func IsPortAvailable(network string, port int) (bool, error) {
 	case "tcp":
 		if network == "tcp" {
 			tcpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+			if tcpListener != nil {
+				Error(tcpListener.Close())
+			}
 			if err != nil {
 				return false, err
 			}
-			Error(tcpListener.Close())
+
 		}
 	case "udp":
 		if network == "udp" {
 			udpListener, err := net.ListenPacket("udp4", fmt.Sprintf(":%d", port))
+			if udpListener != nil {
+				Error(udpListener.Close())
+			}
 			if err != nil {
 				return false, err
 			}
-			Error(udpListener.Close())
 		}
 	default:
 		return false, fmt.Errorf("unknown network: %s", network)
