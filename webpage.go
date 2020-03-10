@@ -335,7 +335,7 @@ func NewRefreshPage(name string, url string) (*Webpage, error) {
 	return &p, nil
 }
 
-func NewForm(parent *etree.Element, caption string, data interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
+func NewForm(parent *etree.Element, caption string, data interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewAvailable bool, funcFieldIterator FuncFieldIterator) (*etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
 	htmlForm.CreateAttr("enctype", echo.MIMEMultipartForm)
@@ -352,7 +352,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 	htmlFieldset := htmlForm.CreateElement("fieldset")
 	htmlFieldset.CreateAttr("id", "fieldset")
 
-	isFieldExpertView, err := newFieldset(0, htmlFieldset, caption, data, "", readOnly, isExpertViewActive, funcFieldIterator)
+	isFieldExpertView, err := newFieldset(0, htmlFieldset, caption, data, "", readOnly, isExpertViewAvailable, funcFieldIterator)
 	if Error(err) {
 		return nil, err
 	}
@@ -362,7 +362,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 	}
 
 	if isFieldExpertView {
-		expertViewCheckbox := newCheckbox(htmlGroupCenter, isExpertViewActive)
+		expertViewCheckbox := newCheckbox(htmlGroupCenter, isExpertViewAvailable)
 		expertViewCheckbox.SetText(Translate("Expert view"))
 		expertViewCheckbox.CreateAttr("onClick", fmt.Sprintf("setExpertViewVisible(--$fieldset$--);"))
 		expertViewCheckbox.CreateAttr("style", "display: flex; justify-content: flex-end")
