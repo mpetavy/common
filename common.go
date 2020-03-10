@@ -1,18 +1,20 @@
 package common
 
 import (
+	"flag"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"unicode"
-
-	"strings"
 )
 
 var (
 	onceShutdownHooks sync.Once
 	shutdownHooks     []func()
+
+	FlagAppProduct *string
 )
 
 const (
@@ -41,6 +43,8 @@ func (this *MultiValueFlag) Set(value string) error {
 
 func init() {
 	shutdownHooks = make([]func(), 0)
+
+	FlagAppProduct = flag.String("app.product", "", "Product name")
 }
 
 type ChannelError struct {
@@ -159,8 +163,19 @@ func Version(major bool, minor bool, patch bool) string {
 	return ""
 }
 
-func TitleVersion(major bool, minor bool, patch bool) string {
-	return Title() + "-" + Version(major, minor, patch)
+func Product() string {
+	p := Title()
+	if *FlagAppProduct != "" {
+		p = *FlagAppProduct
+	}
+
+	p = strings.ToUpper(p)
+
+	return p
+}
+
+func ProductVersion(major bool, minor bool, patch bool) string {
+	return Product() + "-" + Version(major, minor, patch)
 }
 
 // IsWindowsOS reports true if underlying OS is MS Windows

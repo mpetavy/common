@@ -259,14 +259,23 @@ func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (
 		return "", fmt.Errorf("Failed to create client: %v", err)
 	}
 
+	source, err := googlelanguage.Parse("en")
+	if err != nil {
+		return "", fmt.Errorf("Failed to parse target language: %v", err)
+	}
+
 	// Sets the target language.
 	target, err := googlelanguage.Parse(foreignLanguage)
 	if err != nil {
 		return "", fmt.Errorf("Failed to parse target language: %v", err)
 	}
 
-	// Translates the text into Russian.
-	translations, err := client.Translate(ctx, []string{text}, target, nil)
+	// Translates the text
+	translations, err := client.Translate(ctx, []string{text}, target, &translate.Options{
+		Source: source,
+		Format: "",
+		Model:  "",
+	})
 	if err != nil {
 		return "", fmt.Errorf("Failed to translate text: %v", err)
 	}

@@ -233,7 +233,7 @@ func AuthenticateCookie(context echo.Context, password string, timeout time.Dura
 	return nil
 }
 
-func IsCookieAuthenticated(context echo.Context, passwords []string, hashFunc func(string) string) bool {
+func IsCookieAuthenticated(context echo.Context, login string, hashFunc func(string) string) bool {
 	cookie, err := session.Get(Title(), context)
 	if err != nil {
 		return false
@@ -248,16 +248,7 @@ func IsCookieAuthenticated(context echo.Context, passwords []string, hashFunc fu
 		sessionPassword = hashFunc(sessionPassword.(string))
 	}
 
-	found := false
-	for _, password := range passwords {
-		found = password != "" && password == sessionPassword
-
-		if found {
-			break
-		}
-	}
-
-	return found
+	return login != "" && login == sessionPassword
 }
 
 func NewMenu(page *Webpage, menuItems []ActionItem, selectedTitle string, disableMenues bool) {
