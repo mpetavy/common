@@ -130,8 +130,6 @@ func Run(mandatoryFlags []string) {
 
 	initLog()
 
-	Events.Emit(EventFlagsParsed{})
-
 	err := initConfiguration()
 	if err != nil {
 		Fatal(err)
@@ -582,6 +580,6 @@ func IsRunningInteractive() bool {
 	return service.Interactive()
 }
 
-func Application() *application {
+func App() *application {
 	return app
 }

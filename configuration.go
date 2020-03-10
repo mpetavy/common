@@ -98,6 +98,8 @@ func initConfiguration() error {
 		return err
 	}
 
+	Events.Emit(EventFlagsParsed{})
+
 	if *FlagCfgReset {
 		err = ResetConfiguration()
 		if Error(err) {
