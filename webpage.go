@@ -38,8 +38,8 @@ const (
 
 	CSS_DIALOG_CONTENT  = "css-dialog-content pure-controls"
 	CSS_DEFAULT_CONTENT = "css-default-content pure-controls"
-	CSS_ERROR_BOX       = "css-error-box"
-	CSS_WARNING_BOX     = "css-warning-box"
+	CSS_ERROR_BOX       = "css-error-box blink"
+	CSS_WARNING_BOX     = "css-warning-box blink"
 	CSS_SUCCESS_BOX     = "css-success-box"
 	CSS_VERTICAL_DIV    = "css-vertical-div"
 	CSS_LOGVIEWER       = "css-logviewer"
@@ -109,53 +109,57 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 	p.HtmlContent = p.HtmlScrollContent.CreateElement("div")
 	p.HtmlContent.CreateAttr("class", contentStyle)
 
-	msg := PullFlash(context, FLASH_WARNING)
-	if msg != "" {
+	msgs := PullFlash(context, FLASH_WARNING)
+	if msgs != nil {
 		htmlError := p.HtmlContent.CreateElement("div")
 		htmlError.CreateAttr("class", CSS_WARNING_BOX)
-		htmlError.SetText(msg)
+		htmlError.SetText(strings.Join(msgs, "??br??br"))
 	}
 
-	msg = PullFlash(context, FLASH_SUCCESS)
-	if msg != "" {
+	msgs = PullFlash(context, FLASH_SUCCESS)
+	if msgs != nil {
 		htmlError := p.HtmlContent.CreateElement("div")
 		htmlError.CreateAttr("class", CSS_SUCCESS_BOX)
-		htmlError.SetText(msg)
+		htmlError.SetText(strings.Join(msgs, "??br??br"))
 	}
 
-	msg = PullFlash(context, FLASH_ERROR)
-	if msg != "" {
+	msgs = PullFlash(context, FLASH_ERROR)
+	if msgs != nil {
 		htmlError := p.HtmlContent.CreateElement("div")
 		htmlError.CreateAttr("class", CSS_ERROR_BOX)
-		htmlError.SetText(msg)
+		htmlError.SetText(strings.Join(msgs, "??br??br"))
 	}
 
 	return &p, nil
 }
 
-func PullFlash(context echo.Context, flashName string) string {
+func PullFlash(context echo.Context, flashName string) []string {
 	cookie, _ := session.Get(Title(), context)
 	if cookie != nil {
 		flashes := cookie.Flashes(flashName)
 		if len(flashes) > 0 {
-			flash := flashes[0].(string)
+			flash := strings.Split(flashes[0].(string), "??br")
 
 			err := cookie.Save(context.Request(), context.Response())
 			if Error(err) {
-				return flash
+				return nil
 			}
 
 			return flash
 		}
 	}
 
-	return ""
+	return nil
 }
 
 func PushFlash(context echo.Context, flashName string, flash string) error {
+	list := PullFlash(context, flashName)
+
+	list = append(list, flash)
+
 	cookie, _ := session.Get(Title(), context)
 	if cookie != nil {
-		cookie.AddFlash(flash, flashName)
+		cookie.AddFlash(strings.Join(list, "??br"), flashName)
 	}
 
 	err := cookie.Save(context.Request(), context.Response())
@@ -841,6 +845,7 @@ func (this *Webpage) HTML() (string, error) {
 	html = strings.ReplaceAll(html, "--$", "'")
 	html = strings.ReplaceAll(html, "$--", "'")
 	html = strings.ReplaceAll(html, "=\"\"", "")
+	html = strings.ReplaceAll(html, "??br", "<br/>")
 
 	// preserve empty href attribute"
 
