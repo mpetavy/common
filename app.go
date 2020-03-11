@@ -344,12 +344,7 @@ func (app *application) loop() {
 				}
 			}
 
-			if *FlagCfgReset {
-				err := ResetConfiguration()
-				if Error(err) {
-					return
-				}
-			}
+			initConfiguration()
 
 			Events.Emit(EventAppRestart{})
 
