@@ -281,16 +281,19 @@ func setFlags() error {
 			value = vFile
 			origin = "file"
 		}
-		if bEnv {
-			value = vEnv
-			origin = "env"
-		}
-		if bFlag {
-			value = vFlag
-			origin = "flag"
+
+		if !restart {
+			if bEnv {
+				value = vEnv
+				origin = "env"
+			}
+			if bFlag {
+				value = vFlag
+				origin = "flag"
+			}
 		}
 
-		if value != "" && value != f.Value.String() {
+		if (value != "" || f.DefValue == "") && value != f.Value.String() {
 			Debug("Set flag %s : %s [%s]", f.Name, value, origin)
 
 			Error(flag.Set(f.Name, value))

@@ -151,12 +151,7 @@ func initLanguage() {
 
 		lang := *language
 		if lang == "" {
-			var err error
-
-			lang, err = GetSystemLanguage()
-			if Error(err) {
-				return
-			}
+			lang = DEFAULT_LANGUAGE
 		}
 
 		if lang != "" {
