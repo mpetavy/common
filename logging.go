@@ -38,6 +38,7 @@ var (
 	logger             logWriter
 	defaultLogFilename string
 	mu                 sync.Mutex
+	lastErr            string
 )
 
 func init() {
@@ -314,7 +315,7 @@ func prolog(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_FILE, GetRuntimeInfo(1), t)
+	log(LEVEL_FILE, GetRuntimeInfo(1), t, nil)
 }
 
 // Debug prints out the information
@@ -323,7 +324,7 @@ func Debug(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_DEBUG, GetRuntimeInfo(1), t)
+	log(LEVEL_DEBUG, GetRuntimeInfo(1), t, nil)
 }
 
 // DebugError prints out the error
@@ -331,7 +332,7 @@ func DebugError(err error) bool {
 	if err != nil && !isErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
-		log(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)))
+		log(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
 	}
 
 	return err != nil
@@ -343,7 +344,7 @@ func Info(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_INFO, GetRuntimeInfo(1), t)
+	log(LEVEL_INFO, GetRuntimeInfo(1), t, nil)
 }
 
 // Warn prints out the information
@@ -352,14 +353,14 @@ func Warn(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_WARN, GetRuntimeInfo(1), t)
+	log(LEVEL_WARN, GetRuntimeInfo(1), t, nil)
 }
 
 func WarnError(err error) bool {
 	if err != nil && !isErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
-		log(LEVEL_WARN, ri, fmt.Sprintf("Error: %s", errorString(ri, err)))
+		log(LEVEL_WARN, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
 	}
 
 	return err != nil
@@ -388,7 +389,7 @@ func DebugFunc(arg ...interface{}) {
 		}
 	}
 
-	log(LEVEL_DEBUG, ri, t)
+	log(LEVEL_DEBUG, ri, t, nil)
 }
 
 // Ignore just ignores the error
@@ -407,7 +408,7 @@ func Error(err error) bool {
 	if err != nil && !isErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
-		log(LEVEL_ERROR, ri, errorString(ri, err))
+		log(LEVEL_ERROR, ri, errorString(ri, err), err)
 	}
 
 	return err != nil
@@ -427,15 +428,23 @@ func Fatal(err error) bool {
 	if err != nil && !isErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
-		log(LEVEL_FATAL, ri, errorString(ri, err))
+		log(LEVEL_FATAL, ri, errorString(ri, err), nil)
 	}
 
 	return err != nil
 }
 
-func log(level int, ri RuntimeInfo, msg string) {
+func log(level int, ri RuntimeInfo, msg string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
+
+	if level == LEVEL_ERROR {
+		if err.Error() == lastErr {
+			return
+		}
+
+		lastErr = err.Error()
+	}
 
 	if level == LEVEL_FILE || (FlagLogVerbose != nil && *FlagLogVerbose) || level > LEVEL_DEBUG {
 		le := logEntry{
