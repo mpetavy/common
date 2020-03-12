@@ -129,10 +129,6 @@ func ResetConfiguration() error {
 
 	cfg := NewConfiguration()
 
-	for k, v := range mapFile {
-		cfg.Flags[k] = v
-	}
-
 	ba, err := json.Marshal(cfg)
 	if Error(err) {
 		return err
