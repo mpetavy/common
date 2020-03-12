@@ -98,6 +98,11 @@ func initConfiguration() error {
 		return err
 	}
 
+	// only respect settings from os.Flags and os.Env once, after that only from file
+
+	mapFlag = nil
+	mapEnv = nil
+
 	Events.Emit(EventFlagsParsed{})
 
 	if *FlagCfgReset {
@@ -278,15 +283,13 @@ func setFlags() error {
 			origin = "file"
 		}
 
-		if !restart {
-			if bEnv {
-				value = vEnv
-				origin = "env"
-			}
-			if bFlag {
-				value = vFlag
-				origin = "flag"
-			}
+		if bEnv {
+			value = vEnv
+			origin = "env"
+		}
+		if bFlag {
+			value = vFlag
+			origin = "flag"
 		}
 
 		if (value != "" || f.DefValue == "") && value != f.Value.String() {
