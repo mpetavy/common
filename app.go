@@ -128,14 +128,14 @@ func Run(mandatoryFlags []string) {
 
 	flag.Parse()
 
-	initLog()
-
 	err := initConfiguration()
 	if err != nil {
 		Fatal(err)
 
 		Exit(1)
 	}
+
+	initLog()
 
 	flag.VisitAll(func(fl *flag.Flag) {
 		if fl.Value.String() != "" && fl.Value.String() != fl.DefValue {
@@ -344,7 +344,10 @@ func (app *application) loop() {
 				}
 			}
 
-			initConfiguration()
+			err := initConfiguration()
+			if Error(err) {
+				return
+			}
 
 			Events.Emit(EventAppRestart{})
 

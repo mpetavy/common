@@ -199,9 +199,16 @@ func (this *logFileWriter) Close() {
 }
 
 func newLogFileWriter() (*logFileWriter, error) {
-	filesize, err := FileSize(realLogFilename())
-	if err != nil {
-		return nil, err
+	filesize := int64(0)
+
+	b, _ := FileExists(realLogFilename())
+	if b {
+		var err error
+
+		filesize, err = FileSize(realLogFilename())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	logFile, err := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
