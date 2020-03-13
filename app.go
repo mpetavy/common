@@ -43,9 +43,9 @@ type application struct {
 	//StopFunc
 	StopFunc func() error
 	//TickFunc
-	runFunc func() error
+	RunFunc func() error
 	//TickTime
-	runTime time.Duration
+	RunTime time.Duration
 	//Service
 	Service service.Service
 	//ServiceConfig
@@ -107,8 +107,8 @@ func Init(version string, date string, description string, developer string, hom
 	app.IsService = isService
 	app.StartFunc = startFunc
 	app.StopFunc = stopFunc
-	app.runFunc = runFunc
-	app.runTime = runTime
+	app.RunFunc = runFunc
+	app.RunTime = runTime
 }
 
 func InitTesting(v goTesting) {
@@ -250,20 +250,20 @@ func (app *application) service() error {
 
 	sleep := time.Second
 
-	if app.runTime > 0 {
-		nextTick := time.Now().Truncate(app.runTime).Add(app.runTime)
+	if app.RunTime > 0 {
+		nextTick := time.Now().Truncate(app.RunTime).Add(app.RunTime)
 		sleep = nextTick.Sub(time.Now())
 	}
 
 	ticker = time.NewTicker(sleep)
 
-	if app.runTime == 0 {
+	if app.RunTime == 0 {
 		ticker.Stop()
 	}
 
 	info := func() {
-		if app.runTime > 0 {
-			Debug("next tick: %s\n", time.Now().Add(sleep).Truncate(app.runTime).Format(DateTimeMilliMask))
+		if app.RunTime > 0 {
+			Debug("next tick: %s\n", time.Now().Add(sleep).Truncate(app.RunTime).Format(DateTimeMilliMask))
 			Debug("sleep for %v ...", sleep)
 		}
 	}
@@ -297,10 +297,10 @@ func (app *application) service() error {
 
 			ticker.Stop()
 
-			Error(app.runFunc())
+			Error(app.RunFunc())
 
 			ti := time.Now()
-			ti = ti.Add(app.runTime)
+			ti = ti.Add(app.RunTime)
 			ti = TruncateTime(ti, Second)
 
 			sleep = ti.Sub(time.Now())
@@ -520,9 +520,9 @@ func run() error {
 			return err
 		}
 
-		if app.runFunc != nil {
+		if app.RunFunc != nil {
 			go func() {
-				err = app.runFunc()
+				err = app.RunFunc()
 				appLifecycle.Unset()
 			}()
 		}
