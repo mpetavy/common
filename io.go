@@ -675,3 +675,38 @@ func ReadJsonFile(filename string, v interface{}) error {
 
 	return json.Unmarshal(ba, v)
 }
+
+type ZeroReader struct {
+}
+
+func NewZeroReader() *ZeroReader {
+	return &ZeroReader{}
+}
+
+func (this ZeroReader) Read(p []byte) (n int, err error) {
+	for i := range p {
+		p[i] = 0
+	}
+
+	return len(p), nil
+}
+
+type RandomReader struct {
+	template [256]byte
+}
+
+func NewRandomReader() *RandomReader {
+	r := RandomReader{}
+
+	for i := range r.template {
+		r.template[i] = byte(Rnd(256))
+	}
+
+	return &r
+}
+
+func (this RandomReader) Read(p []byte) (n int, err error) {
+	copy(p, this.template[:])
+
+	return len(p), nil
+}
