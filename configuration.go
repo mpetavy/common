@@ -93,7 +93,7 @@ func initConfiguration() error {
 		*FlagCfgReset = true
 	}
 
-	err = setFlags()
+	err = setFlags(false)
 	if Error(err) {
 		return err
 	}
@@ -132,28 +132,21 @@ func ResetConfiguration() error {
 
 	*FlagCfgReset = false
 
-	cfg := NewConfiguration()
+	buf := &bytes.Buffer{}
 
-	ba, err := json.Marshal(cfg)
-	if Error(err) {
-		return err
-	}
-
-	buf := bytes.NewBuffer(ba)
-
-	if Events.Emit(EventConfigurationReset{buf}) || len(cfg.Flags) > 0 {
-		err = writeFile(buf.Bytes())
+	if Events.Emit(EventConfigurationReset{buf}) {
+		err := writeFile(buf.Bytes())
 		if Error(err) {
 			return err
 		}
 	}
 
-	err = registerFileFlags(buf.Bytes())
+	err := registerFileFlags(buf.Bytes())
 	if Error(err) {
 		return err
 	}
 
-	err = setFlags()
+	err = setFlags(true)
 	if Error(err) {
 		return err
 	}
@@ -195,7 +188,7 @@ func SetConfigurationBuffer(ba []byte) error {
 		return err
 	}
 
-	err = setFlags()
+	err = setFlags(false)
 	if Error(err) {
 		return err
 	}
@@ -261,7 +254,7 @@ func writeFile(ba []byte) error {
 	return nil
 }
 
-func setFlags() error {
+func setFlags(reset bool) error {
 	DebugFunc()
 
 	var err error
@@ -292,7 +285,11 @@ func setFlags() error {
 			origin = "flag"
 		}
 
-		if (value != "" || f.DefValue == "") && value != f.Value.String() {
+		if value == "" && reset {
+			value = f.DefValue
+		}
+
+		if value != "" && value != f.Value.String() {
 			Debug("Set flag %s : %s [%s]", f.Name, value, origin)
 
 			Error(flag.Set(f.Name, value))
@@ -321,7 +318,7 @@ func checkChanged() error {
 			return err
 		}
 
-		err = setFlags()
+		err = setFlags(false)
 		if Error(err) {
 			return err
 		}
