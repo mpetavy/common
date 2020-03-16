@@ -100,9 +100,6 @@ func initConfiguration() error {
 
 	// only respect settings from os.Flags and os.Env once, after that only from file
 
-	mapFlag = nil
-	mapEnv = nil
-
 	Events.Emit(EventFlagsParsed{})
 
 	if *FlagCfgReset {
