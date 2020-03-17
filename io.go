@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -156,6 +157,20 @@ func CreateTempDir() (string, error) {
 	Debug(fmt.Sprintf("CreateTempDir : %s", tempdir))
 
 	return tempdir, err
+}
+
+func FilesEual(file1 string, file2 string) (bool, error) {
+	ba1, err := ioutil.ReadFile(file1)
+	if Error(err) {
+		return false, err
+	}
+
+	ba2, err := ioutil.ReadFile(file1)
+	if Error(err) {
+		return false, err
+	}
+
+	return reflect.DeepEqual(ba1, ba2), nil
 }
 
 func fileExists(filename string) (bool, error) {
