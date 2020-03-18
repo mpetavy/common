@@ -46,6 +46,10 @@ const (
 	CSS_CONTENT         = "css-content"
 	CSS_CHECKLIST       = "css-checklist"
 	CSS_BUTTON_GROUP    = "css-button-group"
+	CSS_BORDER          = "css-border"
+
+	CSS_COLOR_OFF = "#CFCFCF"
+	CSS_COLOR_ON  = "MediumSeaGreen"
 
 	FLASH_WARNING = "warning-flash"
 	FLASH_ERROR   = "error-flash"
