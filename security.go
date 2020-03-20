@@ -222,7 +222,7 @@ func createCertificateTemplate() (*x509.Certificate, error) {
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			CommonName:   hostname,
-			Organization: []string{ProductVersion(true, true, true)}},
+			Organization: []string{TitleVersion(true, true, true)}},
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(time.Duration(10) * 365 * 24 * time.Hour),
