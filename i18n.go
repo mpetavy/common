@@ -302,7 +302,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	rxs := []*regexp.Regexp{regexp.MustCompile("Translate\\(\"(.*?)\""), regexp.MustCompile("TranslateFor\\(.*\"(.*?)\"")}
 	regexSubstitution := regexp.MustCompile("\\%[^v]")
 
-	paths := []string{"*.go"}
+	paths := []string{"*.go", "../common/*.go"}
 
 	for _, path := range paths {
 		err := WalkFilepath(path, true, func(path string) error {
