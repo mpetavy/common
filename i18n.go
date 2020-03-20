@@ -302,41 +302,45 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	rxs := []*regexp.Regexp{regexp.MustCompile("Translate\\(\"(.*?)\""), regexp.MustCompile("TranslateFor\\(.*\"(.*?)\"")}
 	regexSubstitution := regexp.MustCompile("\\%[^v]")
 
-	err := WalkFilepath("*.go", true, func(path string) error {
-		Debug("extract i18n from source file: %s", path)
+	paths := []string{"*.go"}
 
-		ba, err := ioutil.ReadFile(path)
+	for _, path := range paths {
+		err := WalkFilepath(path, true, func(path string) error {
+			Debug("extract i18n from source file: %s", path)
+
+			ba, err := ioutil.ReadFile(path)
+			if Error(err) {
+				return err
+			}
+
+			for _, regexTranslate := range rxs {
+				findings := regexTranslate.FindAll(ba, -1)
+				if findings == nil {
+					return nil
+				}
+
+				for _, f := range findings {
+					finding := string(f)
+
+					finding = finding[strings.Index(finding, "\"")+1 : len(finding)-1]
+
+					if regexSubstitution.Match([]byte(finding)) {
+						return fmt.Errorf("invalid substitution: %s", finding)
+					}
+
+					i18ns = append(i18ns, finding)
+				}
+			}
+
+			return nil
+		})
 		if Error(err) {
 			return err
 		}
-
-		for _, regexTranslate := range rxs {
-			findings := regexTranslate.FindAll(ba, -1)
-			if findings == nil {
-				return nil
-			}
-
-			for _, f := range findings {
-				finding := string(f)
-
-				finding = finding[strings.Index(finding, "\"")+1 : len(finding)-1]
-
-				if regexSubstitution.Match([]byte(finding)) {
-					return fmt.Errorf("invalid substitution: %s", finding)
-				}
-
-				i18ns = append(i18ns, finding)
-			}
-		}
-
-		return nil
-	})
-	if Error(err) {
-		return err
 	}
 
 	for _, obj := range objs {
-		err = scanStruct(&i18ns, obj)
+		err := scanStruct(&i18ns, obj)
 		if Error(err) {
 			return err
 		}
