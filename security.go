@@ -296,7 +296,7 @@ func CreateTlsPackage() (*TlsPackage, error) {
 	return TLSConfigFromPem(certPEM, keyPEM)
 }
 
-func GetTlsPackage() (bool, *TlsPackage, error) {
+func GetTlsPackage() (*TlsPackage, error) {
 	DebugFunc()
 
 	muTLS.Lock()
@@ -308,7 +308,7 @@ func GetTlsPackage() (bool, *TlsPackage, error) {
 		tlsPackage, _ = TLSConfigFromP12File(*FlagTlsP12File)
 
 		if tlsPackage != nil {
-			return false, tlsPackage, nil
+			return tlsPackage, nil
 		}
 	}
 
@@ -323,7 +323,7 @@ func GetTlsPackage() (bool, *TlsPackage, error) {
 				tlsPackage, _ = TlsConfigFromP12Buffer(ba)
 
 				if tlsPackage != nil {
-					return false, tlsPackage, nil
+					return tlsPackage, nil
 				}
 			}
 		}
@@ -331,10 +331,10 @@ func GetTlsPackage() (bool, *TlsPackage, error) {
 
 	tlsPackage, err := CreateTlsPackage()
 	if Error(err) {
-		return false, nil, err
+		return nil, err
 	}
 
-	return true, tlsPackage, nil
+	return tlsPackage, nil
 }
 
 func VerifyP12(p12 []byte, password string) (*x509.Certificate, *rsa.PrivateKey, error) {
