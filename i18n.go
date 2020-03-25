@@ -36,7 +36,7 @@ const (
 func init() {
 	language = flag.String("language", "en", "language for messages")
 
-	Events.NewFuncReceiver(EventFlagsParsed{}, func(ev Event) {
+	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initLanguage()
 	})
 }

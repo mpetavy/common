@@ -118,17 +118,11 @@ func GetHost() (string, string, error) {
 					nslookupHostnameFound = strings.HasPrefix(line, "Name:")
 
 					if nslookupHostnameFound {
-						p := strings.LastIndex(line, " ")
-						if p != -1 {
-							hostname = strings.TrimSpace(line[p+1:])
-						}
+						hostname = strings.TrimSpace(line[5:])
 					}
 				} else {
 					if strings.HasPrefix(line, "Address:") {
-						p := strings.LastIndex(line, " ")
-						if p != -1 {
-							ip = strings.TrimSpace(line[p+1:])
-						}
+						ip = strings.TrimSpace(line[8:])
 					}
 				}
 			}

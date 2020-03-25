@@ -100,7 +100,7 @@ func initConfiguration() error {
 
 	// only respect settings from os.Flags and os.Env once, after that only from file
 
-	Events.Emit(EventFlagsParsed{})
+	Events.Emit(EventFlagsSet{})
 
 	if *FlagCfgReset {
 		err = ResetConfiguration()
@@ -337,7 +337,7 @@ func registerArgsFlags() error {
 }
 
 func registerEnvFlags() error {
-	DebugFunc(*FlagCfgFile)
+	DebugFunc()
 
 	mapEnv = make(map[string]string)
 
