@@ -55,6 +55,9 @@ type application struct {
 type EventFlagsParsed struct {
 }
 
+type EventFlagsSet struct {
+}
+
 const (
 	SERVICE          = "service"
 	SERVICE_USERNAME = "service.username"
@@ -127,6 +130,8 @@ func Run(mandatoryFlags []string) {
 	}
 
 	flag.Parse()
+
+	Events.Emit(EventFlagsParsed{})
 
 	err := initConfiguration()
 	if err != nil {
