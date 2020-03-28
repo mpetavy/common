@@ -94,6 +94,10 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 				req.LicenseUrl = ""
 				req.LicenseText = ""
 
+				if strings.Index(req.Comment, "indirect") != -1 {
+					continue
+				}
+
 				licenseFile := filepath.Join(paths...)
 
 				b, err := FileExists(licenseFile)
@@ -110,72 +114,77 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 					req.LicenseText = string(ba)
 				}
 
-				url := req.Name
-				if strings.HasPrefix(url, "github.com/") {
-					url = url[11:]
-				}
+				if strings.Index(req.LicenseText, "Copyright (c) 2009 The Go Authors. All rights reserved.") != -1 {
+					req.LicenseName = "Google GO License"
+					req.LicenseUrl = "https://golang.org/LICENSE?m=text"
+				} else {
+					url := req.Name
+					if strings.HasPrefix(url, "github.com/") {
+						url = url[11:]
+					}
 
-				splits := strings.Split(url, "/") // remove trailing .../v4
+					splits := strings.Split(url, "/") // remove trailing .../v4
 
-				if len(splits) > 1 {
-					url = splits[0] + "/" + splits[1]
-				}
+					if len(splits) > 1 {
+						url = splits[0] + "/" + splits[1]
+					}
 
-				ba, err := URLGet(fmt.Sprintf("https://%s:%s@api.github.com/repos/%s", username, pat, url))
-				if Error(err) {
-					return nil, err
-				}
-
-				j, err := NewJason(string(ba))
-				if Error(err) {
-					return nil, err
-				}
-
-				e, _ := j.Element("license")
-				if e != nil {
-					url, err = e.String("url")
+					ba, err := URLGet(fmt.Sprintf("https://%s:%s@api.github.com/repos/%s", username, pat, url))
 					if Error(err) {
 						return nil, err
 					}
 
-					if url != "" {
-						req.LicenseUrl = url
+					j, err := NewJason(string(ba))
+					if Error(err) {
+						return nil, err
+					}
 
-						i := strings.Index(url, "//")
-						if i != -1 {
-							url = fmt.Sprintf("%s%s:%s@%s", url[:i+2], username, pat, url[i+2:])
-						}
-
-						ba, err := URLGet(url)
-						if Error(err) {
-							return nil, err
-						}
-
-						j, err := NewJason(string(ba))
-						if Error(err) {
-							return nil, err
-						}
-
-						body, err := j.String("body")
-						if Error(err) {
-							return nil, err
-						}
-
-						req.LicenseText = body
-
-						url, err = j.String("html_url")
+					e, _ := j.Element("license")
+					if e != nil {
+						url, err = e.String("url")
 						if Error(err) {
 							return nil, err
 						}
 
 						if url != "" {
 							req.LicenseUrl = url
-						}
-					}
 
-					name, _ := e.String("name")
-					if name != "" && strings.ToLower(name) != "other" {
-						req.LicenseName = name
+							i := strings.Index(url, "//")
+							if i != -1 {
+								url = fmt.Sprintf("%s%s:%s@%s", url[:i+2], username, pat, url[i+2:])
+							}
+
+							ba, err := URLGet(url)
+							if Error(err) {
+								return nil, err
+							}
+
+							j, err := NewJason(string(ba))
+							if Error(err) {
+								return nil, err
+							}
+
+							body, err := j.String("body")
+							if Error(err) {
+								return nil, err
+							}
+
+							req.LicenseText = body
+
+							url, err = j.String("html_url")
+							if Error(err) {
+								return nil, err
+							}
+
+							if url != "" {
+								req.LicenseUrl = url
+							}
+						}
+
+						name, _ := e.String("name")
+						if name != "" && strings.ToLower(name) != "other" {
+							req.LicenseName = name
+						}
 					}
 				}
 

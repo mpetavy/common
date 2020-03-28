@@ -205,9 +205,9 @@ func Run(mandatoryFlags []string) {
 	}
 
 	err = run()
-	if err != nil {
-		Fatal(err)
-
+	if isErrExit(err) {
+		Exit(0)
+	} else {
 		Exit(1)
 	}
 }
@@ -335,7 +335,7 @@ func (app *application) Start(s service.Service) error {
 	return nil
 }
 
-func (app *application) loop() {
+func (app *application) loop() error {
 	DebugFunc()
 
 	for {
@@ -345,13 +345,13 @@ func (app *application) loop() {
 			if app.StopFunc != nil {
 				err := app.StopFunc()
 				if Error(err) {
-					return
+					return err
 				}
 			}
 
 			err := initConfiguration()
 			if Error(err) {
-				return
+				return err
 			}
 
 			Events.Emit(EventAppRestart{})
@@ -359,13 +359,15 @@ func (app *application) loop() {
 			if app.StartFunc != nil {
 				err := app.StartFunc()
 				if Error(err) {
-					return
+					return err
 				}
 			}
 		} else {
 			break
 		}
 	}
+
+	return nil
 }
 
 func AppLifecycle() *Notice {
@@ -498,21 +500,22 @@ func run() error {
 			// simulated service
 
 			err := app.Start(app.Service)
-
 			Error(err)
 
 			if err == nil {
-				app.loop()
+				err = app.loop()
+				Error(err)
 			}
 
-			if Error(app.Stop(app.Service)) {
-				return err
+			stopErr := app.Stop(app.Service)
+			if Error(stopErr) && err == nil {
+				err = stopErr
 			}
 
-			return nil
+			return err
 		} else {
 			go func() {
-				app.loop()
+				Error(app.loop())
 			}()
 
 			// OS service

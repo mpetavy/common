@@ -32,10 +32,6 @@ func NewDiscoverServer(address string, timeout time.Duration, uid string, info s
 func (server *DiscoverServer) Start() error {
 	DebugFunc(*server)
 
-	if server.quitCh != nil {
-		return fmt.Errorf("DiscoverServer already started")
-	}
-
 	b := make([]byte, maxInfoLength)
 
 	var err error
@@ -99,16 +95,11 @@ func (server *DiscoverServer) Start() error {
 func (server *DiscoverServer) Stop() error {
 	DebugFunc(*server)
 
-	if server != nil {
-		if server.quitCh != nil {
-			close(server.quitCh)
-		}
+	close(server.quitCh)
 
-		if server.listener != nil {
-			Error(server.listener.Close())
-		}
-
-		server = nil
+	err := server.listener.Close()
+	if Error(err) {
+		return err
 	}
 
 	return nil

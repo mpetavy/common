@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -22,6 +23,10 @@ type Configuration struct {
 }
 
 func (this *Configuration) SetFlag(flagName string, flagValue string) error {
+	if IsOneTimeFlag(flagName) {
+		return nil
+	}
+
 	if flag.Lookup(flagName) == nil {
 		return fmt.Errorf("unknown flag: %s", flagName)
 	}
@@ -37,6 +42,22 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 	}
 
 	return this.Flags[flagName], nil
+}
+
+func IsOneTimeFlag(n string) bool {
+	list := []string{
+		"cfg.reset",
+		"test",
+	}
+
+	for _, l := range list {
+		if strings.HasPrefix(n, l) {
+			return true
+		}
+
+	}
+
+	return false
 }
 
 func NewConfiguration() *Configuration {
@@ -257,7 +278,7 @@ func setFlags(reset bool) error {
 	var err error
 
 	flag.VisitAll(func(f *flag.Flag) {
-		if f.Name == "cfg.reset" {
+		if IsOneTimeFlag(f.Name) {
 			return
 		}
 
