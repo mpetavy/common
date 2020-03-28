@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -87,7 +88,7 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 	p.HtmlRoot = p.doc.CreateElement("html")
 
 	lang, err := GetConfiguration().GetFlag("language")
-	if Error(err) {
+	if Error(err) || lang == "" {
 		lang = DEFAULT_LANGUAGE
 	}
 	p.HtmlRoot.CreateAttr("lang", lang)
@@ -111,27 +112,32 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 	p.HtmlScrollContent.CreateAttr("class", CSS_CONTENT)
 
 	p.HtmlContent = p.HtmlScrollContent.CreateElement("div")
-	p.HtmlContent.CreateAttr("class", contentStyle)
 
-	msgs := PullFlash(context, FLASH_WARNING)
-	if msgs != nil {
-		htmlError := p.HtmlContent.CreateElement("div")
-		htmlError.CreateAttr("class", CSS_WARNING_BOX)
-		htmlError.SetText(strings.Join(msgs, "??br??br"))
+	if contentStyle != "" {
+		p.HtmlContent.CreateAttr("class", contentStyle)
 	}
 
-	msgs = PullFlash(context, FLASH_SUCCESS)
-	if msgs != nil {
-		htmlError := p.HtmlContent.CreateElement("div")
-		htmlError.CreateAttr("class", CSS_SUCCESS_BOX)
-		htmlError.SetText(strings.Join(msgs, "??br??br"))
-	}
+	if context != nil {
+		msgs := PullFlash(context, FLASH_WARNING)
+		if msgs != nil {
+			htmlError := p.HtmlContent.CreateElement("div")
+			htmlError.CreateAttr("class", CSS_WARNING_BOX)
+			htmlError.SetText(strings.Join(msgs, "??br??br"))
+		}
 
-	msgs = PullFlash(context, FLASH_ERROR)
-	if msgs != nil {
-		htmlError := p.HtmlContent.CreateElement("div")
-		htmlError.CreateAttr("class", CSS_ERROR_BOX)
-		htmlError.SetText(strings.Join(msgs, "??br??br"))
+		msgs = PullFlash(context, FLASH_SUCCESS)
+		if msgs != nil {
+			htmlError := p.HtmlContent.CreateElement("div")
+			htmlError.CreateAttr("class", CSS_SUCCESS_BOX)
+			htmlError.SetText(strings.Join(msgs, "??br??br"))
+		}
+
+		msgs = PullFlash(context, FLASH_ERROR)
+		if msgs != nil {
+			htmlError := p.HtmlContent.CreateElement("div")
+			htmlError.CreateAttr("class", CSS_ERROR_BOX)
+			htmlError.SetText(strings.Join(msgs, "??br??br"))
+		}
 	}
 
 	return &p, nil
@@ -796,7 +802,7 @@ func NewButton(parent *etree.Element, primary bool, actionItem ActionItem) *etre
 	return button
 }
 
-func NewTable(parent *etree.Element, cells [][]string) {
+func NewTable(parent *etree.Element, cells [][]string) *etree.Element {
 	htmlTable := parent.CreateElement("table")
 	htmlTable.CreateAttr("class", "pure-table pure-table.bordered")
 
@@ -823,6 +829,8 @@ func NewTable(parent *etree.Element, cells [][]string) {
 			htmlCell.SetText(cell)
 		}
 	}
+
+	return htmlTable
 }
 
 func (this *Webpage) HTML() (string, error) {
@@ -850,6 +858,11 @@ func (this *Webpage) HTML() (string, error) {
 	html = strings.ReplaceAll(html, "$--", "'")
 	html = strings.ReplaceAll(html, "=\"\"", "")
 	html = strings.ReplaceAll(html, "??br", "<br/>")
+
+	if this.HtmlContent != nil && this.HtmlContent.SelectAttr("class") == nil {
+		r := regexp.MustCompile(" class\\=\\\".*?\\\"")
+		html = r.ReplaceAllString(html, "")
+	}
 
 	// preserve empty href attribute"
 
