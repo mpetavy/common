@@ -32,6 +32,26 @@ func TestSimple(t *testing.T) {
 	}
 }
 
+func TestBlocking(t *testing.T) {
+	rl := New()
+	pass0 := NewPass()
+	pass1 := NewPass()
+
+	rl.Lock(pass0)
+
+	start := time.Now()
+	d := time.Millisecond * 100
+
+	go func() {
+		time.Sleep(d)
+		rl.Unlock(pass0)
+	}()
+
+	rl.Lock(pass1)
+
+	assert.True(t, time.Now().Sub(start) >= d)
+}
+
 func TestReentrantLock(t *testing.T) {
 	countGoroutines := 10
 	countLoop := 10
