@@ -106,11 +106,11 @@ func TestLock(t *testing.T) {
 		f()
 	}
 
-	for i, e := range list {
-		t.Logf("#%4d %s\n", i, e)
-	}
-
-	t.Logf("%d\n", len(list))
+	//for i, e := range list {
+	//	t.Logf("#%4d %s\n", i, e)
+	//}
+	//
+	//t.Logf("%d\n", len(list))
 
 	//if c != uint64(countGoroutines * countLoop) {
 	if len(list) != countGoroutines*countLoop {

@@ -11,16 +11,13 @@ type pass struct {
 }
 
 type reentrantmutex struct {
-	mu sync.Mutex
-
-	ch      chan interface{}
+	mu      sync.Mutex
 	current *pass
 }
 
 func NewRentrantMutex() reentrantmutex {
 	return reentrantmutex{
 		mu:      sync.Mutex{},
-		ch:      make(chan interface{}),
 		current: nil,
 	}
 }
@@ -38,7 +35,6 @@ func (this *pass) Lock() {
 	if this.remux.current == nil {
 		this.c++
 
-		this.remux.ch = make(chan interface{})
 		this.remux.current = this
 
 		this.remux.mu.Unlock()
@@ -57,14 +53,11 @@ func (this *pass) Lock() {
 	this.remux.mu.Unlock()
 
 	for {
-		<-this.remux.ch
-
 		this.remux.mu.Lock()
 
 		if this.remux.current == nil {
 			this.c++
 
-			this.remux.ch = make(chan interface{})
 			this.remux.current = this
 
 			this.remux.mu.Unlock()
@@ -81,12 +74,6 @@ func (this *reentrantmutex) UnlockNow() {
 	defer this.mu.Unlock()
 
 	this.current = nil
-
-	if this.ch != nil {
-		close(this.ch)
-
-		this.ch = nil
-	}
 }
 
 func (this *pass) Unlock() {
@@ -97,12 +84,6 @@ func (this *pass) Unlock() {
 		case this.remux.current == nil:
 			this.remux.current = nil
 
-			if this.remux.ch != nil {
-				close(this.remux.ch)
-
-				this.remux.ch = nil
-			}
-
 			this.remux.mu.Unlock()
 
 			return
@@ -111,8 +92,6 @@ func (this *pass) Unlock() {
 
 			if this.remux.current.c == 0 {
 				this.remux.current = nil
-
-				close(this.remux.ch)
 			}
 
 			this.remux.mu.Unlock()
