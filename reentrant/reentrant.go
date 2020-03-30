@@ -112,11 +112,7 @@ func (this *pass) Unlock() {
 			if this.remux.current.c == 0 {
 				this.remux.current = nil
 
-				if this.remux.ch != nil {
-					close(this.remux.ch)
-
-					this.remux.ch = nil
-				}
+				close(this.remux.ch)
 			}
 
 			this.remux.mu.Unlock()
