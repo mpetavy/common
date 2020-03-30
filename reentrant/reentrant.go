@@ -6,73 +6,77 @@ import (
 )
 
 type pass struct {
-	c int
+	remux *reentrantmutex
+	c     int
 }
 
-type Lock struct {
+type reentrantmutex struct {
 	mu sync.Mutex
 
 	ch      chan interface{}
 	current *pass
 }
 
-func New() Lock {
-	return Lock{
+func NewRentrantMutex() reentrantmutex {
+	return reentrantmutex{
 		mu:      sync.Mutex{},
 		ch:      make(chan interface{}),
 		current: nil,
 	}
 }
 
-func NewPass() *pass {
-	return &pass{}
+func (this *reentrantmutex) NewPass() *pass {
+	return &pass{
+		remux: this,
+		c:     0,
+	}
 }
 
-func (this *Lock) Lock(p *pass) {
-	this.mu.Lock()
+func (this *pass) Lock() {
+	this.remux.mu.Lock()
 
-	if this.current == nil {
-		p.c++
+	if this.remux.current == nil {
+		this.c++
 
-		this.ch = make(chan interface{})
-		this.current = p
+		this.remux.ch = make(chan interface{})
+		this.remux.current = this
 
-		this.mu.Unlock()
-
-		return
-	}
-
-	if this.current == p {
-		p.c++
-
-		this.mu.Unlock()
+		this.remux.mu.Unlock()
 
 		return
 	}
 
-	this.mu.Unlock()
+	if this.remux.current == this {
+		this.c++
+
+		this.remux.mu.Unlock()
+
+		return
+	}
+
+	this.remux.mu.Unlock()
 
 	for {
-		<-this.ch
+		<-this.remux.ch
 
-		this.mu.Lock()
+		this.remux.mu.Lock()
 
-		if this.current == nil {
-			p.c++
+		if this.remux.current == nil {
+			this.c++
 
-			this.ch = make(chan interface{})
-			this.current = p
+			this.remux.ch = make(chan interface{})
+			this.remux.current = this
 
-			this.mu.Unlock()
+			this.remux.mu.Unlock()
 
 			return
 		} else {
-			this.mu.Unlock()
+			this.remux.mu.Unlock()
 		}
 	}
 }
 
-func (this *Lock) UnlockNow() {
+func (this *reentrantmutex) UnlockNow() {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
@@ -85,37 +89,37 @@ func (this *Lock) UnlockNow() {
 	}
 }
 
-func (this *Lock) Unlock(p *pass) {
+func (this *pass) Unlock() {
 	for {
-		this.mu.Lock()
+		this.remux.mu.Lock()
 
 		switch {
-		case this.current == nil:
-			this.current = nil
+		case this.remux.current == nil:
+			this.remux.current = nil
 
-			if this.ch != nil {
-				close(this.ch)
+			if this.remux.ch != nil {
+				close(this.remux.ch)
 
-				this.ch = nil
+				this.remux.ch = nil
 			}
 
-			this.mu.Unlock()
+			this.remux.mu.Unlock()
 
 			return
-		case this.current == p:
-			this.current.c--
+		case this.remux.current == this:
+			this.remux.current.c--
 
-			if this.current.c == 0 {
-				this.current = nil
+			if this.remux.current.c == 0 {
+				this.remux.current = nil
 
-				if this.ch != nil {
-					close(this.ch)
+				if this.remux.ch != nil {
+					close(this.remux.ch)
 
-					this.ch = nil
+					this.remux.ch = nil
 				}
 			}
 
-			this.mu.Unlock()
+			this.remux.mu.Unlock()
 
 			return
 		default:
@@ -124,7 +128,7 @@ func (this *Lock) Unlock(p *pass) {
 	}
 }
 
-func (this *Lock) HasLock() bool {
+func (this *reentrantmutex) HasLock() bool {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 

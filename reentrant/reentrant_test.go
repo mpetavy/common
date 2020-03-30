@@ -11,48 +11,48 @@ import (
 )
 
 func TestSimple(t *testing.T) {
-	rl := New()
-	pass := NewPass()
+	remutex := NewRentrantMutex()
+	pass := remutex.NewPass()
 
-	rl.Lock(pass)
+	pass.Lock()
 
 	select {
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("test did not finish in time")
 	default:
-		rl.Lock(pass)
-		rl.Lock(pass)
-		rl.Unlock(pass)
+		pass.Lock()
+		pass.Lock()
+		pass.Unlock()
 
 		assert.Equal(t, 2, pass.c)
 
-		rl.UnlockNow()
+		remutex.UnlockNow()
 
 		assert.Equal(t, 2, pass.c)
 	}
 }
 
 func TestBlocking(t *testing.T) {
-	rl := New()
-	pass0 := NewPass()
-	pass1 := NewPass()
+	remutex := NewRentrantMutex()
+	pass0 := remutex.NewPass()
+	pass1 := remutex.NewPass()
 
-	rl.Lock(pass0)
+	pass0.Lock()
 
 	start := time.Now()
 	d := time.Millisecond * 100
 
 	go func() {
 		time.Sleep(d)
-		rl.Unlock(pass0)
+		pass0.Unlock()
 	}()
 
-	rl.Lock(pass1)
+	pass1.Lock()
 
 	assert.True(t, time.Now().Sub(start) >= d)
 }
 
-func TestReentrantLock(t *testing.T) {
+func TestLock(t *testing.T) {
 	countGoroutines := 10
 	countLoop := 10
 
@@ -62,7 +62,7 @@ func TestReentrantLock(t *testing.T) {
 	mu := sync.Mutex{}
 
 	f := func() {
-		rl := New()
+		rl := NewRentrantMutex()
 		wg := sync.WaitGroup{}
 
 		for goroutine := 0; goroutine < countGoroutines; goroutine++ {
@@ -73,15 +73,15 @@ func TestReentrantLock(t *testing.T) {
 					wg.Done()
 				}()
 
-				pass := NewPass()
+				pass := rl.NewPass()
 
 				for i := 0; i < countLoop; i++ {
 					n := fmt.Sprintf("GO routine #%d", goroutine)
 
-					rl.Lock(pass)
+					pass.Lock()
 
 					// just check that we can reentrant ...
-					rl.Lock(pass)
+					pass.Lock()
 
 					atomic.AddUint64(&c, 1)
 
@@ -89,9 +89,9 @@ func TestReentrantLock(t *testing.T) {
 					list = append(list, n)
 					mu.Unlock()
 
-					rl.Unlock(pass)
+					pass.Unlock()
 
-					rl.Unlock(pass)
+					pass.Unlock()
 				}
 			}(goroutine)
 		}
