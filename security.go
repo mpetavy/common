@@ -224,7 +224,7 @@ func createCertificateTemplate() (*x509.Certificate, error) {
 			CommonName:   hostname,
 			Organization: []string{TitleVersion(true, true, true)}},
 		SignatureAlgorithm:    x509.SHA256WithRSA,
-		NotBefore:             time.Now(),
+		NotBefore:             time.Now().Add(time.Duration(24) * time.Hour * -1),
 		NotAfter:              time.Now().Add(time.Duration(10) * 365 * 24 * time.Hour),
 		DNSNames:              []string{hostname, "localhost"},
 		BasicConstraintsValid: true,
