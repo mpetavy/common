@@ -87,8 +87,8 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 
 	p.HtmlRoot = p.doc.CreateElement("html")
 
-	lang, err := GetConfiguration().GetFlag("language")
-	if Error(err) || lang == "" {
+	lang := *FlagLanguage
+	if lang == "" {
 		lang = DEFAULT_LANGUAGE
 	}
 	p.HtmlRoot.CreateAttr("lang", lang)

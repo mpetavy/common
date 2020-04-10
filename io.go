@@ -23,7 +23,7 @@ var (
 	ReadOnlyFileMode = FileMode(true, true, false)
 	DefaultFileMode  = FileMode(true, true, false)
 	DefaultDirMode   = FileMode(true, true, true)
-	countBackups     *int
+	FlagCountBackups *int
 )
 
 type ErrFileNotFound struct {
@@ -78,7 +78,7 @@ func init() {
 		Error(deleteTempDir())
 	})
 
-	countBackups = flag.Int("filebackup", 3, "amount of file backups")
+	FlagCountBackups = flag.Int("filebackup", 3, "amount of file backups")
 }
 
 // AppCleanup cleans up all remaining objects
@@ -295,18 +295,18 @@ func FileStore(filename string, r io.Reader) error {
 
 // FileBackup creats backup of files
 func FileBackup(filename string) error {
-	if *countBackups < 1 {
+	if *FlagCountBackups < 1 {
 		return nil
 	}
 
-	for i := *countBackups - 1; i >= 0; i-- {
+	for i := *FlagCountBackups - 1; i >= 0; i-- {
 		src := filename
 		if i > 0 {
 			src = src + "." + strconv.Itoa(i)
 		}
 
 		dst := ""
-		if *countBackups == 1 {
+		if *FlagCountBackups == 1 {
 			dst = filename + ".bak"
 		} else {
 			dst = filename + "." + strconv.Itoa(i+1)
