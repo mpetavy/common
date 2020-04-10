@@ -71,32 +71,32 @@ type goTesting interface {
 }
 
 var (
-	app                 *application
-	serviceFlag         *string
-	serviceUser         *string
-	servicePassword     *string
-	ServiceStartTimeout *int
-	serviceActions      []string
-	usage               *bool
-	NoBanner            bool
-	ticker              *time.Ticker
-	appLifecycle        = NewNotice()
-	onceBanner          sync.Once
-	onceDone            sync.Once
-	restart             bool
-	restartCh           = make(chan struct{})
-	kbCh                = make(chan struct{})
-	ctrlC               = make(chan os.Signal, 1)
-	gotest              goTesting
+	app                     *application
+	FlagService             *string
+	FlagServiceUser         *string
+	FlagServicePassword     *string
+	FlagServiceStartTimeout *int
+	serviceActions          []string
+	FlagUsage               *bool
+	NoBanner                bool
+	ticker                  *time.Ticker
+	appLifecycle            = NewNotice()
+	onceBanner              sync.Once
+	onceDone                sync.Once
+	restart                 bool
+	restartCh               = make(chan struct{})
+	kbCh                    = make(chan struct{})
+	ctrlC                   = make(chan os.Signal, 1)
+	gotest                  goTesting
 )
 
 func init() {
 	app = &application{}
 
-	serviceFlag = new(string)
+	FlagService = new(string)
 	serviceActions = service.ControlAction[:]
 	serviceActions = append(serviceActions, "simulate")
-	usage = flag.Bool("?", false, "show usage")
+	FlagUsage = flag.Bool("?", false, "show usage")
 }
 
 func Init(version string, date string, description string, developer string, homepage string, license string, isService bool, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
@@ -123,10 +123,10 @@ func Run(mandatoryFlags []string) {
 	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
 	if app.IsService {
-		serviceFlag = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
-		serviceUser = flag.String(SERVICE_USERNAME, "", "Service user")
-		servicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
-		ServiceStartTimeout = flag.Int(SERVICE_TIMEOUT, 500, "Server start timeout")
+		FlagService = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
+		FlagServiceUser = flag.String(SERVICE_USERNAME, "", "Service user")
+		FlagServicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
+		FlagServiceStartTimeout = flag.Int(SERVICE_TIMEOUT, 500, "Server start timeout")
 	}
 
 	flag.Parse()
@@ -153,18 +153,18 @@ func Run(mandatoryFlags []string) {
 		}
 	})
 
-	if !NoBanner || *usage {
+	if !NoBanner || *FlagUsage {
 		showBanner()
 	}
 
-	if *usage {
+	if *FlagUsage {
 		flag.Usage()
 		Exit(0)
 	}
 
 	flagErr := false
 
-	if *serviceFlag == "" || *serviceFlag == "install" {
+	if *FlagService == "" || *FlagService == "install" {
 		for _, f := range mandatoryFlags {
 			fl := flag.Lookup(f)
 
@@ -416,7 +416,7 @@ func run() error {
 			return err
 		}
 
-		if *serviceFlag != "" && *serviceFlag != "simulate" {
+		if *FlagService != "" && *FlagService != "simulate" {
 			args := os.Args[1:]
 
 			for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
@@ -437,22 +437,22 @@ func run() error {
 				app.ServiceConfig.Arguments = args
 			}
 
-			if *serviceUser != "" {
-				app.ServiceConfig.UserName = *serviceUser
+			if *FlagServiceUser != "" {
+				app.ServiceConfig.UserName = *FlagServiceUser
 			}
 
-			if *servicePassword != "" {
+			if *FlagServicePassword != "" {
 				option := service.KeyValue{}
-				option["Password"] = *servicePassword
+				option["Password"] = *FlagServicePassword
 
 				app.ServiceConfig.Option = option
 			}
 
-			if IndexOf(serviceActions, *serviceFlag) == -1 {
-				return fmt.Errorf("invalid service action: %s", *serviceFlag)
+			if IndexOf(serviceActions, *FlagService) == -1 {
+				return fmt.Errorf("invalid service action: %s", *FlagService)
 			}
 
-			if *serviceFlag == "uninstall" {
+			if *FlagService == "uninstall" {
 				status, err := app.Service.Status()
 				if err != nil {
 					return err
@@ -466,12 +466,12 @@ func run() error {
 				}
 			}
 
-			err = service.Control(app.Service, *serviceFlag)
+			err = service.Control(app.Service, *FlagService)
 			if err != nil {
 				return err
 			}
 
-			switch *serviceFlag {
+			switch *FlagService {
 			case "install":
 				Info(fmt.Sprintf("Service %s successfully installed", app.ServiceConfig.Name))
 				return nil
@@ -562,7 +562,7 @@ func AppRestart() {
 }
 
 func IsRunningAsService() bool {
-	b := !IsRunningInteractive() || *serviceFlag == "simulate"
+	b := !IsRunningInteractive() || *FlagService == "simulate"
 
 	DebugFunc("%v", b)
 

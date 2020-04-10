@@ -24,17 +24,19 @@ import (
 )
 
 var (
-	language       *string
+	FlagLanguage   *string
 	systemLanguage string
 	i18nFile       *ini.File
 )
 
 const (
 	DEFAULT_LANGUAGE = "en"
+
+	FlagNameLanguage = "language"
 )
 
 func init() {
-	language = flag.String("language", "en", "language for messages")
+	FlagLanguage = flag.String(FlagNameLanguage, "en", "language for messages")
 
 	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initLanguage()
@@ -149,7 +151,7 @@ func initLanguage() {
 			return
 		}
 
-		lang := *language
+		lang := *FlagLanguage
 		if lang == "" {
 			lang = DEFAULT_LANGUAGE
 		}
@@ -197,7 +199,7 @@ func SetLanguage(lang string) error {
 		return fmt.Errorf("language %s is not available", lang)
 	}
 
-	*language = lang
+	*FlagLanguage = lang
 
 	return nil
 }
@@ -238,7 +240,7 @@ func TranslateFor(language, msg string) string {
 
 // Translate a message to the current set language
 func Translate(msg string, args ...interface{}) string {
-	msg = TranslateFor(*language, msg)
+	msg = TranslateFor(*FlagLanguage, msg)
 
 	return Capitalize(fmt.Sprintf(msg, args...))
 }

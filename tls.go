@@ -19,6 +19,10 @@ var (
 )
 
 const (
+	FlagNameTlsInsecure = "tls.insecure"
+)
+
+const (
 	tlsVersion10 = "TLS 1.0"
 	tlsVersion11 = "TLS 1.1"
 	tlsVersion12 = "TLS 1.2"
@@ -26,7 +30,7 @@ const (
 )
 
 func init() {
-	FlagTlsInsecure = flag.Bool("tls.insecure", false, "Use insecure TLS versions and ciphersuites")
+	FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and ciphersuites")
 
 	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initTls()

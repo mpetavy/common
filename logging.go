@@ -32,23 +32,31 @@ const (
 var (
 	FlagLogVerbose     *bool
 	FlagLogIO          *bool
-	logFilename        *string
-	logFilesize        *int64
-	logJson            *bool
+	FlagLogFileName    *string
+	FlagLogFileSize    *int64
+	FlagLogJson        *bool
 	logger             logWriter
 	defaultLogFilename string
 	mu                 sync.Mutex
 	lastErr            string
 )
 
+const (
+	FlagNameLogFileName = "log.file"
+	FlagNameLogFileSize = "log.filesize"
+	FlagNameLogVerbose  = "log.verbose"
+	FlagNameLogIO       = "log.io"
+	FlagNameLogJson     = "log.json"
+)
+
 func init() {
 	defaultLogFilename = CleanPath(AppFilename(".log"))
 
-	logFilename = flag.String("log.file", "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
-	logFilesize = flag.Int64("log.filesize", 5*1024*1024, "max log file size")
-	FlagLogVerbose = flag.Bool("log.verbose", false, "verbose logging")
-	FlagLogIO = flag.Bool("log.io", false, "trace logging")
-	logJson = flag.Bool("log.json", false, "JSON output")
+	FlagLogFileName = flag.String(FlagNameLogFileName, "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
+	FlagLogFileSize = flag.Int64(FlagNameLogFileSize, 5*1024*1024, "max log file size")
+	FlagLogVerbose = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
+	FlagLogIO = flag.Bool(FlagNameLogIO, false, "trace logging")
+	FlagLogJson = flag.Bool(FlagNameLogJson, false, "JSON output")
 }
 
 type ErrExit struct {
@@ -65,7 +73,7 @@ type logEntry struct {
 }
 
 func (l *logEntry) String() string {
-	if logJson != nil && *logJson {
+	if FlagLogJson != nil && *FlagLogJson {
 		ba, _ := json.Marshal(l)
 		return string(ba)
 
@@ -131,7 +139,7 @@ func (this *logFileWriter) WriteString(txt string) {
 		return
 	}
 
-	if this.filesize >= *logFilesize {
+	if this.filesize >= *FlagLogFileSize {
 		this.filesize = 0
 
 		if this.file != nil {
@@ -157,10 +165,10 @@ func (this *logFileWriter) WriteString(txt string) {
 }
 
 func (this *logFileWriter) Logs(w io.Writer) error {
-	for i := *countBackups; i >= 0; i-- {
+	for i := *FlagCountBackups; i >= 0; i-- {
 		var src string
 
-		if *countBackups == 1 {
+		if *FlagCountBackups == 1 {
 			src = realLogFilename() + ".bak"
 
 			b, _ := fileExists(src)
@@ -478,9 +486,9 @@ func LogsAvailable() bool {
 }
 
 func realLogFilename() string {
-	if *logFilename == "." {
+	if *FlagLogFileName == "." {
 		return defaultLogFilename
 	} else {
-		return *logFilename
+		return *FlagLogFileName
 	}
 }

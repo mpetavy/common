@@ -312,19 +312,14 @@ func GetTlsPackage() (*TlsPackage, error) {
 		}
 	}
 
-	cfg := GetConfiguration()
+	if *FlagTlsP12 != "" {
+		ba, _ := base64.StdEncoding.DecodeString(*FlagTlsP12)
 
-	if cfg != nil {
-		p12, _ := cfg.GetFlag(FlagNameTlsP12)
-		if p12 != "" {
-			ba, _ := base64.StdEncoding.DecodeString(p12)
+		if ba != nil {
+			tlsPackage, _ = TlsConfigFromP12Buffer(ba)
 
-			if ba != nil {
-				tlsPackage, _ = TlsConfigFromP12Buffer(ba)
-
-				if tlsPackage != nil {
-					return tlsPackage, nil
-				}
+			if tlsPackage != nil {
+				return tlsPackage, nil
 			}
 		}
 	}
