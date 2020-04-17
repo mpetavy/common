@@ -57,6 +57,7 @@ const (
 	FLASH_SUCCESS = "success-flash"
 
 	COOKIE_PASSWORD = "password"
+	COOKIE_EXPIRE   = "expire"
 )
 
 type Webpage struct {
@@ -207,7 +208,8 @@ func DisableCookie(context echo.Context) error {
 	cookie := getCookie(context)
 
 	cookie.Options.MaxAge = -1
-	cookie.Values[COOKIE_PASSWORD] = ""
+	delete(cookie.Values, COOKIE_PASSWORD)
+	delete(cookie.Values, COOKIE_EXPIRE)
 
 	err := cookie.Save(context.Request(), context.Response())
 	if Error(err) {
@@ -221,6 +223,7 @@ func RefreshCookie(context echo.Context, timeout time.Duration) error {
 	cookie := getCookie(context)
 
 	cookie.Options.MaxAge = int(timeout.Seconds())
+	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
 
 	err := cookie.Save(context.Request(), context.Response())
 	if Error(err) {
@@ -238,6 +241,7 @@ func AuthenticateCookie(context echo.Context, password string, timeout time.Dura
 	cookie.Options.MaxAge = int(timeout.Seconds())
 
 	cookie.Values[COOKIE_PASSWORD] = password
+	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
 
 	err := cookie.Save(context.Request(), context.Response())
 	if Error(err) {
@@ -250,6 +254,20 @@ func AuthenticateCookie(context echo.Context, password string, timeout time.Dura
 func IsCookieAuthenticated(context echo.Context, login string, hashFunc func(string) string) bool {
 	cookie, err := session.Get(Title(), context)
 	if err != nil {
+		return false
+	}
+
+	expire, ok := cookie.Values[COOKIE_EXPIRE]
+	if !ok {
+		return false
+	}
+
+	expireTime, err := ParseDateTime(DateTimeMask, expire.(string))
+	if Error(err) {
+		return false
+	}
+
+	if time.Now().After(expireTime) {
 		return false
 	}
 
