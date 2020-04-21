@@ -36,8 +36,6 @@ type application struct {
 	License string
 	// Homepage of the application
 	Homepage string
-	//IsService
-	IsService bool
 	//StartFunc
 	StartFunc func() error
 	//StopFunc
@@ -99,7 +97,7 @@ func init() {
 	FlagUsage = flag.Bool("?", false, "show usage")
 }
 
-func Init(version string, date string, description string, developer string, homepage string, license string, isService bool, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+func Init(version string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	app.Name = Title()
 	app.Version = version
 	app.Date = date
@@ -107,7 +105,6 @@ func Init(version string, date string, description string, developer string, hom
 	app.Developer = developer
 	app.License = license
 	app.Homepage = homepage
-	app.IsService = isService
 	app.StartFunc = startFunc
 	app.StopFunc = stopFunc
 	app.RunFunc = runFunc
@@ -122,7 +119,7 @@ func InitTesting(v goTesting) {
 func Run(mandatoryFlags []string) {
 	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
-	if app.IsService {
+	if app.StopFunc != nil {
 		FlagService = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		FlagServiceUser = flag.String(SERVICE_USERNAME, "", "Service user")
 		FlagServicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
@@ -205,7 +202,8 @@ func Run(mandatoryFlags []string) {
 	}
 
 	err = run()
-	if isErrExit(err) {
+
+	if err == nil || isErrExit(err) {
 		Exit(0)
 	} else {
 		Exit(1)
@@ -398,7 +396,7 @@ func (app *application) Stop(s service.Service) error {
 }
 
 func run() error {
-	if app.IsService {
+	if IsRunningAsService() {
 		executable, err := os.Executable()
 		if err != nil {
 			return err
@@ -533,13 +531,13 @@ func run() error {
 				err = app.RunFunc()
 				appLifecycle.Unset()
 			}()
-		}
 
-		select {
-		case <-appLifecycle.Channel():
-		case <-ctrlC:
-			Info("Terminate: CTRL-C pressed")
-			appLifecycle.Unset()
+			select {
+			case <-appLifecycle.Channel():
+			case <-ctrlC:
+				Info("Terminate: CTRL-C pressed")
+				appLifecycle.Unset()
+			}
 		}
 
 		err = app.Stop(app.Service)

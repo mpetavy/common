@@ -423,11 +423,8 @@ func Error(err error) bool {
 }
 
 func isErrExit(err error) bool {
-	if err == nil {
-		return false
-	}
-
 	_, ok := err.(*ErrExit)
+
 	return ok
 }
 
