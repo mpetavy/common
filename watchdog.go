@@ -1,7 +1,6 @@
 package common
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -18,14 +17,6 @@ type ErrWatchdog struct {
 	Msg   string
 }
 
-var (
-	flagTimeout *int
-)
-
-func init() {
-	flagTimeout = flag.Int("watchdog.timeout", 0, "watchdog timeout")
-}
-
 func (e *ErrWatchdog) Error() string {
 	if e.Msg != "" {
 		return e.Msg
@@ -35,10 +26,6 @@ func (e *ErrWatchdog) Error() string {
 }
 
 func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
-	if MillisecondToDuration(*flagTimeout) > timeout {
-		timeout = MillisecondToDuration(*flagTimeout)
-	}
-
 	doneCh := make(chan error)
 
 	start := time.Now()
@@ -82,10 +69,6 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 }
 
 func WatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
-	if MillisecondToDuration(*flagTimeout) > timeout {
-		timeout = MillisecondToDuration(*flagTimeout)
-	}
-
 	doneCh := make(chan error)
 
 	start := time.Now()
