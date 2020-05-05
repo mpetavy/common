@@ -103,13 +103,20 @@ func Capitalize(txt string) string {
 	}
 
 	runes := []rune(txt)
-	firstRune := runes[0]
-	lastRune := runes[len(runes)-1]
 
-	if lastRune == unicode.ToUpper(lastRune) {
+	allUpper := true
+	for _, r := range runes {
+		allUpper = unicode.IsUpper(r)
+
+		if !allUpper {
+			break
+		}
+	}
+
+	if allUpper {
 		return txt
 	} else {
-		return fmt.Sprintf("%s%s", string(unicode.ToUpper(firstRune)), string(runes[1:]))
+		return fmt.Sprintf("%s%s", string(unicode.ToUpper(runes[0])), string(runes[1:]))
 	}
 }
 

@@ -72,7 +72,7 @@ type Webpage struct {
 	HtmlContent       *etree.Element
 }
 
-type FuncFieldIterator func(string, reflect.StructField, reflect.Value) (bool, []string)
+type FuncFieldIterator func(string, reflect.StructField, reflect.Value, *structtag.Tag) (bool, []string)
 
 type ActionItem struct {
 	Caption  string
@@ -543,7 +543,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 		if funcFieldIterator != nil {
 			var fieldVisible bool
 
-			fieldVisible, fieldValues = funcFieldIterator(fieldPath, fieldType, fieldValue)
+			fieldVisible, fieldValues = funcFieldIterator(fieldPath, fieldType, fieldValue, tagHtml)
 
 			if !fieldVisible {
 				continue
@@ -575,6 +575,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 
 		isFieldExpertView := IndexOf(tagHtml.Options, OPTION_EXPERTVIEW) != -1
 		isFieldHidden := (IndexOf(tagHtml.Options, OPTION_HIDDEN) != -1) || (isFieldExpertView && !isExpertViewActive)
+		isFieldReadOnly := (IndexOf(tagHtml.Options, OPTION_READONLY) != -1)
 
 		expertViewFieldExists = expertViewFieldExists || isFieldExpertView
 
@@ -709,7 +710,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 					htmlInput.CreateAttr("max", fmt.Sprintf("%s", option.Value()))
 				}
 
-				if !readOnly {
+				if !readOnly && !isFieldReadOnly {
 					htmlInput.CreateAttr("onchange", fmt.Sprintf("document.getElementById(--$%s.range$--).value = this.value;", fieldPath))
 
 					htmlRange := htmlDiv.CreateElement("input")
