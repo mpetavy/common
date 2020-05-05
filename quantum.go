@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -180,12 +181,28 @@ func (q *Quantum) AddRange(from int, to int) {
 	}
 }
 
+func (q *Quantum) AddQuantum(other *Quantum) {
+	ints := other.ToSlice()
+
+	for _, v := range ints {
+		q.Add(v)
+	}
+}
+
 func (q *Quantum) RemoveRange(from int, to int) {
 	if from > to {
 		from, to = to, from
 	}
 
 	for v := from; v <= to; v++ {
+		q.Remove(v)
+	}
+}
+
+func (q *Quantum) RemoveQuantum(other *Quantum) {
+	ints := other.ToSlice()
+
+	for _, v := range ints {
 		q.Remove(v)
 	}
 }
@@ -201,6 +218,39 @@ func (q *Quantum) String() string {
 	}
 
 	return sb.String()
+}
+
+func ParseQuantum(txt string) (*Quantum, error) {
+	q := NewQuantum()
+
+	items := strings.Split(strings.TrimSpace(txt), ";")
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+
+		limits := strings.Split(item, "-")
+		iLimits := make([]int, len(limits))
+
+		for i := 0; i < len(limits); i++ {
+			var err error
+
+			iLimits[i], err = strconv.Atoi(strings.TrimSpace(limits[i]))
+			if Error(err) {
+				return nil, err
+			}
+		}
+
+		if len(iLimits) == 1 {
+			q.Add(iLimits[0])
+		} else {
+			q.AddRange(iLimits[0], iLimits[1])
+		}
+	}
+
+	return q, nil
+}
+
+func (q *Quantum) RemoveAll() {
+	q.ranges = q.ranges[:0]
 }
 
 func (q *Quantum) Len() int {

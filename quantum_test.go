@@ -61,4 +61,10 @@ func TestQuantum(t *testing.T) {
 
 	q.Remove(1)
 	check(t, q, []int{})
+
+	q, err := ParseQuantum("3;5;5-7;27;123")
+	if err != nil {
+		t.Error(err)
+	}
+	check(t, q, []int{3, 5, 6, 7, 27, 123})
 }

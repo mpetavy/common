@@ -140,14 +140,12 @@ func Run(mandatoryFlags []string) {
 	initLog()
 
 	flag.VisitAll(func(fl *flag.Flag) {
-		if fl.Value.String() != "" && fl.Value.String() != fl.DefValue {
-			v := fmt.Sprintf("%+v", fl.Value)
-			if strings.Index(strings.ToLower(fl.Name), "password") != -1 {
-				v = strings.Repeat("X", len(v))
-			}
-
-			Debug("flag %s = %+v", fl.Name, v)
+		v := fmt.Sprintf("%+v", fl.Value)
+		if strings.Index(strings.ToLower(fl.Name), "password") != -1 {
+			v = strings.Repeat("X", len(v))
 		}
+
+		Debug("flag %s = %+v", fl.Name, v)
 	})
 
 	if !NoBanner || *FlagUsage {
