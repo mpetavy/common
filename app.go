@@ -550,11 +550,7 @@ func run() error {
 func AppRestart() {
 	DebugFunc()
 
-	go func() {
-		time.Sleep(time.Second)
-
-		restartCh <- struct{}{}
-	}()
+	restartCh <- struct{}{}
 }
 
 func IsRunningAsService() bool {

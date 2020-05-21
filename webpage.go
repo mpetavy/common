@@ -58,6 +58,8 @@ const (
 
 	COOKIE_PASSWORD = "password"
 	COOKIE_EXPIRE   = "expire"
+
+	FLASH_TIMEOUT = time.Second
 )
 
 type Webpage struct {
