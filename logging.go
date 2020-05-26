@@ -276,6 +276,16 @@ func writeEntry(entry logEntry) {
 	if entry.levelInt != LEVEL_FILE {
 		s := entry.String()
 
+		if !*FlagLogVerbose {
+			if gotest != nil {
+				gotest.Logf(s)
+			} else {
+				fmt.Println(s)
+			}
+
+			return
+		}
+
 		switch entry.levelInt {
 		case LEVEL_WARN:
 			if gotest != nil {
