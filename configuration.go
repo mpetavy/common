@@ -231,14 +231,14 @@ func readFile() ([]byte, error) {
 		return nil, err
 	}
 
-	fileConfig = ba
+	fileConfig = []byte(RemoveJsonComments(string(ba)))
 
 	fileInfo, err = os.Stat(*FlagCfgFile)
 	if Error(err) {
 		return nil, err
 	}
 
-	return []byte(RemoveJsonComments(string(ba))), nil
+	return fileConfig, nil
 }
 
 func writeFile(ba []byte) error {
