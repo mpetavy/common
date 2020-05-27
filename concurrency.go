@@ -5,15 +5,13 @@ import (
 	"time"
 )
 
-type TimeoutError struct {
-	maxDuration time.Duration
+type TimeoutError error
+
+func NewTimeoutError(maxDuration time.Duration) TimeoutError {
+	return TimeoutError(fmt.Errorf("Timeout error after: %+v", time.Duration(maxDuration)))
 }
 
-func (e TimeoutError) Error() string {
-	return fmt.Sprintf("Timeout after: %+v", time.Duration(e.maxDuration))
-}
-
-func NewTimeout(maxDuration time.Duration, checkDuration time.Duration, fn func() (bool, error)) error {
+func NewTimeoutOperation(maxDuration time.Duration, checkDuration time.Duration, fn func() (bool, error)) error {
 	start := time.Now()
 	loop := true
 
@@ -24,9 +22,7 @@ func NewTimeout(maxDuration time.Duration, checkDuration time.Duration, fn func(
 		<-ti.C
 
 		if time.Since(start) > maxDuration {
-			return &TimeoutError{
-				maxDuration: maxDuration,
-			}
+			return NewTimeoutError(maxDuration)
 		}
 
 		var err error
