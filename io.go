@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -159,20 +158,6 @@ func CreateTempDir() (string, error) {
 	return tempdir, err
 }
 
-func FilesEual(file1 string, file2 string) (bool, error) {
-	ba1, err := ioutil.ReadFile(file1)
-	if Error(err) {
-		return false, err
-	}
-
-	ba2, err := ioutil.ReadFile(file1)
-	if Error(err) {
-		return false, err
-	}
-
-	return reflect.DeepEqual(ba1, ba2), nil
-}
-
 func fileExists(filename string) (bool, error) {
 	var b bool
 
@@ -293,7 +278,7 @@ func FileStore(filename string, r io.Reader) error {
 	return nil
 }
 
-// FileBackup creats backup of files
+// FileBackup creates backup of files
 func FileBackup(filename string) error {
 	if *FlagCountBackups < 1 {
 		return nil
@@ -498,7 +483,7 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 	var written int64
 	var err error
 
-	go func(written *int64, err error) {
+	go func() {
 
 		if bufferSize <= 0 {
 			bufferSize = 32 * 1024
@@ -512,9 +497,9 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 		}()
 
 		if *FlagLogIO {
-			*written, err = io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf)
+			written, err = io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf)
 		} else {
-			*written, err = io.CopyBuffer(writer, reader, buf)
+			written, err = io.CopyBuffer(writer, reader, buf)
 		}
 
 		if err != nil {
@@ -528,12 +513,11 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 				DebugError(err)
 			}
 		}
-	}(&written, err)
+	}()
 
-	select {
-	case <-ctx.Done():
-		Debug("%s copyWithContext: stop", name)
-	}
+	<-ctx.Done()
+
+	Debug("%s copyWithContext: stop", name)
 
 	return written, err
 }
@@ -623,7 +607,7 @@ func (this *lineBuffer) Write(p []byte) (int, error) {
 		}
 
 		if b == '\n' {
-			line := string(this.buf.Bytes())
+			line := this.buf.String()
 			if this.f != nil {
 				line = this.f(line)
 			}
