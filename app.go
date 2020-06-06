@@ -74,9 +74,9 @@ var (
 	FlagServiceUser         *string
 	FlagServicePassword     *string
 	FlagServiceStartTimeout *int
-	serviceActions          []string
 	FlagUsage               *bool
-	NoBanner                bool
+	FlagNoBanner            *bool
+	serviceActions          []string
 	ticker                  *time.Ticker
 	appLifecycle            = NewNotice()
 	onceBanner              sync.Once
@@ -92,9 +92,10 @@ func init() {
 	app = &application{}
 
 	FlagService = new(string)
+	FlagUsage = flag.Bool("?", false, "show usage")
+	FlagNoBanner = flag.Bool("nb", false, "no copyright banner")
 	serviceActions = service.ControlAction[:]
 	serviceActions = append(serviceActions, "simulate")
-	FlagUsage = flag.Bool("?", false, "show usage")
 }
 
 func Init(version string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
@@ -123,7 +124,6 @@ func Run(mandatoryFlags []string) {
 		FlagService = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		FlagServiceUser = flag.String(SERVICE_USERNAME, "", "Service user")
 		FlagServicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
-		FlagServiceStartTimeout = flag.Int(SERVICE_TIMEOUT, 500, "Server start timeout")
 	}
 
 	flag.Parse()
@@ -148,7 +148,7 @@ func Run(mandatoryFlags []string) {
 		Debug("flag %s = %+v", fl.Name, v)
 	})
 
-	if !NoBanner || *FlagUsage {
+	if !*FlagNoBanner || *FlagUsage {
 		showBanner()
 	}
 
