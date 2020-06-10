@@ -151,7 +151,7 @@ func initTls() {
 			priorityInfo = TlsCipherSuiteToInfo(cipherSuites[i])
 		}
 
-		Debug("Cipher #%2d: %s %s", i, FillString(priorityInfo, 70, false, " "), FillString(topInfo, 70, false, " "))
+		Debug("Cipher #%02d: %s %s", i, FillString(priorityInfo, 70, false, " "), FillString(topInfo, 70, false, " "))
 	}
 }
 
