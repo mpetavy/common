@@ -34,14 +34,14 @@ func (server *DiscoverServer) Start() error {
 
 	b := make([]byte, maxInfoLength)
 
+	server.quitCh = make(chan struct{})
+
 	var err error
 
 	server.listener, err = net.ListenPacket("udp4", server.address)
 	if Error(err) {
 		return err
 	}
-
-	server.quitCh = make(chan struct{})
 
 	go func() {
 	loop:
@@ -95,11 +95,15 @@ func (server *DiscoverServer) Start() error {
 func (server *DiscoverServer) Stop() error {
 	DebugFunc(*server)
 
-	close(server.quitCh)
+	if server.quitCh != nil {
+		close(server.quitCh)
+	}
 
-	err := server.listener.Close()
-	if Error(err) {
-		return err
+	if server.listener != nil {
+		err := server.listener.Close()
+		if Error(err) {
+			return err
+		}
 	}
 
 	return nil
