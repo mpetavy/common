@@ -25,8 +25,6 @@ const (
 	LEVEL_WARN
 	// LEVEL_ERROR level
 	LEVEL_ERROR
-	// LEVEL_FATAL level
-	LEVEL_FATAL
 )
 
 var (
@@ -243,8 +241,6 @@ func levelToString(level int) string {
 		return "WARN"
 	case LEVEL_ERROR:
 		return "ERROR"
-	case LEVEL_FATAL:
-		return "FATAL"
 	default:
 		return "INFO"
 	}
@@ -294,12 +290,6 @@ func writeEntry(entry logEntry) {
 				color.Warn.Println(s)
 			}
 		case LEVEL_ERROR:
-			if gotest != nil {
-				gotest.Fatalf(s)
-			} else {
-				color.Error.Println(s)
-			}
-		case LEVEL_FATAL:
 			if gotest != nil {
 				gotest.Fatalf(s)
 			} else {
@@ -436,17 +426,6 @@ func isErrExit(err error) bool {
 	_, ok := err.(*ErrExit)
 
 	return ok
-}
-
-// Fatal prints out the error
-func Fatal(err error) bool {
-	if err != nil && !isErrExit(err) {
-		ri := GetRuntimeInfo(1)
-
-		log(LEVEL_FATAL, ri, errorString(ri, err), nil)
-	}
-
-	return err != nil
 }
 
 func log(level int, ri RuntimeInfo, msg string, err error) {
