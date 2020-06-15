@@ -71,10 +71,10 @@ type goTesting interface {
 }
 
 var (
-	app                     *application
-	FlagService             *string
-	FlagServiceUser         *string
-	FlagServicePassword     *string
+	app                       *application
+	FlagService               *string
+	FlagServiceUser           *string
+	FlagServicePassword      *string
 	FlagServiceStartTimeout *int
 	FlagUsage               *bool
 	FlagNoBanner            *bool
@@ -83,6 +83,12 @@ var (
 	appLifecycle            = NewNotice()
 	onceBanner              sync.Once
 	onceDone                sync.Once
+	onceRunningAsService    sync.Once
+	onceRunningAsExecutable sync.Once
+	onceRunningInteractive  sync.Once
+	runningAsService        bool
+	runningAsExecutable     bool
+	runningInteractive      bool
 	restart                 bool
 	restartCh               = make(chan struct{})
 	kbCh                    = make(chan struct{})
@@ -101,7 +107,7 @@ func init() {
 	serviceActions = append(serviceActions, "simulate")
 }
 
-func Init(isService bool,version string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+func Init(isService bool, version string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	app.IsService = isService
 	app.Name = Title()
 	app.Version = version
@@ -333,6 +339,12 @@ func (app *application) Start(s service.Service) error {
 		}
 	}
 
+	if !IsRunningInteractive() {
+		go func() {
+			Error(app.loop())
+		}()
+	}
+
 	return nil
 }
 
@@ -399,59 +411,55 @@ func (app *application) Stop(s service.Service) error {
 }
 
 func run() error {
-	if *FlagService != "" && *FlagService != "simulate" {
-		if IndexOf(serviceActions, *FlagService) == -1 {
-			return fmt.Errorf("invalid service action: %s", *FlagService)
-		}
+	executable, err := os.Executable()
+	if Error(err) {
+		return err
+	}
 
-		executable, err := os.Executable()
-		if Error(err) {
-			return err
-		}
+	app.ServiceConfig = &service.Config{
+		Name:             Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
+		DisplayName:      Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
+		Description:      Capitalize(app.Description),
+		WorkingDirectory: filepath.Dir(executable),
+	}
 
-		app.ServiceConfig = &service.Config{
-			Name:             Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-			DisplayName:      Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-			Description:      Capitalize(app.Description),
-			WorkingDirectory: filepath.Dir(executable),
-		}
+	app.Service, err = service.New(app, app.ServiceConfig)
+	if Error(err) {
+		return err
+	}
 
-		app.Service, err = service.New(app, app.ServiceConfig)
-		if Error(err) {
-			return err
-		}
+	args := os.Args[1:]
 
-		args := os.Args[1:]
+	for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
+		for i := range args {
+			if args[i] == "-"+item {
+				args = append(args[:i], args[i+2:]...)
+				break
+			}
 
-		for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
-			for i := range args {
-				if args[i] == "-"+item {
-					args = append(args[:i], args[i+2:]...)
-					break
-				}
-
-				if strings.HasPrefix(args[i], "-"+item) {
-					args = append(args[:i], args[i+1:]...)
-					break
-				}
+			if strings.HasPrefix(args[i], "-"+item) {
+				args = append(args[:i], args[i+1:]...)
+				break
 			}
 		}
+	}
 
-		if len(args) > 0 {
-			app.ServiceConfig.Arguments = args
-		}
+	if len(args) > 0 {
+		app.ServiceConfig.Arguments = args
+	}
 
-		if *FlagServiceUser != "" {
-			app.ServiceConfig.UserName = *FlagServiceUser
-		}
+	if *FlagServiceUser != "" {
+		app.ServiceConfig.UserName = *FlagServiceUser
+	}
 
-		if *FlagServicePassword != "" {
-			option := service.KeyValue{}
-			option["Password"] = *FlagServicePassword
+	if *FlagServicePassword != "" {
+		option := service.KeyValue{}
+		option["Password"] = *FlagServicePassword
 
-			app.ServiceConfig.Option = option
-		}
+		app.ServiceConfig.Option = option
+	}
 
+	if *FlagService != "" && *FlagService != "simulate" {
 		if *FlagService == "uninstall" {
 			status, err := app.Service.Status()
 			if Error(err) {
@@ -487,6 +495,8 @@ func run() error {
 		case "restart":
 			Info(fmt.Sprintf("Service %s successfully restarted", app.ServiceConfig.Name))
 			return nil
+		default:
+			return fmt.Errorf("invalid service action: %s", *FlagService)
 		}
 
 		return nil
@@ -513,10 +523,6 @@ func run() error {
 
 			return err
 		} else {
-			go func() {
-				Error(app.loop())
-			}()
-
 			// OS service
 
 			return app.Service.Run()
@@ -557,32 +563,38 @@ func AppRestart() {
 }
 
 func IsRunningAsService() bool {
-	b := !IsRunningInteractive() || *FlagService == "simulate"
+	onceRunningAsService.Do(func() {
+		runningAsService = !IsRunningInteractive() || *FlagService == "simulate"
 
-	DebugFunc("%v", b)
+		DebugFunc("%v", runningAsService)
+	})
 
-	return b
+	return runningAsService
 }
 
 func IsRunningAsExecutable() bool {
-	path, err := os.Executable()
-	if err != nil {
-		path = os.Args[0]
-	}
+	onceRunningAsExecutable.Do(func() {
+		path, err := os.Executable()
+		if err != nil {
+			path = os.Args[0]
+		}
 
-	b := !strings.HasPrefix(path, os.TempDir())
+		runningAsExecutable = !strings.HasPrefix(path, os.TempDir())
 
-	DebugFunc("%v", b)
+		DebugFunc("%v", runningAsExecutable)
+	})
 
-	return b
+	return runningAsExecutable
 }
 
 func IsRunningInteractive() bool {
-	b := service.Interactive()
+	onceRunningInteractive.Do(func() {
+		runningInteractive = service.Interactive()
 
-	DebugFunc("%v", b)
+		DebugFunc("%v", runningInteractive)
+	})
 
-	return b
+	return runningInteractive
 }
 
 func App() *application {
