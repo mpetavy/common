@@ -22,6 +22,8 @@ const (
 
 //Info information of the application
 type application struct {
+	// IsService
+	IsService bool
 	// Name of the application
 	Name string
 	// Version of the application
@@ -94,11 +96,13 @@ func init() {
 	FlagService = new(string)
 	FlagUsage = flag.Bool("?", false, "show usage")
 	FlagNoBanner = flag.Bool("nb", false, "no copyright banner")
+
 	serviceActions = service.ControlAction[:]
 	serviceActions = append(serviceActions, "simulate")
 }
 
-func Init(version string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+func Init(isService bool,version string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+	app.IsService = isService
 	app.Name = Title()
 	app.Version = version
 	app.Date = date
@@ -120,7 +124,7 @@ func InitTesting(v goTesting) {
 func Run(mandatoryFlags []string) {
 	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
-	if app.StopFunc != nil {
+	if app.IsService {
 		FlagService = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		FlagServiceUser = flag.String(SERVICE_USERNAME, "", "Service user")
 		FlagServicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
@@ -574,7 +578,11 @@ func IsRunningAsExecutable() bool {
 }
 
 func IsRunningInteractive() bool {
-	return service.Interactive()
+	b := service.Interactive()
+
+	DebugFunc("%v", b)
+
+	return b
 }
 
 func App() *application {
