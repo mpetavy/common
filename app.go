@@ -132,9 +132,7 @@ func Run(mandatoryFlags []string) {
 	Events.Emit(EventFlagsParsed{})
 
 	err := initConfiguration()
-	if err != nil {
-		Fatal(err)
-
+	if Error(err) {
 		Exit(1)
 	}
 
@@ -205,6 +203,8 @@ func Run(mandatoryFlags []string) {
 	if err == nil || isErrExit(err) {
 		Exit(0)
 	} else {
+		Error(err)
+
 		Exit(1)
 	}
 }
@@ -395,9 +395,13 @@ func (app *application) Stop(s service.Service) error {
 }
 
 func run() error {
-	if IsRunningAsService() {
+	if *FlagService != "" && *FlagService != "simulate" {
+		if IndexOf(serviceActions, *FlagService) == -1 {
+			return fmt.Errorf("invalid service action: %s", *FlagService)
+		}
+
 		executable, err := os.Executable()
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 
@@ -409,85 +413,79 @@ func run() error {
 		}
 
 		app.Service, err = service.New(app, app.ServiceConfig)
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 
-		if *FlagService != "" && *FlagService != "simulate" {
-			args := os.Args[1:]
+		args := os.Args[1:]
 
-			for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
-				for i := range args {
-					if args[i] == "-"+item {
-						args = append(args[:i], args[i+2:]...)
-						break
-					}
-
-					if strings.HasPrefix(args[i], "-"+item) {
-						args = append(args[:i], args[i+1:]...)
-						break
-					}
-				}
-			}
-
-			if len(args) > 0 {
-				app.ServiceConfig.Arguments = args
-			}
-
-			if *FlagServiceUser != "" {
-				app.ServiceConfig.UserName = *FlagServiceUser
-			}
-
-			if *FlagServicePassword != "" {
-				option := service.KeyValue{}
-				option["Password"] = *FlagServicePassword
-
-				app.ServiceConfig.Option = option
-			}
-
-			if IndexOf(serviceActions, *FlagService) == -1 {
-				return fmt.Errorf("invalid service action: %s", *FlagService)
-			}
-
-			if *FlagService == "uninstall" {
-				status, err := app.Service.Status()
-				if err != nil {
-					return err
+		for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
+			for i := range args {
+				if args[i] == "-"+item {
+					args = append(args[:i], args[i+2:]...)
+					break
 				}
 
-				if status == service.StatusRunning {
-					err = service.Control(app.Service, "stop")
-					if err != nil {
-						return err
-					}
+				if strings.HasPrefix(args[i], "-"+item) {
+					args = append(args[:i], args[i+1:]...)
+					break
 				}
 			}
+		}
 
-			err = service.Control(app.Service, *FlagService)
-			if err != nil {
+		if len(args) > 0 {
+			app.ServiceConfig.Arguments = args
+		}
+
+		if *FlagServiceUser != "" {
+			app.ServiceConfig.UserName = *FlagServiceUser
+		}
+
+		if *FlagServicePassword != "" {
+			option := service.KeyValue{}
+			option["Password"] = *FlagServicePassword
+
+			app.ServiceConfig.Option = option
+		}
+
+		if *FlagService == "uninstall" {
+			status, err := app.Service.Status()
+			if Error(err) {
 				return err
 			}
 
-			switch *FlagService {
-			case "install":
-				Info(fmt.Sprintf("Service %s successfully installed", app.ServiceConfig.Name))
-				return nil
-			case "uninstall":
-				Info(fmt.Sprintf("Service %s successfully uninstalled", app.ServiceConfig.Name))
-				return nil
-			case "start":
-				Info(fmt.Sprintf("Service %s successfully started", app.ServiceConfig.Name))
-				return nil
-			case "stop":
-				Info(fmt.Sprintf("Service %s successfully stopped", app.ServiceConfig.Name))
-				return nil
-			case "restart":
-				Info(fmt.Sprintf("Service %s successfully restarted", app.ServiceConfig.Name))
-				return nil
+			if status == service.StatusRunning {
+				err = service.Control(app.Service, "stop")
+				if Error(err) {
+					return err
+				}
 			}
+		}
 
+		err = service.Control(app.Service, *FlagService)
+		if Error(err) {
+			return err
+		}
+
+		switch *FlagService {
+		case "install":
+			Info(fmt.Sprintf("Service %s successfully installed", app.ServiceConfig.Name))
+			return nil
+		case "uninstall":
+			Info(fmt.Sprintf("Service %s successfully uninstalled", app.ServiceConfig.Name))
+			return nil
+		case "start":
+			Info(fmt.Sprintf("Service %s successfully started", app.ServiceConfig.Name))
+			return nil
+		case "stop":
+			Info(fmt.Sprintf("Service %s successfully stopped", app.ServiceConfig.Name))
+			return nil
+		case "restart":
+			Info(fmt.Sprintf("Service %s successfully restarted", app.ServiceConfig.Name))
 			return nil
 		}
+
+		return nil
 	}
 
 	// run as service
