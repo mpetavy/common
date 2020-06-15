@@ -71,10 +71,10 @@ type goTesting interface {
 }
 
 var (
-	app                       *application
-	FlagService               *string
-	FlagServiceUser           *string
-	FlagServicePassword      *string
+	app                     *application
+	FlagService             *string
+	FlagServiceUser         *string
+	FlagServicePassword     *string
 	FlagServiceStartTimeout *int
 	FlagUsage               *bool
 	FlagNoBanner            *bool
@@ -100,6 +100,9 @@ func init() {
 	app = &application{}
 
 	FlagService = new(string)
+	FlagServiceUser = new(string)
+	FlagServicePassword = new(string)
+	FlagServiceStartTimeout = new(int)
 	FlagUsage = flag.Bool("?", false, "show usage")
 	FlagNoBanner = flag.Bool("nb", false, "no copyright banner")
 
