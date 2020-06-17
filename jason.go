@@ -1,6 +1,8 @@
 package common
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -253,5 +255,17 @@ func RemoveJsonComments(s string) string {
 
 	s = regexp.MustCompile("(?m)(^ *\t*)\\/\\/.*").ReplaceAllString(s, "")
 
-	return s
+	r := bytes.Buffer{}
+
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	scanner.Split(ScanLinesWithLF)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if len(strings.TrimSpace(line)) != 0 {
+			r.Write([]byte(line))
+		}
+	}
+
+	return r.String()
 }
