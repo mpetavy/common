@@ -328,19 +328,23 @@ func prolog(t string, arg ...interface{}) {
 
 // Debug prints out the information
 func Debug(t string, arg ...interface{}) {
-	if len(arg) > 0 {
-		t = fmt.Sprintf(t, arg...)
-	}
+	if *FlagLogVerbose {
+		if len(arg) > 0 {
+			t = fmt.Sprintf(t, arg...)
+		}
 
-	log(LEVEL_DEBUG, GetRuntimeInfo(1), t, nil)
+		log(LEVEL_DEBUG, GetRuntimeInfo(1), t, nil)
+	}
 }
 
 // DebugError prints out the error
 func DebugError(err error) bool {
-	if err != nil && !isErrExit(err) {
-		ri := GetRuntimeInfo(1)
+	if *FlagLogVerbose {
+		if err != nil && !isErrExit(err) {
+			ri := GetRuntimeInfo(1)
 
-		log(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
+			log(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
+		}
 	}
 
 	return err != nil
