@@ -35,35 +35,3 @@ func NewTimeoutOperation(maxDuration time.Duration, checkDuration time.Duration,
 
 	return nil
 }
-
-type limitedGo struct {
-	ch chan bool
-}
-
-func NewLimitedGo(amount int) limitedGo {
-	return limitedGo{ch: make(chan bool, amount)}
-}
-
-func (this *limitedGo) Go(fn func()) {
-	//this.ch <- true
-	//defer func() {
-	//	<-this.ch
-	//}()
-
-	Warn("no GO routine!!")
-
-	fn()
-}
-
-func (this *limitedGo) Wait() {
-	close(this.ch)
-
-	for {
-		_, ok := <-this.ch
-
-		if !ok {
-			break
-		}
-
-	}
-}
