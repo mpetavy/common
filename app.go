@@ -42,7 +42,7 @@ type application struct {
 	StartFunc func() error
 	//StopFunc
 	StopFunc func() error
-	//TickFunc
+	//RunFunc
 	RunFunc func() error
 	//TickTime
 	RunTime time.Duration
@@ -131,8 +131,6 @@ func InitTesting(v goTesting) {
 
 // Run struct for copyright information
 func Run(mandatoryFlags []string) {
-	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-
 	if app.IsService {
 		FlagService = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		FlagServiceUser = flag.String(SERVICE_USERNAME, "", "Service user")
@@ -153,7 +151,7 @@ func Run(mandatoryFlags []string) {
 
 	flag.VisitAll(func(fl *flag.Flag) {
 		v := fmt.Sprintf("%+v", fl.Value)
-		if strings.Index(strings.ToLower(fl.Name), "password") != -1 {
+		if strings.Contains(strings.ToLower(fl.Name), "password") {
 			v = strings.Repeat("X", len(v))
 		}
 
@@ -195,20 +193,6 @@ func Run(mandatoryFlags []string) {
 
 	if flagErr {
 		Exit(1)
-	}
-
-	if IsRunningInteractive() {
-		go func() {
-			r := bufio.NewReader(os.Stdin)
-
-			var s string
-
-			for len(s) == 0 {
-				s, _ = r.ReadString('\n')
-			}
-
-			kbCh <- struct{}{}
-		}()
 	}
 
 	err = run()
@@ -256,34 +240,44 @@ func showBanner() {
 	})
 }
 
-func (app *application) service() error {
+func (app *application) applicationRun() error {
 	if IsRunningAsService() {
 		Info("Service()")
 	} else {
 		DebugFunc()
 	}
 
-	sleep := time.Second
+	tickerInitialSleep := time.Second
 
 	if app.RunTime > 0 {
 		nextTick := time.Now().Truncate(app.RunTime).Add(app.RunTime)
-		sleep = nextTick.Sub(time.Now())
+		tickerInitialSleep = nextTick.Sub(time.Now())
 	}
 
-	ticker = time.NewTicker(sleep)
+	ticker = time.NewTicker(tickerInitialSleep)
 
 	if app.RunTime == 0 {
 		ticker.Stop()
 	}
 
-	info := func() {
+	tickerInfo := func() {
 		if app.RunTime > 0 {
-			Debug("next tick: %s\n", time.Now().Add(sleep).Truncate(app.RunTime).Format(DateTimeMilliMask))
-			Debug("sleep for %v ...", sleep)
+			Debug("next tick: %s\n", time.Now().Add(tickerInitialSleep).Truncate(app.RunTime).Format(DateTimeMilliMask))
+			Debug("sleep for %v ...", tickerInitialSleep)
 		}
 	}
 
-	info()
+	tickerInfo()
+
+	errCh := make(chan error)
+
+	if app.RunFunc != nil && app.RunTime == 0 {
+		go func() {
+			err := app.RunFunc()
+
+			errCh <- err
+		}()
+	}
 
 	restart = false
 
@@ -294,6 +288,8 @@ func (app *application) service() error {
 		//	fmt.Printf("Restart on time %d\n", runtime.NumGoroutine())
 		//	restart = true
 		//	return nil
+		case err := <-errCh:
+			return err
 		case <-appLifecycle.Channel():
 			Info("Stop on request")
 			return nil
@@ -318,10 +314,10 @@ func (app *application) service() error {
 			ti = ti.Add(app.RunTime)
 			ti = TruncateTime(ti, Second)
 
-			sleep = ti.Sub(time.Now())
-			ticker = time.NewTicker(sleep)
+			tickerInitialSleep = ti.Sub(time.Now())
+			ticker = time.NewTicker(tickerInitialSleep)
 
-			info()
+			tickerInfo()
 		}
 	}
 }
@@ -344,42 +340,44 @@ func (app *application) Start(s service.Service) error {
 
 	if !IsRunningInteractive() {
 		go func() {
-			Error(app.loop())
+			Error(app.applicationLoop())
 		}()
+	} else {
+		return app.applicationLoop()
 	}
 
 	return nil
 }
 
-func (app *application) loop() error {
+func (app *application) applicationLoop() error {
 	DebugFunc()
 
 	for {
-		Error(app.service())
+		Error(app.applicationRun())
 
-		if restart {
-			if app.StopFunc != nil {
-				err := app.StopFunc()
-				if Error(err) {
-					return err
-				}
-			}
+		if !restart {
+			break
+		}
 
-			err := initConfiguration()
+		if app.StopFunc != nil {
+			err := app.StopFunc()
 			if Error(err) {
 				return err
 			}
+		}
 
-			Events.Emit(EventAppRestart{})
+		err := initConfiguration()
+		if Error(err) {
+			return err
+		}
 
-			if app.StartFunc != nil {
-				err := app.StartFunc()
-				if Error(err) {
-					return err
-				}
+		Events.Emit(EventAppRestart{})
+
+		if app.StartFunc != nil {
+			err := app.StartFunc()
+			if Error(err) {
+				return err
 			}
-		} else {
-			break
 		}
 	}
 
@@ -501,62 +499,37 @@ func run() error {
 		default:
 			return fmt.Errorf("invalid service action: %s", *FlagService)
 		}
-
-		return nil
 	}
 
-	// run as service
-
-	if IsRunningAsService() {
-		if IsRunningInteractive() {
-			// simulated service
-
-			err := app.Start(app.Service)
-			Error(err)
-
-			if err == nil {
-				err = app.loop()
-				Error(err)
-			}
-
-			stopErr := app.Stop(app.Service)
-			if Error(stopErr) && err == nil {
-				err = stopErr
-			}
-
-			return err
-		} else {
-			// OS service
-
-			return app.Service.Run()
-		}
-	} else {
-		err := app.Start(app.Service)
-		if Error(err) {
-			return err
-		}
-
-		if app.RunFunc != nil {
-			go func() {
-				err = app.RunFunc()
-				appLifecycle.Unset()
-			}()
-
-			select {
-			case <-appLifecycle.Channel():
-			case <-ctrlC:
-				Info("Terminate: CTRL-C pressed")
-				appLifecycle.Unset()
-			}
-		}
-
-		err = app.Stop(app.Service)
-		if Error(err) {
-			return err
-		}
-
-		return nil
+	if !IsRunningInteractive() {
+		return app.Service.Run()
 	}
+
+	// simulated service
+
+	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		r := bufio.NewReader(os.Stdin)
+
+		var s string
+
+		for len(s) == 0 {
+			s, _ = r.ReadString('\n')
+		}
+
+		kbCh <- struct{}{}
+	}()
+
+	err = app.Start(app.Service)
+	Error(err)
+
+	stopErr := app.Stop(app.Service)
+	if Error(stopErr) && err == nil {
+		err = stopErr
+	}
+
+	return err
 }
 
 func AppRestart() {
