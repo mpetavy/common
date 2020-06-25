@@ -350,6 +350,10 @@ func (app *application) Start(s service.Service) error {
 }
 
 func (app *application) applicationLoop() error {
+	if !IsRunningAsService() && app.RunFunc == nil {
+		return nil
+	}
+
 	DebugFunc()
 
 	for {
