@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"golang.org/x/crypto/sha3"
@@ -14,22 +13,16 @@ type TCPServer struct {
 	useTls       bool
 	useTlsVerify bool
 	address      string
-	ctx          context.Context
-	cancel       context.CancelFunc
 	Hash         hash.Hash
 	Conn         net.Conn
 	listener     net.Listener
 }
 
 func NewTCPServer(useTls bool, useTlsVerify bool, address string) *TCPServer {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	return &TCPServer{
 		useTls:       useTls,
 		useTlsVerify: useTlsVerify,
 		address:      address,
-		ctx:          ctx,
-		cancel:       cancel,
 		Hash:         sha3.New512(),
 	}
 }
@@ -108,20 +101,14 @@ type TCPClient struct {
 	useTls       bool
 	useTlsVerify bool
 	address      string
-	ctx          context.Context
-	cancel       context.CancelFunc
 	Conn         net.Conn
 }
 
 func NewTCPClient(useTls bool, useTlsVerify bool, address string) *TCPClient {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	return &TCPClient{
 		useTls:       useTls,
 		useTlsVerify: useTlsVerify,
 		address:      address,
-		ctx:          ctx,
-		cancel:       cancel,
 	}
 }
 
