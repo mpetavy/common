@@ -19,6 +19,7 @@ type EventAppRestart struct {
 }
 
 type Configuration struct {
+	Title string            `json:"title"`
 	Flags map[string]string `json:"flags"`
 }
 
@@ -62,6 +63,8 @@ func IsOneTimeFlag(n string) bool {
 
 func NewConfiguration() *Configuration {
 	cfg := Configuration{}
+
+	cfg.Title = Title()
 	cfg.Flags = make(map[string]string)
 
 	return &cfg
