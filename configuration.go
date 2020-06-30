@@ -19,8 +19,8 @@ type EventAppRestart struct {
 }
 
 type Configuration struct {
-	Title string            `json:"title"`
-	Flags map[string]string `json:"flags"`
+	Application string            `json:"application"`
+	Flags       map[string]string `json:"flags"`
 }
 
 func (this *Configuration) SetFlag(flagName string, flagValue string) error {
@@ -64,7 +64,7 @@ func IsOneTimeFlag(n string) bool {
 func NewConfiguration() *Configuration {
 	cfg := Configuration{}
 
-	cfg.Title = Title()
+	cfg.Application = TitleVersion(true,true,true)
 	cfg.Flags = make(map[string]string)
 
 	return &cfg
@@ -184,22 +184,32 @@ func GetConfiguration() *Configuration {
 		return nil
 	}
 
-	cfg := Configuration{}
+	cfg := NewConfiguration()
 
-	err := json.Unmarshal(ba, &cfg)
+	err := json.Unmarshal(ba, cfg)
 	if Error(err) {
 		return nil
 	}
 
-	return &cfg
+	return cfg
 }
 
 func GetConfigurationBuffer() []byte {
 	return fileConfig
 }
 
-func SetConfigurationBuffer(ba []byte) error {
-	err := writeFile(ba)
+func SetConfiguration(cfg interface{}) error {
+	ba, err := json.MarshalIndent(cfg, "", "  ")
+	if Error(err) {
+		return err
+	}
+
+	s := string(ba)
+	s = strings.Replace(s,"\"application\": \"\",",fmt.Sprintf("\"application\": \"%s\",",TitleVersion(true,true,true)),1)
+
+	ba = []byte(s)
+
+	err = writeFile(ba)
 	if Error(err) {
 		return err
 	}
@@ -216,6 +226,25 @@ func SetConfigurationBuffer(ba []byte) error {
 
 	return nil
 }
+
+//func SetConfigurationBuffer(ba []byte) error {
+//	err := writeFile(ba)
+//	if Error(err) {
+//		return err
+//	}
+//
+//	err = registerFileFlags(ba)
+//	if Error(err) {
+//		return err
+//	}
+//
+//	err = setFlags(false)
+//	if Error(err) {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 func readFile() ([]byte, error) {
 	DebugFunc(*FlagCfgFile)
