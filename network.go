@@ -73,7 +73,7 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 func GetHost() (string, string, error) {
 	var ip, hostname string
 
-	addrs, err := GetActiveAddrs(true)
+	addrs, err := GetHostAddrs(true)
 	for _, addr := range addrs {
 		addrIp, _, err := net.ParseCIDR(addr.String())
 		if Error(err) {
@@ -165,7 +165,7 @@ func GetHost() (string, string, error) {
 	return ip, hostname, nil
 }
 
-func GetActiveAddrs(inclLocalhost bool) ([]net.Addr, error) {
+func GetHostAddrs(inclLocalhost bool) ([]net.Addr, error) {
 	var list []net.Addr
 
 	intfs, err := net.Interfaces()
@@ -198,6 +198,32 @@ func GetActiveAddrs(inclLocalhost bool) ([]net.Addr, error) {
 	})
 
 	return list, nil
+}
+
+func GetHostInterface(ip string) (*net.Interface, net.Addr, error) {
+	intfs, err := net.Interfaces()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, intf := range intfs {
+		if intf.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := intf.Addrs()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		for _, addr := range addrs {
+			if strings.Contains(addr.String(), ip) {
+				return &intf, addr, nil
+			}
+		}
+	}
+
+	return nil, nil, nil
 }
 
 func IsPortAvailable(network string, port int) (bool, error) {
