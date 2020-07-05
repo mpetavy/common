@@ -264,7 +264,7 @@ func CreateTlsPackage() (*TlsPackage, error) {
 		return nil, err
 	}
 
-	addrs, err := GetActiveAddrs(true)
+	addrs, err := GetHostAddrs(true)
 	if Error(err) {
 		return nil, err
 	}
