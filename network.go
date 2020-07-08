@@ -156,11 +156,18 @@ func GetHost() (string, string, error) {
 		}
 	}
 
-	DebugFunc("IP: %s, FQDN: %s", ip, hostname)
+	if ip == "" {
+		addrs, err := net.LookupHost(hostname)
+		if err == nil {
+			ip = addrs[0]
+		}
+	}
 
 	if ip == "" {
 		return "", "", fmt.Errorf("cannot find main ip for %s", hostname)
 	}
+
+	DebugFunc("IP: %s, FQDN: %s", ip, hostname)
 
 	return ip, hostname, nil
 }
