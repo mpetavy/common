@@ -19,8 +19,9 @@ type EventAppRestart struct {
 }
 
 type Configuration struct {
-	Application string            `json:"application"`
-	Flags       map[string]string `json:"flags"`
+	ApplicationTitle   string            `json:"applicationTitle"`
+	ApplicationVersion string            `json:"applicationVersion"`
+	Flags              map[string]string `json:"flags"`
 }
 
 func (this *Configuration) SetFlag(flagName string, flagValue string) error {
@@ -64,7 +65,8 @@ func IsOneTimeFlag(n string) bool {
 func NewConfiguration() *Configuration {
 	cfg := Configuration{}
 
-	cfg.Application = TitleVersion(true,true,true)
+	cfg.ApplicationTitle = Title()
+	cfg.ApplicationVersion = Version(true, true, true)
 	cfg.Flags = make(map[string]string)
 
 	return &cfg
@@ -205,7 +207,7 @@ func SetConfiguration(cfg interface{}) error {
 	}
 
 	s := string(ba)
-	s = strings.Replace(s,"\"application\": \"\",",fmt.Sprintf("\"application\": \"%s\",",TitleVersion(true,true,true)),1)
+	s = strings.Replace(s, "\"application\": \"\",", fmt.Sprintf("\"application\": \"%s\",", TitleVersion(true, true, true)), 1)
 
 	ba = []byte(s)
 
@@ -226,25 +228,6 @@ func SetConfiguration(cfg interface{}) error {
 
 	return nil
 }
-
-//func SetConfigurationBuffer(ba []byte) error {
-//	err := writeFile(ba)
-//	if Error(err) {
-//		return err
-//	}
-//
-//	err = registerFileFlags(ba)
-//	if Error(err) {
-//		return err
-//	}
-//
-//	err = setFlags(false)
-//	if Error(err) {
-//		return err
-//	}
-//
-//	return nil
-//}
 
 func readFile() ([]byte, error) {
 	DebugFunc(*FlagCfgFile)
@@ -279,6 +262,32 @@ func writeFile(ba []byte) error {
 	buf := bytes.Buffer{}
 
 	err := json.Indent(&buf, ba, "", "    ")
+	if Error(err) {
+		return err
+	}
+
+	m := make(map[string]interface{})
+
+	err = json.Unmarshal(buf.Bytes(), &m)
+	if Error(err) {
+		return err
+	}
+
+	if v, ok := m["applicationTitle"]; !ok || v == "" {
+		m["applicationTitle"] = Title()
+	}
+
+	if v, ok := m["applicationVersion"]; !ok || v == "" {
+		m["applicationVersion"] = Version(true, true, true)
+	}
+
+	ba, err = json.MarshalIndent(m, "", "    ")
+	if Error(err) {
+		return err
+	}
+
+	buf.Reset()
+	_, err = buf.Write(ba)
 	if Error(err) {
 		return err
 	}
