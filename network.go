@@ -3,6 +3,7 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
@@ -73,7 +74,7 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 func GetHost() (string, string, error) {
 	var ip, hostname string
 
-	addrs, err := GetHostAddrs(true)
+	addrs, err := GetHostAddrs(true,nil)
 	for _, addr := range addrs {
 		addrIp, _, err := net.ParseCIDR(addr.String())
 		if Error(err) {
@@ -123,9 +124,13 @@ func GetHost() (string, string, error) {
 				} else {
 					if strings.HasPrefix(line, "Address:") {
 						ip = strings.TrimSpace(line[8:])
+
+						break
 					}
 				}
 			}
+
+			Debug("nslookup result: hostname: %s ip: %s",hostname,ip)
 		}
 	}
 
@@ -153,6 +158,8 @@ func GetHost() (string, string, error) {
 			if len(ss) > 0 {
 				ip = strings.TrimSpace(ss[len(ss)-1])
 			}
+
+			Debug("host result: ip: %s",ip)
 		}
 	}
 
@@ -172,7 +179,7 @@ func GetHost() (string, string, error) {
 	return ip, hostname, nil
 }
 
-func GetHostAddrs(inclLocalhost bool) ([]net.Addr, error) {
+func GetHostAddrs(inclLocalhost bool,remote net.IP) ([]net.Addr, error) {
 	var list []net.Addr
 
 	intfs, err := net.Interfaces()
@@ -194,6 +201,35 @@ func GetHostAddrs(inclLocalhost bool) ([]net.Addr, error) {
 			ip, ok := addr.(*net.IPNet)
 			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && IsLocalhost(ip.String())) {
 				continue
+			}
+
+			if remote != nil && ip.IP.To4() != nil{
+				if len(ip.IP) != len(remote) {
+					continue
+				}
+
+				localIP := ip.IP.To4()
+				remoteIP := remote.To4()
+
+				subnet, err := hex.DecodeString(ip.IP.DefaultMask().String())
+				if Error(err) {
+					continue
+				}
+
+				found := false
+				for i := 0;i < len(subnet);i++ {
+					found = localIP[i] & subnet[i] == remoteIP[i] & subnet[i]
+
+					if !found {
+						break
+					}
+				}
+
+				if !found{
+					continue
+				}
+
+				DebugFunc("Local IP for Remote IP %v: %v",remoteIP.String(),localIP.String())
 			}
 
 			list = append(list, addr)

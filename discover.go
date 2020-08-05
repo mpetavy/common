@@ -70,6 +70,34 @@ func (server *DiscoverServer) Start() error {
 					}
 				}
 
+				host,_,err := net.SplitHostPort(peer.String())
+				if Error(err) {
+					break
+				}
+
+				remote := net.ParseIP(host)
+				if remote == nil {
+					Error(fmt.Errorf("cannot parse ip: %s",host))
+
+					break
+				}
+
+				addrs,err := GetHostAddrs(true,remote)
+				if Error(err) {
+					break
+				}
+
+				info := server.info
+
+				if len(addrs) > 0 {
+					host,_,err := net.ParseCIDR(addrs[0].String())
+					if Error(err) {
+						break
+					}
+
+					info = strings.Replace(info,"<host>",host.String(),1)
+				}
+
 				receivedUID := string(b[:n])
 
 				Debug("received UDP broadcast from %+v: %s\n", peer, receivedUID)
@@ -80,9 +108,9 @@ func (server *DiscoverServer) Start() error {
 					break
 				}
 
-				Debug("answer positive discover with info %s to %+v", server.info, peer)
+				Debug("answer positive discover with info %s to %+v", info, peer)
 
-				if _, err := server.listener.WriteTo([]byte(server.info), peer); err != nil {
+				if _, err := server.listener.WriteTo([]byte(info), peer); err != nil {
 					Error(err)
 				}
 			}
@@ -119,7 +147,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 
 	discoveredIps := make(map[string]string)
 
-	addrs, err := GetHostAddrs(true)
+	addrs, err := GetHostAddrs(true,nil)
 	if Error(err) {
 		return nil, err
 	}
