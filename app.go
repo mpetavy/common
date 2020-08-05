@@ -1,7 +1,6 @@
 package common
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"github.com/kardianos/service"
@@ -91,7 +90,6 @@ var (
 	runningInteractive      bool
 	restart                 bool
 	restartCh               = make(chan struct{})
-	kbCh                    = make(chan struct{})
 	ctrlC                   = make(chan os.Signal, 1)
 	gotest                  goTesting
 )
@@ -296,9 +294,6 @@ func (app *application) applicationRun() error {
 		case <-restartCh:
 			Info("Restart on request")
 			restart = true
-			return nil
-		case <-kbCh:
-			Info("Terminate: keyboard ENTER key pressed")
 			return nil
 		case <-ctrlC:
 			Info("Terminate: CTRL-C pressed")
@@ -511,19 +506,9 @@ func run() error {
 
 	// simulated service
 
-	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		r := bufio.NewReader(os.Stdin)
-
-		var s string
-
-		for len(s) == 0 {
-			s, _ = r.ReadString('\n')
-		}
-
-		kbCh <- struct{}{}
-	}()
+	if IsRunningInteractive() {
+		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
+	}
 
 	err = app.Start(app.Service)
 	Error(err)
