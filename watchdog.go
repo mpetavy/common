@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -51,6 +52,7 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 				exitcode = -1
 			}
 		}
+
 		exitstate := ""
 		switch exitcode {
 		case 0:
@@ -58,7 +60,15 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 		default:
 			exitstate = "failed"
 		}
-		Debug("Watchdog: process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start))
+
+		output := "<na>"
+		bu,ok := cmd.Stdout.(*bytes.Buffer)
+		if ok {
+			output = "\n" + string(bu.Bytes())
+		}
+
+		Debug("Watchdog: process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s output: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start),output)
+
 		return err
 	}
 }
