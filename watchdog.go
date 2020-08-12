@@ -11,14 +11,12 @@ import (
 
 // https://medium.com/@vCabbage/go-timeout-commands-with-os-exec-commandcontext-ba0c861ed738
 
-type ErrWatchdog error
-
-func NewErrWatchdogByMsg(msg string) ErrWatchdog {
-	return ErrWatchdog(fmt.Errorf(msg))
+type ErrWatchdog struct {
+	msg string
 }
 
-func NewErrWatchdog(start time.Time, cmd *exec.Cmd) ErrWatchdog {
-	return ErrWatchdog(fmt.Errorf("watchdog killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start)))
+func (e *ErrWatchdog) Error() string {
+	return e.msg
 }
 
 func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
@@ -42,7 +40,7 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 		Debug("Watchdog: process killed! pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
 		Error(cmd.Process.Kill())
 
-		return NewErrWatchdog(start, cmd)
+		return &ErrWatchdog{msg: fmt.Sprint("watchdog killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start))}
 	case err = <-doneCh:
 		exitcode := 0
 		if err != nil {
@@ -88,7 +86,7 @@ func WatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
 	case <-time.After(timeout):
 		Debug("Watchdog: function killed! time: %v", time.Since(start))
 
-		return NewErrWatchdogByMsg(msg)
+		return &ErrWatchdog{msg: msg}
 	case err = <-doneCh:
 		exitstate := ""
 		if err != nil {
