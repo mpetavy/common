@@ -76,7 +76,7 @@ func GetHost() (string, string, error) {
 
 	addrs, err := GetHostAddrs(true,nil)
 	for _, addr := range addrs {
-		addrIp, _, err := net.ParseCIDR(addr.String())
+		addrIp, _, err := net.ParseCIDR(addr.Addr.String())
 		if Error(err) {
 			continue
 		}
@@ -179,8 +179,13 @@ func GetHost() (string, string, error) {
 	return ip, hostname, nil
 }
 
-func GetHostAddrs(inclLocalhost bool,remote net.IP) ([]net.Addr, error) {
-	var list []net.Addr
+type hostAddress struct {
+	Mac string
+	Addr net.Addr
+}
+
+func GetHostAddrs(inclLocalhost bool,remote net.IP) ([]hostAddress, error) {
+	var list []hostAddress
 
 	intfs, err := net.Interfaces()
 	if err != nil {
@@ -191,6 +196,8 @@ func GetHostAddrs(inclLocalhost bool,remote net.IP) ([]net.Addr, error) {
 		if intf.Flags&net.FlagUp == 0 {
 			continue
 		}
+
+		mac := intf.HardwareAddr.String()
 
 		addrs, err := intf.Addrs()
 		if err != nil {
@@ -232,12 +239,15 @@ func GetHostAddrs(inclLocalhost bool,remote net.IP) ([]net.Addr, error) {
 				DebugFunc("Local IP for Remote IP %v: %v",remoteIP.String(),localIP.String())
 			}
 
-			list = append(list, addr)
+			list = append(list, hostAddress{
+				Mac:  mac,
+				Addr: addr,
+			})
 		}
 	}
 
 	sort.SliceStable(list, func(i, j int) bool {
-		return strings.ToUpper(list[i].String()) < strings.ToUpper(list[j].String())
+		return strings.ToUpper(list[i].Addr.String()) < strings.ToUpper(list[j].Addr.String())
 	})
 
 	return list, nil

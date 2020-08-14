@@ -271,7 +271,7 @@ func CreateTlsPackage() (*TlsPackage, error) {
 
 	parsedIps := make([]net.IP, 0)
 	for _, addr := range addrs {
-		ip, _, err := net.ParseCIDR(addr.String())
+		ip, _, err := net.ParseCIDR(addr.Addr.String())
 		if Error(err) {
 			return nil, err
 		}

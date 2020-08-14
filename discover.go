@@ -90,7 +90,7 @@ func (server *DiscoverServer) Start() error {
 				info := server.info
 
 				if len(addrs) > 0 {
-					host,_,err := net.ParseCIDR(addrs[0].String())
+					host,_,err := net.ParseCIDR(addrs[0].Addr.String())
 					if Error(err) {
 						break
 					}
@@ -164,7 +164,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 	}()
 
 	for _, addr := range addrs {
-		ip, ipNet, err := net.ParseCIDR(addr.String())
+		ip, ipNet, err := net.ParseCIDR(addr.Addr.String())
 		if Error(err) {
 			return nil, err
 		}
