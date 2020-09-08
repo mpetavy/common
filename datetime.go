@@ -179,6 +179,6 @@ func MillisecondToDuration(msec int) time.Duration {
 	return time.Millisecond * time.Duration(msec)
 }
 
-func DurationToMsec(d time.Duration) int {
+func DurationToMillisecond(d time.Duration) int {
 	return int(d.Milliseconds())
 }
