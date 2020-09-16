@@ -81,7 +81,6 @@ var (
 	ticker                  *time.Ticker
 	appLifecycle            = NewNotice()
 	onceBanner              sync.Once
-	onceDone                sync.Once
 	onceRunningAsService    sync.Once
 	onceRunningAsExecutable sync.Once
 	onceRunningInteractive  sync.Once
@@ -215,6 +214,8 @@ func Run(mandatoryFlags []string) {
 
 					break
 				}
+
+				continue
 			}
 
 			err = checkUnknownFlag(f)
