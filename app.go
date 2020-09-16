@@ -127,6 +127,26 @@ func InitTesting(v goTesting) {
 	gotest = v
 }
 
+func checkUnknownFlag(flagName string) error {
+	fl := flag.Lookup(flagName)
+
+	if fl == nil {
+		return fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
+	}
+
+	return nil
+}
+
+func checkMandatoryFlag(flagName string) error {
+	fl := flag.Lookup(flagName)
+
+	if fl == nil || len(fl.Value.String()) == 0 {
+		return fmt.Errorf("mandatory flag needed: \"-%s\" - %s", fl.Name, fl.Usage)
+	}
+
+	return nil
+}
+
 // Run struct for copyright information
 func Run(mandatoryFlags []string) {
 	if app.IsService {
@@ -165,31 +185,51 @@ func Run(mandatoryFlags []string) {
 		Exit(0)
 	}
 
-	flagErr := false
-
 	if *FlagService == "" || *FlagService == "install" {
 		for _, f := range mandatoryFlags {
-			fl := flag.Lookup(f)
+			if strings.Contains(f, "|") {
+				optionals := strings.Split(f, "|")
+				only1 := false
 
-			if fl == nil {
-				showBanner()
-				Error(fmt.Errorf("unknown mandatory flag: %s", f))
+				for _, o := range optionals {
+					err = checkUnknownFlag(o)
+					if err != nil {
+						continue
+					}
 
-				flagErr = true
+					err = checkMandatoryFlag(o)
+					if err != nil {
+						continue
+					}
 
-				continue
+					only1 = true
+					break
+				}
+
+				if !only1 {
+					for i := 0; i < len(optionals); i++ {
+						optionals[i] = fmt.Sprintf("\"%s\"", optionals[i])
+					}
+
+					Error(fmt.Errorf("mandatory flag needed: %s", strings.Join(optionals, " or ")))
+
+					break
+				}
 			}
 
-			if len(fl.Value.String()) == 0 {
-				showBanner()
-				Error(fmt.Errorf("mandatory flag needed: \"-%s\" - %s", fl.Name, fl.Usage))
+			err = checkUnknownFlag(f)
+			if Error(err) {
+				break
+			}
 
-				flagErr = true
+			err = checkMandatoryFlag(f)
+			if Error(err) {
+				break
 			}
 		}
 	}
 
-	if flagErr {
+	if err != nil {
 		Exit(1)
 	}
 
