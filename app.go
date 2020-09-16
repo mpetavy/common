@@ -215,6 +215,8 @@ func Run(mandatoryFlags []string) {
 
 					break
 				}
+
+				continue
 			}
 
 			err = checkUnknownFlag(f)
