@@ -74,7 +74,7 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 func GetHost() (string, string, error) {
 	var ip, hostname string
 
-	addrs, err := GetHostAddrs(true,nil)
+	addrs, err := GetHostAddrs(true, nil)
 	for _, addr := range addrs {
 		addrIp, _, err := net.ParseCIDR(addr.Addr.String())
 		if Error(err) {
@@ -130,7 +130,7 @@ func GetHost() (string, string, error) {
 				}
 			}
 
-			Debug("nslookup result: hostname: %s ip: %s",hostname,ip)
+			Debug("nslookup result: hostname: %s ip: %s", hostname, ip)
 		}
 	}
 
@@ -159,7 +159,7 @@ func GetHost() (string, string, error) {
 				ip = strings.TrimSpace(ss[len(ss)-1])
 			}
 
-			Debug("host result: ip: %s",ip)
+			Debug("host result: ip: %s", ip)
 		}
 	}
 
@@ -180,11 +180,11 @@ func GetHost() (string, string, error) {
 }
 
 type hostAddress struct {
-	Mac string
+	Mac  string
 	Addr net.Addr
 }
 
-func GetHostAddrs(inclLocalhost bool,remote net.IP) ([]hostAddress, error) {
+func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 	var list []hostAddress
 
 	intfs, err := net.Interfaces()
@@ -206,11 +206,11 @@ func GetHostAddrs(inclLocalhost bool,remote net.IP) ([]hostAddress, error) {
 
 		for _, addr := range addrs {
 			ip, ok := addr.(*net.IPNet)
-			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && IsLocalhost(ip.String())) {
+			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && IsLocalhost(ip.IP.String())) {
 				continue
 			}
 
-			if remote != nil && ip.IP.To4() != nil{
+			if remote != nil && ip.IP.To4() != nil {
 				if len(ip.IP) != len(remote) {
 					continue
 				}
@@ -224,19 +224,19 @@ func GetHostAddrs(inclLocalhost bool,remote net.IP) ([]hostAddress, error) {
 				}
 
 				found := false
-				for i := 0;i < len(subnet);i++ {
-					found = localIP[i] & subnet[i] == remoteIP[i] & subnet[i]
+				for i := 0; i < len(subnet); i++ {
+					found = localIP[i]&subnet[i] == remoteIP[i]&subnet[i]
 
 					if !found {
 						break
 					}
 				}
 
-				if !found{
+				if !found {
 					continue
 				}
 
-				DebugFunc("Local IP for Remote IP %v: %v",remoteIP.String(),localIP.String())
+				DebugFunc("Local IP for Remote IP %v: %v", remoteIP.String(), localIP.String())
 			}
 
 			list = append(list, hostAddress{
