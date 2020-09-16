@@ -11,7 +11,9 @@ import (
 
 var (
 	onceShutdownHooks sync.Once
+	onceTitle         sync.Once
 	shutdownHooks     []func()
+	title             string
 )
 
 const (
@@ -77,15 +79,13 @@ func (c *ChannelError) Exists() bool {
 
 // Exit exist app and run all registered shutdown hooks
 func Done() {
-	onceDone.Do(func() {
-		onceShutdownHooks.Do(func() {
-			for _, f := range shutdownHooks {
-				f()
-			}
-		})
-
-		closeLogFile()
+	onceShutdownHooks.Do(func() {
+		for _, f := range shutdownHooks {
+			f()
+		}
 	})
+
+	closeLogFile()
 }
 
 func AddShutdownHook(f func()) {
@@ -106,20 +106,22 @@ func AppFilename(newExt string) string {
 }
 
 func Title() string {
-	path, err := os.Executable()
-	if err != nil {
-		path = os.Args[0]
-	}
+	onceTitle.Do(func() {
+		path, err := os.Executable()
+		if err != nil {
+			path = os.Args[0]
+		}
 
-	path = filepath.Base(path)
-	path = path[0:(len(path) - len(filepath.Ext(path)))]
+		path = filepath.Base(path)
+		path = path[0:(len(path) - len(filepath.Ext(path)))]
 
-	runes := []rune(path)
-	for len(runes) > 0 && !unicode.IsLetter(runes[0]) {
-		runes = runes[1:]
-	}
+		runes := []rune(path)
+		for len(runes) > 0 && !unicode.IsLetter(runes[0]) {
+			runes = runes[1:]
+		}
 
-	title := string(runes)
+		title = string(runes)
+	})
 
 	DebugFunc(title)
 
