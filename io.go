@@ -705,3 +705,176 @@ func (this RandomReader) Read(p []byte) (n int, err error) {
 
 	return len(p), nil
 }
+
+//type TimeoutReader struct {
+//	reader   io.Reader
+//	timeout  time.Duration
+//	useTimer bool
+//}
+//
+//func NewTimeoutReader(reader io.Reader, timeout time.Duration, initalTimeout bool) io.Reader {
+//	return &TimeoutReader{
+//		reader:   reader,
+//		timeout:  timeout,
+//		useTimer: initalTimeout,
+//	}
+//}
+//
+//func (this *TimeoutReader) Read(p []byte) (int, error) {
+//	timer := time.NewTimer(this.timeout)
+//	if !this.useTimer {
+//		timer.Stop()
+//	}
+//
+//	defer func() {
+//		timer.Stop()
+//	}()
+//
+//	this.useTimer = true
+//
+//	var n int
+//	var err error
+//
+//	ch := make(chan interface{})
+//
+//	go func() {
+//		n, err = this.reader.Read(p)
+//
+//		close(ch)
+//	}()
+//
+//	select {
+//	case <-timer.C:
+//		return 0, io.EOF
+//	case <-ch:
+//		return n, err
+//	}
+//}
+//
+//type DeadlineReader struct {
+//	reader   io.Reader
+//	timeout  time.Duration
+//	timer    *time.Timer
+//	deadline time.Time
+//}
+//
+//func NewDeadlineReader(reader io.Reader, timeout time.Duration) io.Reader {
+//	return &DeadlineReader{
+//		reader:  reader,
+//		timeout: timeout,
+//	}
+//}
+//
+//func (this *DeadlineReader) Read(p []byte) (int, error) {
+//	if this.timer == nil {
+//		this.timer = time.NewTimer(this.timeout)
+//		this.deadline = time.Now().Add(this.timeout)
+//	} else {
+//		if time.Now().After(this.deadline) {
+//			this.timer.Stop()
+//
+//			return 0, io.EOF
+//		}
+//	}
+//
+//	var n int
+//	var err error
+//
+//	ch := make(chan interface{})
+//
+//	go func() {
+//		n, err = this.reader.Read(p)
+//
+//		close(ch)
+//	}()
+//
+//	select {
+//	case <-this.timer.C:
+//		Info("Stop !!!!!")
+//		this.timer.Stop()
+//
+//		return 0, io.EOF
+//	case <-ch:
+//		return n, err
+//	}
+//}
+
+type DeadlineReader struct {
+	reader  io.Reader
+	timeout time.Duration
+	ctx     context.Context
+	cancel  context.CancelFunc
+}
+
+func NewDeadlineReader(reader io.Reader, timeout time.Duration) io.Reader {
+	return &DeadlineReader{
+		reader:  reader,
+		timeout: timeout,
+	}
+}
+
+func (this *DeadlineReader) Read(p []byte) (int, error) {
+	if this.ctx == nil {
+		this.ctx, this.cancel = context.WithDeadline(context.Background(), time.Now().Add(this.timeout))
+	}
+
+	for {
+		select {
+		case <-this.ctx.Done():
+			Debug("Gracefully exit")
+			Debug("%v", this.ctx.Err())
+
+			this.cancel()
+
+			return 0, io.EOF
+		default:
+			return this.reader.Read(p)
+		}
+	}
+}
+
+type TimeoutReader struct {
+	reader   io.Reader
+	timeout  time.Duration
+	useTimer bool
+}
+
+func NewTimeoutReader(reader io.Reader, timeout time.Duration, initalTimeout bool) io.Reader {
+	return &TimeoutReader{
+		reader:   reader,
+		timeout:  timeout,
+		useTimer: initalTimeout,
+	}
+}
+
+func (this *TimeoutReader) Read(p []byte) (int, error) {
+	if !this.useTimer {
+
+		this.useTimer = true
+
+		return this.reader.Read(p)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), this.timeout)
+	defer cancel()
+
+	var n int
+	var err error
+
+	ch := make(chan interface{})
+
+	go func() {
+		n, err = this.reader.Read(p)
+
+		close(ch)
+	}()
+
+	select {
+	case <-ctx.Done():
+		Debug("Gracefully exit")
+		Debug("%v", ctx.Err())
+		return 0, io.EOF
+	case <-ch:
+		return n, err
+	}
+}
