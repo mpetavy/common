@@ -821,9 +821,6 @@ func (this *DeadlineReader) Read(p []byte) (int, error) {
 	for {
 		select {
 		case <-this.ctx.Done():
-			Debug("Gracefully exit")
-			Debug("%v", this.ctx.Err())
-
 			this.cancel()
 
 			return 0, io.EOF
@@ -871,8 +868,6 @@ func (this *TimeoutReader) Read(p []byte) (int, error) {
 
 	select {
 	case <-ctx.Done():
-		Debug("Gracefully exit")
-		Debug("%v", ctx.Err())
 		return 0, io.EOF
 	case <-ch:
 		return n, err
