@@ -407,7 +407,7 @@ func ParseMemory(txt string) (int64, error) {
 	return int64(f * math.Pow(1024, float64(0))), nil
 }
 
-func FormatMemory(mem int) string {
+func FormatMemory(mem int64) string {
 	neg := mem < 0
 
 	f := math.Abs(float64(mem))
