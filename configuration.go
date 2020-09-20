@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 )
 
 type EventConfigurationReset struct {
@@ -73,13 +72,10 @@ func NewConfiguration() *Configuration {
 }
 
 var (
-	FlagCfgReset   *bool
-	FlagCfgFile    *string
-	FlagCfgTimeout *int
+	FlagCfgReset *bool
+	FlagCfgFile  *string
 
-	fileChecker *time.Ticker
-	fileInfo    os.FileInfo
-	fileConfig  []byte
+	fileConfig []byte
 
 	mapFlag = make(map[string]string)
 	mapEnv  = make(map[string]string)
@@ -89,7 +85,6 @@ var (
 func init() {
 	FlagCfgFile = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
 	FlagCfgReset = flag.Bool("cfg.reset", false, "Reset configuration file")
-	FlagCfgTimeout = flag.Int("cfg.timeout", 0, "rescan timeout for configuration change") // FIXME
 }
 
 func initConfiguration() error {
@@ -133,18 +128,6 @@ func initConfiguration() error {
 		if Error(err) {
 			return err
 		}
-	}
-
-	if *FlagCfgFile != "" && *FlagCfgTimeout > 0 {
-		fileChecker = time.NewTicker(MillisecondToDuration(*FlagCfgTimeout))
-		go func() {
-			for AppLifecycle().IsSet() {
-				select {
-				case <-fileChecker.C:
-					Error(checkChanged())
-				}
-			}
-		}()
 	}
 
 	return nil
@@ -248,11 +231,6 @@ func readFile() ([]byte, error) {
 
 	fileConfig = []byte(RemoveJsonComments(string(ba)))
 
-	fileInfo, err = os.Stat(*FlagCfgFile)
-	if Error(err) {
-		return nil, err
-	}
-
 	return fileConfig, nil
 }
 
@@ -298,11 +276,6 @@ func writeFile(ba []byte) error {
 		Error(FileBackup(*FlagCfgFile))
 
 		err = ioutil.WriteFile(*FlagCfgFile, buf.Bytes(), DefaultFileMode)
-		if Error(err) {
-			return err
-		}
-
-		fileInfo, err = os.Stat(*FlagCfgFile)
 		if Error(err) {
 			return err
 		}
@@ -356,34 +329,6 @@ func setFlags(reset bool) error {
 	})
 
 	return err
-}
-
-func checkChanged() error {
-	fi, _ := os.Stat(*FlagCfgFile)
-	if fi == nil {
-		return nil
-	}
-
-	if fi.ModTime() != fileInfo.ModTime() {
-		DebugFunc()
-
-		ba, err := readFile()
-		if Error(err) {
-			return err
-		}
-
-		err = registerFileFlags(ba)
-		if Error(err) {
-			return err
-		}
-
-		err = setFlags(false)
-		if Error(err) {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func registerArgsFlags() error {
