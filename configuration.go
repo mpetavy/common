@@ -109,9 +109,7 @@ func initConfiguration() error {
 
 	err = registerFileFlags(ba)
 	if Error(err) {
-		Warn("Reset configuration to system defaults")
-
-		*FlagCfgReset = true
+		return err
 	}
 
 	err = setFlags(false)
