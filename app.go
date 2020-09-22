@@ -139,7 +139,7 @@ func checkUnknownFlag(flagName string) error {
 func checkMandatoryFlag(flagName string) error {
 	fl := flag.Lookup(flagName)
 
-	if fl == nil || len(fl.Value.String()) == 0 {
+	if fl != nil && len(fl.Value.String()) == 0 {
 		return fmt.Errorf("mandatory flag needed: \"-%s\" - %s", fl.Name, fl.Usage)
 	}
 
@@ -159,6 +159,10 @@ func Run(mandatoryFlags []string) {
 
 	Events.Emit(EventFlagsParsed{})
 
+	if !*FlagNoBanner || *FlagUsage {
+		showBanner()
+	}
+
 	err := initConfiguration()
 	if Error(err) {
 		Exit(1)
@@ -174,10 +178,6 @@ func Run(mandatoryFlags []string) {
 
 		Debug("flag %s = %+v", fl.Name, v)
 	})
-
-	if !*FlagNoBanner || *FlagUsage {
-		showBanner()
-	}
 
 	if *FlagUsage {
 		flag.Usage()
