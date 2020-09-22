@@ -427,6 +427,16 @@ func Error(err error) bool {
 	return err != nil
 }
 
+func ErrorReturn(err error) error {
+	if err != nil && !isErrExit(err) {
+		ri := GetRuntimeInfo(1)
+
+		log(LEVEL_ERROR, ri, errorString(ri, err), err)
+	}
+
+	return err
+}
+
 func isErrExit(err error) bool {
 	_, ok := err.(*ErrExit)
 
@@ -438,7 +448,7 @@ func log(level int, ri RuntimeInfo, msg string, err error) {
 	defer mu.Unlock()
 
 	if level == LEVEL_ERROR {
-		if (err.Error() == lastErr) && (time.Since(lastErrTime) < time.Millisecond * 100) {
+		if (err.Error() == lastErr) && (time.Since(lastErrTime) < time.Millisecond*100) {
 			return
 		}
 
