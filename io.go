@@ -818,15 +818,13 @@ func (this *DeadlineReader) Read(p []byte) (int, error) {
 		this.ctx, this.cancel = context.WithDeadline(context.Background(), time.Now().Add(this.timeout))
 	}
 
-	for {
-		select {
-		case <-this.ctx.Done():
-			this.cancel()
+	select {
+	case <-this.ctx.Done():
+		this.cancel()
 
-			return 0, io.EOF
-		default:
-			return this.reader.Read(p)
-		}
+		return 0, io.EOF
+	default:
+		return this.reader.Read(p)
 	}
 }
 
