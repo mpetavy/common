@@ -240,9 +240,15 @@ func TranslateFor(language, msg string) string {
 
 // Translate a message to the current set language
 func Translate(msg string, args ...interface{}) string {
-	msg = TranslateFor(*FlagLanguage, msg)
+	if msg == "" {
+		return ""
+	}
 
-	return Capitalize(fmt.Sprintf(msg, args...))
+	t := TranslateFor(*FlagLanguage, msg)
+
+	DebugFunc("%s = %s", msg, t)
+
+	return Capitalize(fmt.Sprintf(t, args...))
 }
 
 func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (string, error) {
