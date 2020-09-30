@@ -829,12 +829,14 @@ func (this *DeadlineReader) Read(p []byte) (int, error) {
 }
 
 type TimeoutReader struct {
-	reader   io.Reader
-	timeout  time.Duration
-	useTimer bool
+	reader    io.Reader
+	timeout   time.Duration
+	useTimer  bool
+
+	FirstRead time.Time
 }
 
-func NewTimeoutReader(reader io.Reader, timeout time.Duration, initalTimeout bool) io.Reader {
+func NewTimeoutReader(reader io.Reader, timeout time.Duration, initalTimeout bool) *TimeoutReader {
 	return &TimeoutReader{
 		reader:   reader,
 		timeout:  timeout,
@@ -847,7 +849,11 @@ func (this *TimeoutReader) Read(p []byte) (int, error) {
 
 		this.useTimer = true
 
-		return this.reader.Read(p)
+		n,err := this.reader.Read(p)
+
+		this.FirstRead = time.Now()
+
+		return n,err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), this.timeout)
