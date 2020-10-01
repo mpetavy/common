@@ -37,17 +37,19 @@ const (
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
 	INPUT_WIDTH_WIDE   = "pure-input-2-4"
 
-	CSS_DIALOG_CONTENT  = "css-dialog-content pure-controls"
-	CSS_DEFAULT_CONTENT = "css-default-content pure-controls"
-	CSS_ERROR_BOX       = "css-error-box blink"
-	CSS_WARNING_BOX     = "css-warning-box blink"
-	CSS_SUCCESS_BOX     = "css-success-box"
-	CSS_VERTICAL_DIV    = "css-vertical-div"
-	CSS_LOGVIEWER       = "css-logviewer"
-	CSS_CONTENT         = "css-content"
-	CSS_CHECKLIST       = "css-checklist"
-	CSS_BUTTON_GROUP    = "css-button-group"
-	CSS_BORDER          = "css-border"
+	CSS_DIALOG_CONTENT     = "css-dialog-content pure-controls"
+	CSS_DEFAULT_CONTENT    = "css-default-content pure-controls"
+	CSS_ERROR_BOX          = "css-error-box blink"
+	CSS_WARNING_BOX        = "css-warning-box blink"
+	CSS_SUCCESS_BOX        = "css-success-box"
+	CSS_VERTICAL_DIV       = "css-vertical-div"
+	CSS_LOGVIEWER          = "css-logviewer"
+	CSS_CONTENT            = "css-content"
+	CSS_CHECKLIST          = "css-checklist"
+	CSS_CHECKLIST_CHECKBOX = "css-checklist-checkbox"
+	CSS_CHECKBOX           = "css-checkbox"
+	CSS_BUTTON_GROUP       = "css-button-group"
+	CSS_BORDER             = "css-border"
 
 	CSS_COLOR_OFF = "#CFCFCF"
 	CSS_COLOR_ON  = "MediumSeaGreen"
@@ -502,7 +504,7 @@ func newCheckbox(parent *etree.Element, checked bool) *etree.Element {
 	}
 
 	htmlInput.CreateAttr("type", "checkbox")
-	htmlInput.CreateAttr("class", "css-checkbox")
+	htmlInput.CreateAttr("class", CSS_CHECKBOX)
 	htmlInput.CreateAttr("value", "true")
 	if checked {
 		htmlInput.CreateAttr("checked", "")
@@ -649,7 +651,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 					htmlItem.CreateAttr("type", "checkbox")
 					htmlItem.CreateAttr("value", value)
 					htmlItem.CreateAttr("name", fieldPath)
-					htmlItem.CreateAttr("class", fieldPath)
+					htmlItem.CreateAttr("class", CSS_CHECKLIST_CHECKBOX)
 					htmlItem.CreateAttr("onkeypress", "multiCheck(event);")
 					htmlItem.SetText(value)
 
