@@ -334,12 +334,34 @@ func FindFreePort(network string, startPort int, excludedPorts []int) (int, erro
 func IsLocalhost(ip string) bool {
 	list := []string{LOCALHOST_IP6, LOCALHOST_IP4, "localhost"}
 
+	b := false
 	for _, k := range list {
 		if ip == k {
-			return true
+			b = true
+
+			break
 		}
 	}
 
-	return false
+	DebugFunc("%s: %v", ip, b)
 
+	return b
+}
+
+func IsPrivateIP(ip string) (bool, error) {
+	var err error
+	private := false
+	IP := net.ParseIP(ip)
+	if IP == nil {
+		err = fmt.Errorf("Invalid IP: %v", ip)
+	} else {
+		_, private24BitBlock, _ := net.ParseCIDR("10.0.0.0/8")
+		_, private20BitBlock, _ := net.ParseCIDR("172.16.0.0/12")
+		_, private16BitBlock, _ := net.ParseCIDR("192.168.0.0/16")
+		private = private24BitBlock.Contains(IP) || private20BitBlock.Contains(IP) || private16BitBlock.Contains(IP)
+	}
+
+	DebugFunc("%s: %v", ip, private)
+
+	return private, err
 }
