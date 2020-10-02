@@ -27,6 +27,8 @@ type application struct {
 	Name string
 	// Version of the application
 	Version string
+	// Git label development
+	Git string
 	// Date of development
 	Date string
 	// Description of the application
@@ -107,10 +109,11 @@ func init() {
 	serviceActions = append(serviceActions, "simulate")
 }
 
-func Init(isService bool, version string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+func Init(isService bool, version string, git string,date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	app.IsService = isService
 	app.Name = Title()
 	app.Version = version
+	app.Git = git
 	app.Date = date
 	app.Description = description
 	app.Developer = developer
@@ -274,6 +277,9 @@ func showBanner() {
 			fmt.Printf("Copyright: © %s %s\n", date, app.Developer)
 			fmt.Printf("Homepage:  %s\n", app.Homepage)
 			fmt.Printf("License:   %s\n", app.License)
+			if app.Git != "" {
+				fmt.Printf("Git:       %s\n", app.Git)
+			}
 			fmt.Printf("\n")
 		}
 	})
