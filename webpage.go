@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"fmt"
@@ -484,6 +485,26 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 
 				fieldValue.SetBytes([]byte(base64.StdEncoding.EncodeToString(buf.Bytes())))
 			}
+		case reflect.MapOf(reflect.TypeOf(""), reflect.TypeOf("")).Kind():
+			if ok {
+				values := context.Request().Form[fieldPath]
+
+				if len(values) > 0 {
+					scanner := bufio.NewScanner(strings.NewReader(values[0]))
+					for scanner.Scan() {
+						line := scanner.Text()
+
+						if strings.Contains(line, "=") {
+							ss := strings.Split(line, "=")
+
+							key := strings.TrimSpace(ss[0])
+							value := strings.TrimSpace(ss[1])
+
+							fieldValue.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(value))
+						}
+					}
+				}
+			}
 		default:
 			return fmt.Errorf("unsupported field: %s", fieldPath)
 		}
@@ -611,7 +632,18 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				htmlInput.CreateAttr("cols", "65")
 				htmlInput.CreateAttr("rows", "5")
 				if fieldValue.String() != "" {
-					htmlInput.SetText(fieldValue.String())
+					if fieldType.Type.Kind() == reflect.MapOf(reflect.TypeOf(""), reflect.TypeOf("")).Kind() {
+						i := fieldValue.Interface()
+						m := i.(map[string]string)
+
+						s := strings.Builder{}
+						for k, v := range m {
+							s.WriteString(fmt.Sprintf("%s=%s\n", k, v))
+						}
+						htmlInput.SetText(s.String())
+					} else {
+						htmlInput.SetText(fieldValue.String())
+					}
 				}
 
 				break
