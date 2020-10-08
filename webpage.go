@@ -536,7 +536,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 
 		fieldTags, err := structtag.Parse(string(fieldType.Tag))
 		if Error(err) {
-			return expertViewFieldExists, err
+			return false, err
 		}
 
 		tagHtml, err := fieldTags.Get("html")
@@ -565,7 +565,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 
 			ev, err = newFieldset(index+1, parent, tagHtml.Name, fieldValue.Interface(), fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
 			if Error(err) {
-				return expertViewFieldExists, err
+				return false, err
 			}
 
 			expertViewFieldExists = expertViewFieldExists || ev
@@ -586,6 +586,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 		if isFieldExpertView {
 			classes = append(classes, OPTION_EXPERTVIEW)
 		}
+
 		htmlDiv.CreateAttr("class", strings.Join(classes, " "))
 
 		if isFieldHidden {
@@ -610,9 +611,6 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
 				htmlInput.CreateAttr("cols", "65")
 				htmlInput.CreateAttr("rows", "5")
-				if fieldValue.String() != "" {
-					htmlInput.SetText(fieldValue.String())
-				}
 
 				break
 			}
@@ -622,9 +620,6 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
 				htmlInput.CreateAttr("cols", "65")
 				htmlInput.CreateAttr("rows", "20")
-				if fieldValue.String() != "" {
-					htmlInput.SetText(fieldValue.String())
-				}
 
 				break
 			}
