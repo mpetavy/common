@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base64"
 	"fmt"
@@ -484,6 +485,21 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 
 				fieldValue.SetBytes([]byte(base64.StdEncoding.EncodeToString(buf.Bytes())))
 			}
+		case reflect.MapOf(reflect.TypeOf(""), reflect.TypeOf("")).Kind():
+			if ok {
+				values := context.Request().Form[fieldPath]
+				scanner := bufio.NewScanner(strings.NewReader(values[0]))
+				for scanner.Scan() {
+					line := strings.TrimSpace(scanner.Text())
+
+					ss := strings.Split(line, "=")
+					if len(ss) != 2 {
+						return fmt.Errorf("invalid format key=value: %s", line)
+					}
+
+					fieldValue.SetMapIndex(reflect.ValueOf(ss[0]), reflect.ValueOf(ss[1]))
+				}
+			}
 		default:
 			return fmt.Errorf("unsupported field: %s", fieldPath)
 		}
@@ -606,20 +622,31 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 		case reflect.Bool:
 			htmlInput = newCheckbox(htmlDiv, fieldValue.Bool())
 		default:
-			if IndexOf(tagHtml.Options, OPTION_MULTILINE) != -1 {
+			if IndexOf(tagHtml.Options, OPTION_MULTILINE) != -1 || IndexOf(tagHtml.Options, OPTION_MEGALINE) != -1 {
 				htmlInput = htmlDiv.CreateElement("textarea")
 				htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
 				htmlInput.CreateAttr("cols", "65")
-				htmlInput.CreateAttr("rows", "5")
 
-				break
-			}
+				if IndexOf(tagHtml.Options, OPTION_MULTILINE) != -1 {
+					htmlInput.CreateAttr("rows", "5")
+				} else {
+					htmlInput.CreateAttr("rows", "20")
+				}
 
-			if IndexOf(tagHtml.Options, OPTION_MEGALINE) != -1 {
-				htmlInput = htmlDiv.CreateElement("textarea")
-				htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
-				htmlInput.CreateAttr("cols", "65")
-				htmlInput.CreateAttr("rows", "20")
+				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Map {
+					sb := strings.Builder{}
+					iter := fieldValue.MapRange()
+					for iter.Next() {
+						k := iter.Key()
+						v := iter.Value()
+						sb.WriteString(fmt.Sprintf("%s=%s\n",k,v))
+					}
+					htmlInput.SetText(sb.String())
+				} else {
+					if !fieldValue.IsZero() {
+						htmlInput.SetText(fieldValue.String())
+					}
+				}
 
 				break
 			}
@@ -744,7 +771,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 					} else {
 						htmlInput.CreateAttr("type", "text")
 					}
-					htmlInput.CreateAttr("value", fmt.Sprintf("%s", fieldValue.String()))
+					htmlInput.CreateAttr("value", fieldValue.String())
 				}
 			}
 
