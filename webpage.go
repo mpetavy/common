@@ -83,7 +83,8 @@ type ActionItem struct {
 	Caption  string
 	Icon     string
 	Action   string
-	File     string
+	Download string
+	Message string
 	Enabled  bool
 	SubItems []ActionItem
 }
@@ -324,6 +325,7 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 
 		htmlAhref := htmlMenu.CreateElement("a")
 		htmlAhref.CreateAttr("class", "pure-menu-link")
+		htmlAhref.CreateAttr("style", "cursor: pointer")
 
 		if menu.Caption != "" {
 			caption := menu.Caption
@@ -341,7 +343,11 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 				if strings.Index(menu.Action, ";") != -1 {
 					htmlAhref.CreateAttr("onClick", menu.Action)
 				} else {
-					htmlAhref.CreateAttr("href", menu.Action)
+					if menu.Message != "" {
+						htmlAhref.CreateAttr("onClick", fmt.Sprintf("if(confirm('%s')) { window.location.replace('%s'); }",menu.Message,menu.Action))
+					} else {
+						htmlAhref.CreateAttr("href", menu.Action)
+					}
 				}
 			}
 
@@ -349,8 +355,8 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 				newMenuitem(htmlMenu, false, menu.SubItems, selectedTitle, disableMenues)
 			}
 
-			if menu.File != "" {
-				htmlAhref.CreateAttr("download", menu.File)
+			if menu.Download != "" {
+				htmlAhref.CreateAttr("download", menu.Download)
 			}
 		}
 	}
