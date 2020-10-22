@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gookit/color"
+	"github.com/kardianos/service"
 	"io"
 	"os"
 	"os/exec"
@@ -33,11 +34,14 @@ var (
 	FlagLogFileName    *string
 	FlagLogFileSize    *int64
 	FlagLogJson        *bool
+	FlagLogSys         *bool
 	logger             logWriter
 	defaultLogFilename string
 	mu                 sync.Mutex
 	lastErr            string
 	lastErrTime        time.Time
+	logSysErrs         chan<- error
+	logSys             service.Logger
 )
 
 const (
@@ -46,6 +50,7 @@ const (
 	FlagNameLogVerbose  = "log.verbose"
 	FlagNameLogIO       = "log.io"
 	FlagNameLogJson     = "log.json"
+	FlagNameLogSys      = "log.sys"
 )
 
 func init() {
@@ -56,6 +61,7 @@ func init() {
 	FlagLogVerbose = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
 	FlagLogIO = flag.Bool(FlagNameLogIO, false, "trace logging")
 	FlagLogJson = flag.Bool(FlagNameLogJson, false, "JSON output")
+	FlagLogSys = flag.Bool(FlagNameLogSys, true, "Use system logger")
 }
 
 type ErrExit struct {
@@ -71,20 +77,16 @@ type logEntry struct {
 	Msg      string `json:"msg"`
 }
 
-func (l *logEntry) String() string {
-	if FlagLogJson != nil && *FlagLogJson {
+func (l *logEntry) String(jsn bool, verbose bool) string {
+	if jsn {
 		ba, _ := json.Marshal(l)
-		return string(ba)
 
+		return string(ba)
 	} else {
-		if FlagLogVerbose == nil || *FlagLogVerbose {
+		if verbose {
 			return fmt.Sprintf("%s %s %-40.40s %s", l.Clock, FillString(l.LevelStr, 5, false, " "), l.Ri, l.Msg)
 		} else {
-			if l.levelInt == LEVEL_INFO {
-				return l.Msg
-			} else {
-				return fmt.Sprintf("%s %s", FillString(l.LevelStr+":", 6, false, " "), l.Msg)
-			}
+			return l.Msg
 		}
 	}
 }
@@ -263,6 +265,17 @@ func initLog() {
 		logger = newLogMemoryWriter()
 	}
 
+	if *FlagLogSys && !IsRunningInteractive() {
+		logSysErrs = make(chan error, 5)
+
+		var err error
+
+		logSys, err = app.Service.Logger(logSysErrs)
+		if err != nil {
+			Error(err)
+		}
+	}
+
 	if app != nil {
 		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 98)))
 		prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
@@ -270,9 +283,9 @@ func initLog() {
 }
 
 func writeEntry(entry logEntry) {
-	if entry.levelInt != LEVEL_FILE {
-		s := entry.String()
+	s := entry.String(*FlagLogJson,*FlagLogVerbose)
 
+	if entry.levelInt != LEVEL_FILE {
 		if !*FlagLogVerbose {
 			if gotest != nil {
 				gotest.Logf(s)
@@ -306,7 +319,18 @@ func writeEntry(entry logEntry) {
 	}
 
 	if logger != nil {
-		logger.WriteString(fmt.Sprintf("%s\n", entry.String()))
+		logger.WriteString(fmt.Sprintf("%s\n", s))
+	}
+
+	if *FlagLogSys && logSys != nil {
+		switch entry.levelInt {
+		case LEVEL_WARN:
+			logSys.Warning(entry.String(false,false))
+		case LEVEL_ERROR:
+			logSys.Error(entry.String(false,false))
+		case LEVEL_INFO:
+			logSys.Info(entry.String(false,false))
+		}
 	}
 }
 
