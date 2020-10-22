@@ -123,6 +123,23 @@ func Init(isService bool, version string, git string,date string, description st
 	app.StopFunc = stopFunc
 	app.RunFunc = runFunc
 	app.RunTime = runTime
+
+	executable, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+
+	app.ServiceConfig = &service.Config{
+		Name:             Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
+		DisplayName:      Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
+		Description:      Capitalize(app.Description),
+		WorkingDirectory: filepath.Dir(executable),
+	}
+
+	app.Service, err = service.New(app, app.ServiceConfig)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func InitTesting(v goTesting) {
@@ -458,23 +475,6 @@ func (app *application) Stop(s service.Service) error {
 }
 
 func run() error {
-	executable, err := os.Executable()
-	if Error(err) {
-		return err
-	}
-
-	app.ServiceConfig = &service.Config{
-		Name:             Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-		DisplayName:      Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-		Description:      Capitalize(app.Description),
-		WorkingDirectory: filepath.Dir(executable),
-	}
-
-	app.Service, err = service.New(app, app.ServiceConfig)
-	if Error(err) {
-		return err
-	}
-
 	args := os.Args[1:]
 
 	for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
@@ -521,7 +521,7 @@ func run() error {
 			}
 		}
 
-		err = service.Control(app.Service, *FlagService)
+		err := service.Control(app.Service, *FlagService)
 		if Error(err) {
 			return err
 		}
@@ -557,7 +557,7 @@ func run() error {
 		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 	}
 
-	err = app.Start(app.Service)
+	err := app.Start(app.Service)
 	Error(err)
 
 	stopErr := app.Stop(app.Service)
