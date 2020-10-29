@@ -60,10 +60,10 @@ type EventFlagsSet struct {
 }
 
 const (
-	SERVICE          = "service"
-	SERVICE_USERNAME = "service.username"
-	SERVICE_PASSWORD = "service.password"
-	SERVICE_TIMEOUT  = "service.timeout"
+	FlagNameService         = "service"
+	FlagNameServiceUsername = "service.username"
+	FLagNameServicePassword = "service.password"
+	FlagNameServiceTimeout  = "service.timeout"
 )
 
 type goTesting interface {
@@ -109,7 +109,7 @@ func init() {
 	serviceActions = append(serviceActions, "simulate")
 }
 
-func Init(isService bool, version string, git string,date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+func Init(isService bool, version string, git string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	app.IsService = isService
 	app.Name = Title()
 	app.Version = version
@@ -169,10 +169,10 @@ func checkMandatoryFlag(flagName string) error {
 // Run struct for copyright information
 func Run(mandatoryFlags []string) {
 	if app.IsService {
-		FlagService = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
-		FlagServiceUser = flag.String(SERVICE_USERNAME, "", "Service user")
-		FlagServicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
-		FlagServiceStartTimeout = flag.Int(SERVICE_TIMEOUT, 1000, "Service timeout")
+		FlagService = flag.String(FlagNameService, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
+		FlagServiceUser = flag.String(FlagNameServiceUsername, "", "Service user")
+		FlagServicePassword = flag.String(FLagNameServicePassword, "", "Service password")
+		FlagServiceStartTimeout = flag.Int(FlagNameServiceTimeout, 1000, "Service timeout")
 	}
 
 	flag.Parse()
@@ -477,7 +477,7 @@ func (app *application) Stop(s service.Service) error {
 func run() error {
 	args := os.Args[1:]
 
-	for _, item := range []string{SERVICE, SERVICE_USERNAME, SERVICE_PASSWORD} {
+	for _, item := range []string{FlagNameService, FlagNameServiceUsername, FLagNameServicePassword} {
 		for i := range args {
 			if args[i] == "-"+item {
 				args = append(args[:i], args[i+2:]...)
@@ -576,7 +576,13 @@ func AppRestart() {
 
 func IsRunningAsService() bool {
 	onceRunningAsService.Do(func() {
-		runningAsService = !IsRunningInteractive() || *FlagService == "simulate"
+		isFlagServiceSimulated := false
+
+		flag.Visit(func(f *flag.Flag) {
+			isFlagServiceSimulated = isFlagServiceSimulated || (f.Name == FlagNameService && f.Value.String() == "simulate")
+		})
+
+		runningAsService = !service.Interactive() || isFlagServiceSimulated
 
 		DebugFunc("%v", runningAsService)
 	})
