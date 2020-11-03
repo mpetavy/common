@@ -22,7 +22,7 @@ const (
 //Info information of the application
 type application struct {
 	// IsService
-	IsService bool
+	CanRunAsService bool
 	// Name of the application
 	Name string
 	// Version of the application
@@ -109,8 +109,8 @@ func init() {
 	serviceActions = append(serviceActions, "simulate")
 }
 
-func Init(isService bool, version string, git string,date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
-	app.IsService = isService
+func Init(isService bool, version string, git string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+	app.CanRunAsService = isService
 	app.Name = Title()
 	app.Version = version
 	app.Git = git
@@ -168,7 +168,7 @@ func checkMandatoryFlag(flagName string) error {
 
 // Run struct for copyright information
 func Run(mandatoryFlags []string) {
-	if app.IsService {
+	if app.CanRunAsService {
 		FlagService = flag.String(SERVICE, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		FlagServiceUser = flag.String(SERVICE_USERNAME, "", "Service user")
 		FlagServicePassword = flag.String(SERVICE_PASSWORD, "", "Service password")
@@ -309,14 +309,14 @@ func (app *application) applicationRun() error {
 		DebugFunc()
 	}
 
-	tickerInitialSleep := time.Second
+	tickerSleep := time.Second
 
 	if app.RunTime > 0 {
 		nextTick := time.Now().Truncate(app.RunTime).Add(app.RunTime)
-		tickerInitialSleep = nextTick.Sub(time.Now())
+		tickerSleep = nextTick.Sub(time.Now())
 	}
 
-	ticker = time.NewTicker(tickerInitialSleep)
+	ticker = time.NewTicker(tickerSleep)
 
 	if app.RunTime == 0 {
 		ticker.Stop()
@@ -324,8 +324,7 @@ func (app *application) applicationRun() error {
 
 	tickerInfo := func() {
 		if app.RunTime > 0 {
-			Debug("next tick: %s\n", time.Now().Add(tickerInitialSleep).Truncate(app.RunTime).Format(DateTimeMilliMask))
-			Debug("sleep for %v ...", tickerInitialSleep)
+			Debug("next tick: %s sleep: %v\n", time.Now().Add(tickerSleep).Truncate(app.RunTime).Format(DateTimeMilliMask), tickerSleep)
 		}
 	}
 
@@ -341,6 +340,8 @@ func (app *application) applicationRun() error {
 		}()
 	}
 
+	lifecycleCh := appLifecycle.NewChannel()
+
 	restart = false
 
 	for {
@@ -352,7 +353,7 @@ func (app *application) applicationRun() error {
 		//	return nil
 		case err := <-errCh:
 			return err
-		case <-appLifecycle.Channel():
+		case <-lifecycleCh:
 			Info("Stop on request")
 			return nil
 		case <-restartCh:
@@ -360,6 +361,7 @@ func (app *application) applicationRun() error {
 			restart = true
 			return nil
 		case <-ctrlC:
+			Info("")
 			Info("Terminate: CTRL-C pressed")
 			return nil
 		case <-ticker.C:
@@ -370,11 +372,14 @@ func (app *application) applicationRun() error {
 			Error(app.RunFunc())
 
 			ti := time.Now()
-			ti = ti.Add(app.RunTime)
+			for ti.Before(time.Now()) {
+				ti = ti.Add(app.RunTime)
+			}
 			ti = TruncateTime(ti, Second)
 
-			tickerInitialSleep = ti.Sub(time.Now())
-			ticker = time.NewTicker(tickerInitialSleep)
+			tickerSleep = ti.Sub(time.Now())
+
+			ticker = time.NewTicker(tickerSleep)
 
 			tickerInfo()
 		}
@@ -390,13 +395,6 @@ func (app *application) Start(s service.Service) error {
 
 	appLifecycle.Set()
 
-	if app.StartFunc != nil {
-		err := app.StartFunc()
-		if Error(err) {
-			return err
-		}
-	}
-
 	if !IsRunningInteractive() {
 		go func() {
 			Error(app.applicationLoop())
@@ -409,14 +407,19 @@ func (app *application) Start(s service.Service) error {
 }
 
 func (app *application) applicationLoop() error {
-	if !IsRunningAsService() && app.RunFunc == nil {
-		return nil
-	}
-
 	DebugFunc()
 
 	for {
-		Error(app.applicationRun())
+		if app.StartFunc != nil {
+			err := app.StartFunc()
+			if Error(err) {
+				return err
+			}
+		}
+
+		if AppLifecycle().IsSet() {
+			Error(app.applicationRun())
+		}
 
 		if !restart {
 			break
@@ -435,13 +438,6 @@ func (app *application) applicationLoop() error {
 		}
 
 		Events.Emit(EventAppRestart{})
-
-		if app.StartFunc != nil {
-			err := app.StartFunc()
-			if Error(err) {
-				return err
-			}
-		}
 	}
 
 	return nil
@@ -547,15 +543,15 @@ func run() error {
 		}
 	}
 
+	// run as real OS daemon
+
 	if !IsRunningInteractive() {
 		return app.Service.Run()
 	}
 
-	// simulated service
+	// simple app or simulated service
 
-	if IsRunningInteractive() {
-		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-	}
+	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
 	err := app.Start(app.Service)
 	Error(err)

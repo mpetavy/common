@@ -5,33 +5,37 @@ import "sync"
 type Notice struct {
 	sync.Mutex
 
-	isSet int
-	ch    chan struct{}
+	b   bool
+	chs []chan struct{}
 }
 
 func NewNotice() *Notice {
-	return &Notice{isSet: 0, ch: make(chan struct{})}
+	return &Notice{b: false, chs: make([]chan struct{}, 0)}
 }
 
-func (this *Notice) Channel() chan struct{} {
-	return this.ch
+func (this *Notice) NewChannel() chan struct{} {
+	ch := make(chan struct{})
+
+	this.chs = append(this.chs, ch)
+
+	return ch
 }
 
 func (this *Notice) IsSet() bool {
 	this.Lock()
 	defer this.Unlock()
 
-	return this.isSet > 0
+	return this.b
 }
 
 func (this *Notice) Set() bool {
 	this.Lock()
 	defer this.Unlock()
 
-	if this.isSet == 0 {
-		this.isSet = 1
+	if !this.b {
+		this.b = true
 
-		this.ch = make(chan struct{})
+		this.chs = make([]chan struct{}, 0)
 
 		return true
 	}
@@ -43,56 +47,15 @@ func (this *Notice) Unset() bool {
 	this.Lock()
 	defer this.Unlock()
 
-	if this.isSet == 1 {
-		this.isSet = 0
+	if this.b {
+		this.b = false
 
-		close(this.ch)
+		for i := 0; i < len(this.chs); i++ {
+			close(this.chs[i])
+		}
 
 		return true
 	}
-
-	return false
-}
-
-func (this *Notice) Inc() int {
-	this.Lock()
-	defer this.Unlock()
-
-	this.isSet++
-
-	return this.isSet
-}
-
-func (this *Notice) Dec() int {
-	this.Lock()
-	defer this.Unlock()
-
-	this.isSet--
-
-	return this.isSet
-}
-
-func (this *Notice) Reset() {
-	this.Lock()
-	defer this.Unlock()
-
-	this.isSet = 0
-}
-
-func (this *Notice) ResetWithoutLock() {
-	this.isSet = 0
-}
-
-func (this *Notice) IncAndReached(v int) bool {
-	this.Lock()
-
-	this.isSet++
-
-	if this.isSet == v {
-		return true
-	}
-
-	this.Unlock()
 
 	return false
 }
