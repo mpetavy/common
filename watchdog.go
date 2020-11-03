@@ -40,7 +40,7 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 		Debug("Watchdog: process killed! pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
 		Error(cmd.Process.Kill())
 
-		return &ErrWatchdog{msg: fmt.Sprint("watchdog killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start))}
+		return &ErrWatchdog{msg: fmt.Sprintf("Watchdog killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start))}
 	case err = <-doneCh:
 		exitcode := 0
 		if err != nil {
@@ -60,12 +60,12 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 		}
 
 		output := "<na>"
-		bu,ok := cmd.Stdout.(*bytes.Buffer)
+		bu, ok := cmd.Stdout.(*bytes.Buffer)
 		if ok {
 			output = "\n" + string(bu.Bytes())
 		}
 
-		Debug("Watchdog: process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s output: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start),output)
+		Debug("Watchdog: process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s output: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start), output)
 
 		return err
 	}
