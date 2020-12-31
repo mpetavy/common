@@ -40,8 +40,8 @@ var (
 	mu                 sync.Mutex
 	lastErr            string
 	lastErrTime        time.Time
-	logSysErrs         chan<- error
-	logSys             service.Logger
+	systemLoggerCh     chan<- error
+	systemLogger       service.Logger
 )
 
 const (
@@ -61,7 +61,7 @@ func init() {
 	FlagLogVerbose = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
 	FlagLogIO = flag.Bool(FlagNameLogIO, false, "trace logging")
 	FlagLogJson = flag.Bool(FlagNameLogJson, false, "JSON output")
-	FlagLogSys = flag.Bool(FlagNameLogSys, true, "Use system logger")
+	FlagLogSys = flag.Bool(FlagNameLogSys, false, "Use OS system logger")
 }
 
 type ErrExit struct {
@@ -71,9 +71,9 @@ func (e *ErrExit) Error() string { return "" }
 
 type logEntry struct {
 	levelInt int
-	Clock    string `json:"time"`
-	LevelStr string `json:"level"`
-	Ri       string `json:"runtime"`
+	Clock    string `json:"clock"`
+	Level    string `json:"level"`
+	Runtime  string `json:"runtime"`
 	Msg      string `json:"msg"`
 }
 
@@ -84,7 +84,7 @@ func (l *logEntry) String(jsn bool, verbose bool) string {
 		return string(ba)
 	} else {
 		if verbose {
-			return fmt.Sprintf("%s %s %-40.40s %s", l.Clock, FillString(l.LevelStr, 5, false, " "), l.Ri, l.Msg)
+			return fmt.Sprintf("%s %s %-40.40s %s", l.Clock, FillString(l.Level, 5, false, " "), l.Runtime, l.Msg)
 		} else {
 			return l.Msg
 		}
@@ -266,11 +266,11 @@ func initLog() {
 	}
 
 	if *FlagLogSys && !IsRunningInteractive() {
-		logSysErrs = make(chan error, 5)
+		systemLoggerCh = make(chan error, 5)
 
 		var err error
 
-		logSys, err = app.Service.Logger(logSysErrs)
+		systemLogger, err = app.Service.Logger(systemLoggerCh)
 		if err != nil {
 			Error(err)
 		}
@@ -283,7 +283,7 @@ func initLog() {
 }
 
 func writeEntry(entry logEntry) {
-	s := entry.String(*FlagLogJson,*FlagLogVerbose)
+	s := entry.String(*FlagLogJson, *FlagLogVerbose)
 
 	if entry.levelInt != LEVEL_FILE {
 		if !*FlagLogVerbose {
@@ -322,14 +322,16 @@ func writeEntry(entry logEntry) {
 		logger.WriteString(fmt.Sprintf("%s\n", s))
 	}
 
-	if *FlagLogSys && logSys != nil {
+	if *FlagLogSys && systemLogger != nil {
 		switch entry.levelInt {
 		case LEVEL_WARN:
-			logSys.Warning(entry.String(false,false))
+			Error(systemLogger.Warning(entry.String(false, false)))
 		case LEVEL_ERROR:
-			logSys.Error(entry.String(false,false))
+			Error(systemLogger.Error(entry.String(false, false)))
+		case LEVEL_DEBUG:
+			fallthrough
 		case LEVEL_INFO:
-			logSys.Info(entry.String(false,false))
+			Error(systemLogger.Info(entry.String(false, false)))
 		}
 	}
 }
@@ -483,9 +485,9 @@ func log(level int, ri RuntimeInfo, msg string, err error) {
 	if level == LEVEL_FILE || (FlagLogVerbose != nil && *FlagLogVerbose) || level > LEVEL_DEBUG {
 		le := logEntry{
 			levelInt: level,
-			LevelStr: levelToString(level),
+			Level:    levelToString(level),
 			Clock:    time.Now().Format(DateTimeMilliMask),
-			Ri:       ri.String(),
+			Runtime:  ri.String(),
 			Msg:      Capitalize(strings.TrimRight(strings.TrimSpace(msg), "\r\n")),
 		}
 
