@@ -406,7 +406,11 @@ func WarnError(err error) bool {
 }
 
 func errorString(ri RuntimeInfo, err error) string {
-	return fmt.Sprintf("%s [%T]\n%s", err.Error(), err, ri.Stack)
+	if *FlagLogVerbose {
+		return fmt.Sprintf("%s [%T]\n%s", err.Error(), err, ri.Stack)
+	}
+
+	return fmt.Sprintf("Error: %s", err.Error())
 }
 
 // DebugFunc prints out the current executon func
