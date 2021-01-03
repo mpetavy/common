@@ -22,17 +22,34 @@ import (
 	"time"
 )
 
+type TlsPackage struct {
+	CertificateAsPem, PrivateKeyAsPem []byte
+	Certificate                       *x509.Certificate
+	PrivateKey                        interface{}
+	CaCerts                           []*x509.Certificate
+	P12                               []byte
+	Info                              string
+	Config                            tls.Config
+}
+
 var (
-	FlagTlsInsecure *bool
-	hasGCMAsm       bool
-	cipherSuites    []*tls.CipherSuite
+	FlagTlsInsecure   *bool
+	FlagTlsSkipVerify *bool
+	FlagTlsP12File    *string
+	FlagTlsP12        *string
+	muTLS             sync.Mutex
+	hasGCMAsm         bool
+	cipherSuites      []*tls.CipherSuite
 
 	topCipherSuites []uint16
 	versions        []uint16
 )
 
 const (
-	FlagNameTlsInsecure = "tls.insecure"
+	FlagNameTlsInsecure   = "tls.insecure"
+	FlagNameTlsSkipVerify = "tls.skipverify"
+	FlagNameTlsP12File    = "tls.p12file"
+	FlagNameTlsP12        = "tls.p12"
 )
 
 const (
@@ -43,7 +60,10 @@ const (
 )
 
 func init() {
-	FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and ciphersuites")
+	FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
+	FlagTlsSkipVerify = flag.Bool(FlagNameTlsSkipVerify, false, "Skip certificate verification")
+	FlagTlsP12File = flag.String(FlagNameTlsP12File, "", "TLS PKCS12 certificates & privkey container file (P12 format)")
+	FlagTlsP12 = flag.String(FlagNameTlsP12, "", "TLS PKCS12 certificates & privkey container stream (P12,Base64 format)")
 
 	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initTls()
@@ -284,32 +304,6 @@ func DebugTlsConnectionInfo(typ string, tlsConn *tls.Conn) {
 		vchains := &connstate.VerifiedChains[r]
 		Debug("TLS connection info %s: Verified Chains %d : %d\n", typ, r, vchains)
 	}
-}
-
-type TlsPackage struct {
-	CertificateAsPem, PrivateKeyAsPem []byte
-	Certificate                       *x509.Certificate
-	PrivateKey                        interface{}
-	CaCerts                           []*x509.Certificate
-	P12                               []byte
-	Info                              string
-	Config                            tls.Config
-}
-
-var (
-	FlagTlsP12File *string
-	FlagTlsP12     *string
-	muTLS          sync.Mutex
-)
-
-const (
-	FlagNameTlsP12File = "tls.p12file"
-	FlagNameTlsP12     = "tls.p12"
-)
-
-func init() {
-	FlagTlsP12File = flag.String(FlagNameTlsP12File, "", "TLS PKCS12 certificates & privkey container file (P12 format)")
-	FlagTlsP12 = flag.String(FlagNameTlsP12, "", "TLS PKCS12 certificates & privkey container stream (P12,Base64 format)")
 }
 
 func Rnd(max int) int {

@@ -29,7 +29,7 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 		return err
 	}
 
-	Debug("Watchdog observe process pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
+	Debug("Watchdog process started pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
 
 	go func() {
 		doneCh <- cmd.Wait()
@@ -37,7 +37,7 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 
 	select {
 	case <-time.After(timeout):
-		Debug("Watchdog: process killed! pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
+		Debug("Watchdog process will be killed pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
 		Error(cmd.Process.Kill())
 
 		return &ErrWatchdog{msg: fmt.Sprintf("Watchdog killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start))}
@@ -65,7 +65,7 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 			output = "\n" + string(bu.Bytes())
 		}
 
-		Debug("Watchdog: process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s output: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start), output)
+		Debug("Watchdog process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s output: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start), output)
 
 		return err
 	}
@@ -84,7 +84,7 @@ func WatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
 
 	select {
 	case <-time.After(timeout):
-		Debug("Watchdog: function killed! time: %v", time.Since(start))
+		Debug("Watchdog function killed! time: %v", time.Since(start))
 
 		return &ErrWatchdog{msg: msg}
 	case err = <-doneCh:
@@ -95,7 +95,7 @@ func WatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
 			exitstate = "successfull"
 		}
 
-		Debug("Watchdog: function %s! time: %s", exitstate, time.Since(start))
+		Debug("Watchdog function %s! time: %s", exitstate, time.Since(start))
 		return err
 	}
 }
