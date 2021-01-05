@@ -6,19 +6,27 @@ import (
 )
 
 type filewalker struct {
-	path      string
-	filemask  string
-	recursive bool
-	walkFunc  func(path string) error
+	path        string
+	filemask    string
+	recursive   bool
+	ignoreError bool
+	walkFunc    func(path string) error
 }
 
 func (this *filewalker) walkfunc(path string, fi os.FileInfo, err error) error {
-	if err != nil {
-		return err
+	var f os.FileInfo
+
+	if err == nil {
+		f, err = os.Stat(path)
 	}
 
-	f, err := os.Stat(path)
 	if err != nil {
+		if this.ignoreError {
+			Warn("cannot access: %s", path)
+
+			return filepath.SkipDir
+		}
+
 		return err
 	}
 
@@ -46,7 +54,7 @@ func (this *filewalker) walkfunc(path string, fi os.FileInfo, err error) error {
 	return filepath.SkipDir
 }
 
-func WalkFilepath(filemask string, recursive bool, walkFunc func(path string) error) error {
+func WalkFilepath(filemask string, recursive bool, ignoreError bool, walkFunc func(path string) error) error {
 	path := ""
 	filemask = CleanPath(filemask)
 
@@ -78,7 +86,13 @@ func WalkFilepath(filemask string, recursive bool, walkFunc func(path string) er
 		}
 	}
 
-	w := filewalker{path: path, filemask: filemask, recursive: recursive, walkFunc: walkFunc}
+	w := filewalker{
+		path:        path,
+		filemask:    filemask,
+		recursive:   recursive,
+		ignoreError: ignoreError,
+		walkFunc:    walkFunc,
+	}
 
 	return filepath.Walk(path, w.walkfunc)
 }
