@@ -474,12 +474,13 @@ func log(level int, ri RuntimeInfo, msg string, err error) {
 	defer mu.Unlock()
 
 	if level == LEVEL_ERROR {
+		lastErrTime = time.Now()
+
 		if (err.Error() == lastErr) && (time.Since(lastErrTime) < time.Millisecond*100) {
 			return
 		}
 
 		lastErr = err.Error()
-		lastErrTime = time.Now()
 	}
 
 	if level == LEVEL_FILE || (FlagLogVerbose != nil && *FlagLogVerbose) || level > LEVEL_DEBUG {
