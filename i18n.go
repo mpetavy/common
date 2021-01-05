@@ -313,7 +313,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	paths := []string{"*.go", "../common/*.go"}
 
 	for _, path := range paths {
-		err := WalkFilepath(path, true, func(path string) error {
+		err := WalkFilepath(path, true, false, func(path string) error {
 			Debug("extract i18n from source file: %s", path)
 
 			ba, err := ioutil.ReadFile(path)
