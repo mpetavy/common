@@ -154,15 +154,15 @@ func initTls() {
 	}
 
 	sort.SliceStable(cipherSuites, func(i, j int) bool {
-		oi := orderOfCipherSuite(cipherSuites[i].ID)
-		oj := orderOfCipherSuite(cipherSuites[j].ID)
+		ii := indexOfCipherSuite(cipherSuites[i].ID)
+		ij := indexOfCipherSuite(cipherSuites[j].ID)
 
 		switch {
-		case oi != -1 && oj != -1:
-			return oi < oj
-		case oi == -1 && oj == -1:
+		case ii != -1 && ij != -1:
+			return ii < ij
+		case ii == -1 && ij == -1:
 			return strings.Compare(cipherSuites[i].Name, cipherSuites[j].Name) == -1
-		case oi != -1:
+		case ii != -1:
 			return true
 		default:
 			return false
@@ -226,7 +226,7 @@ func TlsInfoToCipherSuite(name string) *tls.CipherSuite {
 	return nil
 }
 
-func orderOfCipherSuite(id uint16) int {
+func indexOfCipherSuite(id uint16) int {
 	for i, cs := range topCipherSuites {
 		if cs == id {
 			return i
@@ -369,31 +369,26 @@ func TlsConfigFromP12Buffer(ba []byte) (*TlsPackage, error) {
 		return nil, err
 	}
 
-	key, cert, caCerts, err := pkcs12.DecodeChain(ba, pkcs12.DefaultPassword)
+	p12PrivateKey, p12Cert, p12RootCerts, err := pkcs12.DecodeChain(ba, pkcs12.DefaultPassword)
 	if Error(err) {
 		return nil, err
-	}
-
-	_, ok := key.(*rsa.PrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("Expected RSA private key type")
 	}
 
 	keyAsPem := pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(key.(*rsa.PrivateKey)),
+			Bytes: x509.MarshalPKCS1PrivateKey(p12PrivateKey.(*rsa.PrivateKey)),
 		},
 	)
 
-	certAsPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
+	certAsPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: p12Cert.Raw})
 
-	caCertPool, _ := x509.SystemCertPool()
-	if caCertPool == nil {
-		caCertPool = x509.NewCertPool()
+	rootCertPool, _ := x509.SystemCertPool()
+	if rootCertPool == nil {
+		rootCertPool = x509.NewCertPool()
 	}
 
-	caCertPool.AppendCertsFromPEM(certAsPem)
+	rootCertPool.AppendCertsFromPEM(certAsPem)
 
 	certificate, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
 	if Error(err) {
@@ -404,8 +399,8 @@ func TlsConfigFromP12Buffer(ba []byte) (*TlsPackage, error) {
 		Rand:                     rand.Reader,
 		PreferServerCipherSuites: true,
 		Certificates:             []tls.Certificate{certificate},
-		RootCAs:                  caCertPool,
-		ClientCAs:                caCertPool,
+		RootCAs:                  rootCertPool,
+		ClientCAs:                rootCertPool,
 		CurvePreferences: []tls.CurveID{
 			tls.CurveP521,
 			tls.CurveP384,
@@ -413,8 +408,8 @@ func TlsConfigFromP12Buffer(ba []byte) (*TlsPackage, error) {
 		},
 	}
 
-	list := []*x509.Certificate{cert}
-	list = append(list, caCerts...)
+	list := []*x509.Certificate{p12Cert}
+	list = append(list, p12RootCerts...)
 
 	certInfos, err := CertificateInfoFromX509(list)
 	if Error(err) {
@@ -424,10 +419,10 @@ func TlsConfigFromP12Buffer(ba []byte) (*TlsPackage, error) {
 	return &TlsPackage{
 		CertificateAsPem: certAsPem,
 		PrivateKeyAsPem:  keyAsPem,
-		Certificate:      cert,
-		PrivateKey:       key,
+		Certificate:      p12Cert,
+		PrivateKey:       p12PrivateKey,
 		P12:              ba,
-		CaCerts:          caCerts,
+		CaCerts:          p12RootCerts,
 		Info:             certInfos,
 		Config:           tlsConfig,
 	}, nil

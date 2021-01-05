@@ -128,7 +128,7 @@ func (this *TCPClient) Connect() (io.ReadWriter, error) {
 			hostname = "localhost"
 		}
 
-		// set hostname for self-signed cetificates
+		// set hostname for self-signed certificates
 		tlsPackage.Config.ServerName = hostname
 		tlsPackage.Config.InsecureSkipVerify = !this.useTlsVerify
 
