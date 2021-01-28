@@ -70,19 +70,19 @@ func (server *DiscoverServer) Start() error {
 					}
 				}
 
-				host,_,err := net.SplitHostPort(peer.String())
+				host, _, err := net.SplitHostPort(peer.String())
 				if Error(err) {
 					break
 				}
 
 				remote := net.ParseIP(host)
 				if remote == nil {
-					Error(fmt.Errorf("cannot parse ip: %s",host))
+					Error(fmt.Errorf("cannot parse ip: %s", host))
 
 					break
 				}
 
-				addrs,err := GetHostAddrs(true,remote)
+				addrs, err := GetHostAddrs(true, remote)
 				if Error(err) {
 					break
 				}
@@ -90,12 +90,12 @@ func (server *DiscoverServer) Start() error {
 				info := server.info
 
 				if len(addrs) > 0 {
-					host,_,err := net.ParseCIDR(addrs[0].Addr.String())
+					host, _, err := net.ParseCIDR(addrs[0].Addr.String())
 					if Error(err) {
 						break
 					}
 
-					info = strings.Replace(info,"<host>",host.String(),1)
+					info = strings.Replace(info, "<host>", host.String(), 1)
 				}
 
 				receivedUID := string(b[:n])
@@ -147,7 +147,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 
 	discoveredIps := make(map[string]string)
 
-	addrs, err := GetHostAddrs(true,nil)
+	addrs, err := GetHostAddrs(true, nil)
 	if Error(err) {
 		return nil, err
 	}

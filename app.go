@@ -62,7 +62,7 @@ type EventFlagsSet struct {
 const (
 	FlagNameService         = "service"
 	FlagNameServiceUsername = "service.username"
-	FLagNameServicePassword = "service.password"
+	FlagNameServicePassword = "service.password"
 	FlagNameServiceTimeout  = "service.timeout"
 )
 
@@ -171,7 +171,7 @@ func Run(mandatoryFlags []string) {
 	if app.CanRunAsService {
 		FlagService = flag.String(FlagNameService, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
 		FlagServiceUser = flag.String(FlagNameServiceUsername, "", "Service user")
-		FlagServicePassword = flag.String(FLagNameServicePassword, "", "Service password")
+		FlagServicePassword = flag.String(FlagNameServicePassword, "", "Service password")
 		FlagServiceStartTimeout = flag.Int(FlagNameServiceTimeout, 1000, "Service timeout")
 	}
 
@@ -181,6 +181,11 @@ func Run(mandatoryFlags []string) {
 
 	if !*FlagNoBanner || *FlagUsage {
 		showBanner()
+	}
+
+	if flag.NArg() > 0 {
+		Error(fmt.Errorf("superfluous flags provided: %s",strings.Join(os.Args[1:]," ")))
+		Exit(1)
 	}
 
 	err := initConfiguration()
@@ -256,7 +261,7 @@ func Run(mandatoryFlags []string) {
 
 	err = run()
 
-	if err == nil || isErrExit(err) {
+	if err == nil || IsErrExit(err) {
 		Exit(0)
 	} else {
 		Error(err)
@@ -473,7 +478,7 @@ func (app *application) Stop(s service.Service) error {
 func run() error {
 	args := os.Args[1:]
 
-	for _, item := range []string{FlagNameService, FlagNameServiceUsername, FLagNameServicePassword} {
+	for _, item := range []string{FlagNameService, FlagNameServiceUsername, FlagNameServicePassword} {
 		for i := range args {
 			if args[i] == "-"+item {
 				args = append(args[:i], args[i+2:]...)

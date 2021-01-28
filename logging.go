@@ -172,8 +172,7 @@ func (this *logFileWriter) Logs(w io.Writer) error {
 		if *FlagCountBackups == 1 {
 			src = realLogFilename() + ".bak"
 
-			b, _ := fileExists(src)
-			if !b {
+			if !fileExists(src) {
 				src = ""
 			}
 		}
@@ -211,8 +210,7 @@ func (this *logFileWriter) Close() {
 func newLogFileWriter() (*logFileWriter, error) {
 	filesize := int64(0)
 
-	b, _ := FileExists(realLogFilename())
-	if b {
+	if FileExists(realLogFilename()) {
 		var err error
 
 		filesize, err = FileSize(realLogFilename())
@@ -367,7 +365,7 @@ func Debug(t string, arg ...interface{}) {
 // DebugError prints out the error
 func DebugError(err error) bool {
 	if *FlagLogVerbose {
-		if err != nil && !isErrExit(err) {
+		if err != nil && !IsErrExit(err) {
 			ri := GetRuntimeInfo(1)
 
 			log(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
@@ -396,7 +394,7 @@ func Warn(t string, arg ...interface{}) {
 }
 
 func WarnError(err error) bool {
-	if err != nil && !isErrExit(err) {
+	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
 		log(LEVEL_WARN, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
@@ -448,7 +446,7 @@ func Ignore(arg ...interface{}) bool {
 
 // Error prints out the error
 func Error(err error) bool {
-	if err != nil && !isErrExit(err) {
+	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
 		log(LEVEL_ERROR, ri, errorString(ri, err), err)
@@ -458,7 +456,7 @@ func Error(err error) bool {
 }
 
 func ErrorReturn(err error) error {
-	if err != nil && !isErrExit(err) {
+	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
 		log(LEVEL_ERROR, ri, errorString(ri, err), err)
@@ -467,24 +465,19 @@ func ErrorReturn(err error) error {
 	return err
 }
 
-func isErrExit(err error) bool {
-	_, ok := err.(*ErrExit)
-
-	return ok
-}
-
 func log(level int, ri RuntimeInfo, msg string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
 	if level == LEVEL_ERROR {
-		lastErrTime = time.Now()
+		defer func() {
+			lastErr = err.Error()
+			lastErrTime = time.Now()
+		}()
 
-		if (err.Error() == lastErr) && (time.Since(lastErrTime) < time.Millisecond*100) {
+		if err.Error() == lastErr && time.Since(lastErrTime) < time.Millisecond*100 {
 			return
 		}
-
-		lastErr = err.Error()
 	}
 
 	if level == LEVEL_FILE || (FlagLogVerbose != nil && *FlagLogVerbose) || level > LEVEL_DEBUG {

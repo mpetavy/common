@@ -62,12 +62,7 @@ func WalkFilepath(filemask string, recursive bool, ignoreError bool, walkFunc fu
 		path = filepath.Dir(filemask)
 		filemask = filepath.Base(filemask)
 	} else {
-		b, err := FileExists(filemask)
-		if err != nil {
-			return err
-		}
-
-		if b {
+		if FileExists(filemask) {
 			b, err := IsDirectory(filemask)
 			if err != nil {
 				return err

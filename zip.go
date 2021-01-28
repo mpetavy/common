@@ -55,12 +55,7 @@ func Unzip(dest, src string) error {
 
 			dt = append(dt, dirTime{path, ti})
 		} else {
-			b, err := FileExists(path)
-			if err != nil {
-				return err
-			}
-
-			if b {
+			if FileExists(path) {
 				err = os.Remove(path)
 				if err != nil {
 					return err

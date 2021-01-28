@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"os/user"
@@ -82,27 +81,22 @@ func init() {
 
 // AppCleanup cleans up all remaining objects
 func deleteTempDir() error {
-	b, err := FileExists(tempDir)
-	if err != nil {
-		return err
-	}
-
-	if !b {
+	if !FileExists(tempDir) {
 		return nil
 	}
 
 	DebugFunc(tempDir)
 
-	err = filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
 			b, err := IsFileReadOnly(path)
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 
 			if !b {
 				err := SetFileReadOnly(path, false)
-				if err != nil {
+				if Error(err) {
 					return err
 				}
 			}
@@ -110,12 +104,12 @@ func deleteTempDir() error {
 
 		return nil
 	})
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	err = os.RemoveAll(tempDir)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -132,7 +126,7 @@ func CreateTempFile() (file *os.File, err error) {
 	tempDir := TempDir()
 
 	file, err = ioutil.TempFile(tempDir, GetRuntimeInfo(1).Filename()+"-")
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 	defer func() {
@@ -149,7 +143,7 @@ func CreateTempDir() (string, error) {
 	rootTempDir := TempDir()
 
 	tempdir, err := ioutil.TempDir(rootTempDir, GetRuntimeInfo(1).Filename()+"-")
-	if err != nil {
+	if Error(err) {
 		return "", err
 	}
 
@@ -158,41 +152,34 @@ func CreateTempDir() (string, error) {
 	return tempdir, err
 }
 
-func fileExists(filename string) (bool, error) {
-	var b bool
-
+func fileExists(filename string) bool {
 	_, err := os.Stat(filename)
 
-	if os.IsNotExist(err) {
-		b = false
-		err = nil
+	if os.IsNotExist(err) || err != nil {
+		return false
 	} else {
-		b = err == nil
+		return true
 	}
-
-	return b, err
 }
 
 // FileExists does ... guess what :-)
-func FileExists(filename string) (bool, error) {
-	b, err := fileExists(filename)
+func FileExists(filename string) bool {
+	b := fileExists(filename)
 
 	Debug(fmt.Sprintf("FileExists %s: %v", filename, b))
 
-	return b, err
+	return b
 }
 
 // FileDelete does ... guess what :-)
 func FileDelete(filename string) error {
-	b, err := FileExists(filename)
-	if err != nil {
-		return err
-	}
+	if FileExists(filename) {
+		Debug(fmt.Sprintf("FileRemove %s", filename))
 
-	if b {
-		Debug(fmt.Sprintf("FileRemove %s: %v", filename, b))
-
-		return os.Remove(filename)
+		err := os.Remove(filename)
+		if Error(err) {
+			return err
+		}
 	}
 
 	return nil
@@ -201,12 +188,12 @@ func FileDelete(filename string) error {
 // FileDate does ... guess what :-)
 func FileDate(filename string) (time.Time, error) {
 	f, err := os.Stat(filename)
-	if err != nil {
+	if Error(err) {
 		return time.Time{}, err
 	}
 
 	t, err := f.ModTime().MarshalText()
-	if err != nil {
+	if Error(err) {
 		return time.Time{}, err
 	}
 
@@ -218,7 +205,7 @@ func FileDate(filename string) (time.Time, error) {
 // FileSize does ... guess what :-)
 func FileSize(filename string) (int64, error) {
 	file, err := os.Stat(filename)
-	if err != nil {
+	if Error(err) {
 		return -1, err
 	}
 
@@ -256,7 +243,7 @@ func FileCopy(src string, dst string) error {
 func FileStore(filename string, r io.Reader) error {
 	// create the file
 	out, err := os.Create(filename)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -267,7 +254,7 @@ func FileStore(filename string, r io.Reader) error {
 
 	// download the remote resource to the file
 	_, err = io.Copy(out, r)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -293,26 +280,16 @@ func FileBackup(filename string) error {
 			dst = filename + "." + strconv.Itoa(i+1)
 		}
 
-		b, err := fileExists(src)
-		if err != nil {
-			return err
-		}
-
-		if b {
-			b, err = fileExists(dst)
-			if err != nil {
-				return err
-			}
-
-			if b {
-				err = os.Remove(dst)
-				if err != nil {
+		if fileExists(src) {
+			if fileExists(dst) {
+				err := FileDelete(dst)
+				if Error(err) {
 					return err
 				}
 			}
 
 			err := os.Rename(src, dst)
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 		}
@@ -340,14 +317,9 @@ func IsFileReadOnly(path string) (result bool, err error) {
 
 // IsDirectory checks if the path leads to a directory
 func IsDirectory(path string) (bool, error) {
-	b, err := FileExists(path)
-	if err != nil {
-		return false, err
-	}
-
-	if b {
+	if FileExists(path) {
 		fi, err := os.Stat(path)
-		if err != nil {
+		if Error(err) {
 			return false, err
 		}
 
@@ -360,7 +332,7 @@ func IsDirectory(path string) (bool, error) {
 // IsDirectory checks if the path leads to a directory
 func IsFile(path string) (bool, error) {
 	b, err := IsDirectory(path)
-	if err != nil {
+	if Error(err) {
 		return false, err
 	}
 
@@ -370,7 +342,7 @@ func IsFile(path string) (bool, error) {
 // IsSymbolicLink checks if the path leads to symbolic link
 func IsSymbolicLink(path string) bool {
 	file, err := os.Lstat(path)
-	if err != nil {
+	if Error(err) {
 		return false
 	}
 
@@ -445,9 +417,7 @@ func CleanPath(path string) string {
 			}
 		}
 
-		if err != nil {
-			Error(err)
-		} else {
+		if !Error(err) {
 			result = filepath.Join(dir, result)
 		}
 	}
@@ -493,21 +463,9 @@ func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string
 		}()
 
 		if *FlagLogIO {
-			written, err = io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf)
+			written, err = CopyBufferError(io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf))
 		} else {
-			written, err = io.CopyBuffer(writer, reader, buf)
-		}
-
-		if err != nil {
-			if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
-				err = fmt.Errorf("Timeout error")
-			}
-
-			if IsErrNetClosing(err) || IsErrUnexpectedEOF(err) {
-				err = nil
-			} else {
-				DebugError(err)
-			}
+			written, err = CopyBufferError(io.CopyBuffer(writer, reader, buf))
 		}
 	}()
 
@@ -736,9 +694,9 @@ func (this *DeadlineReader) Read(p []byte) (int, error) {
 }
 
 type TimeoutReader struct {
-	reader    io.Reader
-	timeout   time.Duration
-	useTimer  bool
+	reader   io.Reader
+	timeout  time.Duration
+	useTimer bool
 
 	FirstRead time.Time
 }
@@ -756,11 +714,11 @@ func (this *TimeoutReader) Read(p []byte) (int, error) {
 
 		this.useTimer = true
 
-		n,err := this.reader.Read(p)
+		n, err := this.reader.Read(p)
 
 		this.FirstRead = time.Now()
 
-		return n,err
+		return n, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), this.timeout)

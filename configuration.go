@@ -213,12 +213,7 @@ func SetConfiguration(cfg interface{}) error {
 func readFile() ([]byte, error) {
 	DebugFunc(*FlagCfgFile)
 
-	b, err := FileExists(*FlagCfgFile)
-	if Error(err) {
-		return nil, err
-	}
-
-	if !b {
+	if !FileExists(*FlagCfgFile) {
 		return nil, nil
 	}
 

@@ -41,15 +41,6 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 
 	filename := "go.mod"
 
-	b, err := FileExists(filename)
-	if Error(err) {
-		return nil, err
-	}
-
-	if !b {
-		return nil, &ErrFileNotFound{FileName: filename}
-	}
-
 	ba, err := ioutil.ReadFile(filename)
 	if Error(err) {
 		return nil, err
@@ -100,12 +91,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 
 				licenseFile := filepath.Join(paths...)
 
-				b, err := FileExists(licenseFile)
-				if Error(err) {
-					return nil, err
-				}
-
-				if b {
+				if FileExists(licenseFile) {
 					ba, err := ioutil.ReadFile(licenseFile)
 					if Error(err) {
 						return nil, err
