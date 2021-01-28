@@ -1,0 +1,352 @@
+package common
+
+import (
+	"crypto/tls"
+	"flag"
+	"fmt"
+	"go.bug.st/serial"
+	"golang.org/x/crypto/sha3"
+	"io"
+	"net"
+	"strconv"
+	"strings"
+	"time"
+)
+
+var (
+	timeout *int
+)
+
+func init() {
+	timeout = flag.Int("network.timeout", 10*1000, "network server and client dial timeout")
+}
+
+type NetworkConnection struct {
+	Socket net.Conn
+}
+
+func (networkConnection *NetworkConnection) Read(p []byte) (n int, err error) {
+	return networkConnection.Socket.Read(p)
+}
+
+func (networkConnection *NetworkConnection) Write(p []byte) (n int, err error) {
+	return networkConnection.Socket.Write(p)
+}
+
+func (networkConnection *NetworkConnection) Close() error {
+	defer func() {
+		networkConnection.Socket = nil
+	}()
+
+	if networkConnection.Socket != nil {
+		err := networkConnection.Socket.Close()
+		if Error(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type NetworkClient struct {
+	address   string
+	tlsConfig *tls.Config
+}
+
+func NewNetworkClient(address string, tlsConfig *tls.Config) (*NetworkClient, error) {
+	networkClient := &NetworkClient{
+		address:   address,
+		tlsConfig: tlsConfig,
+	}
+
+	return networkClient, nil
+}
+
+func (networkClient *NetworkClient) Start() error {
+	return nil
+}
+
+func (networkClient *NetworkClient) Stop() error {
+	return nil
+}
+
+func (networkClient *NetworkClient) Connect() (*NetworkConnection, error) {
+	if networkClient.tlsConfig != nil {
+		Debug("Dial TLS connection: %s...", networkClient.address)
+
+		networkClient.tlsConfig.ServerName ="localhost"
+
+		socket, err := tls.DialWithDialer(&net.Dialer{Deadline: time.Now().Add(MillisecondToDuration(*timeout))}, "tcp", networkClient.address, networkClient.tlsConfig)
+		if Error(err) {
+			return nil, err
+		}
+
+		return &NetworkConnection{
+			Socket: socket,
+		}, nil
+	} else {
+		Debug("Dial connection: %s...", networkClient.address)
+
+		socket, err := net.DialTimeout("tcp", networkClient.address, MillisecondToDuration(*timeout))
+		if Error(err) {
+			return nil, err
+		}
+
+		return &NetworkConnection{
+			Socket: socket,
+		}, nil
+	}
+}
+
+type NetworkServer struct {
+	address   string
+	tlsConfig *tls.Config
+	listener  net.Listener
+}
+
+func NewNetworkServer(address string, tlsConfig *tls.Config) (*NetworkServer, error) {
+	networkServer := &NetworkServer{
+		address:   address,
+		tlsConfig: tlsConfig,
+		listener:  nil,
+	}
+
+	return networkServer, nil
+}
+
+func (networkServer *NetworkServer) Start() error {
+	ips, err := GetHostAddrs(true, nil)
+	if Error(err) {
+		return err
+	}
+
+	Debug("Local IPs: %v", ips)
+
+	if networkServer.tlsConfig != nil {
+		Debug("Create TLS listener: %s...", networkServer.address)
+
+		networkServer.listener, err = tls.Listen("tcp", networkServer.address, networkServer.tlsConfig)
+		if Error(err) {
+			return err
+		}
+	} else {
+		tcpAddr, err := net.ResolveTCPAddr("tcp", networkServer.address)
+		if Error(err) {
+			return err
+		}
+
+		Debug("Create TLS listener: %s ...", networkServer.address)
+
+		networkServer.listener, err = net.ListenTCP("tcp", tcpAddr)
+		if Error(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (networkServer *NetworkServer) Stop() error {
+	defer func() {
+		networkServer.listener = nil
+	}()
+
+	if networkServer.listener != nil {
+		err := networkServer.listener.Close()
+		if Error(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (networkServer *NetworkServer) Connect() (*NetworkConnection, error) {
+	Debug("Accept connection ...")
+
+	socket, err := networkServer.listener.Accept()
+	if DebugError(err) {
+		return nil, err
+	}
+
+	Debug("Connected: %s", socket.RemoteAddr().String())
+
+	return &NetworkConnection{
+		Socket: socket,
+	}, nil
+}
+
+func (this *NetworkServer) Serve() ([]byte, error) {
+	err := this.Start()
+	if Error(err) {
+		return nil, err
+	}
+
+	defer func() {
+		Error(this.Stop())
+	}()
+
+	w, err := this.Connect()
+	if Error(err) {
+		return nil, err
+	}
+
+	defer func() {
+		Error(w.Close())
+	}()
+
+	hash := sha3.New512()
+
+	_, err = io.Copy(hash, w)
+
+	return hash.Sum(nil), err
+}
+
+type TTYConnection struct {
+	port serial.Port
+}
+
+func (ttyConnection *TTYConnection) Read(p []byte) (n int, err error) {
+	return ttyConnection.port.Read(p)
+}
+
+func (ttyConnection *TTYConnection) Write(p []byte) (n int, err error) {
+	return ttyConnection.port.Write(p)
+}
+
+func (ttyConnection *TTYConnection) Close() error {
+	defer func() {
+		ttyConnection.port = nil
+	}()
+
+	if ttyConnection.port != nil {
+		err := ttyConnection.port.Close()
+		if Error(err) {
+			return err
+		}
+
+		time.Sleep(time.Millisecond * 200)
+	}
+
+	return nil
+}
+
+type TTY struct {
+	device string
+}
+
+func NewTTY(device string) (*TTY, error) {
+	tty := &TTY{
+		device: device,
+	}
+
+	tty.device = device
+
+	return tty, nil
+}
+
+func (tty *TTY) Start() error {
+	return nil
+}
+
+func (tty *TTY) Stop() error {
+	return nil
+}
+
+func (tty *TTY) Connect() (io.ReadWriteCloser, error) {
+	Debug("Connected: %s", tty.device)
+
+	serialPort, mode, err := evaluateTTYOptions(tty.device)
+	if Error(err) {
+		return nil, err
+	}
+
+	port, err := serial.Open(serialPort, mode)
+	if Error(err) {
+		return nil, err
+	}
+
+	err = port.ResetInputBuffer()
+	if Error(err) {
+		return nil, err
+	}
+
+	err = port.ResetOutputBuffer()
+	if Error(err) {
+		return nil, err
+	}
+
+	return &TTYConnection{
+		port: port,
+	}, nil
+}
+
+func evaluateTTYOptions(device string) (string, *serial.Mode, error) {
+	ss := strings.Split(device, ",")
+
+	baudrate := 9600
+	databits := 8
+	stopbits := serial.OneStopBit
+	paritymode := serial.NoParity
+	pm := "N"
+	sb := "1"
+
+	var portname string
+	var err error
+
+	portname = ss[0]
+	if len(ss) > 1 {
+		baudrate, err = strconv.Atoi(ss[1])
+		if err != nil || IndexOf([]string{"50", "75", "110", "134", "150", "200", "300", "600", "1200", "1800", "2400", "4800", "7200", "9600", "14400", "19200", "28800", "38400", "57600", "76800", "115200"}, ss[1]) == -1 {
+			err = fmt.Errorf("invalid baud rate: %s", ss[1])
+		}
+
+		if err != nil {
+			return "", nil, err
+		}
+	}
+	if len(ss) > 2 {
+		databits, err = strconv.Atoi(ss[2])
+		if err != nil {
+			return "", nil, fmt.Errorf("invalid databits: %s", ss[2])
+		}
+	}
+	if len(ss) > 3 {
+		pm = strings.ToUpper(ss[3][:1])
+
+		switch pm {
+		case "N":
+			paritymode = serial.NoParity
+		case "O":
+			paritymode = serial.OddParity
+		case "E":
+			paritymode = serial.EvenParity
+		default:
+			return "", nil, fmt.Errorf("invalid partitymode: %s", pm)
+		}
+	}
+
+	if len(ss) > 4 {
+		sb = strings.ToUpper(ss[4][:1])
+
+		switch sb {
+		case "1":
+			stopbits = serial.OneStopBit
+		case "1.5":
+			stopbits = serial.OnePointFiveStopBits
+		case "2":
+			stopbits = serial.TwoStopBits
+		default:
+			return "", nil, fmt.Errorf("invalid stopbits: %s", sb)
+		}
+	}
+
+	Debug("Use serial port %s: %d %d %s %s", portname, baudrate, databits, pm, sb)
+
+	return portname, &serial.Mode{
+		BaudRate: baudrate,
+		DataBits: databits,
+		Parity:   paritymode,
+		StopBits: stopbits,
+	}, nil
+}

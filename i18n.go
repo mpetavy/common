@@ -246,8 +246,6 @@ func Translate(msg string, args ...interface{}) string {
 
 	t := TranslateFor(*FlagLanguage, msg)
 
-	DebugFunc("%s = %s", msg, t)
-
 	return Capitalize(fmt.Sprintf(t, args...))
 }
 

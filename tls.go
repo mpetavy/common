@@ -1,5 +1,9 @@
 package common
 
+// https://www.golinuxcloud.com/tutorial-pki-certificates-authority-ocsp/
+// https://sockettools.com/kb/creating-certificate-using-openssl/
+// http://blog.fourthbit.com/2014/12/23/traffic-analysis-of-an-ssl-slash-tls-session/
+
 import (
 	"crypto/rand"
 	"crypto/rsa"
@@ -18,52 +22,50 @@ import (
 	"software.sslmate.com/src/go-pkcs12"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 )
 
-type TlsPackage struct {
-	CertificateAsPem, PrivateKeyAsPem []byte
-	Certificate                       *x509.Certificate
-	PrivateKey                        interface{}
-	CaCerts                           []*x509.Certificate
-	P12                               []byte
-	Info                              string
-	Config                            tls.Config
-}
-
 var (
-	FlagTlsInsecure   *bool
-	FlagTlsSkipVerify *bool
-	FlagTlsP12File    *string
-	FlagTlsP12        *string
-	muTLS             sync.Mutex
-	hasGCMAsm         bool
-	cipherSuites      []*tls.CipherSuite
-
-	topCipherSuites []uint16
-	versions        []uint16
+	FlagTlsInsecure    *bool
+	FlagTlsVerify      *bool
+	FlagTlsMinVersion  *string
+	FlagTlsMaxVersion  *string
+	FlagTlsCiphers     *string
+	FlagTlsPassword    *string
+	FlagTlsCertificate *string
+	FlagTlsMutual      *string
+	defaultCiphers     []*tls.CipherSuite
+	preferredCiphers   []uint16
+	defautVersions     []uint16
 )
 
 const (
-	FlagNameTlsInsecure   = "tls.insecure"
-	FlagNameTlsSkipVerify = "tls.skipverify"
-	FlagNameTlsP12File    = "tls.p12file"
-	FlagNameTlsP12        = "tls.p12"
+	FlagNameTlsInsecure    = "tls.insecure"
+	FlagNameTlsVerify      = "tls.verify"
+	FlagNameTlsMinVersion  = "tls.minversion"
+	FlagNameTlsMaxVersion  = "tls.maxversion"
+	FlagNameTlsCiphers     = "tls.ciphers"
+	FlagNameTlsPassword    = "tls.password"
+	FlagNameTlsCertificate = "tls.certificate"
+	FlagNameTlsMutual      = "tls.mutual"
 )
 
 const (
-	tlsVersion10 = "TLS 1.0"
-	tlsVersion11 = "TLS 1.1"
-	tlsVersion12 = "TLS 1.2"
-	tlsVersion13 = "TLS 1.3"
+	TlsVersion10 = "TLS1.0"
+	TlsVersion11 = "TLS1.1"
+	TlsVersion12 = "TLS1.2"
+	TlsVersion13 = "TLS1.3"
 )
 
 func init() {
 	FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
-	FlagTlsSkipVerify = flag.Bool(FlagNameTlsSkipVerify, false, "Skip certificate verification")
-	FlagTlsP12File = flag.String(FlagNameTlsP12File, "", "TLS PKCS12 certificates & privkey container file (P12 format)")
-	FlagTlsP12 = flag.String(FlagNameTlsP12, "", "TLS PKCS12 certificates & privkey container stream (P12,Base64 format)")
+	FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS root certificates")
+	FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, TlsVersion12, "TLS min version")
+	FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, TlsVersion13, "TLS max version")
+	FlagTlsCiphers = flag.String(FlagNameTlsCiphers, "", "TLS ciphers zo use")
+	FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
+	FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
+	FlagTlsMutual = flag.String(FlagNameTlsMutual, "", "Mutual TLS PKCS12 certificates & privkey container file or buffer")
 
 	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initTls()
@@ -74,7 +76,7 @@ func init() {
 	})
 }
 
-func initDefaultCipherSuites() {
+func initTls() {
 	// Check the cpu flags for each platform that has optimized GCM implementations.
 	// Worst case, these variables will just all be false.
 
@@ -87,10 +89,12 @@ func initDefaultCipherSuites() {
 		hasGCMAsm = hasGCMAsmAMD64 || hasGCMAsmARM64 || hasGCMAsmS390X
 	)
 
+	Debug("Hardware cipher implementation available: %v", hasGCMAsm)
+
 	if hasGCMAsm {
 		// If AES-GCM hardware is provided then prioritise AES-GCM
 		// cipher suites.
-		topCipherSuites = []uint16{
+		preferredCiphers = []uint16{
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
@@ -105,7 +109,7 @@ func initDefaultCipherSuites() {
 	} else {
 		// Without AES-GCM hardware, we put the ChaCha20-Poly1305
 		// cipher suites first.
-		topCipherSuites = []uint16{
+		preferredCiphers = []uint16{
 			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -118,29 +122,25 @@ func initDefaultCipherSuites() {
 			tls.TLS_AES_256_GCM_SHA384,
 		}
 	}
-}
 
-func initTls() {
-	initDefaultCipherSuites()
+	defaultCiphers = make([]*tls.CipherSuite, 0)
+	defautVersions = make([]uint16, 0)
 
-	cipherSuites = make([]*tls.CipherSuite, 0)
-	versions = make([]uint16, 0)
-
-	cipherSuites = append(cipherSuites, tls.CipherSuites()...)
+	defaultCiphers = append(defaultCiphers, tls.CipherSuites()...)
 
 	if *FlagTlsInsecure {
-		cipherSuites = append(cipherSuites, tls.InsecureCipherSuites()...)
+		defaultCiphers = append(defaultCiphers, tls.InsecureCipherSuites()...)
 
-		versions = append(versions, tls.VersionTLS10, tls.VersionTLS11)
+		defautVersions = append(defautVersions, tls.VersionTLS10, tls.VersionTLS11)
 	}
 
-	versions = append(versions, tls.VersionTLS12, tls.VersionTLS13)
+	defautVersions = append(defautVersions, tls.VersionTLS12, tls.VersionTLS13)
 
 	i := 0
-	for i < len(cipherSuites) {
+	for i < len(defaultCiphers) {
 		supported := false
-		for _, csv := range cipherSuites[i].SupportedVersions {
-			supported = IndexOf(versions, csv) != -1
+		for _, csv := range defaultCiphers[i].SupportedVersions {
+			supported = IndexOf(defautVersions, csv) != -1
 			if supported {
 				break
 			}
@@ -149,19 +149,19 @@ func initTls() {
 		if supported {
 			i++
 		} else {
-			cipherSuites = append(cipherSuites[:i], cipherSuites[i+1:]...)
+			defaultCiphers = append(defaultCiphers[:i], defaultCiphers[i+1:]...)
 		}
 	}
 
-	sort.SliceStable(cipherSuites, func(i, j int) bool {
-		ii := indexOfCipherSuite(cipherSuites[i].ID)
-		ij := indexOfCipherSuite(cipherSuites[j].ID)
+	sort.SliceStable(defaultCiphers, func(i, j int) bool {
+		ii := indexPreferred(defaultCiphers[i].ID)
+		ij := indexPreferred(defaultCiphers[j].ID)
 
 		switch {
 		case ii != -1 && ij != -1:
 			return ii < ij
 		case ii == -1 && ij == -1:
-			return strings.Compare(cipherSuites[i].Name, cipherSuites[j].Name) == -1
+			return strings.Compare(defaultCiphers[i].Name, defaultCiphers[j].Name) == -1
 		case ii != -1:
 			return true
 		default:
@@ -169,31 +169,49 @@ func initTls() {
 		}
 	})
 
-	Debug("Cipher hasGCMAsm: %v", hasGCMAsm)
-
-	max := Max(len(topCipherSuites), len(cipherSuites))
+	max := Max(len(defaultCiphers), len(preferredCiphers))
 	for i := 0; i < max; i++ {
-		topInfo := ""
+		preferredInfo := ""
 		priorityInfo := ""
 
-		if i < len(topCipherSuites) {
-			topInfo = TlsCipherSuiteToInfo(TlsIdToCipherSuite(topCipherSuites[i]))
+		if i < len(preferredCiphers) {
+			preferredInfo = TlsCipherDescription(TlsIdToCipher(preferredCiphers[i]))
 		}
 
-		if i < len(cipherSuites) {
-			priorityInfo = TlsCipherSuiteToInfo(cipherSuites[i])
+		if i < len(defaultCiphers) {
+			priorityInfo = TlsCipherDescription(defaultCiphers[i])
 		}
 
-		Debug("Cipher #%02d: %s %s", i, FillString(priorityInfo, 70, false, " "), FillString(topInfo, 70, false, " "))
+		Debug("Cipher #%02d: %s %s", i, FillString(priorityInfo, 70, false, " "), FillString(preferredInfo, 70, false, " "))
 	}
 }
 
-func TlsCipherSuites() []*tls.CipherSuite {
-	return cipherSuites
+func TlsDefaultCiphers() []*tls.CipherSuite {
+	return defaultCiphers
 }
 
-func TlsIdToCipherSuite(id uint16) *tls.CipherSuite {
-	for _, cs := range TlsCipherSuites() {
+func TlsCiphersIds(ciphers []*tls.CipherSuite) []uint16 {
+	ids := make([]uint16, 0)
+
+	for _, suit := range defaultCiphers {
+		ids = append(ids, suit.ID)
+	}
+
+	return ids
+}
+
+func TlsCipherNames(ciphers []*tls.CipherSuite) []string {
+	names := make([]string, 0)
+
+	for _, suit := range defaultCiphers {
+		names = append(names, suit.Name)
+	}
+
+	return names
+}
+
+func TlsIdToCipher(id uint16) *tls.CipherSuite {
+	for _, cs := range TlsDefaultCiphers() {
 		if cs.ID == id {
 			return cs
 		}
@@ -202,7 +220,7 @@ func TlsIdToCipherSuite(id uint16) *tls.CipherSuite {
 	return nil
 }
 
-func TlsCipherSuiteToInfo(cs *tls.CipherSuite) string {
+func TlsCipherDescription(cs *tls.CipherSuite) string {
 	tlsVersion := make([]string, 0)
 	for _, v := range cs.SupportedVersions {
 		tlsVersion = append(tlsVersion, TlsIdToVersion(v))
@@ -211,13 +229,13 @@ func TlsCipherSuiteToInfo(cs *tls.CipherSuite) string {
 	return fmt.Sprintf("%s [%s]%s", cs.Name, Join(tlsVersion, ","), Eval(cs.Insecure, fmt.Sprintf("[%s]", Translate("Insecure")), "").(string))
 }
 
-func TlsInfoToCipherSuite(name string) *tls.CipherSuite {
+func TlsDescriptionToCipher(name string) *tls.CipherSuite {
 	p := strings.Index(name, " ")
 	if p != -1 {
 		name = name[:p]
 	}
 
-	for _, cs := range TlsCipherSuites() {
+	for _, cs := range TlsDefaultCiphers() {
 		if cs.Name == name {
 			return cs
 		}
@@ -226,8 +244,8 @@ func TlsInfoToCipherSuite(name string) *tls.CipherSuite {
 	return nil
 }
 
-func indexOfCipherSuite(id uint16) int {
-	for i, cs := range topCipherSuites {
+func indexPreferred(id uint16) int {
+	for i, cs := range preferredCiphers {
 		if cs == id {
 			return i
 		}
@@ -236,11 +254,11 @@ func indexOfCipherSuite(id uint16) int {
 	return -1
 }
 
-func TlsInfosToCipherSuites(s string) []uint16 {
+func TlsCipherSelectionsToIds(s string) []uint16 {
 	list := make([]uint16, 0)
 
 	for _, name := range strings.Split(s, ";") {
-		cs := TlsInfoToCipherSuite(name)
+		cs := TlsDescriptionToCipher(name)
 		if cs != nil {
 			list = append(list, cs.ID)
 		}
@@ -253,11 +271,11 @@ func TlsVersionToId(s string) uint16 {
 	switch s {
 	default:
 		return tls.VersionTLS10
-	case tlsVersion11:
+	case TlsVersion11:
 		return tls.VersionTLS11
-	case tlsVersion12:
+	case TlsVersion12:
 		return tls.VersionTLS12
-	case tlsVersion13:
+	case TlsVersion13:
 		return tls.VersionTLS13
 	}
 }
@@ -265,35 +283,35 @@ func TlsVersionToId(s string) uint16 {
 func TlsIdToVersion(id uint16) string {
 	switch id {
 	default:
-		return tlsVersion10
+		return TlsVersion10
 	case tls.VersionTLS11:
-		return tlsVersion11
+		return TlsVersion11
 	case tls.VersionTLS12:
-		return tlsVersion12
+		return TlsVersion12
 	case tls.VersionTLS13:
-		return tlsVersion13
+		return TlsVersion13
 	}
 }
 
 func TlsVersions() []string {
 	list := make([]string, 0)
-	for i := range versions {
-		list = append(list, TlsIdToVersion(versions[i]))
+	for i := range defautVersions {
+		list = append(list, TlsIdToVersion(defautVersions[i]))
 	}
 
 	return list
 }
 
-func DebugTlsConnectionInfo(typ string, tlsConn *tls.Conn) {
+func TlsDebugConnection(typ string, tlsConn *tls.Conn) {
 	connstate := tlsConn.ConnectionState()
 
-	Debug("TLS connection info %s: Version : %s\n", typ, TlsIdToVersion(connstate.Version))
-	Debug("TLS connection info %s: CipherSuite : %v\n", typ, TlsCipherSuiteToInfo(TlsIdToCipherSuite(connstate.CipherSuite)))
-	Debug("TLS connection info %s: HandshakeComplete : %v\n", typ, connstate.HandshakeComplete)
-	Debug("TLS connection info %s: DidResume : %v\n", typ, connstate.DidResume)
-	Debug("TLS connection info %s: NegotiatedProtocol : %x\n", typ, connstate.NegotiatedProtocol)
-	Debug("TLS connection info %s: NegotiatedProtocolIsMutual : %v\n", typ, connstate.NegotiatedProtocolIsMutual)
-	Debug("TLS connection info %s: ServerName : %s\n", typ, connstate.ServerName)
+	Debug("TLS connection %s: Version : %s\n", typ, TlsIdToVersion(connstate.Version))
+	Debug("TLS connection %s: CipherSuite : %v\n", typ, TlsCipherDescription(TlsIdToCipher(connstate.CipherSuite)))
+	Debug("TLS connection %s: HandshakeComplete : %v\n", typ, connstate.HandshakeComplete)
+	Debug("TLS connection %s: DidResume : %v\n", typ, connstate.DidResume)
+	Debug("TLS connection %s: NegotiatedProtocol : %x\n", typ, connstate.NegotiatedProtocol)
+	Debug("TLS connection %s: NegotiatedProtocolIsMutual : %v\n", typ, connstate.NegotiatedProtocolIsMutual)
+	Debug("TLS connection %s: ServerName : %s\n", typ, connstate.ServerName)
 
 	for i := range connstate.PeerCertificates {
 		peercert := &connstate.PeerCertificates[i]
@@ -345,97 +363,132 @@ func GenerateRandomString(s int) (string, error) {
 // 1st	  private key
 // 2nd	  computer certificate
 // 3d..n  CA certificates (will be ignored by app)
-func TLSConfigFromP12File(p12File string) (*TlsPackage, error) {
-	DebugFunc("p12File: %s", p12File)
+func TlsConfigFromFile(filename string, password string) (*tls.Config, error) {
+	DebugFunc("filename: %s", filename)
 
-	ok, err := FileExists(p12File)
-	if Error(err) || !ok {
+	ba, err := ioutil.ReadFile(filename)
+	if Error(err) {
 		return nil, err
 	}
 
-	ba, err := ioutil.ReadFile(p12File)
-	if Error(err) || !ok {
-		return nil, err
-	}
-
-	return TlsConfigFromP12Buffer(ba)
+	return TlsConfigFromBuffer(ba, password)
 }
 
-func TlsConfigFromP12Buffer(ba []byte) (*TlsPackage, error) {
-	DebugFunc()
-
-	_, _, err := VerifyP12(ba, pkcs12.DefaultPassword)
-	if Error(err) {
-		return nil, err
-	}
-
-	p12PrivateKey, p12Cert, p12RootCerts, err := pkcs12.DecodeChain(ba, pkcs12.DefaultPassword)
-	if Error(err) {
-		return nil, err
-	}
-
-	keyAsPem := pem.EncodeToMemory(
+func PrivateKeyAsPEM(privateKey *rsa.PrivateKey) []byte {
+	return pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(p12PrivateKey.(*rsa.PrivateKey)),
+			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+		},
+	)
+}
+
+func CertificateAsPEM(tlsCertificate *tls.Certificate) []byte {
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: tlsCertificate.Certificate[0]})
+}
+
+func X509toTlsCertificate(certificate *x509.Certificate, privateKey *rsa.PrivateKey) (*tls.Certificate, error) {
+	keyPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 		},
 	)
 
-	certAsPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: p12Cert.Raw})
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Raw})
 
-	rootCertPool, _ := x509.SystemCertPool()
-	if rootCertPool == nil {
-		rootCertPool = x509.NewCertPool()
+	certTls,err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
+	if Error(err) {
+		return nil,err
 	}
 
-	rootCertPool.AppendCertsFromPEM(certAsPem)
+	return &certTls,nil
+}
 
-	certificate, err := tls.X509KeyPair([]byte(certAsPem), []byte(keyAsPem))
+func TlsToX509Certificate(certificate []byte) (*x509.Certificate, error) {
+	return x509.ParseCertificate(certificate)
+}
+
+func TlsConfigFromBuffer(ba []byte, password string) (*tls.Config, error) {
+	DebugFunc()
+
+	p12PrivateKey, p12Cert, p12RootCerts, err := VerifyP12(ba, password)
 	if Error(err) {
 		return nil, err
 	}
 
-	tlsConfig := tls.Config{
+	var rootCertPool *x509.CertPool
+
+	if len(p12RootCerts) > 0 {
+		rootCertPool,_ = x509.SystemCertPool()
+		if rootCertPool == nil {
+			rootCertPool = x509.NewCertPool()
+		}
+
+		for _, rootCert := range p12RootCerts {
+			rootCertPool.AddCert(rootCert)
+		}
+	}
+
+	certificate, err := X509toTlsCertificate(p12Cert, p12PrivateKey)
+	if Error(err) {
+		return nil, err
+	}
+
+	return &tls.Config{
 		Rand:                     rand.Reader,
 		PreferServerCipherSuites: true,
-		Certificates:             []tls.Certificate{certificate},
+		Certificates:             []tls.Certificate{*certificate},
 		RootCAs:                  rootCertPool,
-		ClientCAs:                rootCertPool,
+		MinVersion:               TlsVersionToId(*FlagTlsMinVersion),
+		MaxVersion:               TlsVersionToId(*FlagTlsMaxVersion),
 		CurvePreferences: []tls.CurveID{
 			tls.CurveP521,
 			tls.CurveP384,
 			tls.CurveP256,
 		},
+	}, nil
+}
+
+func TlsConfigToP12(tlsConfig *tls.Config, password string) ([]byte, error) {
+	certPEM := CertificateAsPEM(&tlsConfig.Certificates[0])
+	certBytes, _ := pem.Decode(certPEM)
+	if certBytes == nil {
+		return nil, fmt.Errorf("cannot find PEM block with certificate")
 	}
 
-	list := []*x509.Certificate{p12Cert}
-	list = append(list, p12RootCerts...)
+	keyPEM := PrivateKeyAsPEM(tlsConfig.Certificates[0].PrivateKey.(*rsa.PrivateKey))
+	keyBytes, _ := pem.Decode(keyPEM)
+	if keyBytes == nil {
+		return nil, fmt.Errorf("cannot find PEM block with key")
+	}
 
-	certInfos, err := CertificateInfoFromX509(list)
+	cert, err := x509.ParseCertificate(certBytes.Bytes)
 	if Error(err) {
 		return nil, err
 	}
 
-	return &TlsPackage{
-		CertificateAsPem: certAsPem,
-		PrivateKeyAsPem:  keyAsPem,
-		Certificate:      p12Cert,
-		PrivateKey:       p12PrivateKey,
-		P12:              ba,
-		CaCerts:          p12RootCerts,
-		Info:             certInfos,
-		Config:           tlsConfig,
-	}, nil
+	priv, err := x509.ParsePKCS1PrivateKey(keyBytes.Bytes)
+	if Error(err) {
+		return nil, err
+	}
+
+	p12, err := pkcs12.Encode(rand.Reader, priv, cert, nil, password)
+	if Error(err) {
+		return nil, err
+	}
+
+	return p12, nil
 }
 
-func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TlsPackage, error) {
+func TlsConfigFromPEM(certPEM []byte, keyPEM []byte, password string) (*tls.Config, error) {
 	DebugFunc("generate TLS config from given cert and key flags")
 
-	certBytes, _ := pem.Decode(certAsPem)
+	certBytes, _ := pem.Decode(certPEM)
 	if certBytes == nil {
 		return nil, fmt.Errorf("cannot find PEM block with certificate")
 	}
-	keyBytes, _ := pem.Decode(keyAsPem)
+	keyBytes, _ := pem.Decode(keyPEM)
 	if keyBytes == nil {
 		return nil, fmt.Errorf("cannot find PEM block with key")
 	}
@@ -450,31 +503,29 @@ func TLSConfigFromPem(certAsPem []byte, keyAsPem []byte) (*TlsPackage, error) {
 		return nil, err
 	}
 
-	p12, err := pkcs12.Encode(rand.Reader, priv, cert, nil, pkcs12.DefaultPassword)
+	p12, err := pkcs12.Encode(rand.Reader, priv, cert, nil, password)
 	if Error(err) {
 		return nil, err
 	}
 
-	return TlsConfigFromP12Buffer(p12)
+	return TlsConfigFromBuffer(p12, password)
 }
 
-func createCertificateTemplate() (*x509.Certificate, error) {
+func CreateTlsConfig(password string) (*tls.Config, error) {
 	DebugFunc()
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if Error(err) {
+		return nil, err
+	}
 
 	_, hostname, err := GetHost()
 	if Error(err) {
 		return nil, err
 	}
 
-	// generate a random serial number (a real cert authority would have some logic behind this)
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	if Error(err) {
-		return nil, err
-	}
-
-	tmpl := x509.Certificate{
-		SerialNumber: serialNumber,
+	certTmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
 			CommonName:   hostname,
 			Organization: []string{TitleVersion(true, true, true)}},
@@ -483,40 +534,6 @@ func createCertificateTemplate() (*x509.Certificate, error) {
 		NotAfter:              time.Now().Add(time.Duration(10) * 365 * 24 * time.Hour),
 		DNSNames:              []string{hostname, "localhost"},
 		BasicConstraintsValid: true,
-	}
-
-	return &tmpl, nil
-}
-
-func createCertificate(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}) (cert *x509.Certificate, certPEM []byte, err error) {
-	DebugFunc()
-
-	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
-	if err != nil {
-		return
-	}
-	// parse the resulting certificate so we can use it again
-	cert, err = x509.ParseCertificate(certDER)
-	if err != nil {
-		return
-	}
-	// PEM encode the certificate (this is a standard TLS encoding)
-	b := pem.Block{Type: "CERTIFICATE", Bytes: certDER}
-	certPEM = pem.EncodeToMemory(&b)
-	return
-}
-
-func CreateTlsPackage() (*TlsPackage, error) {
-	DebugFunc()
-
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if Error(err) {
-		return nil, err
-	}
-
-	certTmpl, err := createCertificateTemplate()
-	if Error(err) {
-		return nil, err
 	}
 
 	addrs, err := GetHostAddrs(true, nil)
@@ -534,96 +551,174 @@ func CreateTlsPackage() (*TlsPackage, error) {
 		parsedIps = append(parsedIps, ip)
 	}
 
-	certTmpl.IsCA = true
+	certTmpl.IsCA = false
 	certTmpl.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature
 	certTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 	certTmpl.IPAddresses = parsedIps
 
-	_, certPEM, err := createCertificate(certTmpl, certTmpl, &key.PublicKey, key)
+	certDER, err := x509.CreateCertificate(rand.Reader, certTmpl, certTmpl, &key.PublicKey, key)
 	if Error(err) {
-		return nil, err
+		return nil,err
 	}
 
-	keyPEM := pem.EncodeToMemory(&pem.Block{
-		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key),
-	})
+	certX509, err := x509.ParseCertificate(certDER)
+	if Error(err) {
+		return nil,err
+	}
 
-	return TLSConfigFromPem(certPEM, keyPEM)
+	certTls,err := X509toTlsCertificate(certX509,key)
+	if Error(err) {
+		return nil,err
+	}
+
+	certPEM := CertificateAsPEM(certTls)
+	keyPEM := PrivateKeyAsPEM(certTls.PrivateKey.(*rsa.PrivateKey))
+
+	return TlsConfigFromPEM(certPEM, keyPEM, password)
 }
 
-func GetTlsPackage() (*TlsPackage, error) {
+func NewTlsConfigFromFlags() (*tls.Config, error) {
+	tlsConfigFromFlags, err := NewTlsConfig(
+		*FlagTlsVerify,
+		*FlagTlsMinVersion,
+		*FlagTlsMaxVersion,
+		*FlagTlsCiphers,
+		*FlagTlsPassword,
+		*FlagTlsCertificate,
+		*FlagTlsMutual)
+	if Error(err) {
+		return nil,err
+	}
+
+	Debug("%+v", tlsConfigFromFlags)
+
+	return tlsConfigFromFlags, nil
+}
+
+func readP12Flag(fileOrBuffer string, password string) (*tls.Config, error) {
+	if FileExists(fileOrBuffer) {
+		tlsConfig, err := TlsConfigFromFile(fileOrBuffer, password)
+		if Error(err) {
+			return nil, err
+		}
+
+		return tlsConfig, nil
+	}
+
+	ba, err := base64.StdEncoding.DecodeString(fileOrBuffer)
+	if err == nil {
+		return TlsConfigFromBuffer(ba, password)
+	}
+
+	return nil, fmt.Errorf("no valid P12 file or buffer provided: %s", fileOrBuffer)
+}
+
+func NewTlsConfig(
+	serverVerify bool,
+	minVersion string,
+	maxVersion string,
+	ciphers string,
+	password string,
+	certificate string,
+	mutual string) (*tls.Config, error) {
 	DebugFunc()
 
-	muTLS.Lock()
-	defer muTLS.Unlock()
-
-	var tlsPackage *TlsPackage
-
-	if *FlagTlsP12File != "" {
-		tlsPackage, _ = TLSConfigFromP12File(*FlagTlsP12File)
-
-		if tlsPackage != nil {
-			return tlsPackage, nil
-		}
-	}
-
-	if *FlagTlsP12 != "" {
-		ba, _ := base64.StdEncoding.DecodeString(*FlagTlsP12)
-
-		if ba != nil {
-			tlsPackage, _ = TlsConfigFromP12Buffer(ba)
-
-			if tlsPackage != nil {
-				return tlsPackage, nil
-			}
-		}
-	}
-
-	tlsPackage, err := CreateTlsPackage()
-	if Error(err) {
-		return nil, err
-	}
-
-	return tlsPackage, nil
-}
-
-func VerifyP12(p12 []byte, password string) (*x509.Certificate, *rsa.PrivateKey, error) {
-	privateKey, cert, err := pkcs12.Decode(p12, password)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = VerifyCertificate(cert)
-	if Error(err) {
-		return nil, nil, err
-	}
-
-	priv, ok := privateKey.(*rsa.PrivateKey)
-	if !ok {
-		return nil, nil, fmt.Errorf("Expected RSA private key type")
-	}
-
-	return cert, priv, nil
-}
-
-func VerifyCertificate(cert *x509.Certificate) error {
-	DebugFunc()
-
+	var tlsConfig *tls.Config
 	var err error
 
-	if !IsCertificateSelfSigned(cert) {
-		_, err = cert.Verify(x509.VerifyOptions{})
-	}
-
-	if err == nil {
-		now := time.Now()
-
-		if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
-			err = fmt.Errorf("Certificate is not valid (NotBefore: %v, NotAfter: %v)", cert.NotBefore, cert.NotAfter)
+	if certificate != "" {
+		tlsConfig, err = readP12Flag(certificate, password)
+		if Error(err) {
+			return nil, err
+		}
+	} else {
+		tlsConfig, err = CreateTlsConfig(password)
+		if Error(err) {
+			return nil, err
 		}
 	}
 
-	return err
+	tlsConfig.InsecureSkipVerify = !serverVerify
+	tlsConfig.MinVersion = TlsVersionToId(minVersion)
+	tlsConfig.MaxVersion = TlsVersionToId(maxVersion)
+	if ciphers != "" {
+		tlsConfig.CipherSuites = TlsCipherSelectionsToIds(ciphers)
+	} else {
+		tlsConfig.CipherSuites = TlsCiphersIds(TlsDefaultCiphers())
+	}
+
+	if mutual != "" {
+		packageMutual, err := readP12Flag(mutual, password)
+		if Error(err) {
+			return nil, err
+		}
+
+		tlsConfig.ClientCAs = packageMutual.RootCAs
+		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+	}
+
+	txt,err := TlsCertificateInfos(tlsConfig)
+	if Error(err) {
+		return nil,err
+	}
+
+	DebugFunc(txt)
+
+	return tlsConfig, nil
+}
+
+func VerifyP12(ba []byte, password string) (privateKey *rsa.PrivateKey, certificate *x509.Certificate, caCerts []*x509.Certificate, err error) {
+	p12PrivateKey, p12Cert, p12RootCerts, err := pkcs12.DecodeChain(ba, password)
+	if Error(err) {
+		return nil, nil, nil, err
+	}
+
+	if len(p12Cert.Subject.CommonName) == 0 {
+		return nil, nil, nil, fmt.Errorf(Translate("Certificate does not contain a x509 CommonName attribute"))
+	}
+
+	if len(p12Cert.DNSNames) == 0 {
+		return nil, nil, nil, fmt.Errorf(Translate("Certificate does not contain a x509 Subject Alternate Name (SAN) DNSName attribute"))
+	}
+
+	if !IsCertificateSelfSigned(p12Cert) {
+		var rootCertPool *x509.CertPool
+
+		if len(p12RootCerts) > 0 {
+			rootCertPool,_ = x509.SystemCertPool()
+			if rootCertPool == nil {
+				rootCertPool = x509.NewCertPool()
+			}
+
+			for _, rootCert := range p12RootCerts {
+				rootCertPool.AddCert(rootCert)
+			}
+		}
+
+		_, err = p12Cert.Verify(x509.VerifyOptions{
+			DNSName:       "",
+			Intermediates: nil,
+			Roots:         rootCertPool,
+			CurrentTime:   time.Time{},
+			KeyUsages:                 []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+			MaxConstraintComparisions: 0,
+		})
+		if Error(err) {
+			return nil, nil, nil, err
+		}
+	}
+
+	now := time.Now()
+	if now.Before(p12Cert.NotBefore) || now.After(p12Cert.NotAfter) {
+		return nil, nil, nil, fmt.Errorf("Certificate is not valid (NotBefore: %v, NotAfter: %v)", p12Cert.NotBefore, p12Cert.NotAfter)
+	}
+
+	p12PrivateKeyRsa, ok := p12PrivateKey.(*rsa.PrivateKey)
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("Expected RSA private key type")
+	}
+
+	return p12PrivateKeyRsa, p12Cert, p12RootCerts, nil
 }
 
 func CertificateInfoFromConnection(con *tls.Conn) (string, error) {
@@ -647,11 +742,12 @@ func CertificateInfoFromConnection(con *tls.Conn) (string, error) {
 	return txt, nil
 }
 
-func CertificateInfoFromX509(certs []*x509.Certificate) (string, error) {
+func TlsCertificateInfos(tlsConfig *tls.Config) (string, error) {
 	DebugFunc()
 
-	txt := ""
-	for i, cert := range certs {
+	var txt strings.Builder
+
+	for i, cert := range tlsConfig.Certificates {
 		var header string
 		if i == 0 {
 			header = Translate("Certificate")
@@ -661,6 +757,11 @@ func CertificateInfoFromX509(certs []*x509.Certificate) (string, error) {
 
 		info := fmt.Sprintf("%s %s\n", header, strings.Repeat("-", 60-len(header)))
 
+		cert, err := TlsToX509Certificate(cert.Certificate[0])
+		if Error(err) {
+			return "", err
+		}
+
 		certInfo, err := certinfo.CertificateText(cert)
 		if Error(err) {
 			continue
@@ -668,72 +769,16 @@ func CertificateInfoFromX509(certs []*x509.Certificate) (string, error) {
 
 		info += fmt.Sprintf("%s\n", certInfo)
 
-		txt += info
+		txt.WriteString(info)
 	}
 
-	return txt, nil
-}
-
-func ExportRsaPrivateKeyAsPemStr(privkey *rsa.PrivateKey) string {
-	privkey_bytes := x509.MarshalPKCS1PrivateKey(privkey)
-	privkey_pem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: privkey_bytes,
-		},
-	)
-	return string(privkey_pem)
-}
-
-func ParseRsaPrivateKeyFromPemStr(privPEM string) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(privPEM))
-	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM block containing the key")
-	}
-
-	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return priv, nil
-}
-
-func ExportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {
-	pubkey_bytes, err := x509.MarshalPKIXPublicKey(pubkey)
-	if err != nil {
-		return "", err
-	}
-	pubkey_pem := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "RSA PUBLIC KEY",
-			Bytes: pubkey_bytes,
-		},
-	)
-
-	return string(pubkey_pem), nil
-}
-
-func ParseRsaPublicKeyFromPemStr(pubPEM string) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode([]byte(pubPEM))
-	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM block containing the key")
-	}
-
-	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	switch pub := pub.(type) {
-	case *rsa.PublicKey:
-		return pub, nil
-	default:
-		break // fall through
-	}
-	return nil, fmt.Errorf("Key type is not RSA")
+	return txt.String(), nil
 }
 
 func IsCertificateSelfSigned(cert *x509.Certificate) bool {
-	return cert.Issuer.String() == cert.Subject.String()
+	b := cert.Issuer.String() == cert.Subject.String()
+
+	DebugFunc(b)
+
+	return b
 }

@@ -84,7 +84,7 @@ type ActionItem struct {
 	Icon     string
 	Action   string
 	Download string
-	Message string
+	Message  string
 	Enabled  bool
 	SubItems []ActionItem
 }
@@ -344,7 +344,7 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 					htmlAhref.CreateAttr("onClick", menu.Action)
 				} else {
 					if menu.Message != "" {
-						htmlAhref.CreateAttr("onClick", fmt.Sprintf("if(confirm('%s')) { window.location.replace('%s'); }",menu.Message,menu.Action))
+						htmlAhref.CreateAttr("onClick", fmt.Sprintf("if(confirm('%s')) { window.location.replace('%s'); }", menu.Message, menu.Action))
 					} else {
 						htmlAhref.CreateAttr("href", menu.Action)
 					}
@@ -645,7 +645,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 					for iter.Next() {
 						k := iter.Key()
 						v := iter.Value()
-						sb.WriteString(fmt.Sprintf("%s=%s\n",k,v))
+						sb.WriteString(fmt.Sprintf("%s=%s\n", k, v))
 					}
 					htmlInput.SetText(sb.String())
 				} else {
@@ -770,6 +770,13 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 					tagAccept, err := fieldTags.Get("accept")
 					if err == nil {
 						htmlInput.CreateAttr("accept", tagAccept.Name)
+					}
+					htmlInput.CreateAttr("style","width: 250px;")
+
+					if !readOnly && !isFieldReadOnly {
+						button := htmlDiv.CreateElement("input")
+						button.CreateAttr("type", "button")
+						button.CreateAttr("onclick", fmt.Sprintf("document.getElementById(--$%s$--).value = --$$--;var desc = document.getElementById(--$%sDescription$--); if (desc) { desc.value = --$ $--; };", fieldPath, fieldPath))
 					}
 				} else {
 					if IndexOf(tagHtml.Options, OPTION_PASSWORD) != -1 {

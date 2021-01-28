@@ -123,18 +123,9 @@ func GetHost() (string, string, error) {
 					}
 				} else {
 					if strings.HasPrefix(line, "Address:") {
-						tempIp := strings.TrimSpace(line[8:])
+						ip = strings.TrimSpace(line[8:])
 
-						b, err := IsPrivateIP(tempIp)
-						if Error(err) {
-							return "", "", err
-						}
-
-						if b {
-							ip = tempIp
-
-							break
-						}
+						break
 					}
 				}
 			}
@@ -165,16 +156,7 @@ func GetHost() (string, string, error) {
 			ss := strings.Split(output, " ")
 
 			if len(ss) > 0 {
-				tempIp := strings.TrimSpace(ss[len(ss)-1])
-
-				b, err := IsPrivateIP(tempIp)
-				if Error(err) {
-					return "", "", err
-				}
-
-				if b {
-					ip = tempIp
-				}
+				ip = strings.TrimSpace(ss[len(ss)-1])
 			}
 
 			Debug("host result: ip: %s", ip)
@@ -367,16 +349,19 @@ func IsLocalhost(ip string) bool {
 }
 
 func IsPrivateIP(ip string) (bool, error) {
-	_ip := net.ParseIP(ip)
-	if _ip == nil {
+	var err error
+
+	parsedIp := net.ParseIP(ip)
+	if parsedIp == nil {
 		return false, fmt.Errorf("Invalid IP: %v", ip)
 	}
 	_, private24BitBlock, _ := net.ParseCIDR("10.0.0.0/8")
 	_, private20BitBlock, _ := net.ParseCIDR("172.16.0.0/12")
 	_, private16BitBlock, _ := net.ParseCIDR("192.168.0.0/16")
-	private := private24BitBlock.Contains(_ip) || private20BitBlock.Contains(_ip) || private16BitBlock.Contains(_ip)
+
+	private := private24BitBlock.Contains(parsedIp) || private20BitBlock.Contains(parsedIp) || private16BitBlock.Contains(parsedIp)
 
 	DebugFunc("%s: %v", ip, private)
 
-	return private, nil
+	return private, err
 }

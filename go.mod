@@ -20,9 +20,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/stretchr/testify v1.4.0
+	go.bug.st/serial v1.1.1
 	golang.org/x/crypto v0.0.0-20200317142112-1b76d66859c6
 	golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7 // indirect
-	golang.org/x/sys v0.0.0-20200519105757-fe76b779f299
+	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009
 	golang.org/x/text v0.3.2
 	google.golang.org/api v0.20.0
 	google.golang.org/genproto v0.0.0-20200319113533-08878b785e9c // indirect
