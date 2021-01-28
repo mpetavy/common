@@ -102,9 +102,11 @@ type logMemoryWriter struct {
 }
 
 func (this *logMemoryWriter) WriteString(txt string) {
-	copy(this.lines[0:], this.lines[1:])
+	if len(this.lines) == 1000 {
+		this.lines = this.lines[1:]
+	}
 
-	this.lines[len(this.lines)-1] = txt
+	this.lines = append(this.lines, txt)
 }
 
 func (this *logMemoryWriter) Logs(w io.Writer) error {
@@ -124,7 +126,7 @@ func (this *logMemoryWriter) Close() {
 
 func newLogMemoryWriter() *logMemoryWriter {
 	writer := logMemoryWriter{
-		lines: make([]string, 1000),
+		lines: make([]string, 0),
 	}
 
 	return &writer

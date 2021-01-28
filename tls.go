@@ -303,24 +303,26 @@ func TlsVersions() []string {
 }
 
 func TlsDebugConnection(typ string, tlsConn *tls.Conn) {
-	connstate := tlsConn.ConnectionState()
+	if *FlagLogIO {
+		connstate := tlsConn.ConnectionState()
 
-	Debug("TLS connection %s: Version : %s\n", typ, TlsIdToVersion(connstate.Version))
-	Debug("TLS connection %s: CipherSuite : %v\n", typ, TlsCipherDescription(TlsIdToCipher(connstate.CipherSuite)))
-	Debug("TLS connection %s: HandshakeComplete : %v\n", typ, connstate.HandshakeComplete)
-	Debug("TLS connection %s: DidResume : %v\n", typ, connstate.DidResume)
-	Debug("TLS connection %s: NegotiatedProtocol : %x\n", typ, connstate.NegotiatedProtocol)
-	Debug("TLS connection %s: NegotiatedProtocolIsMutual : %v\n", typ, connstate.NegotiatedProtocolIsMutual)
-	Debug("TLS connection %s: ServerName : %s\n", typ, connstate.ServerName)
+		Debug("TLS connection %s: Version : %s\n", typ, TlsIdToVersion(connstate.Version))
+		Debug("TLS connection %s: CipherSuite : %v\n", typ, TlsCipherDescription(TlsIdToCipher(connstate.CipherSuite)))
+		Debug("TLS connection %s: HandshakeComplete : %v\n", typ, connstate.HandshakeComplete)
+		Debug("TLS connection %s: DidResume : %v\n", typ, connstate.DidResume)
+		Debug("TLS connection %s: NegotiatedProtocol : %x\n", typ, connstate.NegotiatedProtocol)
+		Debug("TLS connection %s: NegotiatedProtocolIsMutual : %v\n", typ, connstate.NegotiatedProtocolIsMutual)
+		Debug("TLS connection %s: ServerName : %s\n", typ, connstate.ServerName)
 
-	for i := range connstate.PeerCertificates {
-		peercert := &connstate.PeerCertificates[i]
-		Debug("TLS connection info %s: PeerCertificate %d : %d\n", typ, i, peercert)
-	}
+		for i := range connstate.PeerCertificates {
+			peercert := &connstate.PeerCertificates[i]
+			Debug("TLS connection info %s: PeerCertificate %d : %d\n", typ, i, peercert)
+		}
 
-	for r := range connstate.VerifiedChains {
-		vchains := &connstate.VerifiedChains[r]
-		Debug("TLS connection info %s: Verified Chains %d : %d\n", typ, r, vchains)
+		for r := range connstate.VerifiedChains {
+			vchains := &connstate.VerifiedChains[r]
+			Debug("TLS connection info %s: Verified Chains %d : %d\n", typ, r, vchains)
+		}
 	}
 }
 
@@ -397,12 +399,12 @@ func X509toTlsCertificate(certificate *x509.Certificate, privateKey *rsa.Private
 
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Raw})
 
-	certTls,err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
+	certTls, err := tls.X509KeyPair([]byte(certPEM), []byte(keyPEM))
 	if Error(err) {
-		return nil,err
+		return nil, err
 	}
 
-	return &certTls,nil
+	return &certTls, nil
 }
 
 func TlsToX509Certificate(certificate []byte) (*x509.Certificate, error) {
@@ -420,7 +422,7 @@ func TlsConfigFromBuffer(ba []byte, password string) (*tls.Config, error) {
 	var rootCertPool *x509.CertPool
 
 	if len(p12RootCerts) > 0 {
-		rootCertPool,_ = x509.SystemCertPool()
+		rootCertPool, _ = x509.SystemCertPool()
 		if rootCertPool == nil {
 			rootCertPool = x509.NewCertPool()
 		}
@@ -558,17 +560,17 @@ func CreateTlsConfig(password string) (*tls.Config, error) {
 
 	certDER, err := x509.CreateCertificate(rand.Reader, certTmpl, certTmpl, &key.PublicKey, key)
 	if Error(err) {
-		return nil,err
+		return nil, err
 	}
 
 	certX509, err := x509.ParseCertificate(certDER)
 	if Error(err) {
-		return nil,err
+		return nil, err
 	}
 
-	certTls,err := X509toTlsCertificate(certX509,key)
+	certTls, err := X509toTlsCertificate(certX509, key)
 	if Error(err) {
-		return nil,err
+		return nil, err
 	}
 
 	certPEM := CertificateAsPEM(certTls)
@@ -587,7 +589,7 @@ func NewTlsConfigFromFlags() (*tls.Config, error) {
 		*FlagTlsCertificate,
 		*FlagTlsMutual)
 	if Error(err) {
-		return nil,err
+		return nil, err
 	}
 
 	Debug("%+v", tlsConfigFromFlags)
@@ -657,9 +659,9 @@ func NewTlsConfig(
 		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 
-	txt,err := TlsCertificateInfos(tlsConfig)
+	txt, err := TlsCertificateInfos(tlsConfig)
 	if Error(err) {
-		return nil,err
+		return nil, err
 	}
 
 	DebugFunc(txt)
@@ -685,7 +687,7 @@ func VerifyP12(ba []byte, password string) (privateKey *rsa.PrivateKey, certific
 		var rootCertPool *x509.CertPool
 
 		if len(p12RootCerts) > 0 {
-			rootCertPool,_ = x509.SystemCertPool()
+			rootCertPool, _ = x509.SystemCertPool()
 			if rootCertPool == nil {
 				rootCertPool = x509.NewCertPool()
 			}
@@ -696,10 +698,10 @@ func VerifyP12(ba []byte, password string) (privateKey *rsa.PrivateKey, certific
 		}
 
 		_, err = p12Cert.Verify(x509.VerifyOptions{
-			DNSName:       "",
-			Intermediates: nil,
-			Roots:         rootCertPool,
-			CurrentTime:   time.Time{},
+			DNSName:                   "",
+			Intermediates:             nil,
+			Roots:                     rootCertPool,
+			CurrentTime:               time.Time{},
 			KeyUsages:                 []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 			MaxConstraintComparisions: 0,
 		})
