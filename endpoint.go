@@ -74,7 +74,7 @@ func (networkClient *NetworkClient) Connect() (*NetworkConnection, error) {
 	if networkClient.tlsConfig != nil {
 		Debug("Dial TLS connection: %s...", networkClient.address)
 
-		networkClient.tlsConfig.ServerName ="localhost"
+		networkClient.tlsConfig.ServerName = "localhost"
 
 		socket, err := tls.DialWithDialer(&net.Dialer{Deadline: time.Now().Add(MillisecondToDuration(*timeout))}, "tcp", networkClient.address, networkClient.tlsConfig)
 		if Error(err) {
@@ -165,7 +165,7 @@ func (networkServer *NetworkServer) Connect() (*NetworkConnection, error) {
 	Debug("Accept connection ...")
 
 	socket, err := networkServer.listener.Accept()
-	if DebugError(err) {
+	if IsErrNetClosing(err) || DebugError(err) {
 		return nil, err
 	}
 
