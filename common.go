@@ -121,9 +121,9 @@ func Title() string {
 		}
 
 		title = string(runes)
-	})
 
-	DebugFunc(title)
+		DebugFunc(title)
+	})
 
 	return title
 }

@@ -177,6 +177,18 @@ func Run(mandatoryFlags []string) {
 
 	flag.Parse()
 
+	flag.VisitAll(func(f *flag.Flag) {
+		envName := strings.ReplaceAll(fmt.Sprintf("%s.%s", Title(), f.Name), ".", "_")
+		envValue := os.Getenv(envName)
+
+		if envValue != "" {
+			fl := flag.Lookup(f.Name)
+			if fl != nil && fl.Value.String() == fl.DefValue {
+				Error(flag.Set(f.Name, envValue))
+			}
+		}
+	})
+
 	Events.Emit(EventFlagsParsed{})
 
 	if !*FlagNoBanner || *FlagUsage {
@@ -184,7 +196,7 @@ func Run(mandatoryFlags []string) {
 	}
 
 	if flag.NArg() > 0 {
-		Error(fmt.Errorf("superfluous flags provided: %s",strings.Join(os.Args[1:]," ")))
+		Error(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
 		Exit(1)
 	}
 
