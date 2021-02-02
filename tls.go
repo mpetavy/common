@@ -169,20 +169,8 @@ func initTls() {
 		}
 	})
 
-	max := Max(len(defaultCiphers), len(preferredCiphers))
-	for i := 0; i < max; i++ {
-		preferredInfo := ""
-		priorityInfo := ""
-
-		if i < len(preferredCiphers) {
-			preferredInfo = TlsCipherDescription(TlsIdToCipher(preferredCiphers[i]))
-		}
-
-		if i < len(defaultCiphers) {
-			priorityInfo = TlsCipherDescription(defaultCiphers[i])
-		}
-
-		Debug("Cipher #%02d: %s %s", i, FillString(priorityInfo, 70, false, " "), FillString(preferredInfo, 70, false, " "))
+	for i := 0; i < len(defaultCiphers); i++ {
+		Debug("Cipher priority #%02d: %s", i, TlsCipherDescription(defaultCiphers[i]))
 	}
 }
 
