@@ -66,11 +66,6 @@ const (
 	FlagNameServiceTimeout  = "service.timeout"
 )
 
-type goTesting interface {
-	Logf(format string, args ...interface{})
-	Fatalf(format string, args ...interface{})
-}
-
 var (
 	app                     *application
 	FlagService             *string
@@ -92,7 +87,6 @@ var (
 	restart                 bool
 	restartCh               = make(chan struct{})
 	ctrlC                   = make(chan os.Signal, 1)
-	gotest                  goTesting
 )
 
 func init() {
@@ -140,10 +134,6 @@ func Init(isService bool, version string, git string, date string, description s
 	if err != nil {
 		panic(err)
 	}
-}
-
-func InitTesting(v goTesting) {
-	gotest = v
 }
 
 func checkUnknownFlag(flagName string) error {
