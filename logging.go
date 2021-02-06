@@ -42,6 +42,7 @@ var (
 	lastErrTime        time.Time
 	systemLoggerCh     chan<- error
 	systemLogger       service.Logger
+	gotest             goTesting
 )
 
 const (
@@ -52,6 +53,9 @@ const (
 	FlagNameLogJson     = "log.json"
 	FlagNameLogSys      = "log.sys"
 )
+
+type ErrExit struct {
+}
 
 func init() {
 	defaultLogFilename = CleanPath(AppFilename(".log"))
@@ -64,7 +68,13 @@ func init() {
 	FlagLogSys = flag.Bool(FlagNameLogSys, false, "Use OS system logger")
 }
 
-type ErrExit struct {
+func InitTesting(v goTesting) {
+	gotest = v
+}
+
+type goTesting interface {
+	Logf(format string, args ...interface{})
+	Fatalf(format string, args ...interface{})
 }
 
 func (e *ErrExit) Error() string { return "" }
