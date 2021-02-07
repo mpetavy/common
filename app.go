@@ -67,6 +67,9 @@ type EventFlagsParsed struct {
 type EventFlagsSet struct {
 }
 
+type EventRestart struct {
+}
+
 const (
 	FlagNameService         = "service"
 	FlagNameServiceUsername = "service.username"
@@ -200,7 +203,7 @@ func Run(mandatoryFlags []string) {
 		Exit(1)
 	}
 
-	err := initConfiguration()
+	err := InitConfiguration()
 	if Error(err) {
 		Exit(1)
 	}
@@ -449,12 +452,12 @@ func (app *application) applicationLoop() error {
 			}
 		}
 
-		err := initConfiguration()
+		err := InitConfiguration()
 		if Error(err) {
 			return err
 		}
 
-		Events.Emit(EventAppRestart{})
+		Events.Emit(EventRestart{})
 	}
 
 	return nil
