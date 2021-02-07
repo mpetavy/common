@@ -12,11 +12,19 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
 )
 
 const (
 	APACHE string = "https://www.apache.org/licenses/LICENSE-2.0.html"
 	GPL2   string = "https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html"
+
+	SERVICE_SIMULATE  = "simulate"
+	SERVICE_START     = "start"
+	SERVICE_STOP      = "stop"
+	SERVICE_RESTART   = "restart"
+	SERVICE_INSTALL   = "install"
+	SERVICE_UNINSTALL = "uninstall"
 )
 
 //Info information of the application
@@ -74,49 +82,49 @@ var (
 	FlagServiceStartTimeout *int
 	FlagUsage               *bool
 	FlagNoBanner            *bool
-	serviceActions          []string
 	ticker                  *time.Ticker
 	appLifecycle            = NewNotice()
 	onceBanner              sync.Once
 	onceRunningAsService    sync.Once
 	onceRunningAsExecutable sync.Once
 	onceRunningInteractive  sync.Once
+	onceShutdownHooks       sync.Once
+	onceTitle               sync.Once
+	title                   string
 	runningAsService        bool
 	runningAsExecutable     bool
 	runningInteractive      bool
 	restart                 bool
+	shutdownHooks           = make([]func(), 0)
 	restartCh               = make(chan struct{})
 	ctrlC                   = make(chan os.Signal, 1)
 )
 
 func init() {
-	app = &application{}
-
 	FlagService = new(string)
 	FlagServiceUser = new(string)
 	FlagServicePassword = new(string)
 	FlagServiceStartTimeout = new(int)
 	FlagUsage = flag.Bool("?", false, "show usage")
 	FlagNoBanner = flag.Bool("nb", false, "no copyright banner")
-
-	serviceActions = service.ControlAction[:]
-	serviceActions = append(serviceActions, "simulate")
 }
 
 func Init(isService bool, version string, git string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
-	app.CanRunAsService = isService
-	app.Name = Title()
-	app.Version = version
-	app.Git = git
-	app.Date = date
-	app.Description = description
-	app.Developer = developer
-	app.License = license
-	app.Homepage = homepage
-	app.StartFunc = startFunc
-	app.StopFunc = stopFunc
-	app.RunFunc = runFunc
-	app.RunTime = runTime
+	app = &application{
+		CanRunAsService: isService,
+		Name:            Title(),
+		Version:         version,
+		Git:             git,
+		Date:            date,
+		Description:     description,
+		Developer:       developer,
+		License:         license,
+		Homepage:        homepage,
+		StartFunc:       startFunc,
+		StopFunc:        stopFunc,
+		RunFunc:         runFunc,
+		RunTime:         runTime,
+	}
 
 	executable, err := os.Executable()
 	if err != nil {
@@ -156,10 +164,9 @@ func checkMandatoryFlag(flagName string) error {
 	return nil
 }
 
-// Run struct for copyright information
 func Run(mandatoryFlags []string) {
 	if app.CanRunAsService {
-		FlagService = flag.String(FlagNameService, "", "Service operation ("+strings.Join(serviceActions, ",")+")")
+		FlagService = flag.String(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
 		FlagServiceUser = flag.String(FlagNameServiceUsername, "", "Service user")
 		FlagServicePassword = flag.String(FlagNameServicePassword, "", "Service password")
 		FlagServiceStartTimeout = flag.Int(FlagNameServiceTimeout, 1000, "Service timeout")
@@ -512,7 +519,7 @@ func run() error {
 		app.ServiceConfig.Option = option
 	}
 
-	if *FlagService != "" && *FlagService != "simulate" {
+	if *FlagService != "" && *FlagService != SERVICE_SIMULATE {
 		if *FlagService == "uninstall" {
 			status, err := app.Service.Status()
 			if Error(err) {
@@ -533,23 +540,23 @@ func run() error {
 		}
 
 		switch *FlagService {
-		case "install":
+		case SERVICE_INSTALL:
 			Info(fmt.Sprintf("Service %s successfully installed", app.ServiceConfig.Name))
 			return nil
-		case "uninstall":
+		case SERVICE_UNINSTALL:
 			Info(fmt.Sprintf("Service %s successfully uninstalled", app.ServiceConfig.Name))
 			return nil
-		case "start":
+		case SERVICE_START:
 			Info(fmt.Sprintf("Service %s successfully started", app.ServiceConfig.Name))
 			return nil
-		case "stop":
+		case SERVICE_STOP:
 			Info(fmt.Sprintf("Service %s successfully stopped", app.ServiceConfig.Name))
 			return nil
-		case "restart":
+		case SERVICE_RESTART:
 			Info(fmt.Sprintf("Service %s successfully restarted", app.ServiceConfig.Name))
 			return nil
 		default:
-			return fmt.Errorf("invalid service action: %s", *FlagService)
+			return fmt.Errorf("unknown service action: %s", *FlagService)
 		}
 	}
 
@@ -623,4 +630,90 @@ func IsRunningInteractive() bool {
 
 func App() *application {
 	return app
+}
+
+func Done() {
+	onceShutdownHooks.Do(func() {
+		for _, f := range shutdownHooks {
+			f()
+		}
+	})
+
+	closeLogFile()
+}
+
+func AddShutdownHook(f func()) {
+	shutdownHooks = append(shutdownHooks, nil)
+	copy(shutdownHooks[1:], shutdownHooks[0:])
+	shutdownHooks[0] = f
+}
+
+func AppFilename(newExt string) string {
+	filename := Title()
+	ext := filepath.Ext(filename)
+
+	if len(ext) > 0 {
+		filename = string(filename[:len(filename)-len(ext)])
+	}
+
+	return filename + newExt
+}
+
+func Title() string {
+	onceTitle.Do(func() {
+		path, err := os.Executable()
+		if err != nil {
+			path = os.Args[0]
+		}
+
+		path = filepath.Base(path)
+		path = path[0:(len(path) - len(filepath.Ext(path)))]
+
+		runes := []rune(path)
+		for len(runes) > 0 && !unicode.IsLetter(runes[0]) {
+			runes = runes[1:]
+		}
+
+		title = string(runes)
+
+		DebugFunc(title)
+	})
+
+	return title
+}
+
+func Version(major bool, minor bool, patch bool) string {
+	if strings.Count(app.Version, ".") == 2 {
+		s := strings.Split(app.Version, ".")
+
+		sb := strings.Builder{}
+
+		if major {
+			sb.WriteString(s[0])
+		}
+
+		if minor {
+			if sb.Len() > 0 {
+				sb.WriteString(".")
+			}
+
+			sb.WriteString(s[1])
+		}
+
+		if patch {
+			if sb.Len() > 0 {
+				sb.WriteString(".")
+			}
+
+			sb.WriteString(s[2])
+		}
+
+		return sb.String()
+	}
+
+	return ""
+}
+
+func TitleVersion(major bool, minor bool, patch bool) string {
+	return Title() + "-" + Version(major, minor, patch)
 }
