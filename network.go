@@ -312,8 +312,6 @@ func IsPortAvailable(network string, port int) (bool, error) {
 }
 
 func FindFreePort(network string, startPort int, excludedPorts []int) (int, error) {
-	DebugFunc()
-
 	for port := startPort; port < 65536; port++ {
 		if IndexOf(excludedPorts, port) == -1 {
 			b, _ := IsPortAvailable(network, port)
