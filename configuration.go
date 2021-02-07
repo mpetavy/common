@@ -14,13 +14,34 @@ type EventConfigurationReset struct {
 	Cfg *bytes.Buffer
 }
 
-type EventAppRestart struct {
-}
-
 type Configuration struct {
 	ApplicationTitle   string            `json:"applicationTitle"`
 	ApplicationVersion string            `json:"applicationVersion"`
 	Flags              map[string]string `json:"flags"`
+}
+
+var (
+	FlagCfgReset *bool
+	FlagCfgFile  *string
+
+	mapFlag = make(map[string]string)
+	mapEnv  = make(map[string]string)
+	mapFile = make(map[string]string)
+)
+
+func init() {
+	FlagCfgFile = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
+	FlagCfgReset = flag.Bool("cfg.reset", false, "Reset configuration file")
+}
+
+func NewConfiguration() *Configuration {
+	cfg := Configuration{}
+
+	cfg.ApplicationTitle = Title()
+	cfg.ApplicationVersion = Version(true, true, true)
+	cfg.Flags = make(map[string]string)
+
+	return &cfg
 }
 
 func (this *Configuration) SetFlag(flagName string, flagValue string) error {
@@ -61,33 +82,7 @@ func IsOneTimeFlag(n string) bool {
 	return false
 }
 
-func NewConfiguration() *Configuration {
-	cfg := Configuration{}
-
-	cfg.ApplicationTitle = Title()
-	cfg.ApplicationVersion = Version(true, true, true)
-	cfg.Flags = make(map[string]string)
-
-	return &cfg
-}
-
-var (
-	FlagCfgReset *bool
-	FlagCfgFile  *string
-
-	fileConfig []byte
-
-	mapFlag = make(map[string]string)
-	mapEnv  = make(map[string]string)
-	mapFile = make(map[string]string)
-)
-
-func init() {
-	FlagCfgFile = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
-	FlagCfgReset = flag.Bool("cfg.reset", false, "Reset configuration file")
-}
-
-func initConfiguration() error {
+func InitConfiguration() error {
 	DebugFunc()
 
 	err := registerArgsFlags()
@@ -158,27 +153,30 @@ func ResetConfiguration() error {
 	return nil
 }
 
-func GetConfiguration() *Configuration {
+func GetConfiguration() (*Configuration, error) {
 	DebugFunc()
 
-	ba := GetConfigurationBuffer()
+	ba, err := GetConfigurationBuffer()
+	if Error(err) {
+		return nil, err
+	}
 
 	if ba == nil {
-		return nil
+		return nil, nil
 	}
 
 	cfg := NewConfiguration()
 
-	err := json.Unmarshal(ba, cfg)
+	err = json.Unmarshal(ba, cfg)
 	if Error(err) {
-		return nil
+		return nil, err
 	}
 
-	return cfg
+	return cfg, nil
 }
 
-func GetConfigurationBuffer() []byte {
-	return fileConfig
+func GetConfigurationBuffer() ([]byte, error) {
+	return readFile()
 }
 
 func SetConfiguration(cfg interface{}) error {
@@ -222,9 +220,7 @@ func readFile() ([]byte, error) {
 		return nil, err
 	}
 
-	fileConfig = []byte(RemoveJsonComments(string(ba)))
-
-	return fileConfig, nil
+	return []byte(RemoveJsonComments(string(ba))), nil
 }
 
 func writeFile(ba []byte) error {
@@ -263,6 +259,11 @@ func writeFile(ba []byte) error {
 		return err
 	}
 
+	fileConfig, err := readFile()
+	if Error(err) {
+		return err
+	}
+
 	if string(buf.Bytes()) != string(fileConfig) {
 		Debug("Reformat of configuration file done")
 
@@ -273,8 +274,6 @@ func writeFile(ba []byte) error {
 			return err
 		}
 	}
-
-	fileConfig = buf.Bytes()
 
 	return nil
 }

@@ -71,7 +71,7 @@ func init() {
 		initTls()
 	})
 
-	Events.NewFuncReceiver(EventAppRestart{}, func(ev Event) {
+	Events.NewFuncReceiver(EventRestart{}, func(ev Event) {
 		initTls()
 	})
 }
