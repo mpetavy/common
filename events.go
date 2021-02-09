@@ -6,14 +6,19 @@ import (
 )
 
 type Event interface{}
+
 type EventChan chan Event
+
 type EventFunc func(Event)
+
 type EventType reflect.Type
+
 type EventManager struct {
 	mu    sync.Mutex
 	chans map[EventType][]EventChan
 	funcs map[EventType][]*EventFunc
 }
+
 type AllEvents struct{}
 
 var (
@@ -31,7 +36,6 @@ func NewEventManager() *EventManager {
 	}
 }
 
-// NewChanReceiver adds an event listener to the Dog struct instance
 func (this *EventManager) NewChanReceiver(event interface{}) EventChan {
 	this.mu.Lock()
 	defer this.mu.Unlock()
@@ -50,7 +54,6 @@ func (this *EventManager) NewChanReceiver(event interface{}) EventChan {
 	return eventListener
 }
 
-// NewFuncReceiver adds an event listener to the Dog struct instance
 func (this *EventManager) NewFuncReceiver(event interface{}, eventFunc EventFunc) *EventFunc {
 	this.mu.Lock()
 	defer this.mu.Unlock()
@@ -68,7 +71,6 @@ func (this *EventManager) NewFuncReceiver(event interface{}, eventFunc EventFunc
 	return &eventFunc
 }
 
-// DestroyFuncReceiver removes an event listener from the Dog struct instance
 func (this *EventManager) DestroyChanReceiver(eventChan EventChan) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
@@ -86,7 +88,6 @@ func (this *EventManager) DestroyChanReceiver(eventChan EventChan) {
 	}
 }
 
-// DestroyFuncReceiver removes an event listener from the Dog struct instance
 func (this *EventManager) DestroyFuncReceiver(eventFunc *EventFunc) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
@@ -109,7 +110,6 @@ func (this *EventManager) DestroyFuncReceiver(eventFunc *EventFunc) {
 	}
 }
 
-// Emit emits an event on the Dog struct instance
 func (this *EventManager) Emit(event interface{}) bool {
 	this.mu.Lock()
 	defer this.mu.Unlock()
