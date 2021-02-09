@@ -70,6 +70,11 @@ type EventFlagsSet struct {
 type EventRestart struct {
 }
 
+type ErrExit struct {
+}
+
+func (e *ErrExit) Error() string { return "" }
+
 const (
 	FlagNameService         = "service"
 	FlagNameServiceUsername = "service.username"
@@ -322,13 +327,7 @@ func showBanner() {
 	})
 }
 
-func (app *application) applicationRun() error {
-	if IsRunningAsService() {
-		Info("Service()")
-	} else {
-		DebugFunc()
-	}
-
+func nextTicker() *time.Ticker {
 	tickerSleep := time.Second
 
 	if app.RunTime > 0 {
@@ -336,19 +335,25 @@ func (app *application) applicationRun() error {
 		tickerSleep = nextTick.Sub(time.Now())
 	}
 
-	ticker = time.NewTicker(tickerSleep)
+	newTicker := time.NewTicker(tickerSleep)
 
 	if app.RunTime == 0 {
-		ticker.Stop()
+		newTicker.Stop()
+	} else {
+		Debug("next tick: %s sleep: %v\n", time.Now().Add(tickerSleep).Truncate(app.RunTime).Format(DateTimeMilliMask), tickerSleep)
 	}
 
-	tickerInfo := func() {
-		if app.RunTime > 0 {
-			Debug("next tick: %s sleep: %v\n", time.Now().Add(tickerSleep).Truncate(app.RunTime).Format(DateTimeMilliMask), tickerSleep)
-		}
+	return newTicker
+}
+
+func (app *application) applicationRun() error {
+	if IsRunningAsService() {
+		Info("Service()")
+	} else {
+		DebugFunc()
 	}
 
-	tickerInfo()
+	ticker = nextTicker()
 
 	errCh := make(chan error)
 
@@ -391,17 +396,7 @@ func (app *application) applicationRun() error {
 
 			Error(app.RunFunc())
 
-			ti := time.Now()
-			for ti.Before(time.Now()) {
-				ti = ti.Add(app.RunTime)
-			}
-			ti = TruncateTime(ti, Second)
-
-			tickerSleep = ti.Sub(time.Now())
-
-			ticker = time.NewTicker(tickerSleep)
-
-			tickerInfo()
+			ticker = nextTicker()
 		}
 	}
 }
@@ -523,14 +518,14 @@ func run() error {
 	}
 
 	if *FlagService != "" && *FlagService != SERVICE_SIMULATE {
-		if *FlagService == "uninstall" {
+		if *FlagService == SERVICE_UNINSTALL {
 			status, err := app.Service.Status()
 			if Error(err) {
 				return err
 			}
 
 			if status == service.StatusRunning {
-				err = service.Control(app.Service, "stop")
+				err = service.Control(app.Service, SERVICE_STOP)
 				if Error(err) {
 					return err
 				}
@@ -573,15 +568,15 @@ func run() error {
 
 	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
-	err := app.Start(app.Service)
-	Error(err)
+	startErr := app.Start(app.Service)
+	Error(startErr)
 
 	stopErr := app.Stop(app.Service)
-	if Error(stopErr) && err == nil {
-		err = stopErr
+	if Error(stopErr) && startErr == nil {
+		startErr = stopErr
 	}
 
-	return err
+	return startErr
 }
 
 func AppRestart() {
@@ -595,13 +590,13 @@ func IsRunningAsService() bool {
 		isFlagServiceSimulated := false
 
 		flag.Visit(func(f *flag.Flag) {
-			isFlagServiceSimulated = isFlagServiceSimulated || (f.Name == FlagNameService && f.Value.String() == "simulate")
+			isFlagServiceSimulated = isFlagServiceSimulated || (f.Name == FlagNameService && f.Value.String() == SERVICE_SIMULATE)
 		})
 
 		runningAsService = !service.Interactive() || isFlagServiceSimulated
-
-		DebugFunc("%v", runningAsService)
 	})
+
+	DebugFunc(runningAsService)
 
 	return runningAsService
 }
@@ -614,9 +609,9 @@ func IsRunningAsExecutable() bool {
 		}
 
 		runningAsExecutable = !strings.HasPrefix(path, os.TempDir())
-
-		DebugFunc("%v", runningAsExecutable)
 	})
+
+	DebugFunc(runningAsExecutable)
 
 	return runningAsExecutable
 }
@@ -624,9 +619,9 @@ func IsRunningAsExecutable() bool {
 func IsRunningInteractive() bool {
 	onceRunningInteractive.Do(func() {
 		runningInteractive = service.Interactive()
-
-		DebugFunc("%v", runningInteractive)
 	})
+
+	DebugFunc(runningInteractive)
 
 	return runningInteractive
 }

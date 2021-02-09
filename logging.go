@@ -17,7 +17,7 @@ import (
 
 const (
 	// DB level
-	LEVEL_FILE = iota
+	LEVEL_PROLOG = iota
 	// LEVEL_DEBUG level
 	LEVEL_DEBUG
 	// LEVEL_INFO level
@@ -54,9 +54,6 @@ const (
 	FlagNameLogSys      = "log.sys"
 )
 
-type ErrExit struct {
-}
-
 func init() {
 	defaultLogFilename = CleanPath(AppFilename(".log"))
 
@@ -77,10 +74,8 @@ type goTesting interface {
 	Fatalf(format string, args ...interface{})
 }
 
-func (e *ErrExit) Error() string { return "" }
-
 type logEntry struct {
-	levelInt int
+	levelInt int    `json:"levelInt"`
 	Clock    string `json:"clock"`
 	Level    string `json:"level"`
 	Runtime  string `json:"runtime"`
@@ -102,16 +97,20 @@ func (l *logEntry) String(jsn bool, verbose bool) string {
 }
 
 type logWriter interface {
-	WriteString(txt string)
+	WriteString(int, string)
 	Logs(io.Writer) error
 	Close()
 }
 
-type logMemoryWriter struct {
+type memoryWriter struct {
 	lines []string
 }
 
-func (this *logMemoryWriter) WriteString(txt string) {
+func (this *memoryWriter) WriteString(level int, txt string) {
+	if level == LEVEL_PROLOG {
+		return
+	}
+
 	if len(this.lines) == 1000 {
 		this.lines = this.lines[1:]
 	}
@@ -119,7 +118,7 @@ func (this *logMemoryWriter) WriteString(txt string) {
 	this.lines = append(this.lines, txt)
 }
 
-func (this *logMemoryWriter) Logs(w io.Writer) error {
+func (this *memoryWriter) Logs(w io.Writer) error {
 	for _, l := range this.lines {
 		_, err := w.Write([]byte(l))
 
@@ -131,23 +130,23 @@ func (this *logMemoryWriter) Logs(w io.Writer) error {
 	return nil
 }
 
-func (this *logMemoryWriter) Close() {
+func (this *memoryWriter) Close() {
 }
 
-func newLogMemoryWriter() *logMemoryWriter {
-	writer := logMemoryWriter{
+func newMemoryWriter() *memoryWriter {
+	writer := memoryWriter{
 		lines: make([]string, 0),
 	}
 
 	return &writer
 }
 
-type logFileWriter struct {
+type fileWriter struct {
 	filesize int64
 	file     *os.File
 }
 
-func (this *logFileWriter) WriteString(txt string) {
+func (this *fileWriter) WriteString(level int, txt string) {
 	if this.file == nil {
 		return
 	}
@@ -172,12 +171,11 @@ func (this *logFileWriter) WriteString(txt string) {
 	ba := []byte(txt)
 
 	Ignore(this.file.Write(ba))
-	Ignore(this.file.Sync())
 
 	this.filesize += int64(len(ba))
 }
 
-func (this *logFileWriter) Logs(w io.Writer) error {
+func (this *fileWriter) Logs(w io.Writer) error {
 	for i := *FlagCountBackups; i >= 0; i-- {
 		var src string
 
@@ -212,14 +210,14 @@ func (this *logFileWriter) Logs(w io.Writer) error {
 	return nil
 }
 
-func (this *logFileWriter) Close() {
+func (this *fileWriter) Close() {
 	if this.file != nil {
 		Ignore(this.file.Close())
 		this.file = nil
 	}
 }
 
-func newLogFileWriter() (*logFileWriter, error) {
+func newFileWriter() (*fileWriter, error) {
 	filesize := int64(0)
 
 	if FileExists(realLogFilename()) {
@@ -236,7 +234,7 @@ func newLogFileWriter() (*logFileWriter, error) {
 		return nil, err
 	}
 
-	writer := logFileWriter{
+	writer := fileWriter{
 		file:     logFile,
 		filesize: filesize,
 	}
@@ -265,14 +263,14 @@ func initLog() {
 	if realLogFilename() != "" {
 		var err error
 
-		logger, err = newLogFileWriter()
+		logger, err = newFileWriter()
 		if err != nil {
 			Error(err)
 		}
 	}
 
 	if logger == nil {
-		logger = newLogMemoryWriter()
+		logger = newMemoryWriter()
 	}
 
 	if *FlagLogSys && !IsRunningInteractive() {
@@ -292,60 +290,6 @@ func initLog() {
 	}
 }
 
-func writeEntry(entry logEntry) {
-	s := entry.String(*FlagLogJson, *FlagLogVerbose)
-
-	if entry.levelInt != LEVEL_FILE {
-		if !*FlagLogVerbose {
-			if gotest != nil {
-				gotest.Logf(s)
-			} else {
-				fmt.Println(s)
-			}
-
-			return
-		}
-
-		switch entry.levelInt {
-		case LEVEL_WARN:
-			if gotest != nil {
-				gotest.Logf(s)
-			} else {
-				color.Warn.Println(s)
-			}
-		case LEVEL_ERROR:
-			if gotest != nil {
-				gotest.Fatalf(s)
-			} else {
-				color.Error.Println(s)
-			}
-		default:
-			if gotest != nil {
-				gotest.Logf(s)
-			} else {
-				fmt.Printf("%s\n", s)
-			}
-		}
-	}
-
-	if logger != nil {
-		logger.WriteString(fmt.Sprintf("%s\n", s))
-	}
-
-	if *FlagLogSys && systemLogger != nil {
-		switch entry.levelInt {
-		case LEVEL_WARN:
-			Error(systemLogger.Warning(entry.String(false, false)))
-		case LEVEL_ERROR:
-			Error(systemLogger.Error(entry.String(false, false)))
-		case LEVEL_DEBUG:
-			fallthrough
-		case LEVEL_INFO:
-			Error(systemLogger.Info(entry.String(false, false)))
-		}
-	}
-}
-
 func closeLogFile() {
 	prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
 
@@ -360,28 +304,32 @@ func prolog(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_FILE, GetRuntimeInfo(1), t, nil)
+	log(LEVEL_PROLOG, GetRuntimeInfo(1), t, nil)
 }
 
 // Debug prints out the information
 func Debug(t string, arg ...interface{}) {
-	if *FlagLogVerbose {
-		if len(arg) > 0 {
-			t = fmt.Sprintf(t, arg...)
-		}
-
-		log(LEVEL_DEBUG, GetRuntimeInfo(1), t, nil)
+	if FlagLogVerbose == nil || !*FlagLogVerbose {
+		return
 	}
+
+	if len(arg) > 0 {
+		t = fmt.Sprintf(t, arg...)
+	}
+
+	log(LEVEL_DEBUG, GetRuntimeInfo(1), t, nil)
 }
 
 // DebugError prints out the error
 func DebugError(err error) bool {
-	if *FlagLogVerbose {
-		if err != nil && !IsErrExit(err) {
-			ri := GetRuntimeInfo(1)
+	if FlagLogVerbose == nil || !*FlagLogVerbose {
+		return err != nil
+	}
 
-			log(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
-		}
+	if err != nil && !IsErrExit(err) {
+		ri := GetRuntimeInfo(1)
+
+		log(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
 	}
 
 	return err != nil
@@ -389,6 +337,10 @@ func DebugError(err error) bool {
 
 // Info prints out the information
 func Info(t string, arg ...interface{}) {
+	if FlagLogVerbose == nil {
+		return
+	}
+
 	if len(arg) > 0 {
 		t = fmt.Sprintf(t, arg...)
 	}
@@ -398,6 +350,10 @@ func Info(t string, arg ...interface{}) {
 
 // Warn prints out the information
 func Warn(t string, arg ...interface{}) {
+	if FlagLogVerbose == nil {
+		return
+	}
+
 	if len(arg) > 0 {
 		t = fmt.Sprintf(t, arg...)
 	}
@@ -406,6 +362,10 @@ func Warn(t string, arg ...interface{}) {
 }
 
 func WarnError(err error) bool {
+	if FlagLogVerbose == nil {
+		return err != nil
+	}
+
 	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
@@ -425,6 +385,10 @@ func errorString(ri RuntimeInfo, err error) string {
 
 // DebugFunc prints out the current executon func
 func DebugFunc(arg ...interface{}) {
+	if FlagLogVerbose == nil || !*FlagLogVerbose {
+		return
+	}
+
 	ri := GetRuntimeInfo(1)
 
 	t := ri.Fn + "()"
@@ -458,6 +422,10 @@ func Ignore(arg ...interface{}) bool {
 
 // Error prints out the error
 func Error(err error) bool {
+	if FlagLogVerbose == nil {
+		return err != nil
+	}
+
 	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
@@ -468,6 +436,10 @@ func Error(err error) bool {
 }
 
 func ErrorReturn(err error) error {
+	if FlagLogVerbose == nil {
+		return err
+	}
+
 	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
@@ -481,6 +453,10 @@ func log(level int, ri RuntimeInfo, msg string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	if logger == nil {
+		return
+	}
+
 	if level == LEVEL_ERROR {
 		defer func() {
 			lastErr = err.Error()
@@ -492,16 +468,54 @@ func log(level int, ri RuntimeInfo, msg string, err error) {
 		}
 	}
 
-	if level == LEVEL_FILE || (FlagLogVerbose != nil && *FlagLogVerbose) || level > LEVEL_DEBUG {
-		le := logEntry{
-			levelInt: level,
-			Level:    levelToString(level),
-			Clock:    time.Now().Format(DateTimeMilliMask),
-			Runtime:  ri.String(),
-			Msg:      Capitalize(strings.TrimRight(strings.TrimSpace(msg), "\r\n")),
+	entry := logEntry{
+		levelInt: level,
+		Level:    levelToString(level),
+		Clock:    time.Now().Format(DateTimeMilliMask),
+		Runtime:  ri.String(),
+		Msg:      Capitalize(strings.TrimRight(strings.TrimSpace(msg), "\r\n")),
+	}
+
+	s := entry.String(*FlagLogJson, *FlagLogVerbose)
+
+	if logger != nil {
+		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", s))
+	}
+
+	if level != LEVEL_PROLOG {
+		switch entry.levelInt {
+		case LEVEL_WARN:
+			if gotest != nil {
+				gotest.Logf(s)
+			} else {
+				color.Warn.Println(s)
+			}
+		case LEVEL_ERROR:
+			if gotest != nil {
+				gotest.Fatalf(s)
+			} else {
+				color.Error.Println(s)
+			}
+		default:
+			if gotest != nil {
+				gotest.Logf(s)
+			} else {
+				fmt.Printf("%s\n", s)
+			}
 		}
 
-		writeEntry(le)
+		if *FlagLogSys && systemLogger != nil {
+			switch entry.levelInt {
+			case LEVEL_WARN:
+				Error(systemLogger.Warning(entry.String(false, false)))
+			case LEVEL_ERROR:
+				Error(systemLogger.Error(entry.String(false, false)))
+			case LEVEL_DEBUG:
+				fallthrough
+			case LEVEL_INFO:
+				Error(systemLogger.Info(entry.String(false, false)))
+			}
+		}
 	}
 }
 
