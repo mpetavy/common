@@ -228,7 +228,6 @@ func FileCopy(src string, dst string) error {
 	}
 	defer func() {
 		Error(destFile.Close())
-		Error(destFile.Sync())
 	}()
 
 	_, err = io.Copy(destFile, srcFile)
