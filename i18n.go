@@ -32,11 +32,11 @@ var (
 const (
 	DEFAULT_LANGUAGE = "en"
 
-	FlagNameLanguage = "language"
+	FlagNameLanguage = "app.language"
 )
 
 func init() {
-	FlagLanguage = flag.String(FlagNameLanguage, "en", "language for messages")
+	FlagLanguage = flag.String(FlagNameLanguage, DEFAULT_LANGUAGE, "language for messages")
 
 	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initLanguage()
