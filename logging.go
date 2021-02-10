@@ -176,10 +176,10 @@ func (this *fileWriter) WriteString(level int, txt string) {
 }
 
 func (this *fileWriter) Logs(w io.Writer) error {
-	for i := *FlagCountBackups; i >= 0; i-- {
+	for i := *FlagIoFileBackups; i >= 0; i-- {
 		var src string
 
-		if *FlagCountBackups == 1 {
+		if *FlagIoFileBackups == 1 {
 			src = realLogFilename() + ".bak"
 
 			if !fileExists(src) {
