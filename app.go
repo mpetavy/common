@@ -80,6 +80,8 @@ const (
 	FlagNameServiceUsername = "service.username"
 	FlagNameServicePassword = "service.password"
 	FlagNameServiceTimeout  = "service.timeout"
+	FlagNameUsage           = "?"
+	FlagNameNoBanner        = "nb"
 )
 
 var (
@@ -113,8 +115,8 @@ func init() {
 	FlagServiceUser = new(string)
 	FlagServicePassword = new(string)
 	FlagServiceStartTimeout = new(int)
-	FlagUsage = flag.Bool("?", false, "show usage")
-	FlagNoBanner = flag.Bool("nb", false, "no copyright banner")
+	FlagUsage = flag.Bool(FlagNameUsage, false, "show flags description and usage")
+	FlagNoBanner = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
 }
 
 func Init(isService bool, version string, git string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {

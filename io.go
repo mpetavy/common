@@ -17,11 +17,18 @@ import (
 	"time"
 )
 
+const (
+	FlagNameIoNetworkTimeout = "io.network.timeout"
+	FlagNameIoFileBackups    = "io.file.backups"
+)
+
 var (
 	ReadOnlyFileMode = FileMode(true, true, false)
 	DefaultFileMode  = FileMode(true, true, false)
 	DefaultDirMode   = FileMode(true, true, true)
-	FlagCountBackups *int
+
+	FlagIoNetworkTimeout *int
+	FlagIoFileBackups    *int
 )
 
 type ErrFileNotFound struct {
@@ -76,7 +83,8 @@ func init() {
 		Error(deleteTempDir())
 	})
 
-	FlagCountBackups = flag.Int("io.filebackups", 3, "amount of file backups")
+	FlagIoNetworkTimeout = flag.Int(FlagNameIoNetworkTimeout, 3*1000, "network server and client dial timeout")
+	FlagIoFileBackups = flag.Int(FlagNameIoFileBackups, 3, "amount of file backups")
 }
 
 // AppCleanup cleans up all remaining objects
@@ -262,18 +270,18 @@ func FileStore(filename string, r io.Reader) error {
 
 // FileBackup creates backup of files
 func FileBackup(filename string) error {
-	if *FlagCountBackups < 1 {
+	if *FlagIoFileBackups < 1 {
 		return nil
 	}
 
-	for i := *FlagCountBackups - 1; i >= 0; i-- {
+	for i := *FlagIoFileBackups - 1; i >= 0; i-- {
 		src := filename
 		if i > 0 {
 			src = src + "." + strconv.Itoa(i)
 		}
 
 		dst := ""
-		if *FlagCountBackups == 1 {
+		if *FlagIoFileBackups == 1 {
 			dst = filename + ".bak"
 		} else {
 			dst = filename + "." + strconv.Itoa(i+1)

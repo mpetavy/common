@@ -103,7 +103,7 @@ func GetHost() (string, string, error) {
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 
-		err := WatchdogCmd(cmd, time.Second*3)
+		err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkTimeout))
 		if err == nil {
 			output := string(stdout.Bytes())
 
@@ -146,7 +146,7 @@ func GetHost() (string, string, error) {
 			cmd.Stdout = &stdout
 			cmd.Stderr = &stderr
 
-			err = WatchdogCmd(cmd, time.Second*3)
+			err = WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkTimeout))
 			if Error(err) {
 				return "", "", nil
 			}

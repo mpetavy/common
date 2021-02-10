@@ -2,7 +2,6 @@ package common
 
 import (
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"go.bug.st/serial"
 	"golang.org/x/crypto/sha3"
@@ -12,14 +11,6 @@ import (
 	"strings"
 	"time"
 )
-
-var (
-	timeout *int
-)
-
-func init() {
-	timeout = flag.Int("network.timeout", 10*1000, "network server and client dial timeout")
-}
 
 type NetworkConnection struct {
 	Socket net.Conn
@@ -76,7 +67,7 @@ func (networkClient *NetworkClient) Connect() (*NetworkConnection, error) {
 
 		networkClient.tlsConfig.ServerName = "localhost"
 
-		socket, err := tls.DialWithDialer(&net.Dialer{Deadline: time.Now().Add(MillisecondToDuration(*timeout))}, "tcp", networkClient.address, networkClient.tlsConfig)
+		socket, err := tls.DialWithDialer(&net.Dialer{Deadline: time.Now().Add(MillisecondToDuration(*FlagIoNetworkTimeout))}, "tcp", networkClient.address, networkClient.tlsConfig)
 		if Error(err) {
 			return nil, err
 		}
@@ -87,7 +78,7 @@ func (networkClient *NetworkClient) Connect() (*NetworkConnection, error) {
 	} else {
 		Debug("Dial connection: %s...", networkClient.address)
 
-		socket, err := net.DialTimeout("tcp", networkClient.address, MillisecondToDuration(*timeout))
+		socket, err := net.DialTimeout("tcp", networkClient.address, MillisecondToDuration(*FlagIoNetworkTimeout))
 		if Error(err) {
 			return nil, err
 		}
