@@ -483,25 +483,29 @@ func log(level int, ri RuntimeInfo, msg string, err error) {
 	}
 
 	if level != LEVEL_PROLOG {
-		switch entry.levelInt {
-		case LEVEL_WARN:
-			if gotest != nil {
-				gotest.Logf(s)
-			} else {
-				color.Warn.Println(s)
+		if *FlagLogVerbose {
+			switch entry.levelInt {
+			case LEVEL_WARN:
+				if gotest != nil {
+					gotest.Logf(s)
+				} else {
+					color.Warn.Println(s)
+				}
+			case LEVEL_ERROR:
+				if gotest != nil {
+					gotest.Fatalf(s)
+				} else {
+					color.Error.Println(s)
+				}
+			default:
+				if gotest != nil {
+					gotest.Logf(s)
+				} else {
+					fmt.Printf("%s\n", s)
+				}
 			}
-		case LEVEL_ERROR:
-			if gotest != nil {
-				gotest.Fatalf(s)
-			} else {
-				color.Error.Println(s)
-			}
-		default:
-			if gotest != nil {
-				gotest.Logf(s)
-			} else {
-				fmt.Printf("%s\n", s)
-			}
+		} else {
+			fmt.Printf("%s\n", s)
 		}
 
 		if *FlagLogSys && systemLogger != nil {
