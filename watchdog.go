@@ -25,7 +25,7 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 	start := time.Now()
 
 	err := cmd.Start()
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 

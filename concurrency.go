@@ -28,7 +28,7 @@ func NewTimeoutOperation(maxDuration time.Duration, checkDuration time.Duration,
 		var err error
 
 		loop, err = fn()
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 	}
