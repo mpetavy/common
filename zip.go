@@ -2,7 +2,6 @@ package common
 
 import (
 	"archive/zip"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -19,7 +18,7 @@ func Unzip(dest, src string) error {
 	Debug("unzip source: %s dest: %s", src, dest)
 
 	r, err := zip.OpenReader(src)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 	defer r.Close()
@@ -30,7 +29,7 @@ func Unzip(dest, src string) error {
 
 	for _, zipEntry := range r.File {
 		rc, err := zipEntry.Open()
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 		defer rc.Close()
@@ -44,12 +43,12 @@ func Unzip(dest, src string) error {
 
 		if zipEntry.FileInfo().IsDir() {
 			err := os.RemoveAll(path)
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 
 			err = os.MkdirAll(path, zipEntry.Mode())
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 
@@ -57,26 +56,26 @@ func Unzip(dest, src string) error {
 		} else {
 			if FileExists(path) {
 				err = os.Remove(path)
-				if err != nil {
+				if Error(err) {
 					return err
 				}
 			}
 
 			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zipEntry.Mode())
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 			defer f.Close()
 
 			_, err = io.Copy(f, rc)
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 
 			f.Close()
 
 			err = os.Chtimes(path, ti, ti)
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 		}
@@ -84,7 +83,7 @@ func Unzip(dest, src string) error {
 
 	for _, dt := range dt {
 		err = os.Chtimes(dt.name, dt.ti, dt.ti)
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 	}
@@ -100,18 +99,18 @@ func addFile(w *zip.Writer, fn, baseInZip string) error {
 	}
 
 	f, err := os.Open(fn)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 	defer f.Close()
 
 	info, err := f.Stat()
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	header, err := zip.FileInfoHeader(info)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -120,12 +119,12 @@ func addFile(w *zip.Writer, fn, baseInZip string) error {
 	header.Modified = info.ModTime()
 
 	writer, err := w.CreateHeader(header)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
 	_, err = io.Copy(writer, f)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -140,7 +139,7 @@ func addFiles(w *zip.Writer, dir, baseInZip string) error {
 	}
 
 	files, err := ioutil.ReadDir(dir)
-	if err != nil {
+	if Error(err) {
 		return err
 	}
 
@@ -149,12 +148,12 @@ func addFiles(w *zip.Writer, dir, baseInZip string) error {
 
 		if !file.IsDir() {
 			err := addFile(w, fn, baseInZip)
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 		} else if file.IsDir() {
 			err = addFiles(w, fn, baseInZip+filepath.Base(file.Name()))
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 		}
@@ -166,8 +165,8 @@ func addFiles(w *zip.Writer, dir, baseInZip string) error {
 func Zip(filename string, files []string) error {
 
 	outFile, err := os.Create(filename)
-	if err != nil {
-		fmt.Println(err)
+	if Error(err) {
+		return err
 	}
 	defer outFile.Close()
 
@@ -176,17 +175,20 @@ func Zip(filename string, files []string) error {
 
 	for _, file := range files {
 		fi, err := os.Stat(file)
-		if err != nil {
-			break
+		if Error(err) {
+			return err
 		}
 
 		if fi.IsDir() {
 			err = addFiles(w, file, "")
+			if Error(err) {
+				return err
+			}
 		} else {
 			err = addFile(w, file, "")
-		}
-		if err != nil {
-			break
+			if Error(err) {
+				return err
+			}
 		}
 	}
 

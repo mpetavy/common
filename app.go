@@ -154,26 +154,6 @@ func Init(isService bool, version string, git string, date string, description s
 	}
 }
 
-func checkUnknownFlag(flagName string) error {
-	fl := flag.Lookup(flagName)
-
-	if fl == nil {
-		return fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
-	}
-
-	return nil
-}
-
-func checkMandatoryFlag(flagName string) error {
-	fl := flag.Lookup(flagName)
-
-	if fl != nil && len(fl.Value.String()) == 0 {
-		return fmt.Errorf("mandatory flag needed: \"-%s\" - %s", fl.Name, fl.Usage)
-	}
-
-	return nil
-}
-
 func Run(mandatoryFlags []string) {
 	if app.CanRunAsService {
 		FlagService = flag.String(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
@@ -205,17 +185,17 @@ func Run(mandatoryFlags []string) {
 		showBanner()
 	}
 
-	if flag.NArg() > 0 {
-		Error(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
-		Exit(1)
-	}
-
 	err := InitConfiguration()
 	if Error(err) {
 		Exit(1)
 	}
 
 	initLog()
+
+	if flag.NArg() > 0 {
+		Error(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
+		Exit(1)
+	}
 
 	flag.VisitAll(func(fl *flag.Flag) {
 		v := fmt.Sprintf("%+v", fl.Value)
@@ -231,47 +211,43 @@ func Run(mandatoryFlags []string) {
 		Exit(0)
 	}
 
-	if *FlagService == "" || *FlagService == "install" {
-		for _, f := range mandatoryFlags {
-			if strings.Contains(f, "|") {
-				optionals := strings.Split(f, "|")
-				only1 := false
+	if mandatoryFlags != nil {
+		for _, mf := range mandatoryFlags {
+			alreadyOne := false
 
-				for _, o := range optionals {
-					err = checkUnknownFlag(o)
-					if err != nil {
-						continue
-					}
-
-					err = checkMandatoryFlag(o)
-					if err != nil {
-						continue
-					}
-
-					only1 = true
-					break
-				}
-
-				if !only1 {
-					for i := 0; i < len(optionals); i++ {
-						optionals[i] = fmt.Sprintf("\"%s\"", optionals[i])
-					}
-
-					Error(fmt.Errorf("mandatory flag needed: %s", strings.Join(optionals, " or ")))
-
-					break
-				}
-
-				continue
+			choices := strings.Split(mf, "|")
+			for i := 0; i < len(choices); i++ {
+				choices[i] = "\"-" + choices[i] + "\""
 			}
 
-			err = checkUnknownFlag(f)
-			if Error(err) {
-				break
+			allChoices := strings.Join(choices, " or ")
+
+			for _, flagName := range strings.Split(mf, "|") {
+				fl := flag.Lookup(flagName)
+
+				if fl == nil {
+					err = fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
+					if Error(err) {
+						break
+					}
+				}
+
+				if alreadyOne && fl.Value.String() != "" {
+					err = fmt.Errorf("only one flag allowed: %s", allChoices)
+					if Error(err) {
+						break
+					}
+				}
+
+				alreadyOne = fl.Value.String() != ""
 			}
 
-			err = checkMandatoryFlag(f)
-			if Error(err) {
+			if !alreadyOne {
+				err = fmt.Errorf("none of mandatory flags is defined: %s", allChoices)
+				Error(err)
+			}
+
+			if err != nil {
 				break
 			}
 		}
