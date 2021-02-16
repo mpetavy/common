@@ -292,14 +292,18 @@ func evaluateTTYOptions(device string) (string, *serial.Mode, error) {
 			err = fmt.Errorf("invalid baud rate: %s", ss[1])
 		}
 
-		if err != nil {
+		if Error(nil) {
 			return "", nil, err
 		}
 	}
 	if len(ss) > 2 {
 		databits, err = strconv.Atoi(ss[2])
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid databits: %s", ss[2])
+			err = fmt.Errorf("invalid databits: %s", ss[2])
+
+			if Error(nil) {
+				return "", nil, err
+			}
 		}
 	}
 	if len(ss) > 3 {
@@ -313,7 +317,11 @@ func evaluateTTYOptions(device string) (string, *serial.Mode, error) {
 		case "E":
 			paritymode = serial.EvenParity
 		default:
-			return "", nil, fmt.Errorf("invalid partitymode: %s", pm)
+			err = fmt.Errorf("invalid partitymode: %s", pm)
+
+			if Error(nil) {
+				return "", nil, err
+			}
 		}
 	}
 

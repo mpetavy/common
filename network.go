@@ -35,7 +35,7 @@ func (this TimeoutSocketReader) Read(p []byte) (n int, err error) {
 	}
 
 	err = this.Socket.SetReadDeadline(DeadlineByDuration(this.ReadTimeout))
-	if err != nil {
+	if Error(err) {
 		return 0, err
 	}
 
@@ -48,7 +48,7 @@ func (this TimeoutSocketWriter) Write(p []byte) (n int, err error) {
 	}
 
 	err = this.Socket.SetWriteDeadline(DeadlineByDuration(this.WriteTimeout))
-	if err != nil {
+	if Error(err) {
 		return 0, err
 	}
 
@@ -188,7 +188,7 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 	var list []hostAddress
 
 	intfs, err := net.Interfaces()
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 
@@ -200,7 +200,7 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 		mac := intf.HardwareAddr.String()
 
 		addrs, err := intf.Addrs()
-		if err != nil {
+		if Error(err) {
 			return nil, err
 		}
 
@@ -255,7 +255,7 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 
 func GetHostInterface(ip string) (*net.Interface, net.Addr, error) {
 	intfs, err := net.Interfaces()
-	if err != nil {
+	if Error(err) {
 		return nil, nil, err
 	}
 
@@ -265,7 +265,7 @@ func GetHostInterface(ip string) (*net.Interface, net.Addr, error) {
 		}
 
 		addrs, err := intf.Addrs()
-		if err != nil {
+		if Error(err) {
 			return nil, nil, err
 		}
 

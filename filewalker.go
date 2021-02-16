@@ -35,7 +35,7 @@ func (this *filewalker) walkfunc(path string, fi os.FileInfo, err error) error {
 
 		if !b {
 			b, err = EqualWildcards(filepath.Base(path), this.filemask)
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 		}
@@ -63,12 +63,7 @@ func WalkFilepath(filemask string, recursive bool, ignoreError bool, walkFunc fu
 		filemask = filepath.Base(filemask)
 	} else {
 		if FileExists(filemask) {
-			b, err := IsDirectory(filemask)
-			if err != nil {
-				return err
-			}
-
-			if b {
+			if IsDirectory(filemask) {
 				path = filemask
 				filemask = ""
 			} else {

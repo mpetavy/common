@@ -19,7 +19,7 @@ func NewJason(s string) (*Jason, error) {
 	var m map[string]interface{}
 
 	err := json.Unmarshal([]byte(RemoveJsonComments(s)), &m)
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 
@@ -117,7 +117,7 @@ func (jason *Jason) IsArray(key string) bool {
 
 func (jason *Jason) ArrayCount(key string) int {
 	v, err := jason.get(key)
-	if err != nil {
+	if Error(err) {
 		return 0
 	}
 
@@ -132,7 +132,7 @@ func (jason *Jason) ArrayCount(key string) int {
 
 func (jason *Jason) Array(key string, index int) (*Jason, error) {
 	v, err := jason.get(key)
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 
@@ -219,7 +219,7 @@ func (jason *Jason) pretty(index int) (string, error) {
 		if ok {
 			jason := &Jason{m}
 			ss, err := jason.pretty(index + 1)
-			if err != nil {
+			if Error(err) {
 				return "", err
 			}
 
@@ -233,7 +233,7 @@ func (jason *Jason) pretty(index int) (string, error) {
 		a, ok := v.([]interface{})
 		if ok {
 			ss, err := ToStrings(a)
-			if err != nil {
+			if Error(err) {
 				return "", err
 			}
 			s += fmt.Sprintf("%s\"%s\": [%v]\n", tab, k, strings.Join(SurroundWith(ss, "\""), ","))

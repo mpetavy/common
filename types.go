@@ -159,8 +159,8 @@ func DefaultConsoleEncoding() string {
 func ToUTF8String(s string, cs string) (string, error) {
 	b, err := ToUTF8(strings.NewReader(s), cs)
 
-	if err != nil {
-		return "", nil
+	if Error(err) {
+		return "", err
 	}
 
 	return string(b), nil
@@ -168,12 +168,12 @@ func ToUTF8String(s string, cs string) (string, error) {
 
 func ToUTF8(r io.Reader, cs string) ([]byte, error) {
 	rcs, err := charset.NewReader(cs, r)
-	if err != nil {
+	if Error(err) {
 		return []byte{}, err
 	}
 	b, err := ioutil.ReadAll(rcs)
 
-	if err != nil {
+	if Error(err) {
 		return []byte{}, err
 	}
 	return b, nil
@@ -253,7 +253,7 @@ func EqualWildcards(s, mask string) (bool, error) {
 	mask = strings.ReplaceAll(mask, "?", ".")
 
 	r, err := regexp.Compile("^" + mask + "$")
-	if err != nil {
+	if Error(err) {
 		return false, err
 	}
 
@@ -335,7 +335,7 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 
 		if val.Field(i).Kind() == reflect.Struct {
 			err := iterateStruct(fieldPath, val.Field(i), funcStructIterator)
-			if err != nil {
+			if Error(err) {
 				return err
 			}
 
@@ -349,7 +349,7 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 
 				if sliceElement.Kind() == reflect.Struct {
 					err := iterateStruct(sliceFieldPath, sliceElement, funcStructIterator)
-					if err != nil {
+					if Error(err) {
 						return err
 					}
 
