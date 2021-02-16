@@ -137,9 +137,7 @@ func Init(isService bool, version string, git string, date string, description s
 	}
 
 	executable, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
+	Panic(err)
 
 	app.ServiceConfig = &service.Config{
 		Name:             Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
@@ -149,9 +147,7 @@ func Init(isService bool, version string, git string, date string, description s
 	}
 
 	app.Service, err = service.New(app, app.ServiceConfig)
-	if err != nil {
-		panic(err)
-	}
+	Panic(err)
 }
 
 func Run(mandatoryFlags []string) {
@@ -185,16 +181,12 @@ func Run(mandatoryFlags []string) {
 		showBanner()
 	}
 
-	err := InitConfiguration()
-	if Error(err) {
-		Exit(1)
-	}
+	Panic(InitConfiguration())
 
 	initLog()
 
 	if flag.NArg() > 0 {
-		Error(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
-		Exit(1)
+		Panic(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
 	}
 
 	flag.VisitAll(func(fl *flag.Flag) {
@@ -226,45 +218,28 @@ func Run(mandatoryFlags []string) {
 				fl := flag.Lookup(flagName)
 
 				if fl == nil {
-					err = fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
-					if Error(err) {
-						break
-					}
+					Panic(fmt.Errorf("unknown mandatory flag: \"%s\"", flagName))
 				}
 
 				if alreadyOne && fl.Value.String() != "" {
-					err = fmt.Errorf("only one flag allowed: %s", allChoices)
-					if Error(err) {
-						break
-					}
+					Panic(fmt.Errorf("only one mandatory flag allowed: %s", allChoices))
 				}
 
-				alreadyOne = fl.Value.String() != ""
+				alreadyOne = alreadyOne || fl.Value.String() != ""
 			}
 
 			if !alreadyOne {
-				err = fmt.Errorf("none of mandatory flags is defined: %s", allChoices)
-				Error(err)
-			}
-
-			if err != nil {
-				break
+				Panic(fmt.Errorf("none mandatory flags is defined: %s", allChoices))
 			}
 		}
 	}
 
-	if err != nil {
-		Exit(1)
-	}
-
-	err = run()
+	err := run()
 
 	if err == nil || IsErrExit(err) {
 		Exit(0)
 	} else {
-		Error(err)
-
-		Exit(1)
+		Panic(err)
 	}
 }
 
@@ -645,12 +620,16 @@ func Title() string {
 		path = filepath.Base(path)
 		path = path[0:(len(path) - len(filepath.Ext(path)))]
 
-		runes := []rune(path)
-		for len(runes) > 0 && !unicode.IsLetter(runes[0]) {
-			runes = runes[1:]
-		}
+		title = ""
 
-		title = string(runes)
+		runes := []rune(path)
+		for i := len(runes) - 1; i >= 0; i-- {
+			if unicode.IsLetter(runes[i]) {
+				title = string(runes[i]) + title
+			} else {
+				break
+			}
+		}
 
 		DebugFunc(title)
 	})

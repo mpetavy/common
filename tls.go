@@ -316,9 +316,7 @@ func TlsDebugConnection(typ string, tlsConn *tls.Conn) {
 
 func Rnd(max int) int {
 	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
-	if err != nil {
-		panic(err)
-	}
+	Panic(err)
 
 	return int(nBig.Int64())
 }
@@ -333,7 +331,7 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
 	// Note that err == nil only if we read len(b) bytes.
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 
@@ -484,12 +482,12 @@ func TlsConfigFromPEM(certPEM []byte, keyPEM []byte, password string) (*tls.Conf
 	}
 
 	cert, err := x509.ParseCertificate(certBytes.Bytes)
-	if err != nil {
-		panic("failed to parse certificate: " + err.Error())
+	if Error(err) {
+		return nil, err
 	}
 
 	priv, err := x509.ParsePKCS1PrivateKey(keyBytes.Bytes)
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 
@@ -514,8 +512,15 @@ func CreateTlsConfig(password string) (*tls.Config, error) {
 		return nil, err
 	}
 
+	// generate a random serial number (a real cert authority would have some logic behind this)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if Error(err) {
+		return nil, err
+	}
+
 	certTmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(1),
+		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			CommonName:   hostname,
 			Organization: []string{TitleVersion(true, true, true)}},

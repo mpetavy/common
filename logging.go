@@ -122,7 +122,7 @@ func (this *memoryWriter) Logs(w io.Writer) error {
 	for _, l := range this.lines {
 		_, err := w.Write([]byte(l))
 
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 	}
@@ -202,7 +202,7 @@ func (this *fileWriter) Logs(w io.Writer) error {
 
 		_, err = io.Copy(w, file)
 		_ = file.Close()
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 	}
@@ -224,13 +224,13 @@ func newFileWriter() (*fileWriter, error) {
 		var err error
 
 		filesize, err = FileSize(realLogFilename())
-		if err != nil {
+		if Error(err) {
 			return nil, err
 		}
 	}
 
 	logFile, err := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
-	if err != nil {
+	if Error(err) {
 		return nil, err
 	}
 
@@ -264,9 +264,7 @@ func initLog() {
 		var err error
 
 		logger, err = newFileWriter()
-		if err != nil {
-			Error(err)
-		}
+		Error(err)
 	}
 
 	if logger == nil {
@@ -279,9 +277,7 @@ func initLog() {
 		var err error
 
 		systemLogger, err = app.Service.Logger(systemLoggerCh)
-		if err != nil {
-			Error(err)
-		}
+		Error(err)
 	}
 
 	if app != nil {
@@ -420,7 +416,18 @@ func Ignore(arg ...interface{}) bool {
 	return b
 }
 
-// Error prints out the error
+func Panic(err error) {
+	if err == nil {
+		return
+	}
+
+	ri := GetRuntimeInfo(1)
+
+	log(LEVEL_ERROR, ri, errorString(ri, err), err)
+
+	Exit(1)
+}
+
 func Error(err error) bool {
 	if FlagLogVerbose == nil {
 		return err != nil

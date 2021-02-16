@@ -194,7 +194,7 @@ func GetSystemInfo() (*SystemInfo, error) {
 		r := NewRunner(exec.Command("wmic", "os"), time.Second*5)
 
 		err := r.execute(nil)
-		if err != nil {
+		if Error(err) {
 			return nil, err
 		}
 
@@ -254,7 +254,7 @@ func GetSystemInfo() (*SystemInfo, error) {
 		defer wg.Done()
 
 		ba, err := ioutil.ReadFile("/proc/meminfo")
-		if err != nil {
+		if Error(err) {
 			return
 		}
 

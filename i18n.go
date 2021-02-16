@@ -165,7 +165,7 @@ func initLanguage() {
 func scanStruct(i18ns *[]string, data interface{}) error {
 	return IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
 		fieldTags, err := structtag.Parse(string(fieldType.Tag))
-		if err != nil {
+		if Error(err) {
 			return err
 		}
 
@@ -256,19 +256,19 @@ func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (
 
 	// Creates a client.
 	client, err := translate.NewClient(ctx, option.WithAPIKey(googleApiKey))
-	if err != nil {
-		return "", fmt.Errorf("Failed to create client: %v", err)
+	if Error(err) {
+		return "", err
 	}
 
 	source, err := googlelanguage.Parse("en")
-	if err != nil {
-		return "", fmt.Errorf("Failed to parse target language: %v", err)
+	if Error(err) {
+		return "", err
 	}
 
 	// Sets the target language.
 	target, err := googlelanguage.Parse(foreignLanguage)
-	if err != nil {
-		return "", fmt.Errorf("Failed to parse target language: %v", err)
+	if Error(err) {
+		return "", err
 	}
 
 	// Translates the text
@@ -277,8 +277,8 @@ func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (
 		Format: "",
 		Model:  "",
 	})
-	if err != nil {
-		return "", fmt.Errorf("Failed to translate text: %v", err)
+	if Error(err) {
+		return "", err
 	}
 
 	term := html.UnescapeString(translations[0].Text)

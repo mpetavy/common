@@ -42,7 +42,7 @@ func (this *throttledReader) Read(p []byte) (n int, err error) {
 		index += n
 		this.lastSecRead += n
 
-		if err != nil {
+		if Error(nil) {
 			return index, err
 		}
 

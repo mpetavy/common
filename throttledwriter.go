@@ -42,7 +42,7 @@ func (this *throttledWriter) Write(p []byte) (n int, err error) {
 		index += n
 		this.lastSecWritten += n
 
-		if err != nil {
+		if Error(err) {
 			return index, err
 		}
 

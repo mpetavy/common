@@ -75,9 +75,7 @@ func init() {
 	var err error
 
 	tempDir, err = ioutil.TempDir("", Title())
-	if err != nil {
-		panic(err)
-	}
+	Panic(err)
 
 	AddShutdownHook(func() {
 		Error(deleteTempDir())
@@ -96,17 +94,10 @@ func deleteTempDir() error {
 	DebugFunc(tempDir)
 
 	err := filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			b, err := IsFileReadOnly(path)
+		if !info.IsDir() && !IsFileReadOnly(path) {
+			err := SetFileReadOnly(path, false)
 			if Error(err) {
 				return err
-			}
-
-			if !b {
-				err := SetFileReadOnly(path, false)
-				if Error(err) {
-					return err
-				}
 			}
 		}
 
@@ -306,54 +297,34 @@ func FileBackup(filename string) error {
 }
 
 // IsFileReadOnly checks if a file is read only
-func IsFileReadOnly(path string) (result bool, err error) {
-	result = false
-
+func IsFileReadOnly(path string) bool {
 	file, err := os.OpenFile(path, os.O_WRONLY, DefaultFileMode)
-	if err != nil {
-		if !os.IsPermission(err) {
-			result = true
-		} else {
-			return false, err
-		}
+	if !os.IsPermission(err) {
+		return true
 	}
+
 	Ignore(file.Close())
 
-	return result, nil
+	return false
 }
 
 // IsDirectory checks if the path leads to a directory
-func IsDirectory(path string) (bool, error) {
-	if FileExists(path) {
-		fi, err := os.Stat(path)
-		if Error(err) {
-			return false, err
-		}
+func IsDirectory(path string) bool {
+	fi, err := os.Stat(path)
 
-		return fi.IsDir(), nil
-	} else {
-		return false, nil
-	}
+	return err == nil && fi.IsDir()
 }
 
 // IsDirectory checks if the path leads to a directory
-func IsFile(path string) (bool, error) {
-	b, err := IsDirectory(path)
-	if Error(err) {
-		return false, err
-	}
-
-	return !b, nil
+func IsFile(path string) bool {
+	return !IsDirectory(path) && !IsSymbolicLink(path)
 }
 
 // IsSymbolicLink checks if the path leads to symbolic link
 func IsSymbolicLink(path string) bool {
 	file, err := os.Lstat(path)
-	if Error(err) {
-		return false
-	}
 
-	return file.Mode()&os.ModeSymlink != 0
+	return err == nil && file.Mode()&os.ModeSymlink != 0
 }
 
 // SetFileReadOnly sets file READ-ONLY yes or false
