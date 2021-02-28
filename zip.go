@@ -3,7 +3,6 @@ package common
 import (
 	"archive/zip"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -138,7 +137,7 @@ func addFiles(w *zip.Writer, dir, baseInZip string) error {
 		baseInZip += "/"
 	}
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if Error(err) {
 		return err
 	}

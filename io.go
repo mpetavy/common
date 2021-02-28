@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/user"
@@ -74,7 +73,7 @@ var tempDir string
 func init() {
 	var err error
 
-	tempDir, err = ioutil.TempDir("", Title())
+	tempDir, err = os.MkdirTemp("", Title())
 	Panic(err)
 
 	AddShutdownHook(func() {
@@ -124,7 +123,7 @@ func TempDir() string {
 func CreateTempFile() (file *os.File, err error) {
 	tempDir := TempDir()
 
-	file, err = ioutil.TempFile(tempDir, GetRuntimeInfo(1).Filename()+"-")
+	file, err = os.CreateTemp(tempDir, GetRuntimeInfo(1).Filename()+"-")
 	if Error(err) {
 		return nil, err
 	}
@@ -141,7 +140,7 @@ func CreateTempFile() (file *os.File, err error) {
 func CreateTempDir() (string, error) {
 	rootTempDir := TempDir()
 
-	tempdir, err := ioutil.TempDir(rootTempDir, GetRuntimeInfo(1).Filename()+"-")
+	tempdir, err := os.MkdirTemp(rootTempDir, GetRuntimeInfo(1).Filename()+"-")
 	if Error(err) {
 		return "", err
 	}
@@ -576,7 +575,7 @@ func URLGet(url string) ([]byte, error) {
 		return nil, err
 	}
 
-	ba, err := ioutil.ReadAll(r.Body)
+	ba, err := io.ReadAll(r.Body)
 
 	defer func() {
 		Error(r.Body.Close())
@@ -595,11 +594,11 @@ func WriteJsonFile(filename string, v interface{}, fileMode os.FileMode) error {
 		return err
 	}
 
-	return ioutil.WriteFile(filename, ba, fileMode)
+	return os.WriteFile(filename, ba, fileMode)
 }
 
 func ReadJsonFile(filename string, v interface{}) error {
-	ba, err := ioutil.ReadFile(filename)
+	ba, err := os.ReadFile(filename)
 	if Error(err) {
 		return err
 	}

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,7 +40,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 
 	filename := "go.mod"
 
-	ba, err := ioutil.ReadFile(filename)
+	ba, err := os.ReadFile(filename)
 	if Error(err) {
 		return nil, err
 	}
@@ -92,7 +91,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 				licenseFile := filepath.Join(paths...)
 
 				if FileExists(licenseFile) {
-					ba, err := ioutil.ReadFile(licenseFile)
+					ba, err := os.ReadFile(licenseFile)
 					if Error(err) {
 						return nil, err
 					}
