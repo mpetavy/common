@@ -6,7 +6,6 @@ import (
 	_ "github.com/paulrosania/go-charset/data"
 	"github.com/pkg/errors"
 	"io"
-	"io/ioutil"
 	"math"
 	"reflect"
 	"regexp"
@@ -171,7 +170,7 @@ func ToUTF8(r io.Reader, cs string) ([]byte, error) {
 	if Error(err) {
 		return []byte{}, err
 	}
-	b, err := ioutil.ReadAll(rcs)
+	b, err := io.ReadAll(rcs)
 
 	if Error(err) {
 		return []byte{}, err

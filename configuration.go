@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -215,7 +214,7 @@ func readFile() ([]byte, error) {
 		return nil, nil
 	}
 
-	ba, err := ioutil.ReadFile(*FlagCfgFile)
+	ba, err := os.ReadFile(*FlagCfgFile)
 	if Error(err) {
 		return nil, err
 	}
@@ -269,7 +268,7 @@ func writeFile(ba []byte) error {
 
 		Error(FileBackup(*FlagCfgFile))
 
-		err = ioutil.WriteFile(*FlagCfgFile, buf.Bytes(), DefaultFileMode)
+		err = os.WriteFile(*FlagCfgFile, buf.Bytes(), DefaultFileMode)
 		if Error(err) {
 			return err
 		}

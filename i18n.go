@@ -13,7 +13,6 @@ import (
 	"google.golang.org/api/option"
 	"html"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -314,7 +313,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 		err := WalkFilepath(path, true, false, func(path string) error {
 			Debug("extract i18n from source file: %s", path)
 
-			ba, err := ioutil.ReadFile(path)
+			ba, err := os.ReadFile(path)
 			if Error(err) {
 				return err
 			}

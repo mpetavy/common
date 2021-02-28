@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -253,7 +253,7 @@ func GetSystemInfo() (*SystemInfo, error) {
 	go func(si *SystemInfo) {
 		defer wg.Done()
 
-		ba, err := ioutil.ReadFile("/proc/meminfo")
+		ba, err := os.ReadFile("/proc/meminfo")
 		if Error(err) {
 			return
 		}

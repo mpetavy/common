@@ -16,9 +16,9 @@ import (
 	"fmt"
 	"github.com/grantae/certinfo"
 	"golang.org/x/sys/cpu"
-	"io/ioutil"
 	"math/big"
 	"net"
+	"os"
 	"software.sslmate.com/src/go-pkcs12"
 	"sort"
 	"strings"
@@ -357,7 +357,7 @@ func GenerateRandomString(s int) (string, error) {
 func TlsConfigFromFile(filename string, password string) (*tls.Config, error) {
 	DebugFunc("filename: %s", filename)
 
-	ba, err := ioutil.ReadFile(filename)
+	ba, err := os.ReadFile(filename)
 	if Error(err) {
 		return nil, err
 	}
