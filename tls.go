@@ -28,6 +28,7 @@ import (
 var (
 	FlagTlsInsecure    *bool
 	FlagTlsVerify      *bool
+	FlagTlsServername  *string
 	FlagTlsMinVersion  *string
 	FlagTlsMaxVersion  *string
 	FlagTlsCiphers     *string
@@ -42,6 +43,7 @@ var (
 const (
 	FlagNameTlsInsecure    = "tls.insecure"
 	FlagNameTlsVerify      = "tls.verify"
+	FlagNameTlsServername  = "tls.servername"
 	FlagNameTlsMinVersion  = "tls.minversion"
 	FlagNameTlsMaxVersion  = "tls.maxversion"
 	FlagNameTlsCiphers     = "tls.ciphers"
@@ -59,7 +61,8 @@ const (
 
 func init() {
 	FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
-	FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS root certificates")
+	FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS certificates and server name")
+	FlagTlsServername = flag.String(FlagNameTlsServername, ".*", "TLS expected servername")
 	FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, TlsVersion12, "TLS min version")
 	FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, TlsVersion13, "TLS max version")
 	FlagTlsCiphers = flag.String(FlagNameTlsCiphers, "", "TLS ciphers zo use")
@@ -575,6 +578,7 @@ func CreateTlsConfig(password string) (*tls.Config, error) {
 func NewTlsConfigFromFlags() (*tls.Config, error) {
 	tlsConfigFromFlags, err := NewTlsConfig(
 		*FlagTlsVerify,
+		*FlagTlsServername,
 		*FlagTlsMinVersion,
 		*FlagTlsMaxVersion,
 		*FlagTlsCiphers,
@@ -609,7 +613,8 @@ func readP12Flag(fileOrBuffer string, password string) (*tls.Config, error) {
 }
 
 func NewTlsConfig(
-	serverVerify bool,
+	certificateVerify bool,
+	serverName string,
 	minVersion string,
 	maxVersion string,
 	ciphers string,
@@ -633,7 +638,8 @@ func NewTlsConfig(
 		}
 	}
 
-	tlsConfig.InsecureSkipVerify = !serverVerify
+	tlsConfig.InsecureSkipVerify = !certificateVerify
+	tlsConfig.ServerName = serverName
 	tlsConfig.MinVersion = TlsVersionToId(minVersion)
 	tlsConfig.MaxVersion = TlsVersionToId(maxVersion)
 	if ciphers != "" {
