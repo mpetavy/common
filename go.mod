@@ -32,7 +32,6 @@ require (
 	google.golang.org/genproto v0.0.0-20210226172003-ab064af71705 // indirect
 	google.golang.org/grpc v1.36.0 // indirect
 	gopkg.in/ini.v1 v1.49.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	software.sslmate.com/src/go-pkcs12 v0.0.0-20210222215041-dec221a1a07f
 )
