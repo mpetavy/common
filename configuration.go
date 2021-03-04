@@ -227,7 +227,7 @@ func writeFile(ba []byte) error {
 
 	buf := bytes.Buffer{}
 
-	err := json.Indent(&buf, ba, "", "    ")
+	err := json.Indent(&buf, ba, "", "  ")
 	if Error(err) {
 		return err
 	}
@@ -247,7 +247,7 @@ func writeFile(ba []byte) error {
 		m["applicationVersion"] = Version(true, true, true)
 	}
 
-	ba, err = json.MarshalIndent(m, "", "    ")
+	ba, err = json.MarshalIndent(m, "", "  ")
 	if Error(err) {
 		return err
 	}

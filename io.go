@@ -589,7 +589,7 @@ func URLGet(url string) ([]byte, error) {
 }
 
 func WriteJsonFile(filename string, v interface{}, fileMode os.FileMode) error {
-	ba, err := json.MarshalIndent(v, "", "    ")
+	ba, err := json.MarshalIndent(v, "", "  ")
 	if Error(err) {
 		return err
 	}
