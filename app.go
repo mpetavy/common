@@ -1,6 +1,7 @@
 package common
 
 import (
+	"embed"
 	"flag"
 	"fmt"
 	"github.com/kardianos/service"
@@ -47,6 +48,8 @@ type application struct {
 	License string
 	// Homepage of the application
 	Homepage string
+	//Resources
+	Resources *embed.FS
 	//StartFunc
 	StartFunc func() error
 	//StopFunc
@@ -119,7 +122,7 @@ func init() {
 	FlagNoBanner = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
 }
 
-func Init(isService bool, version string, git string, date string, description string, developer string, homepage string, license string, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+func Init(isService bool, version string, git string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	app = &application{
 		CanRunAsService: isService,
 		Name:            Title(),
@@ -130,6 +133,7 @@ func Init(isService bool, version string, git string, date string, description s
 		Developer:       developer,
 		License:         license,
 		Homepage:        homepage,
+		Resources:       resources,
 		StartFunc:       startFunc,
 		StopFunc:        stopFunc,
 		RunFunc:         runFunc,

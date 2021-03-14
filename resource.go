@@ -1,21 +1,70 @@
 package common
 
-type resourceloader func(name string) []byte
+import (
+	"flag"
+	"fmt"
+	"os"
+	"strings"
+)
 
-var resourceloaders = make([]resourceloader, 0)
+var (
+	FlagIoFileResource *bool
+	resourcesDirectory string
+	resourcesMimeTypes = make(map[string]string)
+)
 
-func RegisterResourceLoader(r resourceloader) {
-	resourceloaders = append(resourceloaders, r)
+const (
+	FlagNameIoFileResource = "io.fileresource"
+)
+
+func init() {
+	FlagIoFileResource = flag.Bool(FlagNameIoFileResource, !IsRunningAsExecutable(), "read resource from filesystem")
 }
 
-func GetResource(name string) []byte {
-	for _, resourceloader := range resourceloaders {
-		ba := resourceloader(name)
+func ResourcesDirectory() string {
+	return resourcesDirectory
+}
 
-		if ba != nil {
-			return ba
+func ReadResource(filename string) ([]byte, string, error) {
+	var ba []byte
+	var err error
+
+	if app.Resources == nil {
+		return nil,"", fmt.Errorf("resources are not initialized")
+	}
+
+	if resourcesDirectory == "" {
+		de,_ := app.Resources.ReadDir(".")
+
+		if len(de) == 1 {
+			resourcesDirectory = de[0].Name()
 		}
 	}
 
-	return nil
+	path := filename
+	if !strings.HasPrefix(path, resourcesDirectory) {
+		path = strings.Join([]string{resourcesDirectory, filename}, "/")
+	}
+
+	if *FlagIoFileResource {
+		ba, _ = os.ReadFile(path)
+	}
+
+	if ba == nil {
+		ba, err = app.Resources.ReadFile(path)
+	}
+
+	if Error(err) {
+		return nil, "", err
+	}
+
+	mimeType, ok := resourcesMimeTypes[filename]
+	if !ok {
+		mt := DetectMimeType(filename, ba)
+		mimeType = mt.MimeType
+
+		resourcesMimeTypes[filename] = mimeType
+	}
+
+	return ba, mimeType, nil
 }
