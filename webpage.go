@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -640,14 +641,15 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 				}
 
 				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Map {
-					sb := strings.Builder{}
+					lines := make([]string,0)
 					iter := fieldValue.MapRange()
 					for iter.Next() {
 						k := iter.Key()
 						v := iter.Value()
-						sb.WriteString(fmt.Sprintf("%s=%s\n", k, v))
+						lines = append(lines,fmt.Sprintf("%s=%s", k, v))
 					}
-					htmlInput.SetText(sb.String())
+					sort.Strings(lines)
+					htmlInput.SetText(strings.Join(lines,"\n"))
 				} else {
 					if !fieldValue.IsZero() {
 						htmlInput.SetText(fieldValue.String())

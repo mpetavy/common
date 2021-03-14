@@ -139,8 +139,7 @@ func GetSystemLanguage() (string, error) {
 }
 
 func initLanguage() {
-	filename := AppFilename(fmt.Sprintf(".i18n"))
-	ba := GetResource(filename)
+	ba,_,_ := ReadResource(AppFilename(".i18n"))
 
 	if ba != nil {
 		var err error
@@ -298,7 +297,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 		return fmt.Errorf("Failed to get Google API key from env: GOOGLE_API_KEY")
 	}
 
-	filename := filepath.Join(path, AppFilename(fmt.Sprintf(".i18n")))
+	filename := filepath.Join(path, AppFilename(".i18n"))
 
 	i18ns := make([]string, 0)
 
