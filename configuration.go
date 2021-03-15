@@ -14,9 +14,9 @@ type EventConfigurationReset struct {
 }
 
 type Configuration struct {
-	ApplicationTitle   string            `json:"applicationTitle"`
-	ApplicationVersion string            `json:"applicationVersion"`
-	Flags              map[string]string `json:"flags"`
+	ApplicationTitle   string       `json:"applicationTitle"`
+	ApplicationVersion string       `json:"applicationVersion"`
+	Flags              KeyValueList `json:"flags"`
 }
 
 var (
@@ -38,7 +38,6 @@ func NewConfiguration() *Configuration {
 
 	cfg.ApplicationTitle = Title()
 	cfg.ApplicationVersion = Version(true, true, true)
-	cfg.Flags = make(map[string]string)
 
 	return &cfg
 }
@@ -52,7 +51,10 @@ func (this *Configuration) SetFlag(flagName string, flagValue string) error {
 		return fmt.Errorf("unknown flag: %s", flagName)
 	}
 
-	this.Flags[flagName] = flagValue
+	err := this.Flags.Put(flagName,flagValue)
+	if Error(err) {
+		return err
+	}
 
 	return nil
 }
@@ -62,7 +64,9 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 		return "", fmt.Errorf("unknown flag: %s", flagName)
 	}
 
-	return this.Flags[flagName], nil
+	flagValue,_ := this.Flags.Get(flagName)
+
+	return flagValue, nil
 }
 
 func IsOneTimeFlag(n string) bool {
@@ -371,10 +375,10 @@ func registerFileFlags(ba []byte) error {
 	}
 
 	if cfg.Flags != nil {
-		for k, v := range cfg.Flags {
-			value := fmt.Sprintf("%v", v)
+		for _, key := range cfg.Flags.Keys() {
+			value,_ := cfg.Flags.Get(key)
 
-			mapFile[k] = value
+			mapFile[key] = value
 		}
 	}
 

@@ -467,44 +467,48 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 			}
 		case reflect.Slice:
 			if ok {
-				_, file, err := context.Request().FormFile(fieldPath)
-				if file == nil {
-					return nil
-				}
-				if Error(err) {
-					return err
-				}
+				switch(reflect.TypeOf(fieldValue.Interface()).Elem().Kind()) {
+				case reflect.String:
+					values := context.Request().Form[fieldPath]
+					scanner := bufio.NewScanner(strings.NewReader(values[0]))
+					lines := make([]string,0)
+					for scanner.Scan() {
+						line := strings.TrimSpace(scanner.Text())
+						if len(line) > 0 {
+							if !strings.Contains(line,"=") {
+								line = line + "="
+							}
 
-				src, err := file.Open()
-				if Error(err) {
-					return err
-				}
-				defer func() {
-					Error(src.Close())
-				}()
-
-				var buf bytes.Buffer
-
-				_, err = io.Copy(&buf, src)
-				if Error(err) {
-					return err
-				}
-
-				fieldValue.SetBytes([]byte(base64.StdEncoding.EncodeToString(buf.Bytes())))
-			}
-		case reflect.MapOf(reflect.TypeOf(""), reflect.TypeOf("")).Kind():
-			if ok {
-				values := context.Request().Form[fieldPath]
-				scanner := bufio.NewScanner(strings.NewReader(values[0]))
-				for scanner.Scan() {
-					line := strings.TrimSpace(scanner.Text())
-
-					ss := strings.Split(line, "=")
-					if len(ss) != 2 {
-						return fmt.Errorf("invalid format key=value: %s", line)
+							lines = append(lines, line)
+						}
+					}
+					sort.Strings(lines)
+					fieldValue.Set(reflect.ValueOf(lines))
+				default:
+					_, file, err := context.Request().FormFile(fieldPath)
+					if file == nil {
+						return nil
+					}
+					if Error(err) {
+						return err
 					}
 
-					fieldValue.SetMapIndex(reflect.ValueOf(ss[0]), reflect.ValueOf(ss[1]))
+					src, err := file.Open()
+					if Error(err) {
+						return err
+					}
+					defer func() {
+						Error(src.Close())
+					}()
+
+					var buf bytes.Buffer
+
+					_, err = io.Copy(&buf, src)
+					if Error(err) {
+						return err
+					}
+
+					fieldValue.SetBytes([]byte(base64.StdEncoding.EncodeToString(buf.Bytes())))
 				}
 			}
 		default:
@@ -640,16 +644,13 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 					htmlInput.CreateAttr("rows", "20")
 				}
 
-				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Map {
-					lines := make([]string,0)
-					iter := fieldValue.MapRange()
-					for iter.Next() {
-						k := iter.Key()
-						v := iter.Value()
-						lines = append(lines,fmt.Sprintf("%s=%s", k, v))
+				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Slice && reflect.TypeOf(fieldValue.Interface()).Elem().Kind() == reflect.String {
+					lines := make([]string, 0)
+					for i := 0;i < fieldValue.Len();i++ {
+						lines = append(lines, fieldValue.Index(i).String())
 					}
 					sort.Strings(lines)
-					htmlInput.SetText(strings.Join(lines,"\n"))
+					htmlInput.SetText(strings.Join(lines, "\n"))
 				} else {
 					if !fieldValue.IsZero() {
 						htmlInput.SetText(fieldValue.String())
@@ -773,7 +774,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 					if err == nil {
 						htmlInput.CreateAttr("accept", tagAccept.Name)
 					}
-					htmlInput.CreateAttr("style","width: 250px;")
+					htmlInput.CreateAttr("style", "width: 250px;")
 
 					if !readOnly && !isFieldReadOnly {
 						button := htmlDiv.CreateElement("input")

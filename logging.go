@@ -16,16 +16,12 @@ import (
 )
 
 const (
-	// DB level
 	LEVEL_PROLOG = iota
-	// LEVEL_DEBUG level
 	LEVEL_DEBUG
-	// LEVEL_INFO level
 	LEVEL_INFO
-	// LEVEL_ERROR level
 	LEVEL_WARN
-	// LEVEL_ERROR level
 	LEVEL_ERROR
+	LEVEL_PANIC
 )
 
 var (
@@ -252,6 +248,8 @@ func levelToString(level int) string {
 		return "WARN"
 	case LEVEL_ERROR:
 		return "ERROR"
+	case LEVEL_PANIC:
+		return "PANIC"
 	default:
 		return "INFO"
 	}
@@ -423,7 +421,7 @@ func Panic(err error) {
 
 	ri := GetRuntimeInfo(1)
 
-	log(LEVEL_ERROR, ri, errorString(ri, err), err)
+	log(LEVEL_PANIC, ri, errorString(ri, err), err)
 
 	Exit(1)
 }
@@ -459,10 +457,6 @@ func ErrorReturn(err error) error {
 func log(level int, ri RuntimeInfo, msg string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
-
-	if logger == nil {
-		return
-	}
 
 	if level == LEVEL_ERROR {
 		defer func() {
@@ -504,6 +498,12 @@ func log(level int, ri RuntimeInfo, msg string, err error) {
 				} else {
 					color.Error.Println(s)
 				}
+			case LEVEL_PANIC:
+				if gotest != nil {
+					gotest.Fatalf(s)
+				} else {
+					color.Error.Println(s)
+				}
 			default:
 				if gotest != nil {
 					gotest.Logf(s)
@@ -521,6 +521,8 @@ func log(level int, ri RuntimeInfo, msg string, err error) {
 				Error(systemLogger.Warning(entry.String(false, false)))
 			case LEVEL_ERROR:
 				Error(systemLogger.Error(entry.String(false, false)))
+			case LEVEL_PANIC:
+				Error(systemLogger.Error(fmt.Sprintf("PANIC: %s",entry.String(false, false))))
 			case LEVEL_DEBUG:
 				fallthrough
 			case LEVEL_INFO:
