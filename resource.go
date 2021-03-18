@@ -14,7 +14,7 @@ var (
 )
 
 const (
-	FlagNameIoFileResource = "io.fileresource"
+	FlagNameIoFileResource = "io.file.resources"
 )
 
 func init() {
