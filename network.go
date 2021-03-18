@@ -71,73 +71,103 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 	}
 }
 
-func GetHost() (string, string, error) {
-	var ip, hostname string
+func GetOutboundIP() (net.IP, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if Error(err) {
+		return nil, err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddr.IP, nil
+}
+
+func assignIP(currentIp, newIp net.IP) net.IP {
+	if (currentIp == nil) || (IsLocalhost(currentIp) && !IsLocalhost(newIp)) {
+		return newIp
+	}
+
+	return currentIp
+}
+
+func GetHost() (net.IP, string, error) {
+	var ip net.IP
+	var hostname string
 
 	addrs, err := GetHostAddrs(true, nil)
 	for _, addr := range addrs {
-		addrIp, _, err := net.ParseCIDR(addr.Addr.String())
+		newIp, _, err := net.ParseCIDR(addr.Addr.String())
 		if Error(err) {
 			continue
 		}
 
-		if !IsLocalhost(addrIp.String()) {
-			ip = addrIp.String()
-			break
-		}
+		ip = assignIP(ip, newIp)
 	}
 
 	hostname, err = os.Hostname()
 	if Error(err) {
-		return "", "", err
+		return nil, "", err
 	}
 
-	path, err := exec.LookPath("nslookup")
+	newIp, err := GetOutboundIP()
+	if err == nil {
+		ip = assignIP(ip, newIp)
+	}
 
-	if path != "" {
-		cmd := exec.Command(path, hostname)
-
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-
-		err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkTimeout))
+	if ip == nil || IsLocalhost(ip) {
+		path, err := exec.LookPath("nslookup")
 		if err == nil {
-			output := string(stdout.Bytes())
+			cmd := exec.Command(path, hostname)
 
-			scanner := bufio.NewScanner(strings.NewReader(output))
-			line := ""
+			var stdout bytes.Buffer
+			var stderr bytes.Buffer
 
-			nslookupHostnameFound := false
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
 
-			for scanner.Scan() {
-				line = strings.TrimSpace(scanner.Text())
+			err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkTimeout))
+			if err == nil {
+				output := string(stdout.Bytes())
 
-				if !nslookupHostnameFound {
-					nslookupHostnameFound = strings.HasPrefix(line, "Name:")
+				scanner := bufio.NewScanner(strings.NewReader(output))
+				line := ""
 
-					if nslookupHostnameFound {
-						hostname = strings.TrimSpace(line[5:])
-					}
-				} else {
-					if strings.HasPrefix(line, "Address:") {
-						ip = strings.TrimSpace(line[8:])
+				nslookupHostnameFound := false
 
-						break
+				for scanner.Scan() {
+					line = strings.TrimSpace(scanner.Text())
+
+					if !nslookupHostnameFound {
+						nslookupHostnameFound = strings.HasPrefix(line, "Name:")
+
+						if nslookupHostnameFound {
+							hostname = strings.TrimSpace(line[5:])
+						}
+					} else {
+						if strings.HasPrefix(line, "Address:") {
+							addr := strings.TrimSpace(line[8:])
+							newIp = net.ParseIP(addr)
+
+							if ip == nil {
+								return nil, "", fmt.Errorf("cannot parse IP: %s", addr)
+							}
+
+							ip = assignIP(ip, newIp)
+
+							break
+						}
 					}
 				}
-			}
 
-			Debug("nslookup result: hostname: %s ip: %s", hostname, ip)
+				Debug("nslookup result: hostname: %s ip: %s", hostname, ip)
+			}
 		}
 	}
 
-	if ip == "" {
-		path, err = exec.LookPath("host")
-
-		if path != "" {
+	if ip == nil || IsLocalhost(ip) {
+		path, err := exec.LookPath("host")
+		if err == nil {
 			cmd := exec.Command(path, hostname)
 
 			var stdout bytes.Buffer
@@ -148,7 +178,7 @@ func GetHost() (string, string, error) {
 
 			err = WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkTimeout))
 			if Error(err) {
-				return "", "", nil
+				return nil, "", err
 			}
 
 			output := string(stdout.Bytes())
@@ -156,22 +186,34 @@ func GetHost() (string, string, error) {
 			ss := strings.Split(output, " ")
 
 			if len(ss) > 0 {
-				ip = strings.TrimSpace(ss[len(ss)-1])
+				addr := strings.TrimSpace(ss[len(ss)-1])
+				newIp = net.ParseIP(addr)
+
+				if ip == nil {
+					return nil, "", fmt.Errorf("cannot parse IP: %s", addr)
+				}
+
+				ip = assignIP(ip, newIp)
 			}
 
 			Debug("host result: ip: %s", ip)
 		}
 	}
 
-	if ip == "" {
+	if ip == nil || IsLocalhost(ip) {
 		addrs, err := net.LookupHost(hostname)
 		if err == nil {
-			ip = addrs[0]
+			newIp := net.ParseIP(addrs[0])
+			if newIp == nil {
+				return nil, "", fmt.Errorf("cannot parse IP: %s", addrs[0])
+			}
+
+			ip = assignIP(ip, newIp)
 		}
 	}
 
-	if ip == "" {
-		return "", "", fmt.Errorf("cannot find main ip for %s", hostname)
+	if ip == nil {
+		return nil, "", fmt.Errorf("cannot find main ip for %s", hostname)
 	}
 
 	DebugFunc("IP: %s, FQDN: %s", ip, hostname)
@@ -206,7 +248,7 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 
 		for _, addr := range addrs {
 			ip, ok := addr.(*net.IPNet)
-			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && IsLocalhost(ip.IP.String())) {
+			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && IsLocalhost(ip.IP)) {
 				continue
 			}
 
@@ -253,7 +295,7 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 	return list, nil
 }
 
-func GetHostInterface(ip string) (*net.Interface, net.Addr, error) {
+func GetHostInterface(ip net.IP) (*net.Interface, net.Addr, error) {
 	intfs, err := net.Interfaces()
 	if Error(err) {
 		return nil, nil, err
@@ -270,7 +312,7 @@ func GetHostInterface(ip string) (*net.Interface, net.Addr, error) {
 		}
 
 		for _, addr := range addrs {
-			if strings.Contains(addr.String(), ip) {
+			if strings.Contains(addr.String(), ip.String()) {
 				return &intf, addr, nil
 			}
 		}
@@ -329,15 +371,22 @@ func FindFreePort(network string, startPort int, excludedPorts []int) (int, erro
 	return -1, fmt.Errorf("cannot find free port")
 }
 
-func IsLocalhost(ip string) bool {
+func IsLocalhost(ip net.IP) bool {
 	list := []string{LOCALHOST_IP6, LOCALHOST_IP4, "localhost"}
 
 	b := false
 	for _, k := range list {
-		if ip == k {
+		if ip.String() == k {
 			b = true
 
 			break
+		}
+	}
+
+	if !b {
+		_, localhostNet, err := net.ParseCIDR("127.0.0.0/8")
+		if err == nil {
+			b = localhostNet.Contains(ip)
 		}
 	}
 
