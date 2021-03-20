@@ -7,6 +7,7 @@ import (
 	"github.com/gookit/color"
 	"github.com/kardianos/service"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"strconv"
@@ -255,6 +256,38 @@ func levelToString(level int) string {
 	}
 }
 
+type redirectGoLogger struct {
+	io.Writer
+}
+
+func (r *redirectGoLogger) Write(p []byte) (int, error) {
+	msg := strings.TrimSpace(string(p))
+
+	c := 0
+	for len(msg) > 0 {
+		p := strings.Index(msg, " ")
+		if p == -1 {
+			return 0, nil
+		}
+
+		msg = msg[p+1:]
+		c++
+
+		if c == 2 {
+			break
+		}
+
+	}
+
+	err := fmt.Errorf(msg)
+
+	if !IsSuppressedError(err) {
+		Error(fmt.Errorf("%s", msg))
+	}
+
+	return len(p), nil
+}
+
 func initLog() {
 	DebugFunc()
 
@@ -268,6 +301,8 @@ func initLog() {
 	if logger == nil {
 		logger = newMemoryWriter()
 	}
+
+	log.SetOutput(&redirectGoLogger{})
 
 	if *FlagLogSys && !IsRunningInteractive() {
 		systemLoggerCh = make(chan error, 5)
@@ -298,7 +333,7 @@ func prolog(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_PROLOG, GetRuntimeInfo(1), t, nil)
+	appendLog(LEVEL_PROLOG, GetRuntimeInfo(1), t, nil)
 }
 
 // Debug prints out the information
@@ -311,7 +346,7 @@ func Debug(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_DEBUG, GetRuntimeInfo(1), t, nil)
+	appendLog(LEVEL_DEBUG, GetRuntimeInfo(1), t, nil)
 }
 
 // DebugError prints out the error
@@ -323,7 +358,7 @@ func DebugError(err error) bool {
 	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
-		log(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
+		appendLog(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
 	}
 
 	return err != nil
@@ -339,7 +374,7 @@ func Info(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_INFO, GetRuntimeInfo(1), t, nil)
+	appendLog(LEVEL_INFO, GetRuntimeInfo(1), t, nil)
 }
 
 // Warn prints out the information
@@ -352,7 +387,7 @@ func Warn(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	log(LEVEL_WARN, GetRuntimeInfo(1), t, nil)
+	appendLog(LEVEL_WARN, GetRuntimeInfo(1), t, nil)
 }
 
 func WarnError(err error) bool {
@@ -363,7 +398,7 @@ func WarnError(err error) bool {
 	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
-		log(LEVEL_WARN, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
+		appendLog(LEVEL_WARN, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
 	}
 
 	return err != nil
@@ -400,7 +435,7 @@ func DebugFunc(arg ...interface{}) {
 		}
 	}
 
-	log(LEVEL_DEBUG, ri, t, nil)
+	appendLog(LEVEL_DEBUG, ri, t, nil)
 }
 
 // Ignore just ignores the error
@@ -421,7 +456,7 @@ func Panic(err error) {
 
 	ri := GetRuntimeInfo(1)
 
-	log(LEVEL_PANIC, ri, errorString(ri, err), err)
+	appendLog(LEVEL_PANIC, ri, errorString(ri, err), err)
 
 	Exit(1)
 }
@@ -434,7 +469,7 @@ func Error(err error) bool {
 	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
-		log(LEVEL_ERROR, ri, errorString(ri, err), err)
+		appendLog(LEVEL_ERROR, ri, errorString(ri, err), err)
 	}
 
 	return err != nil
@@ -448,13 +483,13 @@ func ErrorReturn(err error) error {
 	if err != nil && !IsErrExit(err) {
 		ri := GetRuntimeInfo(1)
 
-		log(LEVEL_ERROR, ri, errorString(ri, err), err)
+		appendLog(LEVEL_ERROR, ri, errorString(ri, err), err)
 	}
 
 	return err
 }
 
-func log(level int, ri RuntimeInfo, msg string, err error) {
+func appendLog(level int, ri RuntimeInfo, msg string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -522,7 +557,7 @@ func log(level int, ri RuntimeInfo, msg string, err error) {
 			case LEVEL_ERROR:
 				Error(systemLogger.Error(entry.String(false, false)))
 			case LEVEL_PANIC:
-				Error(systemLogger.Error(fmt.Sprintf("PANIC: %s",entry.String(false, false))))
+				Error(systemLogger.Error(fmt.Sprintf("PANIC: %s", entry.String(false, false))))
 			case LEVEL_DEBUG:
 				fallthrough
 			case LEVEL_INFO:
