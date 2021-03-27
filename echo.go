@@ -22,7 +22,7 @@ func (this echoLogger) Write(p []byte) (int, error) {
 
 	if !IsSuppressedErrorMessage(msg) {
 		if isError {
-			Error(fmt.Errorf("Echo: %s", msg))
+			DebugError(fmt.Errorf("Echo: %s", msg))
 		} else {
 			Debug("Echo: %s", msg)
 		}
