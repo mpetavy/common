@@ -164,21 +164,6 @@ func Run(mandatoryFlags []string) {
 
 	flag.Parse()
 
-	flag.VisitAll(func(f *flag.Flag) {
-		envName := strings.ReplaceAll(fmt.Sprintf("%s.%s", Title(), f.Name), ".", "_")
-		envValue := strings.ToLower(os.Getenv(envName))
-		if envValue == "" {
-			envValue = strings.ToUpper(os.Getenv(envName))
-		}
-
-		if envValue != "" {
-			fl := flag.Lookup(f.Name)
-			if fl != nil && fl.Value.String() == fl.DefValue {
-				Error(flag.Set(f.Name, envValue))
-			}
-		}
-	})
-
 	Events.Emit(EventFlagsParsed{})
 
 	if !*FlagNoBanner || *FlagUsage {

@@ -19,11 +19,11 @@ func (kvl *KeyValueList) find(key string) int {
 	return -1
 }
 
-func getValue(line string) string {
+func (kvl *KeyValueList) getValue(line string) string {
 	return line[strings.Index(line, "=")+1:]
 }
 
-func getKey(line string) string {
+func (kvl *KeyValueList) getKey(line string) string {
 	return line[:strings.Index(line, "=")]
 }
 
@@ -57,7 +57,7 @@ func (kvl *KeyValueList) Get(key string) (string, error) {
 		return "", fmt.Errorf("key not found")
 	}
 
-	return getValue((*kvl)[index]), nil
+	return kvl.getValue((*kvl)[index]), nil
 }
 
 func (kvl *KeyValueList) Remove(key string) (string, error) {
@@ -71,7 +71,7 @@ func (kvl *KeyValueList) Remove(key string) (string, error) {
 		return "", fmt.Errorf("key not found")
 	}
 
-	item := getValue((*kvl)[index])
+	item := kvl.getValue((*kvl)[index])
 
 	*kvl = append((*kvl)[:index], (*kvl)[index+1:]...)
 
@@ -79,20 +79,20 @@ func (kvl *KeyValueList) Remove(key string) (string, error) {
 }
 
 func (kvl *KeyValueList) Keys() []string {
-	keys := make([]string,0)
+	keys := make([]string, 0)
 
-	for _,kv := range *kvl {
-		keys = append(keys,getKey(kv))
+	for _, kv := range *kvl {
+		keys = append(keys, kvl.getKey(kv))
 	}
 
 	return keys
 }
 
 func (kvl *KeyValueList) Values() []string {
-	keys := make([]string,0)
+	keys := make([]string, 0)
 
-	for _,kv := range *kvl {
-		keys = append(keys,getValue(kv))
+	for _, kv := range *kvl {
+		keys = append(keys, kvl.getValue(kv))
 	}
 
 	return keys
