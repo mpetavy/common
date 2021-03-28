@@ -23,9 +23,9 @@ var (
 	FlagCfgReset *bool
 	FlagCfgFile  *string
 
-	mapFlag = make(map[string]string)
-	mapEnv  = make(map[string]string)
-	mapFile = make(map[string]string)
+	mapFlag map[string]string
+	mapEnv  map[string]string
+	mapFile map[string]string
 )
 
 func init() {
@@ -98,32 +98,30 @@ func InitConfiguration() error {
 		return err
 	}
 
+	*FlagCfgReset = *FlagCfgReset || !FileExists(*FlagCfgFile)
+
+	if *FlagCfgReset {
+		*FlagCfgReset = false
+
+		err = ResetConfiguration()
+		if Error(err) {
+			return err
+		}
+	}
+
 	ba, err := readFile()
 	if Error(err) {
 		return err
 	}
-
-	*FlagCfgReset = *FlagCfgReset || ba == nil
 
 	err = registerFileFlags(ba)
 	if Error(err) {
 		return err
 	}
 
-	err = setFlags(false)
+	err = setFlags()
 	if Error(err) {
 		return err
-	}
-
-	// only respect settings from os.Flags and os.Env once, after that only from file
-
-	Events.Emit(EventFlagsSet{})
-
-	if *FlagCfgReset {
-		err = ResetConfiguration()
-		if Error(err) {
-			return err
-		}
 	}
 
 	return nil
@@ -132,25 +130,13 @@ func InitConfiguration() error {
 func ResetConfiguration() error {
 	DebugFunc()
 
-	*FlagCfgReset = false
-
 	buf := &bytes.Buffer{}
 
-	if Events.Emit(EventConfigurationReset{buf}) {
+	if Events.Emit(EventConfigurationReset{buf}) && buf.Len() > 0 {
 		err := writeFile(buf.Bytes())
 		if Error(err) {
 			return err
 		}
-	}
-
-	err := registerFileFlags(buf.Bytes())
-	if Error(err) {
-		return err
-	}
-
-	err = setFlags(true)
-	if Error(err) {
-		return err
 	}
 
 	return nil
@@ -203,7 +189,7 @@ func SetConfiguration(cfg interface{}) error {
 		return err
 	}
 
-	err = setFlags(false)
+	err = setFlags()
 	if Error(err) {
 		return err
 	}
@@ -281,7 +267,17 @@ func writeFile(ba []byte) error {
 	return nil
 }
 
-func setFlags(reset bool) error {
+func getValue(m map[string]string, key string) (string, bool) {
+	if m == nil {
+		return "", false
+	}
+
+	v, ok := m[key]
+
+	return v, ok
+}
+
+func setFlags() error {
 	DebugFunc()
 
 	var err error
@@ -291,9 +287,9 @@ func setFlags(reset bool) error {
 			return
 		}
 
-		vFlag, bFlag := mapFlag[f.Name]
-		vEnv, bEnv := mapEnv[f.Name]
-		vFile, bFile := mapFile[f.Name]
+		vFlag, bFlag := getValue(mapFlag, f.Name)
+		vEnv, bEnv := getValue(mapEnv, f.Name)
+		vFile, bFile := getValue(mapFile, f.Name)
 
 		value := ""
 		origin := ""
@@ -312,16 +308,16 @@ func setFlags(reset bool) error {
 			origin = "flag"
 		}
 
-		if value == "" && reset {
-			value = f.DefValue
-		}
-
 		if value != "" && value != f.Value.String() {
 			Debug("Set flag %s : %s [%s]", f.Name, value, origin)
 
 			Error(flag.Set(f.Name, value))
 		}
 	})
+
+	if err == nil {
+		Events.Emit(EventFlagsSet{})
+	}
 
 	return err
 }
@@ -345,6 +341,10 @@ func registerArgsFlags() error {
 
 func registerEnvFlags() error {
 	DebugFunc()
+
+	if mapEnv != nil {
+		return nil
+	}
 
 	mapEnv = make(map[string]string)
 
