@@ -51,7 +51,7 @@ func (this *Configuration) SetFlag(flagName string, flagValue string) error {
 		return fmt.Errorf("unknown flag: %s", flagName)
 	}
 
-	err := this.Flags.Put(flagName,flagValue)
+	err := this.Flags.Put(flagName, flagValue)
 	if Error(err) {
 		return err
 	}
@@ -64,7 +64,7 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 		return "", fmt.Errorf("unknown flag: %s", flagName)
 	}
 
-	flagValue,_ := this.Flags.Get(flagName)
+	flagValue, _ := this.Flags.Get(flagName)
 
 	return flagValue, nil
 }
@@ -329,6 +329,11 @@ func setFlags(reset bool) error {
 func registerArgsFlags() error {
 	DebugFunc(*FlagCfgFile)
 
+	// Golang bug, by using "flag.Set" the original command line flags are falsely extended
+	if mapFlag != nil {
+		return nil
+	}
+
 	mapFlag = make(map[string]string)
 
 	flag.Visit(func(f *flag.Flag) {
@@ -376,7 +381,7 @@ func registerFileFlags(ba []byte) error {
 
 	if cfg.Flags != nil {
 		for _, key := range cfg.Flags.Keys() {
-			value,_ := cfg.Flags.Get(key)
+			value, _ := cfg.Flags.Get(key)
 
 			mapFile[key] = value
 		}
