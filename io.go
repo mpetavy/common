@@ -420,35 +420,28 @@ func ScanLinesWithLF(data []byte, atEOF bool) (advance int, token []byte, err er
 	return 0, nil, nil
 }
 
-func CopyWithContext(ctx context.Context, cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader, bufferSize int) (int64, error) {
-	Debug("%s copyWithContext: start", name)
+func CopyBuffer(cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader, bufferSize int) (int64, error) {
+	Debug("CopyBuffer %s start", name)
+
+	defer func() {
+		Debug("CopyBuffer %s stop", name)
+		cancel()
+	}()
 
 	var written int64
 	var err error
 
-	go func() {
+	if bufferSize <= 0 {
+		bufferSize = 32 * 1024
+	}
 
-		if bufferSize <= 0 {
-			bufferSize = 32 * 1024
-		}
+	buf := make([]byte, bufferSize)
 
-		buf := make([]byte, bufferSize)
-
-		defer func() {
-			Debug("%s cancel!", name)
-			cancel()
-		}()
-
-		if *FlagLogIO {
-			written, err = CopyBufferError(io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf))
-		} else {
-			written, err = CopyBufferError(io.CopyBuffer(writer, reader, buf))
-		}
-	}()
-
-	<-ctx.Done()
-
-	Debug("%s copyWithContext: stop", name)
+	if *FlagLogIO {
+		written, err = CopyBufferError(io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf))
+	} else {
+		written, err = CopyBufferError(io.CopyBuffer(writer, reader, buf))
+	}
 
 	return written, err
 }
@@ -671,25 +664,24 @@ func (this *DeadlineReader) Read(p []byte) (int, error) {
 }
 
 type TimeoutReader struct {
-	reader   io.Reader
-	timeout  time.Duration
-	useTimer bool
-
-	FirstRead time.Time
+	reader        io.Reader
+	timeout       time.Duration
+	initalTimeout bool
+	FirstRead     time.Time
 }
 
 func NewTimeoutReader(reader io.Reader, timeout time.Duration, initalTimeout bool) *TimeoutReader {
 	return &TimeoutReader{
-		reader:   reader,
-		timeout:  timeout,
-		useTimer: initalTimeout,
+		reader:        reader,
+		timeout:       timeout,
+		initalTimeout: initalTimeout,
 	}
 }
 
 func (this *TimeoutReader) Read(p []byte) (int, error) {
-	if !this.useTimer {
+	if !this.initalTimeout {
 
-		this.useTimer = true
+		this.initalTimeout = true
 
 		n, err := this.reader.Read(p)
 
@@ -708,6 +700,55 @@ func (this *TimeoutReader) Read(p []byte) (int, error) {
 
 	go func() {
 		n, err = this.reader.Read(p)
+
+		close(ch)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return 0, io.EOF
+	case <-ch:
+		return n, err
+	}
+}
+
+type TimeoutWriter struct {
+	writer        io.Writer
+	timeout       time.Duration
+	initalTimeout bool
+	FirstWrite    time.Time
+}
+
+func NewTimeoutWriter(writer io.Writer, timeout time.Duration, initalTimeout bool) *TimeoutWriter {
+	return &TimeoutWriter{
+		writer:        writer,
+		timeout:       timeout,
+		initalTimeout: initalTimeout,
+	}
+}
+
+func (this *TimeoutWriter) Write(p []byte) (int, error) {
+	if !this.initalTimeout {
+
+		this.initalTimeout = true
+
+		n, err := this.writer.Write(p)
+
+		this.FirstWrite = time.Now()
+
+		return n, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), this.timeout)
+	defer cancel()
+
+	var n int
+	var err error
+
+	ch := make(chan interface{})
+
+	go func() {
+		n, err = this.writer.Write(p)
 
 		close(ch)
 	}()
