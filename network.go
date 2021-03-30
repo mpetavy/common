@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -18,42 +17,6 @@ const (
 	LOCALHOST_IP4 = "127.0.0.1"
 	LOCALHOST_IP6 = "::1"
 )
-
-type TimeoutSocketReader struct {
-	ReadTimeout time.Duration
-	Socket      net.Conn
-}
-
-type TimeoutSocketWriter struct {
-	WriteTimeout time.Duration
-	Socket       net.Conn
-}
-
-func (this TimeoutSocketReader) Read(p []byte) (n int, err error) {
-	if this.Socket == nil {
-		return 0, io.EOF
-	}
-
-	err = this.Socket.SetReadDeadline(DeadlineByDuration(this.ReadTimeout))
-	if Error(err) {
-		return 0, err
-	}
-
-	return this.Socket.Read(p)
-}
-
-func (this TimeoutSocketWriter) Write(p []byte) (n int, err error) {
-	if this.Socket == nil {
-		return 0, nil
-	}
-
-	err = this.Socket.SetWriteDeadline(DeadlineByDuration(this.WriteTimeout))
-	if Error(err) {
-		return 0, err
-	}
-
-	return this.Socket.Write(p)
-}
 
 func DeadlineByMsec(msec int) time.Time {
 	if msec > 0 {
@@ -76,7 +39,9 @@ func GetOutboundIP() (net.IP, error) {
 	if Error(err) {
 		return nil, err
 	}
-	defer conn.Close()
+	defer func() {
+		DebugError(conn.Close())
+	}()
 
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 

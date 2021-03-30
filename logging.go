@@ -281,8 +281,12 @@ func (r *redirectGoLogger) Write(p []byte) (int, error) {
 
 	err := fmt.Errorf(msg)
 
-	if !IsSuppressedError(err) {
-		Error(fmt.Errorf("%s", msg))
+	if IsSuppressedError(err) {
+		if *FlagLogVerbose {
+			DebugError(err)
+		}
+	} else {
+		Error(err)
 	}
 
 	return len(p), nil

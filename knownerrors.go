@@ -42,7 +42,7 @@ func IsErrUnexpectedEOF(err error) bool {
 }
 
 func IsSuppressedError(err error) bool {
-	if err == nil || *FlagLogVerbose {
+	if err == nil {
 		return false
 	}
 
