@@ -670,7 +670,7 @@ type TimeoutReader struct {
 	FirstRead     time.Time
 }
 
-func NewTimeoutReader(reader io.Reader, timeout time.Duration, initalTimeout bool) *TimeoutReader {
+func NewTimeoutReader(reader io.Reader, timeout time.Duration, initalTimeout bool) io.Reader {
 	return &TimeoutReader{
 		reader:        reader,
 		timeout:       timeout,
@@ -719,7 +719,7 @@ type TimeoutWriter struct {
 	FirstWrite    time.Time
 }
 
-func NewTimeoutWriter(writer io.Writer, timeout time.Duration, initalTimeout bool) *TimeoutWriter {
+func NewTimeoutWriter(writer io.Writer, timeout time.Duration, initalTimeout bool) io.Writer {
 	return &TimeoutWriter{
 		writer:        writer,
 		timeout:       timeout,
