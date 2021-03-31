@@ -12,6 +12,63 @@ import (
 	"time"
 )
 
+type Endpoint interface {
+	Start() error
+	Stop() error
+}
+
+type EndpointConnector func() (io.ReadWriteCloser, error)
+
+func IsTTYDevice(device string) bool {
+	return len(device) > 0 && (strings.Contains(device, ",") || !strings.Contains(device, ":"))
+}
+
+func NewEndpoint(device string, isClient bool, tlsConfig *tls.Config) (Endpoint, EndpointConnector, error) {
+	var ep Endpoint
+	var connector EndpointConnector
+
+	if IsTTYDevice(device) {
+		tty, err := NewTTY(device)
+		if Error(err) {
+			return nil, nil, err
+		}
+
+		ep = tty
+
+		connector = func() (io.ReadWriteCloser, error) {
+			return tty.Connect()
+		}
+
+		return ep, connector, nil
+	} else {
+		if isClient {
+			networkClient, err := NewNetworkClient(device, tlsConfig)
+			if Error(err) {
+				return nil, nil, err
+			}
+
+			connector = func() (io.ReadWriteCloser, error) {
+				return networkClient.Connect()
+			}
+
+			ep = networkClient
+		} else {
+			networkServer, err := NewNetworkServer(device, tlsConfig)
+			if Error(err) {
+				return nil, nil, err
+			}
+
+			connector = func() (io.ReadWriteCloser, error) {
+				return networkServer.Connect()
+			}
+
+			ep = networkServer
+		}
+
+		return ep, connector, nil
+	}
+}
+
 type NetworkConnection struct {
 	Socket net.Conn
 }
