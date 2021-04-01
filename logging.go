@@ -276,18 +276,9 @@ func (r *redirectGoLogger) Write(p []byte) (int, error) {
 		if c == 2 {
 			break
 		}
-
 	}
 
-	err := fmt.Errorf(msg)
-
-	if IsSuppressedError(err) {
-		if *FlagLogVerbose {
-			DebugError(err)
-		}
-	} else {
-		Error(err)
-	}
+	Error(fmt.Errorf(msg))
 
 	return len(p), nil
 }
@@ -359,7 +350,7 @@ func DebugError(err error) bool {
 		return err != nil
 	}
 
-	if err != nil && !IsErrExit(err) {
+	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
 		appendLog(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
@@ -399,7 +390,7 @@ func WarnError(err error) bool {
 		return err != nil
 	}
 
-	if err != nil && !IsErrExit(err) {
+	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
 		appendLog(LEVEL_WARN, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
@@ -470,27 +461,13 @@ func Error(err error) bool {
 		return err != nil
 	}
 
-	if err != nil && !IsErrExit(err) {
+	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
 		appendLog(LEVEL_ERROR, ri, errorString(ri, err), err)
 	}
 
 	return err != nil
-}
-
-func ErrorReturn(err error) error {
-	if FlagLogVerbose == nil {
-		return err
-	}
-
-	if err != nil && !IsErrExit(err) {
-		ri := GetRuntimeInfo(1)
-
-		appendLog(LEVEL_ERROR, ri, errorString(ri, err), err)
-	}
-
-	return err
 }
 
 func appendLog(level int, ri RuntimeInfo, msg string, err error) {
