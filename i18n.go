@@ -139,13 +139,13 @@ func GetSystemLanguage() (string, error) {
 }
 
 func initLanguage() {
-	ba,_,_ := ReadResource(AppFilename(".i18n"))
+	ba, _, _ := ReadResource(AppFilename(".i18n"))
 
 	if ba != nil {
 		var err error
 
 		i18nFile, err = ini.Load(ba)
-		if Error(err) {
+		if DebugError(err) {
 			return
 		}
 
