@@ -2,6 +2,8 @@ package common
 
 import (
 	"fmt"
+	"sort"
+	"sync"
 	"time"
 )
 
@@ -34,4 +36,46 @@ func NewTimeoutOperation(maxDuration time.Duration, checkDuration time.Duration,
 	}
 
 	return nil
+}
+
+var (
+	routines        = make(map[int]RuntimeInfo)
+	routinesCounter = 0
+	routinesMutex   = sync.Mutex{}
+)
+
+func RegisterGoRoutine() int {
+	routinesMutex.Lock()
+	defer routinesMutex.Unlock()
+
+	ri := GetRuntimeInfo(1)
+	id := routinesCounter
+	routinesCounter++
+
+	routines[id] = ri
+
+	return id
+}
+
+func UnregisterGoRoutine(id int) {
+	routinesMutex.Lock()
+	defer routinesMutex.Unlock()
+
+	delete(routines, id)
+}
+
+func RegisteredGoRoutines(f func(id int, ri RuntimeInfo)) {
+	routinesMutex.Lock()
+	defer routinesMutex.Unlock()
+
+	ks := make([]int, 0)
+	for k, _ := range routines {
+		ks = append(ks, k)
+	}
+
+	sort.Ints(ks)
+
+	for _, k := range ks {
+		f(k, routines[k])
+	}
 }
