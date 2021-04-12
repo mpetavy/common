@@ -111,6 +111,7 @@ var (
 	shutdownHooks           = make([]func(), 0)
 	restartCh               = make(chan struct{})
 	ctrlC                   = make(chan os.Signal, 1)
+	initFLags               = make(map[string]string)
 )
 
 func init() {
@@ -154,6 +155,10 @@ func Init(isService bool, version string, git string, date string, description s
 	Panic(err)
 }
 
+func InitFlags() map[string]string {
+	return initFLags
+}
+
 func Run(mandatoryFlags []string) {
 	if app.CanRunAsService {
 		FlagService = flag.String(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
@@ -177,6 +182,10 @@ func Run(mandatoryFlags []string) {
 	if flag.NArg() > 0 {
 		Panic(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
 	}
+
+	flag.Visit(func(fl *flag.Flag) {
+		initFLags[fl.Name] = fl.Value.String()
+	})
 
 	flag.VisitAll(func(fl *flag.Flag) {
 		v := fmt.Sprintf("%+v", fl.Value)
