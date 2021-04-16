@@ -161,8 +161,12 @@ func addFiles(w *zip.Writer, dir, baseInZip string) error {
 	return nil
 }
 
-func Zip(filename string, files []string) error {
+type ZipTarget struct {
+	BaseDir string
+	Files   []string
+}
 
+func Zip(filename string, targets []ZipTarget) error {
 	outFile, err := os.Create(filename)
 	if Error(err) {
 		return err
@@ -172,21 +176,23 @@ func Zip(filename string, files []string) error {
 	w := zip.NewWriter(outFile)
 	defer w.Close()
 
-	for _, file := range files {
-		fi, err := os.Stat(file)
-		if Error(err) {
-			return err
-		}
-
-		if fi.IsDir() {
-			err = addFiles(w, file, "")
+	for _, target := range targets {
+		for _, file := range target.Files {
+			fi, err := os.Stat(file)
 			if Error(err) {
 				return err
 			}
-		} else {
-			err = addFile(w, file, "")
-			if Error(err) {
-				return err
+
+			if fi.IsDir() {
+				err = addFiles(w, file, target.BaseDir)
+				if Error(err) {
+					return err
+				}
+			} else {
+				err = addFile(w, file, target.BaseDir)
+				if Error(err) {
+					return err
+				}
 			}
 		}
 	}

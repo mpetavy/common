@@ -79,6 +79,7 @@ type ErrExit struct {
 func (e *ErrExit) Error() string { return "" }
 
 const (
+	FlagNameAppProduct      = "app.product"
 	FlagNameService         = "service"
 	FlagNameServiceUsername = "service.username"
 	FlagNameServicePassword = "service.password"
@@ -89,6 +90,7 @@ const (
 
 var (
 	app                     *application
+	FlagAppProduct          *string
 	FlagService             *string
 	FlagServiceUser         *string
 	FlagServicePassword     *string
@@ -115,6 +117,7 @@ var (
 )
 
 func init() {
+	FlagAppProduct = flag.String(FlagNameAppProduct, "", "app product")
 	FlagService = new(string)
 	FlagServiceUser = new(string)
 	FlagServicePassword = new(string)

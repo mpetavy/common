@@ -36,7 +36,6 @@ var (
 	defaultLogFilename string
 	mu                 sync.Mutex
 	lastErr            string
-	lastErrTime        time.Time
 	systemLoggerCh     chan<- error
 	systemLogger       service.Logger
 	gotest             goTesting
@@ -242,17 +241,17 @@ func newFileWriter() (*fileWriter, error) {
 func levelToString(level int) string {
 	switch level {
 	case LEVEL_DEBUG:
-		return "DEBUG"
+		return "debug"
 	case LEVEL_INFO:
-		return "INFO"
+		return "info"
 	case LEVEL_WARN:
-		return "WARN"
+		return "warn"
 	case LEVEL_ERROR:
-		return "ERROR"
+		return "error"
 	case LEVEL_PANIC:
-		return "PANIC"
+		return "panic"
 	default:
-		return "INFO"
+		return "info"
 	}
 }
 
@@ -353,7 +352,7 @@ func DebugError(err error) bool {
 	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
-		appendLog(LEVEL_DEBUG, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
+		appendLog(LEVEL_DEBUG, ri, errorString(LEVEL_ERROR, ri, err), nil)
 	}
 
 	return err != nil
@@ -393,18 +392,18 @@ func WarnError(err error) bool {
 	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
-		appendLog(LEVEL_WARN, ri, fmt.Sprintf("Error: %s", errorString(ri, err)), nil)
+		appendLog(LEVEL_WARN, ri, errorString(LEVEL_ERROR, ri, err), nil)
 	}
 
 	return err != nil
 }
 
-func errorString(ri RuntimeInfo, err error) string {
+func errorString(level int, ri RuntimeInfo, err error) string {
 	if *FlagLogVerbose {
 		return fmt.Sprintf("%s [%T]\n%s", err.Error(), err, ri.Stack)
 	}
 
-	return fmt.Sprintf("Error: %s", err.Error())
+	return fmt.Sprintf("%s: %s", Capitalize(levelToString(level)), err.Error())
 }
 
 // DebugFunc prints out the current executon func
@@ -451,7 +450,7 @@ func Panic(err error) {
 
 	ri := GetRuntimeInfo(1)
 
-	appendLog(LEVEL_PANIC, ri, errorString(ri, err), err)
+	appendLog(LEVEL_PANIC, ri, errorString(LEVEL_PANIC, ri, err), err)
 
 	Exit(1)
 }
@@ -464,7 +463,7 @@ func Error(err error) bool {
 	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
-		appendLog(LEVEL_ERROR, ri, errorString(ri, err), err)
+		appendLog(LEVEL_ERROR, ri, errorString(LEVEL_ERROR, ri, err), err)
 	}
 
 	return err != nil
@@ -474,20 +473,19 @@ func appendLog(level int, ri RuntimeInfo, msg string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if level == LEVEL_ERROR {
-		defer func() {
-			lastErr = err.Error()
-			lastErrTime = time.Now()
-		}()
-
-		if err.Error() == lastErr && time.Since(lastErrTime) < time.Millisecond*100 {
+	if level >= LEVEL_ERROR {
+		if err.Error() == lastErr {
 			return
 		}
+
+		lastErr = err.Error()
+	} else {
+		lastErr = ""
 	}
 
 	entry := logEntry{
 		levelInt: level,
-		Level:    levelToString(level),
+		Level:    strings.ToUpper(levelToString(level)),
 		Clock:    time.Now().Format(DateTimeMilliMask),
 		Runtime:  ri.String(),
 		Msg:      Capitalize(strings.TrimRight(strings.TrimSpace(msg), "\r\n")),
