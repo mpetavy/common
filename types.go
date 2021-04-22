@@ -333,7 +333,12 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 			val.Field(i).Type().Name())
 
 		if val.Field(i).Kind() == reflect.Struct {
-			err := iterateStruct(fieldPath, val.Field(i), funcStructIterator)
+			err := funcStructIterator(path, typ.Field(i), val)
+			if Error(err) {
+				return err
+			}
+
+			err = iterateStruct(fieldPath, val.Field(i), funcStructIterator)
 			if Error(err) {
 				return err
 			}
