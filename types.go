@@ -294,11 +294,11 @@ func ReflectStructMethod(Iface interface{}, MethodName string) (*reflect.Value, 
 	return &method, nil
 }
 
-func IterateStruct(data interface{}, function func(path string, fieldType reflect.StructField, fieldValue reflect.Value) error) error {
-	return iterateStruct("", data, function)
+func IterateStruct(data interface{}, fieldFunc func(path string, fieldType reflect.StructField, fieldValue reflect.Value) error) error {
+	return iterateStruct("", data, fieldFunc)
 }
 
-func iterateStruct(path string, data interface{}, funcStructIterator func(path string, fieldType reflect.StructField, fieldValue reflect.Value) error) error {
+func iterateStruct(path string, data interface{}, fieldFunc func(path string, fieldType reflect.StructField, fieldValue reflect.Value) error) error {
 	DebugFunc()
 
 	val, ok := data.(reflect.Value)
@@ -313,8 +313,8 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 
 	DebugFunc("struct: %s", typ.Name())
 
-	if funcStructIterator != nil {
-		err := funcStructIterator(path, reflect.StructField{}, val)
+	if fieldFunc != nil {
+		err := fieldFunc(path, reflect.StructField{}, val)
 		if Error(err) {
 			return err
 		}
@@ -333,12 +333,12 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 			val.Field(i).Type().Name())
 
 		if val.Field(i).Kind() == reflect.Struct {
-			err := funcStructIterator(path, typ.Field(i), val)
+			err := fieldFunc(path, typ.Field(i), val)
 			if Error(err) {
 				return err
 			}
 
-			err = iterateStruct(fieldPath, val.Field(i), funcStructIterator)
+			err = iterateStruct(fieldPath, val.Field(i), fieldFunc)
 			if Error(err) {
 				return err
 			}
@@ -352,7 +352,7 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 				sliceElement := val.Field(i).Index(j).Elem()
 
 				if sliceElement.Kind() == reflect.Struct {
-					err := iterateStruct(sliceFieldPath, sliceElement, funcStructIterator)
+					err := iterateStruct(sliceFieldPath, sliceElement, fieldFunc)
 					if Error(err) {
 						return err
 					}
@@ -360,8 +360,8 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 					continue
 				}
 
-				if funcStructIterator != nil {
-					err := funcStructIterator(sliceFieldPath, reflect.StructField{}, sliceElement)
+				if fieldFunc != nil {
+					err := fieldFunc(sliceFieldPath, reflect.StructField{}, sliceElement)
 					if Error(err) {
 						return err
 					}
@@ -371,8 +371,8 @@ func iterateStruct(path string, data interface{}, funcStructIterator func(path s
 			continue
 		}
 
-		if funcStructIterator != nil {
-			err := funcStructIterator(fieldPath, typ.Field(i), val.Field(i))
+		if fieldFunc != nil {
+			err := fieldFunc(fieldPath, typ.Field(i), val.Field(i))
 			if Error(err) {
 				return err
 			}
