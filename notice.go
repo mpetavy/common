@@ -5,12 +5,13 @@ import "sync"
 type Notice struct {
 	sync.Mutex
 
-	b   bool
-	chs []chan struct{}
+	isSet     bool
+	lastIsSet bool
+	chs       []chan struct{}
 }
 
 func NewNotice() *Notice {
-	return &Notice{b: false, chs: make([]chan struct{}, 0)}
+	return &Notice{isSet: false, chs: make([]chan struct{}, 0)}
 }
 
 func (this *Notice) NewChannel() chan struct{} {
@@ -25,19 +26,23 @@ func (this *Notice) IsSet() bool {
 	this.Lock()
 	defer this.Unlock()
 
-	DebugFunc(this.b)
+	if this.lastIsSet != this.isSet {
+		this.lastIsSet = this.isSet
 
-	return this.b
+		DebugFunc(this.isSet)
+	}
+
+	return this.isSet
 }
 
 func (this *Notice) Set() bool {
 	this.Lock()
 	defer this.Unlock()
 
-	if !this.b {
+	if !this.isSet {
 		DebugFunc()
 
-		this.b = true
+		this.isSet = true
 
 		this.chs = make([]chan struct{}, 0)
 
@@ -51,10 +56,10 @@ func (this *Notice) Unset() bool {
 	this.Lock()
 	defer this.Unlock()
 
-	if this.b {
+	if this.isSet {
 		DebugFunc()
 
-		this.b = false
+		this.isSet = false
 
 		for i := 0; i < len(this.chs); i++ {
 			close(this.chs[i])
