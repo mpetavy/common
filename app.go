@@ -38,6 +38,8 @@ type application struct {
 	Version string
 	// Git label development
 	Git string
+	// Build label development
+	Build string
 	// Date of development
 	Date string
 	// Description of the application
@@ -126,12 +128,13 @@ func init() {
 	FlagNoBanner = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
 }
 
-func Init(isService bool, version string, git string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+func Init(isService bool, version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	app = &application{
 		CanRunAsService: isService,
 		Name:            Title(),
 		Version:         version,
 		Git:             git,
+		Build:           build,
 		Date:            date,
 		Description:     description,
 		Developer:       developer,
@@ -273,6 +276,9 @@ func showBanner() {
 			fmt.Printf("Copyright: © %s %s\n", date, app.Developer)
 			fmt.Printf("Homepage:  %s\n", app.Homepage)
 			fmt.Printf("License:   %s\n", app.License)
+			if app.Build != "" {
+				fmt.Printf("Build:     %s\n", app.Build)
+			}
 			if app.Git != "" {
 				fmt.Printf("Git:       %s\n", app.Git)
 			}
