@@ -362,8 +362,6 @@ func (app *application) Start(s service.Service) error {
 		DebugFunc()
 	}
 
-	appLifecycle.Set()
-
 	if !IsRunningInteractive() {
 		go func() {
 			Error(app.applicationLoop())
@@ -379,6 +377,8 @@ func (app *application) applicationLoop() error {
 	DebugFunc()
 
 	for {
+		appLifecycle.Set()
+
 		if app.StartFunc != nil {
 			err := app.StartFunc()
 			if Error(err) {
@@ -386,9 +386,7 @@ func (app *application) applicationLoop() error {
 			}
 		}
 
-		if AppLifecycle().IsSet() {
-			Error(app.applicationRun())
-		}
+		Error(app.applicationRun())
 
 		if !restart {
 			break
@@ -409,6 +407,15 @@ func (app *application) applicationLoop() error {
 		Events.Emit(EventRestart{})
 	}
 
+	appLifecycle.Unset()
+
+	if app.StopFunc != nil {
+		err := app.StopFunc()
+		if Error(err) {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -427,13 +434,6 @@ func (app *application) Stop(s service.Service) error {
 
 	if ticker != nil {
 		ticker.Stop()
-	}
-
-	if app.StopFunc != nil {
-		err := app.StopFunc()
-		if Error(err) {
-			return err
-		}
 	}
 
 	return nil
@@ -522,15 +522,7 @@ func run() error {
 
 	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
-	startErr := app.Start(app.Service)
-	Error(startErr)
-
-	stopErr := app.Stop(app.Service)
-	if Error(stopErr) && startErr == nil {
-		startErr = stopErr
-	}
-
-	return startErr
+	return app.applicationLoop()
 }
 
 func AppRestart() {

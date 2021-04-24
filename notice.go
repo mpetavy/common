@@ -25,6 +25,8 @@ func (this *Notice) IsSet() bool {
 	this.Lock()
 	defer this.Unlock()
 
+	DebugFunc(this.b)
+
 	return this.b
 }
 
@@ -33,6 +35,8 @@ func (this *Notice) Set() bool {
 	defer this.Unlock()
 
 	if !this.b {
+		DebugFunc()
+
 		this.b = true
 
 		this.chs = make([]chan struct{}, 0)
@@ -48,6 +52,8 @@ func (this *Notice) Unset() bool {
 	defer this.Unlock()
 
 	if this.b {
+		DebugFunc()
+
 		this.b = false
 
 		for i := 0; i < len(this.chs); i++ {

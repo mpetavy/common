@@ -34,8 +34,6 @@ func (server *DiscoverServer) Start() error {
 
 	b := make([]byte, maxInfoLength)
 
-	server.quitCh = make(chan struct{})
-
 	var err error
 
 	server.listener, err = net.ListenPacket("udp4", server.address)
@@ -44,6 +42,7 @@ func (server *DiscoverServer) Start() error {
 	}
 
 	go func() {
+		server.quitCh = make(chan struct{})
 	loop:
 		for AppLifecycle().IsSet() {
 			select {
