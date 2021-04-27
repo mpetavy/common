@@ -472,3 +472,8 @@ func Join(strs []string, sep string) string {
 
 	return sb.String()
 }
+
+func Clear(v interface{}) {
+	p := reflect.ValueOf(v).Elem()
+	p.Set(reflect.Zero(p.Type()))
+}
