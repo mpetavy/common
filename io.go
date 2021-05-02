@@ -436,9 +436,6 @@ func CopyBuffer(cancel context.CancelFunc, name string, writer io.Writer, reader
 		cancel()
 	}()
 
-	var written int64
-	var err error
-
 	if bufferSize <= 0 {
 		bufferSize = 32 * 1024
 	}
@@ -446,12 +443,11 @@ func CopyBuffer(cancel context.CancelFunc, name string, writer io.Writer, reader
 	buf := make([]byte, bufferSize)
 
 	if *FlagLogIO {
-		written, err = CopyBufferError(io.CopyBuffer(io.MultiWriter(writer, &debugWriter{name, "WRITE"}), io.TeeReader(reader, &debugWriter{name, "READ"}), buf))
-	} else {
-		written, err = CopyBufferError(io.CopyBuffer(writer, reader, buf))
+		writer = io.MultiWriter(writer, &debugWriter{name, "WRITE"})
+		reader = io.TeeReader(reader, &debugWriter{name, "READ"})
 	}
 
-	return written, err
+	return io.CopyBuffer(writer, reader, buf)
 }
 
 type FilePermission struct {
