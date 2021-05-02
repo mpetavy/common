@@ -22,10 +22,6 @@ type Configuration struct {
 var (
 	FlagCfgReset *bool
 	FlagCfgFile  *string
-
-	mapFlag map[string]string
-	mapEnv  map[string]string
-	mapFile map[string]string
 )
 
 func init() {
@@ -88,22 +84,12 @@ func IsOneTimeFlag(n string) bool {
 func InitConfiguration() error {
 	DebugFunc()
 
-	err := registerArgsFlags()
-	if Error(err) {
-		return err
-	}
-
-	err = registerEnvFlags()
-	if Error(err) {
-		return err
-	}
-
 	*FlagCfgReset = *FlagCfgReset || !FileExists(*FlagCfgFile)
 
 	if *FlagCfgReset {
 		*FlagCfgReset = false
 
-		err = ResetConfiguration()
+		err := ResetConfiguration()
 		if Error(err) {
 			return err
 		}
@@ -114,12 +100,7 @@ func InitConfiguration() error {
 		return err
 	}
 
-	err = registerFileFlags(ba)
-	if Error(err) {
-		return err
-	}
-
-	err = setFlags()
+	err = setFlags(ba)
 	if Error(err) {
 		return err
 	}
@@ -184,12 +165,7 @@ func SetConfiguration(cfg interface{}) error {
 		return err
 	}
 
-	err = registerFileFlags(ba)
-	if Error(err) {
-		return err
-	}
-
-	err = setFlags()
+	err = setFlags(ba)
 	if Error(err) {
 		return err
 	}
@@ -277,10 +253,12 @@ func getValue(m map[string]string, key string) (string, bool) {
 	return v, ok
 }
 
-func setFlags() error {
+func setFlags(ba []byte) error {
 	DebugFunc()
 
-	var err error
+	mapFlag, err := registerArgsFlags()
+	mapEnv, err := registerEnvFlags()
+	mapFile, err := registerFileFlags(ba)
 
 	flag.VisitAll(func(f *flag.Flag) {
 		if IsOneTimeFlag(f.Name) {
@@ -315,38 +293,36 @@ func setFlags() error {
 		}
 	})
 
-	if err == nil {
-		Events.Emit(EventFlagsSet{})
-	}
+	flag.VisitAll(func(fl *flag.Flag) {
+		v := fmt.Sprintf("%+v", fl.Value)
+		if strings.Contains(strings.ToLower(fl.Name), "password") {
+			v = strings.Repeat("X", len(v))
+		}
+
+		Debug("flag %s = %+v", fl.Name, v)
+	})
+
+	Events.Emit(EventFlagsSet{})
 
 	return err
 }
 
-func registerArgsFlags() error {
-	DebugFunc(*FlagCfgFile)
-
-	// Golang bug, by using "flag.Set" the original command line flags are falsely extended
-	if mapFlag != nil {
-		return nil
-	}
-
-	mapFlag = make(map[string]string)
-
-	flag.Visit(func(f *flag.Flag) {
-		mapFlag[f.Name] = f.Value.String()
-	})
-
-	return nil
-}
-
-func registerEnvFlags() error {
+func registerArgsFlags() (map[string]string, error) {
 	DebugFunc()
 
-	if mapEnv != nil {
-		return nil
-	}
+	m := make(map[string]string)
 
-	mapEnv = make(map[string]string)
+	flag.Visit(func(f *flag.Flag) {
+		m[f.Name] = f.Value.String()
+	})
+
+	return m, nil
+}
+
+func registerEnvFlags() (map[string]string, error) {
+	DebugFunc()
+
+	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
 		envName := strings.ReplaceAll(fmt.Sprintf("%s.%s", Title(), f.Name), ".", "_")
@@ -356,36 +332,36 @@ func registerEnvFlags() error {
 		}
 
 		if envValue != "" {
-			mapEnv[f.Name] = envValue
+			m[f.Name] = envValue
 		}
 	})
 
-	return nil
+	return m, nil
 }
 
-func registerFileFlags(ba []byte) error {
+func registerFileFlags(ba []byte) (map[string]string, error) {
 	DebugFunc(*FlagCfgFile)
 
-	mapFile = make(map[string]string)
+	m := make(map[string]string)
 
 	if ba == nil {
-		return nil
+		return m, nil
 	}
 
 	cfg := Configuration{}
 
 	err := json.Unmarshal(ba, &cfg)
 	if Error(err) {
-		return err
+		return m, err
 	}
 
 	if cfg.Flags != nil {
 		for _, key := range cfg.Flags.Keys() {
 			value, _ := cfg.Flags.Get(key)
 
-			mapFile[key] = value
+			m[key] = value
 		}
 	}
 
-	return nil
+	return m, nil
 }
