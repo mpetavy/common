@@ -61,7 +61,7 @@ func IsSuppressedErrorMessage(err string) bool {
 	return false
 }
 
-func CopyBufferError(written int64, err error) (int64, error) {
+func HandleCopyBufferError(written int64, err error) (int64, error) {
 	if err == nil {
 		return written, nil
 	}
