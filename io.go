@@ -38,6 +38,14 @@ func (e *ErrFileNotFound) Error() string {
 	return fmt.Sprintf("file or path not found: %s", e.FileName)
 }
 
+type ErrFileIsEmpty struct {
+	FileName string
+}
+
+func (e *ErrFileIsEmpty) Error() string {
+	return fmt.Sprintf("file is empty: %s", e.FileName)
+}
+
 type ErrFileAlreadyExists struct {
 	FileName string
 }

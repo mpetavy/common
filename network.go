@@ -377,3 +377,23 @@ func IsPrivateIP(ip string) (bool, error) {
 
 	return private, err
 }
+
+func WaitUntilNetworkIsAvailable() error {
+	DebugFunc()
+
+	return NewTimeoutOperation(time.Second, time.Second*10, func() error {
+		addrs, err := GetHostAddrs(false, nil)
+
+		if DebugError(err) {
+			return err
+		}
+
+		if len(addrs) > 0 {
+			DebugFunc("host networking is available: %+v", addrs)
+
+			return nil
+		}
+
+		return fmt.Errorf("host networking is down")
+	})
+}
