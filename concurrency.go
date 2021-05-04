@@ -13,25 +13,29 @@ func NewTimeoutError(maxDuration time.Duration) TimeoutError {
 	return TimeoutError(fmt.Errorf("Timeout error after: %+v", time.Duration(maxDuration)))
 }
 
-func NewTimeoutOperation(maxDuration time.Duration, checkDuration time.Duration, fn func() (bool, error)) error {
+func NewTimeoutOperation(checkDuration time.Duration, maxDuration time.Duration, fn func() (error)) error {
 	start := time.Now()
-	loop := true
+
+	err := fn()
+
+	if err == nil {
+		return nil
+	}
 
 	ti := time.NewTicker(checkDuration)
 	defer ti.Stop()
 
-	for loop {
+	for {
 		<-ti.C
+
+		err := fn()
+
+		if err == nil {
+			return nil
+		}
 
 		if time.Since(start) > maxDuration {
 			return NewTimeoutError(maxDuration)
-		}
-
-		var err error
-
-		loop, err = fn()
-		if Error(err) {
-			return err
 		}
 	}
 
