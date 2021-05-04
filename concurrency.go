@@ -7,10 +7,13 @@ import (
 	"time"
 )
 
-type TimeoutError error
+type ErrTimeout struct {
+	maxDuration time.Duration
+	err error
+}
 
-func NewTimeoutError(maxDuration time.Duration) TimeoutError {
-	return TimeoutError(fmt.Errorf("Timeout error after: %+v", time.Duration(maxDuration)))
+func (e *ErrTimeout) Error() string {
+	return fmt.Sprintf("Timeout error after: %+v, error: %+v", e.maxDuration,e.err)
 }
 
 func NewTimeoutOperation(checkDuration time.Duration, maxDuration time.Duration, fn func() (error)) error {
@@ -35,7 +38,7 @@ func NewTimeoutOperation(checkDuration time.Duration, maxDuration time.Duration,
 		}
 
 		if time.Since(start) > maxDuration {
-			return NewTimeoutError(maxDuration)
+			return &ErrTimeout{maxDuration,err}
 		}
 	}
 
