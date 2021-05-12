@@ -11,10 +11,13 @@ type Notice struct {
 }
 
 func NewNotice() *Notice {
-	return &Notice{isSet: false, chs: make([]chan struct{}, 0)}
+	return &Notice{isSet: true, chs: make([]chan struct{}, 0)}
 }
 
 func (this *Notice) NewChannel() chan struct{} {
+	this.Lock()
+	defer this.Unlock()
+
 	ch := make(chan struct{})
 
 	this.chs = append(this.chs, ch)
@@ -61,8 +64,10 @@ func (this *Notice) Unset() bool {
 
 		this.isSet = false
 
-		for i := 0; i < len(this.chs); i++ {
-			close(this.chs[i])
+		for len(this.chs) > 0 {
+			close(this.chs[0])
+
+			this.chs = this.chs[1:]
 		}
 
 		return true

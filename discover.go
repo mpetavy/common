@@ -9,12 +9,13 @@ import (
 )
 
 type DiscoverServer struct {
-	address  string
-	timeout  time.Duration
-	uid      string
-	info     string
-	quitCh   chan struct{}
-	listener net.PacketConn
+	mu        sync.Mutex
+	address   string
+	timeout   time.Duration
+	uid       string
+	info      string
+	lifecycle *Notice
+	listener  net.PacketConn
 }
 
 const (
@@ -26,10 +27,21 @@ func NewDiscoverServer(address string, timeout time.Duration, uid string, info s
 		return nil, fmt.Errorf("max UDP info length exceeded. max length expected: %d received: %d", maxInfoLength, len(info))
 	}
 
-	return &DiscoverServer{address: address, timeout: timeout, uid: uid, info: info}, nil
+	return &DiscoverServer{
+		mu:        sync.Mutex{},
+		address:   address,
+		timeout:   timeout,
+		uid:       uid,
+		info:      info,
+		lifecycle: NewNotice(),
+		listener:  nil,
+	}, nil
 }
 
 func (server *DiscoverServer) Start() error {
+	server.mu.Lock()
+	defer server.mu.Unlock()
+
 	DebugFunc(*server)
 
 	b := make([]byte, maxInfoLength)
@@ -42,11 +54,12 @@ func (server *DiscoverServer) Start() error {
 	}
 
 	go func() {
-		server.quitCh = make(chan struct{})
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 	loop:
-		for AppLifecycle().IsSet() {
+		for server.lifecycle.isSet {
 			select {
-			case <-server.quitCh:
+			case <-server.lifecycle.NewChannel():
 				break loop
 			default:
 				err := server.listener.SetDeadline(DeadlineByDuration(server.timeout))
@@ -59,9 +72,7 @@ func (server *DiscoverServer) Start() error {
 					if err, ok := err.(net.Error); ok && err.Timeout() {
 						break
 					} else {
-						_, isOpen := <-server.quitCh
-
-						if AppLifecycle().IsSet() && isOpen {
+						if server.lifecycle.IsSet() {
 							Error(err)
 						}
 
@@ -120,10 +131,13 @@ func (server *DiscoverServer) Start() error {
 }
 
 func (server *DiscoverServer) Stop() error {
+	server.mu.Lock()
+	defer server.mu.Unlock()
+
 	DebugFunc(*server)
 
-	if server.quitCh != nil {
-		close(server.quitCh)
+	if server.lifecycle != nil {
+		server.lifecycle.Unset()
 	}
 
 	if server.listener != nil {
