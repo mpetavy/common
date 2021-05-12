@@ -465,15 +465,15 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 			}
 		case reflect.Slice:
 			if ok {
-				switch(reflect.TypeOf(fieldValue.Interface()).Elem().Kind()) {
+				switch reflect.TypeOf(fieldValue.Interface()).Elem().Kind() {
 				case reflect.String:
 					values := context.Request().Form[fieldPath]
 					scanner := bufio.NewScanner(strings.NewReader(values[0]))
-					lines := make([]string,0)
+					lines := make([]string, 0)
 					for scanner.Scan() {
 						line := strings.TrimSpace(scanner.Text())
 						if len(line) > 0 {
-							if !strings.Contains(line,"=") {
+							if !strings.Contains(line, "=") {
 								line = line + "="
 							}
 
@@ -644,7 +644,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 
 				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Slice && reflect.TypeOf(fieldValue.Interface()).Elem().Kind() == reflect.String {
 					lines := make([]string, 0)
-					for i := 0;i < fieldValue.Len();i++ {
+					for i := 0; i < fieldValue.Len(); i++ {
 						lines = append(lines, fieldValue.Index(i).String())
 					}
 					sort.Strings(lines)
