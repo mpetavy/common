@@ -87,6 +87,7 @@ const (
 	FlagNameServicePassword = "service.password"
 	FlagNameServiceTimeout  = "service.timeout"
 	FlagNameUsage           = "?"
+	FlagNameUsageMd         = "?md"
 	FlagNameNoBanner        = "nb"
 )
 
@@ -98,6 +99,7 @@ var (
 	FlagServicePassword     *string
 	FlagServiceStartTimeout *int
 	FlagUsage               *bool
+	FlagUsageMd             *bool
 	FlagNoBanner            *bool
 	ticker                  *time.Ticker
 	appLifecycle            = NewNotice()
@@ -124,6 +126,7 @@ func init() {
 	FlagServicePassword = new(string)
 	FlagServiceStartTimeout = new(int)
 	FlagUsage = flag.Bool(FlagNameUsage, false, "show flags description and usage")
+	FlagUsageMd = flag.Bool(FlagNameUsageMd, false, "show flags description and usage in markdown format")
 	FlagNoBanner = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
 }
 
@@ -169,6 +172,21 @@ func Run(mandatoryFlags []string) {
 	}
 
 	flag.Parse()
+
+	if *FlagUsageMd {
+		dir, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		flag.VisitAll(func(fl *flag.Flag) {
+			defValue := fl.DefValue
+			if strings.HasPrefix(defValue, dir) {
+				defValue = fmt.Sprintf("./%s",defValue[len(dir)+1:])
+			}
+			fmt.Printf("%s | %s | %s\n", fl.Name, defValue, fl.Usage)
+		})
+		os.Exit(0)
+	}
 
 	Events.Emit(EventFlagsParsed{})
 
