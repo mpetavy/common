@@ -1,22 +1,25 @@
 package common
 
 import (
+	"bytes"
 	"fmt"
+	"runtime"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
 
 type ErrTimeout struct {
 	maxDuration time.Duration
-	err error
+	err         error
 }
 
 func (e *ErrTimeout) Error() string {
-	return fmt.Sprintf("Timeout error after: %+v, error: %+v", e.maxDuration,e.err)
+	return fmt.Sprintf("Timeout error after: %+v, error: %+v", e.maxDuration, e.err)
 }
 
-func NewTimeoutOperation(checkDuration time.Duration, maxDuration time.Duration, fn func() (error)) error {
+func NewTimeoutOperation(checkDuration time.Duration, maxDuration time.Duration, fn func() error) error {
 	start := time.Now()
 
 	err := fn()
@@ -38,11 +41,9 @@ func NewTimeoutOperation(checkDuration time.Duration, maxDuration time.Duration,
 		}
 
 		if time.Since(start) > maxDuration {
-			return &ErrTimeout{maxDuration,err}
+			return &ErrTimeout{maxDuration, err}
 		}
 	}
-
-	return nil
 }
 
 var (
@@ -76,7 +77,7 @@ func RegisteredGoRoutines(f func(id int, ri RuntimeInfo)) {
 	defer routinesMutex.Unlock()
 
 	ks := make([]int, 0)
-	for k, _ := range routines {
+	for k := range routines {
 		ks = append(ks, k)
 	}
 
@@ -85,4 +86,14 @@ func RegisteredGoRoutines(f func(id int, ri RuntimeInfo)) {
 	for _, k := range ks {
 		f(k, routines[k])
 	}
+}
+
+func GoRoutineId() uint64 {
+	b := make([]byte, 64)
+	b = b[:runtime.Stack(b, false)]
+	b = bytes.TrimPrefix(b, []byte("goroutine "))
+	b = b[:bytes.IndexByte(b, ' ')]
+	n, _ := strconv.ParseUint(string(b), 10, 64)
+
+	return n
 }

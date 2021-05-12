@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -145,6 +146,7 @@ func (networkClient *NetworkClient) Connect() (*NetworkConnection, error) {
 }
 
 type NetworkServer struct {
+	mu        sync.Mutex
 	address   string
 	tlsConfig *tls.Config
 	listener  net.Listener
@@ -152,6 +154,7 @@ type NetworkServer struct {
 
 func NewNetworkServer(address string, tlsConfig *tls.Config) (*NetworkServer, error) {
 	networkServer := &NetworkServer{
+		mu:        sync.Mutex{},
 		address:   address,
 		tlsConfig: tlsConfig,
 		listener:  nil,
@@ -161,6 +164,9 @@ func NewNetworkServer(address string, tlsConfig *tls.Config) (*NetworkServer, er
 }
 
 func (networkServer *NetworkServer) Start() error {
+	networkServer.mu.Lock()
+	defer networkServer.mu.Unlock()
+
 	ips, err := GetHostAddrs(true, nil)
 	if Error(err) {
 		return err
@@ -193,6 +199,9 @@ func (networkServer *NetworkServer) Start() error {
 }
 
 func (networkServer *NetworkServer) Stop() error {
+	networkServer.mu.Lock()
+	defer networkServer.mu.Unlock()
+
 	defer func() {
 		networkServer.listener = nil
 	}()
