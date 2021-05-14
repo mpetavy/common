@@ -433,7 +433,7 @@ func FormatMemory(mem int64) string {
 		r = r * -1
 	}
 
-	return fmt.Sprintf("%.3f %s", r, MEMORY_UNITS[Max(i, 0)])
+	return fmt.Sprintf("%.2f %s", r, MEMORY_UNITS[Max(i, 0)])
 }
 
 func ExtractNumber(txt string) (float64, error) {
