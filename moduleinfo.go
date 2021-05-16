@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -199,6 +200,10 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 			continue
 		}
 	}
+
+	sort.SliceStable(moduleInfo.Require, func(i, j int) bool {
+		return strings.ToUpper(moduleInfo.Require[i].Name) < strings.ToUpper(moduleInfo.Require[j].Name)
+	})
 
 	return &moduleInfo, nil
 }
