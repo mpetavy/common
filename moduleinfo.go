@@ -20,9 +20,9 @@ type require struct {
 }
 
 type ModuleInfo struct {
-	Module  string
-	Version string
-	Require []require
+	Module   string
+	Version  string
+	Requires []require
 }
 
 func CreateModuleInfo() (*ModuleInfo, error) {
@@ -47,7 +47,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 	}
 
 	moduleInfo := ModuleInfo{}
-	moduleInfo.Require = make([]require, 0)
+	moduleInfo.Requires = make([]require, 0)
 
 	scanner := bufio.NewScanner(bytes.NewReader(ba))
 	inRequire := false
@@ -174,7 +174,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 					}
 				}
 
-				moduleInfo.Require = append(moduleInfo.Require, req)
+				moduleInfo.Requires = append(moduleInfo.Requires, req)
 
 				continue
 			} else {
@@ -201,8 +201,8 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 		}
 	}
 
-	sort.SliceStable(moduleInfo.Require, func(i, j int) bool {
-		return strings.ToUpper(moduleInfo.Require[i].Name) < strings.ToUpper(moduleInfo.Require[j].Name)
+	sort.SliceStable(moduleInfo.Requires, func(i, j int) bool {
+		return strings.ToUpper(moduleInfo.Requires[i].Name) < strings.ToUpper(moduleInfo.Requires[j].Name)
 	})
 
 	return &moduleInfo, nil
