@@ -41,7 +41,7 @@ const (
 
 	CSS_DIALOG_CONTENT     = "css-dialog-content pure-controls"
 	CSS_DEFAULT_CONTENT    = "css-default-content pure-controls"
-	CSS_ERROR_BOX          = "css-error-box blink"
+	CSS_ERROR_BOX          = "css-error-box"
 	CSS_WARNING_BOX        = "css-warning-box blink"
 	CSS_SUCCESS_BOX        = "css-success-box"
 	CSS_VERTICAL_DIV       = "css-vertical-div"
