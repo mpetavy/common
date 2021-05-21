@@ -415,6 +415,9 @@ func CleanPath(path string) string {
 		}
 	}
 
+	r := strings.NewReplacer("\"","")
+	result = r.Replace(result)
+
 	DebugFunc("%s -> %s", path, result)
 
 	return result
