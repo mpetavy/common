@@ -569,18 +569,17 @@ func (this *lineBuffer) Lines() []string {
 }
 
 func URLGet(url string) ([]byte, error) {
+	DebugFunc(url)
+
 	h := &http.Client{}
 
-	req, err := http.NewRequest("GET", url, nil)
+	r,err := h.Get(url)
 	if Error(err) {
 		return nil, err
 	}
 
-	var r *http.Response
-
-	r, err = h.Do(req)
-	if Error(err) {
-		return nil, err
+	if r.StatusCode != http.StatusOK {
+		return nil,fmt.Errorf(r.Status)
 	}
 
 	ba, err := io.ReadAll(r.Body)
