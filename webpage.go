@@ -343,7 +343,7 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 					htmlAhref.CreateAttr("onClick", menu.Action)
 				} else {
 					if menu.Message != "" {
-						htmlAhref.CreateAttr("onClick", fmt.Sprintf("if(confirm('%s')) { window.location.replace('%s'); }", menu.Message, menu.Action))
+						htmlAhref.CreateAttr("onClick", fmt.Sprintf("if(confirm(--$%s$--)) { window.location.replace(--$%s$--); }", menu.Message, menu.Action))
 					} else {
 						htmlAhref.CreateAttr("href", menu.Action)
 					}
@@ -355,7 +355,7 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 			}
 
 			if menu.Download != "" {
-				htmlAhref.CreateAttr("download", menu.Download)
+				htmlAhref.CreateAttr("onClick", fmt.Sprintf("{ window.open(--$%s$--,--$_blank$--); window.location.replace(--$/$--); }", menu.Download))
 			}
 		}
 	}
