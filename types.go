@@ -473,7 +473,13 @@ func Join(strs []string, sep string) string {
 	return sb.String()
 }
 
-func Clear(v interface{}) {
+func Clear(v interface{}) error {
+	if reflect.ValueOf(v).Kind() != reflect.Ptr {
+		return fmt.Errorf("not a pointer")
+	}
+
 	p := reflect.ValueOf(v).Elem()
 	p.Set(reflect.Zero(p.Type()))
+
+	return nil
 }
