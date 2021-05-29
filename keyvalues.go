@@ -30,7 +30,17 @@ func (kv KeyValue) Value() string {
 
 type KeyValues []KeyValue
 
-func (kvs *KeyValues) find(key string) int {
+func NewKeyValues(list []string) *KeyValues {
+	kvs := &KeyValues{}
+
+	for _, item := range list {
+		kvs.Add(KeyValue(item).Key(), KeyValue(item).Value())
+	}
+
+	return kvs
+}
+
+func (kvs *KeyValues) Index(key string) int {
 	for i, item := range *kvs {
 		if item.Key() == key {
 			return i
@@ -64,7 +74,7 @@ func (kvs *KeyValues) Put(key string, value string) error {
 	}
 
 	item := KeyValue(key + "=" + value)
-	index := kvs.find(key)
+	index := kvs.Index(key)
 
 	if index == -1 {
 		*kvs = append(*kvs, item)
@@ -92,7 +102,7 @@ func (kvs *KeyValues) Get(key string) (string, error) {
 		return "", fmt.Errorf("key cannot be null")
 	}
 
-	index := kvs.find(key)
+	index := kvs.Index(key)
 
 	if index == -1 {
 		return "", fmt.Errorf("key not found")
@@ -106,7 +116,7 @@ func (kvs *KeyValues) Remove(key string) (string, error) {
 		return "", fmt.Errorf("key cannot be null")
 	}
 
-	index := kvs.find(key)
+	index := kvs.Index(key)
 
 	if index == -1 {
 		return "", fmt.Errorf("key not found")
