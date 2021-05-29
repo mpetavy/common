@@ -481,7 +481,13 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 						}
 					}
 					sort.Strings(lines)
-					fieldValue.Set(reflect.ValueOf(lines))
+
+					if fieldValue.Type().AssignableTo(reflect.TypeOf(KeyValues{})) {
+						kvs := NewKeyValues(lines)
+						fieldValue.Set(reflect.ValueOf(*kvs))
+					} else {
+						fieldValue.Set(reflect.ValueOf(lines))
+					}
 				default:
 					_, file, err := context.Request().FormFile(fieldPath)
 					if file == nil {
