@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func TestKeyValueList(t *testing.T) {
-	kvl := make(KeyValueList, 0)
+func TestKeyValues(t *testing.T) {
+	kvl := KeyValues{}
 
 	kvl.Put("a", "1")
 	assert.Equal(t, 1, len(kvl))
@@ -46,4 +46,32 @@ func TestKeyValueList(t *testing.T) {
 	a, _ = kvl.Remove("a")
 	assert.Equal(t, "1", a)
 	assert.Equal(t, 0, len(kvl))
+
+	kvl.Put("a", "1")
+	kvl.Put("b", "2")
+	kvl.Put("c", "3")
+
+	kvl.Clear()
+
+	assert.Equal(t, 0, len(kvl))
+}
+
+func TestDuplicates(t *testing.T) {
+	kvl := KeyValues{}
+
+	kvl.Put("a", "1")
+	assert.Equal(t, 1, len(kvl))
+	kvl.Put("a", "1")
+	assert.Equal(t, 1, len(kvl))
+	kvl.Add("a", "1")
+	assert.Equal(t, 2, len(kvl))
+}
+
+func TestContains(t *testing.T) {
+	kvl := KeyValues{}
+
+	kvl.Put("a", "1")
+
+	assert.True(t, kvl.Contains("a"))
+	assert.False(t, kvl.Contains("x"))
 }

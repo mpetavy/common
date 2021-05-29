@@ -14,9 +14,9 @@ type EventConfigurationReset struct {
 }
 
 type Configuration struct {
-	ApplicationTitle   string       `json:"applicationTitle"`
-	ApplicationVersion string       `json:"applicationVersion"`
-	Flags              KeyValueList `json:"flags"`
+	ApplicationTitle   string    `json:"applicationTitle"`
+	ApplicationVersion string    `json:"applicationVersion"`
+	Flags              KeyValues `json:"flags"`
 }
 
 var (
