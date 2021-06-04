@@ -307,13 +307,30 @@ func setFlags(ba []byte) error {
 	return err
 }
 
+// IsFlagSetOnArgs reports back all really set flags on the command line.
+// Go's flag.Visit() gives back also the flags which have been set before by "flag.Set(..."
+func IsFlagSetOnArgs(fn string) bool {
+	fnSingle := "-" + fn
+	fnEqual := "-" + fn + "="
+
+	for _,f := range os.Args {
+		if f == fnSingle || strings.HasPrefix(f,fnEqual) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func registerArgsFlags() (map[string]string, error) {
 	DebugFunc()
 
 	m := make(map[string]string)
 
 	flag.Visit(func(f *flag.Flag) {
-		m[f.Name] = f.Value.String()
+		if IsFlagSetOnArgs(f.Name) {
+			m[f.Name] = f.Value.String()
+		}
 	})
 
 	return m, nil

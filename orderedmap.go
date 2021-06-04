@@ -10,11 +10,11 @@ type OrderedMap struct {
 }
 
 type ErrInvalidType struct {
-	msg string
+	Msg string
 }
 
 func (e *ErrInvalidType) Error() string {
-	return e.msg
+	return e.Msg
 }
 
 func NewOrderedMap(m ...interface{}) *OrderedMap {
