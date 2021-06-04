@@ -152,7 +152,7 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 }
 
 func PullFlash(context echo.Context, flashName string) []string {
-	cookie, _ := session.Get(Title(), context)
+	cookie := getCookie(context)
 	if cookie != nil {
 		flashes := cookie.Flashes(flashName)
 		if len(flashes) > 0 {
@@ -175,7 +175,7 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 
 	list = append(list, flash)
 
-	cookie, _ := session.Get(Title(), context)
+	cookie := getCookie(context)
 	if cookie != nil {
 		cookie.AddFlash(strings.Join(list, "??br"), flashName)
 	}
@@ -949,4 +949,15 @@ func Hack4BrowserUpdate() string {
 	}
 
 	return "?" + strconv.Itoa(Rnd(999999999))
+}
+
+func SessionId(context echo.Context) string {
+	var sessionID string
+
+	cookie, err := session.Get(Title(), context)
+	if err == nil {
+		sessionID = cookie.ID
+	}
+
+	return sessionID
 }
