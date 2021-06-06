@@ -29,7 +29,7 @@ var (
 	FlagLogVerbose     *bool
 	FlagLogIO          *bool
 	FlagLogFileName    *string
-	FlagLogFileSize    *int64
+	FlagLogFileSize    *int
 	FlagLogJson        *bool
 	FlagLogSys         *bool
 	logger             logWriter
@@ -54,7 +54,7 @@ func init() {
 	defaultLogFilename = CleanPath(AppFilename(".log"))
 
 	FlagLogFileName = flag.String(FlagNameLogFileName, "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
-	FlagLogFileSize = flag.Int64(FlagNameLogFileSize, 5*1024*1024, "max log file size")
+	FlagLogFileSize = flag.Int(FlagNameLogFileSize, 5*1024*1024, "max log file size")
 	FlagLogVerbose = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
 	FlagLogIO = flag.Bool(FlagNameLogIO, false, "trace logging")
 	FlagLogJson = flag.Bool(FlagNameLogJson, false, "JSON output")
@@ -147,7 +147,7 @@ func (this *fileWriter) WriteString(level int, txt string) {
 		return
 	}
 
-	if this.filesize >= *FlagLogFileSize {
+	if this.filesize >= int64(*FlagLogFileSize) {
 		this.filesize = 0
 
 		if this.file != nil {
