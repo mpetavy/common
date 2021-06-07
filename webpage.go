@@ -394,7 +394,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 	htmlFieldset := htmlForm.CreateElement("fieldset")
 	htmlFieldset.CreateAttr("id", "fieldset")
 
-	isFieldExpertView, err := newFieldset(0, htmlFieldset, caption, data, "", readOnly, isExpertViewAvailable, funcFieldIterator)
+	isFieldExpertView, err := newFieldset(true, htmlFieldset, caption, data, "", readOnly, isExpertViewAvailable, funcFieldIterator)
 	if Error(err) {
 		return nil, nil, err
 	}
@@ -544,7 +544,7 @@ func newCheckbox(parent *etree.Element, checked bool) *etree.Element {
 	return htmlInput
 }
 
-func newFieldset(index int, parent *etree.Element, caption string, data interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
+func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, data interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
 	expertViewFieldExists := false
 
 	if reflect.TypeOf(data).Kind() == reflect.Ptr {
@@ -555,6 +555,7 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 	htmlLegend.SetText(Translate(caption))
 
 	structValue := reflect.ValueOf(data)
+	hasMultipleFieldsets := false
 
 	for i := 0; i < structValue.NumField(); i++ {
 		fieldType := structValue.Type().Field(i)
@@ -594,7 +595,9 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 
 			var ev bool
 
-			ev, err = newFieldset(index+1, parent, tagHtml.Name, fieldValue.Interface(), fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
+			hasMultipleFieldsets = true
+
+			ev, err = newFieldset(false, parent, tagHtml.Name, fieldValue.Interface(), fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
 			if Error(err) {
 				return false, err
 			}
@@ -781,9 +784,12 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 					htmlInput.CreateAttr("style", "width: 250px;")
 
 					if !readOnly && !isFieldReadOnly {
-						button := htmlDiv.CreateElement("input")
-						button.CreateAttr("type", "button")
+						button := htmlDiv.CreateElement("button")
+						button.CreateAttr("class", "pure-button")
 						button.CreateAttr("onclick", fmt.Sprintf("document.getElementById(--$%s$--).value = --$$--;var desc = document.getElementById(--$%sDescription$--); if (desc) { desc.value = --$ $--; };", fieldPath, fieldPath))
+
+						icon := button.CreateElement("i")
+						icon.CreateAttr("class", "fa fa-trash")
 					}
 				} else {
 					if IndexOf(tagHtml.Options, OPTION_PASSWORD) != -1 {
@@ -838,6 +844,10 @@ func newFieldset(index int, parent *etree.Element, caption string, data interfac
 			htmlInput.CreateAttr("pattern", pattern)
 			htmlInput.CreateAttr("title", Translate("Invalid characters used in the input. Valid %v", pattern))
 		}
+	}
+
+	if isFirstFieldset && !hasMultipleFieldsets {
+		parent.RemoveChild(htmlLegend)
 	}
 
 	return expertViewFieldExists, nil
