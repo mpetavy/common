@@ -112,7 +112,12 @@ func (server *DiscoverServer) Start() error {
 
 				Debug("received UDP broadcast from %+v: %s\n", peer, receivedUID)
 
-				if receivedUID != server.uid {
+				b, err := EqualWildcards(server.uid, receivedUID)
+				if Error(err) {
+					continue
+				}
+
+				if !b {
 					Debug("not matching uid, expected: %s received: %s -> ignore", server.uid, receivedUID)
 
 					break
