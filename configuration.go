@@ -24,9 +24,14 @@ var (
 	FlagCfgFile  *string
 )
 
+const (
+	FlagNameCfgFile = "cfg.file"
+	FlagNameCfgReset = "cfg.reset"
+)
+
 func init() {
-	FlagCfgFile = flag.String("cfg.file", CleanPath(AppFilename(".json")), "Configuration file")
-	FlagCfgReset = flag.Bool("cfg.reset", false, "Reset configuration file")
+	FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(AppFilename(".json")), "Configuration file")
+	FlagCfgReset = flag.Bool(FlagNameCfgReset, false, "Reset configuration file")
 }
 
 func NewConfiguration() *Configuration {
@@ -67,7 +72,13 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 
 func IsOneTimeFlag(n string) bool {
 	list := []string{
-		"cfg.reset",
+		FlagNameCfgReset,
+		FlagNameService,
+		FlagNameServiceUsername,
+		FlagNameServicePassword,
+		FlagNameServiceTimeout,
+		FlagNameUsage,
+		FlagNameUsageMd,
 		"test",
 	}
 
