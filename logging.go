@@ -36,8 +36,8 @@ var (
 	defaultLogFilename string
 	mu                 sync.Mutex
 	lastErr            string
-	systemLoggerCh     chan<- error
-	systemLogger       service.Logger
+	syslogLoggerCh     chan<- error
+	syslogLogger       service.Logger
 	gotest             goTesting
 )
 
@@ -299,11 +299,11 @@ func initLog() {
 	log.SetOutput(&redirectGoLogger{})
 
 	if *FlagLogSys && !IsRunningInteractive() {
-		systemLoggerCh = make(chan error, 5)
+		syslogLoggerCh = make(chan error, 5)
 
 		var err error
 
-		systemLogger, err = app.Service.Logger(systemLoggerCh)
+		syslogLogger, err = app.Service.Logger(syslogLoggerCh)
 		Error(err)
 	}
 
@@ -493,54 +493,55 @@ func appendLog(level int, ri RuntimeInfo, msg string, err error) {
 
 	s := entry.String(*FlagLogJson, *FlagLogVerbose)
 
+	// fileLogger or memoryLogger
 	if logger != nil {
 		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", s))
 	}
 
 	if level != LEVEL_PROLOG {
-		if *FlagLogVerbose {
+		if syslogLogger != nil {
 			switch entry.levelInt {
 			case LEVEL_WARN:
-				if gotest != nil {
-					gotest.Logf(s)
-				} else {
-					color.Warn.Println(s)
-				}
+				Error(syslogLogger.Warning(entry.Msg))
 			case LEVEL_ERROR:
-				if gotest != nil {
-					gotest.Fatalf(s)
-				} else {
-					color.Error.Println(s)
-				}
+				Error(syslogLogger.Error(entry.Msg))
 			case LEVEL_PANIC:
-				if gotest != nil {
-					gotest.Fatalf(s)
-				} else {
-					color.Error.Println(s)
-				}
-			default:
-				if gotest != nil {
-					gotest.Logf(s)
-				} else {
-					fmt.Printf("%s\n", s)
-				}
-			}
-		} else {
-			fmt.Printf("%s\n", s)
-		}
-
-		if *FlagLogSys && systemLogger != nil {
-			switch entry.levelInt {
-			case LEVEL_WARN:
-				Error(systemLogger.Warning(entry.String(false, false)))
-			case LEVEL_ERROR:
-				Error(systemLogger.Error(entry.String(false, false)))
-			case LEVEL_PANIC:
-				Error(systemLogger.Error(fmt.Sprintf("PANIC: %s", entry.String(false, false))))
+				Error(syslogLogger.Error(entry.Msg))
 			case LEVEL_DEBUG:
 				fallthrough
 			case LEVEL_INFO:
-				Error(systemLogger.Info(entry.String(false, false)))
+				Error(syslogLogger.Info(entry.Msg))
+			}
+		} else {
+			if *FlagLogVerbose {
+				switch entry.levelInt {
+				case LEVEL_WARN:
+					if gotest != nil {
+						gotest.Logf(s)
+					} else {
+						color.Warn.Println(s)
+					}
+				case LEVEL_ERROR:
+					if gotest != nil {
+						gotest.Fatalf(s)
+					} else {
+						color.Error.Println(s)
+					}
+				case LEVEL_PANIC:
+					if gotest != nil {
+						gotest.Fatalf(s)
+					} else {
+						color.Error.Println(s)
+					}
+				default:
+					if gotest != nil {
+						gotest.Logf(s)
+					} else {
+						fmt.Printf("%s\n", s)
+					}
+				}
+			} else {
+				fmt.Printf("%s\n", s)
 			}
 		}
 	}
