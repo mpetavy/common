@@ -73,10 +73,6 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 func IsOneTimeFlag(n string) bool {
 	list := []string{
 		FlagNameCfgReset,
-		FlagNameService,
-		FlagNameServiceUsername,
-		FlagNameServicePassword,
-		FlagNameServiceTimeout,
 		FlagNameUsage,
 		FlagNameUsageMd,
 		"test",
