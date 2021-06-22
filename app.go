@@ -175,7 +175,7 @@ func Run(mandatoryFlags []string) {
 
 	Events.Emit(EventFlagsParsed{})
 
-	if !*FlagNoBanner {
+	if !*FlagNoBanner && !*FlagUsageMd {
 		showBanner()
 	}
 
