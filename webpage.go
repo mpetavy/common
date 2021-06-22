@@ -256,36 +256,53 @@ func AuthenticateCookie(context echo.Context, password string, timeout time.Dura
 	return nil
 }
 
-func IsCookieAuthenticated(context echo.Context, login string, hashFunc func(string) string) bool {
+func CheckCookieAuthenticated(context echo.Context, password string) error {
 	cookie, err := session.Get(Title(), context)
 	if err != nil {
-		return false
+		return fmt.Errorf("no cookie %s available", Title())
 	}
 
 	expire, ok := cookie.Values[COOKIE_EXPIRE]
 	if !ok {
-		return false
+		return fmt.Errorf("cookie %s attribute %s not available", Title(), COOKIE_EXPIRE)
 	}
 
 	expireTime, err := ParseDateTime(DateTimeMask, expire.(string))
 	if Error(err) {
-		return false
+		return fmt.Errorf("cookie %s expire date attribute can not be parsed: %s", Title(), expire.(string))
 	}
 
-	if time.Now().After(expireTime) {
-		return false
+	now := time.Now()
+	if now.After(expireTime) {
+		return fmt.Errorf("cookie %s expire date reached. expire %s, now %s", Title(), expireTime.Format(DateTimeMask), now.Format(DateTimeMask))
 	}
 
-	sessionPassword, ok := cookie.Values[COOKIE_PASSWORD]
+	cookiePassword, ok := cookie.Values[COOKIE_PASSWORD]
 	if !ok {
+		return fmt.Errorf("cookie %s attribute %s not available", Title(), COOKIE_PASSWORD)
+	}
+
+	if password == "" {
+		return fmt.Errorf("login password not defined")
+	}
+
+	if password != cookiePassword {
+		return fmt.Errorf("password does not equal defined password")
+	}
+
+	return nil
+}
+
+func IsCookieAuthenticated(context echo.Context, password string) bool {
+	err := CheckCookieAuthenticated(context, password)
+
+	if err != nil {
+		DebugFunc(err.Error())
+
 		return false
 	}
 
-	if hashFunc != nil {
-		sessionPassword = hashFunc(sessionPassword.(string))
-	}
-
-	return login != "" && login == sessionPassword
+	return true
 }
 
 func NewMenu(page *Webpage, menuItems []ActionItem, selectedTitle string, disableMenues bool) {

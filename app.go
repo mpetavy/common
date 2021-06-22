@@ -173,6 +173,12 @@ func Run(mandatoryFlags []string) {
 
 	flag.Parse()
 
+	Events.Emit(EventFlagsParsed{})
+
+	if !*FlagNoBanner {
+		showBanner()
+	}
+
 	if *FlagUsageMd {
 		dir, err := os.Getwd()
 		if err != nil {
@@ -181,31 +187,25 @@ func Run(mandatoryFlags []string) {
 		flag.VisitAll(func(fl *flag.Flag) {
 			defValue := fl.DefValue
 			if strings.HasPrefix(defValue, dir) {
-				defValue = fmt.Sprintf("./%s",defValue[len(dir)+1:])
+				defValue = fmt.Sprintf("./%s", defValue[len(dir)+1:])
 			}
 			fmt.Printf("%s | %s | %s\n", fl.Name, defValue, fl.Usage)
 		})
 		os.Exit(0)
 	}
 
-	Events.Emit(EventFlagsParsed{})
-
-	if !*FlagNoBanner || *FlagUsage {
-		showBanner()
+	if *FlagUsage {
+		flag.Usage()
+		Exit(0)
 	}
-
-	Panic(InitConfiguration())
-
-	initLog()
 
 	if flag.NArg() > 0 {
 		Panic(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
 	}
 
-	if *FlagUsage {
-		flag.Usage()
-		Exit(0)
-	}
+	Panic(InitConfiguration())
+
+	initLog()
 
 	if mandatoryFlags != nil {
 		for _, mf := range mandatoryFlags {
@@ -221,7 +221,7 @@ func Run(mandatoryFlags []string) {
 			for _, flagName := range strings.Split(mf, "|") {
 				fl := flag.Lookup(flagName)
 
-				if fl == nil {
+				if fl == nil || fl.Value == nil {
 					Panic(fmt.Errorf("unknown mandatory flag: \"%s\"", flagName))
 				}
 
