@@ -80,7 +80,7 @@ func (server *DiscoverServer) Start() error {
 					}
 				}
 
-				host, _, err := net.SplitHostPort(peer.String())
+				host, err := SplitHost(peer.String())
 				if Error(err) {
 					break
 				}
