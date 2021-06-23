@@ -31,18 +31,28 @@ func TestEqualWildcards(t *testing.T) {
 	assert.True(t, ew(t, "test.go", "??st.go"))
 	assert.True(t, ew(t, "test.go", "test.??"))
 	assert.True(t, ew(t, "?", "?"))
-	assert.True(t, ew(t, ("?"), "?"))
-	assert.True(t, ew(t, ("cfg.file"), "cfg.file*"))
-	assert.True(t, ew(t, ("cfg.file.template"), "cfg.file*"))
-	assert.True(t, ew(t, ("?md"), "?md"))
-	assert.False(t, ew(t, ("?md"), "?.md"))
-	assert.True(t, ew(t, ("?md"), "\\?md"))
-}
+	assert.True(t, ew(t, "?", "?"))
+	assert.True(t, ew(t, "cfg.file", "cfg.file*"))
+	assert.True(t, ew(t, "cfg.file.template", "cfg.file*"))
+	assert.True(t, ew(t, "?md", "?md"))
+	assert.False(t, ew(t, "?md", "?.md"))
+	assert.True(t, ew(t, "?md", "\\?md"))
 
-func TestPersistWildcards(t *testing.T) {
-	assert.Equal(t, "\\?\\?", PersistWildcards("??"))
-	assert.Equal(t, "\\*\\*", PersistWildcards("**"))
-	assert.Equal(t, "\\.\\.", PersistWildcards(".."))
+	masks := []string{
+		FlagNameCfgFile + "*",
+		FlagNameCfgReset,
+		FlagNameCfgCreate,
+		FlagNameUsage,
+		FlagNameUsageMd,
+		"test*",
+	}
+
+	for _, mask := range masks {
+		assert.True(t, ew(t, mask, mask))
+	}
+
+	assert.True(t, ew(t, "cfg.file", "cfg.file*"))
+	assert.True(t, ew(t, "cfg.file.template", "cfg.file*"))
 }
 
 type InnerStruct struct {

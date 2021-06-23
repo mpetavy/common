@@ -75,11 +75,11 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 
 func IsOnlyCmdLineFlag(flagName string) bool {
 	masks := []string{
-		PersistWildcards(FlagNameCfgFile),
-		PersistWildcards(FlagNameCfgReset),
-		PersistWildcards(FlagNameCfgCreate),
-		PersistWildcards(FlagNameUsage),
-		PersistWildcards(FlagNameUsageMd),
+		FlagNameCfgFile,
+		FlagNameCfgReset,
+		FlagNameCfgCreate,
+		FlagNameUsage,
+		FlagNameUsageMd,
 		"test*",
 	}
 

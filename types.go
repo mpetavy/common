@@ -246,14 +246,6 @@ func ContainsWildcard(s string) bool {
 	return strings.ContainsAny(s, "*?")
 }
 
-func PersistWildcards(s string) string {
-	s = strings.ReplaceAll(s, ".", "\\.")
-	s = strings.ReplaceAll(s, "*", "\\*")
-	s = strings.ReplaceAll(s, "?", "\\?")
-
-	return s
-}
-
 func EqualWildcards(s, mask string) (bool, error) {
 	if !ContainsWildcard(mask) {
 		return s == mask, nil
