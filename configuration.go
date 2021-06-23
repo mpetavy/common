@@ -78,8 +78,8 @@ func IsOnlyCmdLineFlag(flagName string) bool {
 		FlagNameCfgFile,
 		FlagNameCfgReset,
 		FlagNameCfgCreate,
-		FlagNameUsage,
-		FlagNameUsageMd,
+		"\\" + FlagNameUsage,
+		"\\" + FlagNameUsageMd,
 		"test*",
 	}
 
