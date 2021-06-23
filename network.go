@@ -406,11 +406,17 @@ func WaitUntilNetworkIsAvailable() error {
 }
 
 func SplitHost(addr string) (string, error) {
-	splits := strings.Split(addr, ":")
+	if !strings.Contains(addr, ":") {
+		p := strings.Index(addr, "]")
 
-	if splits[0] == "" {
-		return "", fmt.Errorf("no valid host address: %v", addr)
+		if p != -1 {
+			addr = addr[0:p] + ":]"
+		} else {
+			addr = addr + ":"
+		}
 	}
 
-	return splits[0], nil
+	host, _, err := net.SplitHostPort(addr)
+
+	return host, err
 }
