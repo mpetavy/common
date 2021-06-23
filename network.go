@@ -35,15 +35,22 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 }
 
 func GetOutboundIP() (net.IP, error) {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
+	conn, err := net.Dial("tcp4", "iana.org:443")
+	if err != nil {
+		conn, err = net.Dial("tcp4", "zeiss.de:443")
+	}
+
 	if Error(err) {
 		return nil, err
 	}
+
 	defer func() {
 		DebugError(conn.Close())
 	}()
 
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	localAddr := conn.LocalAddr().(*net.TCPAddr)
+
+	DebugFunc(localAddr.String())
 
 	return localAddr.IP, nil
 }
@@ -57,27 +64,25 @@ func assignIP(currentIp, newIp net.IP) net.IP {
 }
 
 func GetHost() (net.IP, string, error) {
-	var ip net.IP
-	var hostname string
-
-	addrs, err := GetHostAddrs(true, nil)
-	for _, addr := range addrs {
-		newIp, _, err := net.ParseCIDR(addr.Addr.String())
-		if Error(err) {
-			continue
-		}
-
-		ip = assignIP(ip, newIp)
-	}
-
-	hostname, err = os.Hostname()
+	hostname, err := os.Hostname()
 	if Error(err) {
 		return nil, "", err
 	}
 
-	newIp, err := GetOutboundIP()
-	if err == nil {
-		ip = assignIP(ip, newIp)
+	ip, err := GetOutboundIP()
+	if DebugError(err) {
+		addrs, err := GetHostAddrs(true, nil)
+
+		if !DebugError(err) {
+			for _, addr := range addrs {
+				newIp, _, err := net.ParseCIDR(addr.Addr.String())
+				if Error(err) {
+					continue
+				}
+
+				ip = assignIP(ip, newIp)
+			}
+		}
 	}
 
 	if ip == nil || IsLocalhost(ip) {
@@ -112,7 +117,7 @@ func GetHost() (net.IP, string, error) {
 					} else {
 						if strings.HasPrefix(line, "Address:") {
 							addr := strings.TrimSpace(line[8:])
-							newIp = net.ParseIP(addr)
+							newIp := net.ParseIP(addr)
 
 							if ip == nil {
 								return nil, "", fmt.Errorf("cannot parse IP: %s", addr)
@@ -152,7 +157,7 @@ func GetHost() (net.IP, string, error) {
 
 			if len(ss) > 0 {
 				addr := strings.TrimSpace(ss[len(ss)-1])
-				newIp = net.ParseIP(addr)
+				newIp := net.ParseIP(addr)
 
 				if ip == nil {
 					return nil, "", fmt.Errorf("cannot parse IP: %s", addr)
@@ -256,6 +261,8 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 	sort.SliceStable(list, func(i, j int) bool {
 		return strings.ToUpper(list[i].Addr.String()) < strings.ToUpper(list[j].Addr.String())
 	})
+
+	DebugFunc("%+v", list)
 
 	return list, nil
 }
