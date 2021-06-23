@@ -404,3 +404,13 @@ func WaitUntilNetworkIsAvailable() error {
 		return fmt.Errorf("host networking is down")
 	})
 }
+
+func SplitHost(addr string) (string, error) {
+	splits := strings.Split(addr, ":")
+
+	if splits[0] == "" {
+		return "", fmt.Errorf("no valid host address: %v", addr)
+	}
+
+	return splits[0], nil
+}
