@@ -86,8 +86,8 @@ const (
 	FlagNameServiceUsername = "service.username"
 	FlagNameServicePassword = "service.password"
 	FlagNameServiceTimeout  = "service.timeout"
-	FlagNameUsage           = "?"
-	FlagNameUsageMd         = "?md"
+	FlagNameUsage           = "h"
+	FlagNameUsageMd         = "hmd"
 	FlagNameNoBanner        = "nb"
 )
 
@@ -195,7 +195,7 @@ func Run(mandatoryFlags []string) {
 			}
 
 			onlyCmdLine := ""
-			if IsOnlyCmdLineFlag(fl.Name) {
+			if IsCmdlineOnlyFlag(fl.Name) {
 				onlyCmdLine = "*"
 			}
 
