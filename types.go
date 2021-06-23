@@ -251,12 +251,12 @@ func EqualWildcards(s, mask string) (bool, error) {
 	mask = strings.ReplaceAll(mask, "*", ".*")
 	mask = strings.ReplaceAll(mask, "?", ".")
 
-	r, err := regexp.Compile("^" + mask + "$")
+	regexEqualWildcards, err := regexp.Compile("^" + mask + "$")
 	if Error(err) {
 		return false, err
 	}
 
-	return r.MatchString(s), nil
+	return regexEqualWildcards.MatchString(s), nil
 }
 
 func ReflectStructField(Iface interface{}, FieldName string) (*reflect.Value, error) {

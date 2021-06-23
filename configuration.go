@@ -20,18 +20,21 @@ type Configuration struct {
 }
 
 var (
-	FlagCfgReset *bool
-	FlagCfgFile  *string
+	FlagCfgReset  *bool
+	FlagCfgCreate *bool
+	FlagCfgFile   *string
 )
 
 const (
-	FlagNameCfgFile = "cfg.file"
-	FlagNameCfgReset = "cfg.reset"
+	FlagNameCfgFile   = "cfg.file"
+	FlagNameCfgReset  = "cfg.reset"
+	FlagNameCfgCreate = "cfg.create"
 )
 
 func init() {
 	FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(AppFilename(".json")), "Configuration file")
 	FlagCfgReset = flag.Bool(FlagNameCfgReset, false, "Reset configuration file")
+	FlagCfgCreate = flag.Bool(FlagNameCfgCreate, false, "Reset configuration file and exit")
 }
 
 func NewConfiguration() *Configuration {
@@ -44,7 +47,7 @@ func NewConfiguration() *Configuration {
 }
 
 func (this *Configuration) SetFlag(flagName string, flagValue string) error {
-	if IsOneTimeFlag(flagName) {
+	if IsOnlyCmdLineFlag(flagName) {
 		return nil
 	}
 
@@ -70,19 +73,22 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 	return flagValue, nil
 }
 
-func IsOneTimeFlag(n string) bool {
+func IsOnlyCmdLineFlag(flagName string) bool {
 	list := []string{
+		FlagNameCfgFile,
 		FlagNameCfgReset,
+		FlagNameCfgCreate,
 		FlagNameUsage,
 		FlagNameUsageMd,
-		"test",
+		"test*",
 	}
 
 	for _, l := range list {
-		if strings.HasPrefix(n, l) {
+		b, _ := EqualWildcards(flagName, l)
+
+		if b {
 			return true
 		}
-
 	}
 
 	return false
@@ -93,12 +99,20 @@ func InitConfiguration() error {
 
 	*FlagCfgReset = *FlagCfgReset || !FileExists(*FlagCfgFile)
 
-	if *FlagCfgReset {
+	if *FlagCfgReset || *FlagCfgCreate {
 		*FlagCfgReset = false
+
+		if *FlagCfgCreate {
+			*FlagIoFileBackups = 0
+		}
 
 		err := ResetConfiguration()
 		if Error(err) {
 			return err
+		}
+
+		if *FlagCfgCreate {
+			os.Exit(0)
 		}
 	}
 
@@ -237,7 +251,7 @@ func writeFile(ba []byte) error {
 	}
 
 	if string(buf.Bytes()) != string(fileConfig) {
-		Debug("Reformat of configuration file done")
+		Debug("Reformat of configuration file %s done", *FlagCfgFile)
 
 		Error(FileBackup(*FlagCfgFile))
 
@@ -268,7 +282,7 @@ func setFlags(ba []byte) error {
 	mapFile, err := registerFileFlags(ba)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		if IsOneTimeFlag(f.Name) {
+		if IsOnlyCmdLineFlag(f.Name) {
 			return
 		}
 
@@ -320,8 +334,8 @@ func IsFlagSetOnArgs(fn string) bool {
 	fnSingle := "-" + fn
 	fnEqual := "-" + fn + "="
 
-	for _,f := range os.Args {
-		if f == fnSingle || strings.HasPrefix(f,fnEqual) {
+	for _, f := range os.Args {
+		if f == fnSingle || strings.HasPrefix(f, fnEqual) {
 			return true
 		}
 	}

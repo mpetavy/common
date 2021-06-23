@@ -184,12 +184,22 @@ func Run(mandatoryFlags []string) {
 		if err != nil {
 			panic(err)
 		}
+
+		fmt.Printf("Parameter | Default value | Only CmdLine | Description\n")
+		fmt.Printf("------------ | ------------- | ------------- | -------------\n")
+
 		flag.VisitAll(func(fl *flag.Flag) {
 			defValue := fl.DefValue
 			if strings.HasPrefix(defValue, dir) {
 				defValue = fmt.Sprintf("./%s", defValue[len(dir)+1:])
 			}
-			fmt.Printf("%s | %s | %s\n", fl.Name, defValue, fl.Usage)
+
+			onlyCmdLine := ""
+			if IsOnlyCmdLineFlag(fl.Name) {
+				onlyCmdLine = "*"
+			}
+
+			fmt.Printf("%s | %s | %s | %s\n", fl.Name, defValue, onlyCmdLine, fl.Usage)
 		})
 		os.Exit(0)
 	}
