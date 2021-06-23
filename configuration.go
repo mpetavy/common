@@ -47,7 +47,7 @@ func NewConfiguration() *Configuration {
 }
 
 func (this *Configuration) SetFlag(flagName string, flagValue string) error {
-	if IsOnlyCmdLineFlag(flagName) {
+	if IsCmdlineOnlyFlag(flagName) {
 		return nil
 	}
 
@@ -73,25 +73,43 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 	return flagValue, nil
 }
 
-func IsOnlyCmdLineFlag(flagName string) bool {
-	masks := []string{
+func IsCmdlineOnlyFlag(flagName string) bool {
+	r := false
+
+	list := []string{
 		FlagNameCfgFile,
 		FlagNameCfgReset,
 		FlagNameCfgCreate,
 		FlagNameUsage,
 		FlagNameUsageMd,
-		"test*",
 	}
 
-	for _, mask := range masks {
-		b, _ := EqualWildcards(flagName, mask)
+	for _, mask := range list {
+		if mask == flagName {
+			r = true
 
-		if b {
-			return true
+			break
 		}
 	}
 
-	return false
+	if !r {
+		list := []string{
+			"test*",
+		}
+
+		for _, mask := range list {
+			b, _ := EqualWildcards(flagName, mask)
+			if b {
+				r = true
+
+				break
+			}
+		}
+	}
+
+	DebugFunc("%s: %v", flagName, r)
+
+	return r
 }
 
 func InitConfiguration() error {
@@ -282,7 +300,7 @@ func setFlags(ba []byte) error {
 	mapFile, err := registerFileFlags(ba)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		if IsOnlyCmdLineFlag(f.Name) {
+		if IsCmdlineOnlyFlag(f.Name) {
 			return
 		}
 

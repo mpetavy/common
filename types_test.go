@@ -48,11 +48,13 @@ func TestEqualWildcards(t *testing.T) {
 	}
 
 	for _, mask := range masks {
-		assert.True(t, ew(t, mask, mask))
+		assert.True(t, ew(t, mask, mask), mask)
 	}
 
 	assert.True(t, ew(t, "cfg.file", "cfg.file*"))
 	assert.True(t, ew(t, "cfg.file.template", "cfg.file*"))
+
+	assert.False(t, ew(t, "cfg.file", "xxx"))
 }
 
 type InnerStruct struct {
