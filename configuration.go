@@ -74,17 +74,17 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 }
 
 func IsOnlyCmdLineFlag(flagName string) bool {
-	list := []string{
-		FlagNameCfgFile,
-		FlagNameCfgReset,
-		FlagNameCfgCreate,
-		"\\" + FlagNameUsage,
-		"\\" + FlagNameUsageMd,
+	masks := []string{
+		PersistWildcards(FlagNameCfgFile),
+		PersistWildcards(FlagNameCfgReset),
+		PersistWildcards(FlagNameCfgCreate),
+		PersistWildcards(FlagNameUsage),
+		PersistWildcards(FlagNameUsageMd),
 		"test*",
 	}
 
-	for _, l := range list {
-		b, _ := EqualWildcards(flagName, l)
+	for _, mask := range masks {
+		b, _ := EqualWildcards(flagName, mask)
 
 		if b {
 			return true

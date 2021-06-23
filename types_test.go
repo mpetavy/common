@@ -7,52 +7,42 @@ import (
 )
 
 func TestContainsWildcard(t *testing.T) {
-	b := ContainsWildcard("a?b")
-	if !b {
+	assert.True(t, ContainsWildcard("a?b"))
+	assert.True(t, ContainsWildcard("a*b"))
+	assert.False(t, ContainsWildcard("ab"))
+}
+
+func ew(t *testing.T, s string, m string) bool {
+	b, err := EqualWildcards(s, m)
+	if Error(err) {
 		t.Fail()
 	}
 
-	b = ContainsWildcard("a*b")
-	if !b {
-		t.Fail()
-	}
-
-	b = ContainsWildcard("ab")
-	if b {
-		t.Fail()
-	}
+	return b
 }
 
 func TestEqualWildcards(t *testing.T) {
-	b, err := EqualWildcards("test.go", "test.go")
-	if !b || err != nil {
-		t.Fail()
-	}
+	assert.True(t, ew(t, "test.go", "test.go"))
+	assert.False(t, ew(t, "test.go", "test.goo"))
+	assert.False(t, ew(t, "test.go", "test.go?"))
+	assert.True(t, ew(t, "test.go", "test.go*"))
+	assert.True(t, ew(t, "test.go", "*.go"))
+	assert.True(t, ew(t, "test.go", "test.*"))
+	assert.True(t, ew(t, "test.go", "??st.go"))
+	assert.True(t, ew(t, "test.go", "test.??"))
+	assert.True(t, ew(t, "?", "?"))
+	assert.True(t, ew(t, ("?"), "?"))
+	assert.True(t, ew(t, ("cfg.file"), "cfg.file*"))
+	assert.True(t, ew(t, ("cfg.file.template"), "cfg.file*"))
+	assert.True(t, ew(t, ("?md"), "?md"))
+	assert.False(t, ew(t, ("?md"), "?.md"))
+	assert.True(t, ew(t, ("?md"), "\\?md"))
+}
 
-	b, err = EqualWildcards("test.go", "test.goo")
-	if b || err != nil {
-		t.Fail()
-	}
-
-	b, err = EqualWildcards("test.go", "*.go")
-	if !b || err != nil {
-		t.Fail()
-	}
-
-	b, err = EqualWildcards("test.go", "test.*")
-	if !b || err != nil {
-		t.Fail()
-	}
-
-	b, err = EqualWildcards("test.go", "??st.go")
-	if !b || err != nil {
-		t.Fail()
-	}
-
-	b, err = EqualWildcards("test.go", "test.??")
-	if !b || err != nil {
-		t.Fail()
-	}
+func TestPersistWildcards(t *testing.T) {
+	assert.Equal(t, "\\?\\?", PersistWildcards("??"))
+	assert.Equal(t, "\\*\\*", PersistWildcards("**"))
+	assert.Equal(t, "\\.\\.", PersistWildcards(".."))
 }
 
 type InnerStruct struct {
