@@ -246,10 +246,41 @@ func ContainsWildcard(s string) bool {
 	return strings.ContainsAny(s, "*?")
 }
 
+func PersistWildcards(s string) string {
+	s = strings.ReplaceAll(s, ".", "\\.")
+	s = strings.ReplaceAll(s, "*", "\\*")
+	s = strings.ReplaceAll(s, "?", "\\?")
+
+	return s
+}
+
 func EqualWildcards(s, mask string) (bool, error) {
-	mask = strings.ReplaceAll(mask, ".", "\\.")
-	mask = strings.ReplaceAll(mask, "*", ".*")
-	mask = strings.ReplaceAll(mask, "?", ".")
+	if !ContainsWildcard(mask) {
+		return s == mask, nil
+	}
+
+	mask = strings.ReplaceAll(mask, ".", "\\.") // "."are NOT support as wildcard!
+
+	m := ""
+	var lastR rune
+
+	for _, r := range mask {
+		add := string(r)
+
+		if unicode.IsPrint(lastR) && lastR != rune('\\') {
+			if r == rune('*') {
+				add = ".*"
+			}
+			if r == rune('?') {
+				add = "."
+			}
+		}
+
+		m += add
+		lastR = r
+	}
+
+	mask = m
 
 	regexEqualWildcards, err := regexp.Compile("^" + mask + "$")
 	if Error(err) {
