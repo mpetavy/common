@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -16,6 +17,16 @@ import (
 const (
 	LOCALHOST_IP4 = "127.0.0.1"
 	LOCALHOST_IP6 = "::1"
+)
+
+const (
+	FlagNameIoConnectTimeout   = "io.connect.timeout"
+	FlagNameIoReadwriteTimeout = "io.readwrite.timeout"
+)
+
+var (
+	FlagIoNetworkConnectTimeout   = flag.Int(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
+	FlagIoNetworkReadwriteTimeout = flag.Int(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
 )
 
 func DeadlineByMsec(msec int) time.Time {
@@ -96,7 +107,7 @@ func GetHost() (net.IP, string, error) {
 			cmd.Stdout = &stdout
 			cmd.Stderr = &stderr
 
-			err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkTimeout))
+			err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkConnectTimeout))
 			if err == nil {
 				output := string(stdout.Bytes())
 
@@ -146,7 +157,7 @@ func GetHost() (net.IP, string, error) {
 			cmd.Stdout = &stdout
 			cmd.Stderr = &stderr
 
-			err = WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkTimeout))
+			err = WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkConnectTimeout))
 			if Error(err) {
 				return nil, "", err
 			}
