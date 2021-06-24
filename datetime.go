@@ -52,8 +52,11 @@ var TimeMask = Hour + TimeSeparator + Minute + TimeSeparator + Second
 // DateTimeMask parses for date and time values
 var DateTimeMask = DateMask + Separator + TimeMask
 
-// DateTimeMask parses for date and time values
+// DateTimeMilliMask parses for date and time values
 var DateTimeMilliMask = DateMask + Separator + TimeMask + Msec
+
+// SortedDateTimeMilliMask parses for date and time values
+var SortedDateTimeMilliMask = Year + "/" + Month + "/" + Day + Separator + TimeMask + Msec
 
 // ParseDateTime parses only date, but no time
 func ParseDateTime(mask string, v string) (time.Time, error) {
