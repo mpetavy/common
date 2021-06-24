@@ -40,7 +40,7 @@ func GetOutboundIP() (net.IP, error) {
 		conn, err = net.Dial("tcp4", "zeiss.de:443")
 	}
 
-	if Error(err) {
+	if DebugError(err) {
 		return nil, err
 	}
 
@@ -193,6 +193,7 @@ func GetHost() (net.IP, string, error) {
 
 type hostAddress struct {
 	Mac  string
+	IP   string
 	Addr net.Addr
 }
 
@@ -253,6 +254,7 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 
 			list = append(list, hostAddress{
 				Mac:  mac,
+				IP:   ip.IP.To4().String(),
 				Addr: addr,
 			})
 		}
@@ -385,23 +387,35 @@ func IsPrivateIP(ip string) (bool, error) {
 	return private, err
 }
 
-func WaitUntilNetworkIsAvailable() error {
+func WaitUntilNetworkIsAvailable(lookupIp string) error {
 	DebugFunc()
 
-	return NewTimeoutOperation(time.Second, time.Second*10, func() error {
+	return NewTimeoutOperation(time.Millisecond*500, time.Second*10, func() error {
 		addrs, err := GetHostAddrs(false, nil)
 
 		if DebugError(err) {
 			return err
 		}
 
-		if len(addrs) > 0 {
-			DebugFunc("host networking is available: %+v", addrs)
-
-			return nil
+		if len(addrs) == 0 {
+			return fmt.Errorf("host networking is down")
 		}
 
-		return fmt.Errorf("host networking is down")
+		if lookupIp != "" {
+			for _, ip := range addrs {
+				if ip.IP == lookupIp {
+					DebugFunc("host networking with ip %s is available: %+v", lookupIp, addrs)
+
+					return nil
+				}
+			}
+
+			return fmt.Errorf("host networking with ip %s is not available: %+v", lookupIp, addrs)
+		}
+
+		DebugFunc("host networking is available: %+v", addrs)
+
+		return nil
 	})
 }
 

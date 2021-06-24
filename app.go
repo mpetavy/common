@@ -599,7 +599,7 @@ func Done() {
 		}
 	})
 
-	closeLogFile()
+	closeLog()
 }
 
 func AddShutdownHook(f func()) {
