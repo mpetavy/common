@@ -486,7 +486,7 @@ func appendLog(level int, ri RuntimeInfo, msg string, err error) {
 	entry := logEntry{
 		levelInt: level,
 		Level:    strings.ToUpper(levelToString(level)),
-		Clock:    time.Now().Format(DateTimeMilliMask),
+		Clock:    time.Now().Format(SortedDateTimeMilliMask),
 		Runtime:  ri.String(),
 		Msg:      Capitalize(strings.TrimRight(strings.TrimSpace(msg), "\r\n")),
 	}
