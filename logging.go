@@ -71,7 +71,7 @@ type goTesting interface {
 }
 
 type logEntry struct {
-	levelInt int    `json:"levelInt"`
+	levelInt int
 	Clock    string `json:"clock"`
 	Level    string `json:"level"`
 	Runtime  string `json:"runtime"`
@@ -313,7 +313,7 @@ func initLog() {
 	}
 }
 
-func closeLogFile() {
+func closeLog() {
 	prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
 
 	if logger != nil {
