@@ -389,9 +389,9 @@ func IsPrivateIP(ip string) (bool, error) {
 
 func WaitUntilNetworkIsAvailable(lookupIp string) error {
 	if lookupIp != "" {
-		DebugFunc()
-	} else {
 		DebugFunc(lookupIp)
+	} else {
+		DebugFunc()
 	}
 
 	return NewTimeoutOperation(time.Millisecond*500, time.Second*10, func() error {
