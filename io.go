@@ -17,8 +17,7 @@ import (
 )
 
 const (
-	FlagNameIoNetworkTimeout = "io.network.timeout"
-	FlagNameIoFileBackups    = "io.file.backups"
+	FlagNameIoFileBackups = "io.file.backups"
 )
 
 var (
@@ -26,8 +25,7 @@ var (
 	DefaultFileMode  = FileMode(true, true, false)
 	DefaultDirMode   = FileMode(true, true, true)
 
-	FlagIoNetworkTimeout *int
-	FlagIoFileBackups    *int
+	FlagIoFileBackups *int
 )
 
 type ErrFileNotFound struct {
@@ -96,7 +94,6 @@ func init() {
 		Error(deleteTempDir())
 	})
 
-	FlagIoNetworkTimeout = flag.Int(FlagNameIoNetworkTimeout, 3*1000, "network server and client dial timeout")
 	FlagIoFileBackups = flag.Int(FlagNameIoFileBackups, 3, "amount of file backups")
 }
 
@@ -415,7 +412,7 @@ func CleanPath(path string) string {
 		}
 	}
 
-	r := strings.NewReplacer("\"","")
+	r := strings.NewReplacer("\"", "")
 	result = r.Replace(result)
 
 	DebugFunc("%s -> %s", path, result)
@@ -573,13 +570,13 @@ func URLGet(url string) ([]byte, error) {
 
 	h := &http.Client{}
 
-	r,err := h.Get(url)
+	r, err := h.Get(url)
 	if Error(err) {
 		return nil, err
 	}
 
 	if r.StatusCode != http.StatusOK {
-		return nil,fmt.Errorf(r.Status)
+		return nil, fmt.Errorf(r.Status)
 	}
 
 	ba, err := io.ReadAll(r.Body)
