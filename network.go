@@ -388,7 +388,11 @@ func IsPrivateIP(ip string) (bool, error) {
 }
 
 func WaitUntilNetworkIsAvailable(lookupIp string) error {
-	DebugFunc()
+	if lookupIp != "" {
+		DebugFunc()
+	} else {
+		DebugFunc(lookupIp)
+	}
 
 	return NewTimeoutOperation(time.Millisecond*500, time.Second*10, func() error {
 		addrs, err := GetHostAddrs(false, nil)
