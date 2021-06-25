@@ -445,7 +445,7 @@ func FormatMemory(mem int64) string {
 	for i = len(MEMORY_UNITS) - 1; i >= 0; i-- {
 		d = math.Pow(1024, float64(i))
 
-		if f > d {
+		if f > d && (f/d > 10) {
 			break
 		}
 	}
