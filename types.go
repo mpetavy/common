@@ -178,6 +178,10 @@ func ToUTF8(r io.Reader, cs string) ([]byte, error) {
 	return b, nil
 }
 
+func Contains(slice interface{}, search interface{}) bool {
+	return IndexOf(slice,search) != -1
+}
+
 func IndexOf(slice interface{}, search interface{}) int {
 	if reflect.TypeOf(slice).Kind() != reflect.Slice {
 		panic(fmt.Errorf("not a slice: %v", slice))
