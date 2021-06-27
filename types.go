@@ -179,7 +179,7 @@ func ToUTF8(r io.Reader, cs string) ([]byte, error) {
 }
 
 func Contains(slice interface{}, search interface{}) bool {
-	return IndexOf(slice,search) != -1
+	return IndexOf(slice, search) != -1
 }
 
 func IndexOf(slice interface{}, search interface{}) int {
@@ -430,7 +430,7 @@ func ParseMemory(txt string) (int64, error) {
 	}
 
 	for i := 0; i < len(MEMORY_UNITS); i++ {
-		if strings.HasSuffix(txt, strings.ToLower(MEMORY_UNITS[i])) || strings.HasSuffix(txt, strings.ToLower(MEMORY_UNITS[i][:1])) {
+		if strings.HasSuffix(txt, strings.ToLower(MEMORY_UNITS[i])) || (i > 0 && strings.HasSuffix(txt, strings.ToLower(MEMORY_UNITS[i][:1]))) {
 			return int64(f * math.Pow(1024, float64(i))), nil
 		}
 	}
