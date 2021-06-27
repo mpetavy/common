@@ -19,6 +19,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"runtime"
 	"software.sslmate.com/src/go-pkcs12"
 	"sort"
 	"strings"
@@ -35,9 +36,22 @@ var (
 	FlagTlsPassword    *string
 	FlagTlsCertificate *string
 	FlagTlsMutual      *string
+	FlagTlsKeyLen      *int
 	defaultCiphers     []*tls.CipherSuite
 	preferredCiphers   []uint16
 	defautVersions     []uint16
+
+	// Check the cpu flags for each platform that has optimized GCM implementations.
+	// Worst case, these variables will just all be false.
+
+	hasGCMAsmAMD64 = cpu.X86.HasAES && cpu.X86.HasPCLMULQDQ
+	hasGCMAsmARM64 = cpu.ARM64.HasAES && cpu.ARM64.HasPMULL
+	// Keep in sync with crypto/aes/cipher_s390x.go.
+	hasGCMAsmS390X = cpu.S390X.HasAES && cpu.S390X.HasAESCBC && cpu.S390X.HasAESCTR && (cpu.S390X.HasGHASH || cpu.S390X.HasAESGCM)
+
+	hasAESGCMHardwareSupport = runtime.GOARCH == "amd64" && hasGCMAsmAMD64 ||
+		runtime.GOARCH == "arm64" && hasGCMAsmARM64 ||
+		runtime.GOARCH == "s390x" && hasGCMAsmS390X
 )
 
 const (
@@ -50,6 +64,7 @@ const (
 	FlagNameTlsPassword    = "tls.password"
 	FlagNameTlsCertificate = "tls.certificate"
 	FlagNameTlsMutual      = "tls.mutual"
+	FlagNameTlsKeylen      = "tls.keylen"
 )
 
 const (
@@ -69,6 +84,7 @@ func init() {
 	FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
 	FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
 	FlagTlsMutual = flag.String(FlagNameTlsMutual, "", "Mutual TLS PKCS12 certificates & privkey container file or buffer")
+	FlagTlsKeyLen = flag.Int(FlagNameTlsKeylen, Eval(hasAESGCMHardwareSupport, 2048, 1024).(int), "RSA key length")
 
 	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initTls()
@@ -80,21 +96,16 @@ func init() {
 }
 
 func initTls() {
-	// Check the cpu flags for each platform that has optimized GCM implementations.
-	// Worst case, these variables will just all be false.
+	Debug("Hardware cipher implementation available: %v", hasAESGCMHardwareSupport)
 
-	var (
-		hasGCMAsmAMD64 = cpu.X86.HasAES && cpu.X86.HasPCLMULQDQ
-		hasGCMAsmARM64 = cpu.ARM64.HasAES && cpu.ARM64.HasPMULL
-		// Keep in sync with crypto/aes/cipher_s390x.go.
-		hasGCMAsmS390X = cpu.S390X.HasAES && cpu.S390X.HasAESCBC && cpu.S390X.HasAESCTR && (cpu.S390X.HasGHASH || cpu.S390X.HasAESGCM)
+	defautVersions = make([]uint16, 0)
+	if *FlagTlsInsecure {
+		defautVersions = append(defautVersions, tls.VersionTLS10, tls.VersionTLS11)
+	}
 
-		hasGCMAsm = hasGCMAsmAMD64 || hasGCMAsmARM64 || hasGCMAsmS390X
-	)
+	defautVersions = append(defautVersions, tls.VersionTLS12, tls.VersionTLS13)
 
-	Debug("Hardware cipher implementation available: %v", hasGCMAsm)
-
-	if hasGCMAsm {
+	if hasAESGCMHardwareSupport {
 		// If AES-GCM hardware is provided then prioritise AES-GCM
 		// cipher suites.
 		preferredCiphers = []uint16{
@@ -127,17 +138,11 @@ func initTls() {
 	}
 
 	defaultCiphers = make([]*tls.CipherSuite, 0)
-	defautVersions = make([]uint16, 0)
-
 	defaultCiphers = append(defaultCiphers, tls.CipherSuites()...)
 
 	if *FlagTlsInsecure {
 		defaultCiphers = append(defaultCiphers, tls.InsecureCipherSuites()...)
-
-		defautVersions = append(defautVersions, tls.VersionTLS10, tls.VersionTLS11)
 	}
-
-	defautVersions = append(defautVersions, tls.VersionTLS12, tls.VersionTLS13)
 
 	i := 0
 	for i < len(defaultCiphers) {
@@ -154,23 +159,23 @@ func initTls() {
 		} else {
 			defaultCiphers = append(defaultCiphers[:i], defaultCiphers[i+1:]...)
 		}
+
+		sort.SliceStable(defaultCiphers, func(i, j int) bool {
+			ii := indexPreferred(defaultCiphers[i].ID)
+			ij := indexPreferred(defaultCiphers[j].ID)
+
+			switch {
+			case ii != -1 && ij != -1:
+				return ii < ij
+			case ii == -1 && ij == -1:
+				return strings.Compare(defaultCiphers[i].Name, defaultCiphers[j].Name) == -1
+			case ii != -1:
+				return true
+			default:
+				return false
+			}
+		})
 	}
-
-	sort.SliceStable(defaultCiphers, func(i, j int) bool {
-		ii := indexPreferred(defaultCiphers[i].ID)
-		ij := indexPreferred(defaultCiphers[j].ID)
-
-		switch {
-		case ii != -1 && ij != -1:
-			return ii < ij
-		case ii == -1 && ij == -1:
-			return strings.Compare(defaultCiphers[i].Name, defaultCiphers[j].Name) == -1
-		case ii != -1:
-			return true
-		default:
-			return false
-		}
-	})
 
 	for i := 0; i < len(defaultCiphers); i++ {
 		Debug("Cipher priority #%02d: %s", i, TlsCipherDescription(defaultCiphers[i]))
@@ -502,10 +507,10 @@ func TlsConfigFromPEM(certPEM []byte, keyPEM []byte, password string) (*tls.Conf
 	return TlsConfigFromBuffer(p12, password)
 }
 
-func CreateTlsConfig(password string) (*tls.Config, error) {
+func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 	DebugFunc()
 
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	key, err := rsa.GenerateKey(rand.Reader, keylen)
 	if Error(err) {
 		return nil, err
 	}
@@ -584,7 +589,8 @@ func NewTlsConfigFromFlags() (*tls.Config, error) {
 		*FlagTlsCiphers,
 		*FlagTlsPassword,
 		*FlagTlsCertificate,
-		*FlagTlsMutual)
+		*FlagTlsMutual,
+		*FlagTlsKeyLen)
 	if Error(err) {
 		return nil, err
 	}
@@ -620,7 +626,8 @@ func NewTlsConfig(
 	ciphers string,
 	password string,
 	certificate string,
-	mutual string) (*tls.Config, error) {
+	mutual string,
+	keylen int) (*tls.Config, error) {
 	DebugFunc()
 
 	var tlsConfig *tls.Config
@@ -632,7 +639,7 @@ func NewTlsConfig(
 			return nil, err
 		}
 	} else {
-		tlsConfig, err = CreateTlsConfig(password)
+		tlsConfig, err = CreateTlsConfig(keylen, password)
 		if Error(err) {
 			return nil, err
 		}
