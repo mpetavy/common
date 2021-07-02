@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"go.bug.st/serial"
@@ -412,4 +413,30 @@ func evaluateTTYOptions(device string) (string, *serial.Mode, error) {
 		Parity:   paritymode,
 		StopBits: stopbits,
 	}, nil
+}
+
+func DataTransfer(leftName string, left io.ReadWriter, rightName string, right io.ReadWriter) {
+	DebugFunc("start")
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
+		_, err := CopyBuffer(cancel, fmt.Sprintf("%s <- %s", leftName, rightName), left, right, 0)
+
+		DebugError(err)
+	}()
+
+	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
+		_, err := CopyBuffer(cancel, fmt.Sprintf("%s -> %s", leftName, rightName), right, left, 0)
+
+		DebugError(err)
+	}()
+
+	<-ctx.Done()
+
+	DebugFunc("stop")
 }
