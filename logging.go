@@ -94,7 +94,8 @@ func (l *logEntry) String(jsn bool, verbose bool) string {
 
 type logWriter interface {
 	WriteString(int, string)
-	Logs(io.Writer) error
+	GetLogs(io.Writer) error
+	ClearLogs() error
 	Close()
 }
 
@@ -114,7 +115,19 @@ func (this *memoryWriter) WriteString(level int, txt string) {
 	this.lines = append(this.lines, txt)
 }
 
-func (this *memoryWriter) Logs(w io.Writer) error {
+func (this *memoryWriter) ClearLogs() error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	this.lines = this.lines[:0]
+
+	return nil
+}
+
+func (this *memoryWriter) GetLogs(w io.Writer) error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	for _, l := range this.lines {
 		_, err := w.Write([]byte(l))
 
@@ -171,7 +184,47 @@ func (this *fileWriter) WriteString(level int, txt string) {
 	this.filesize += int64(len(ba))
 }
 
-func (this *fileWriter) Logs(w io.Writer) error {
+func (this fileWriter) ClearLogs() error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	for i := *FlagIoFileBackups; i >= 0; i-- {
+		var src string
+
+		if *FlagIoFileBackups == 1 {
+			src = realLogFilename() + ".bak"
+
+			if !fileExists(src) {
+				src = ""
+			}
+		}
+
+		if src == "" {
+			if i > 0 {
+				src = realLogFilename() + "." + strconv.Itoa(i)
+			} else {
+				src = realLogFilename()
+			}
+		}
+
+		if FileExists(src) {
+			err := FileDelete(src)
+			if Error(err) {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (this *fileWriter) GetLogs(w io.Writer) error {
+	mu.Lock()
+	defer mu.Unlock()
+
 	for i := *FlagIoFileBackups; i >= 0; i-- {
 		var src string
 
@@ -553,12 +606,20 @@ func CmdToString(cmd *exec.Cmd) string {
 	return strings.Join(s, " ")
 }
 
-func Logs(w io.Writer) error {
+func GetLogs(w io.Writer) error {
 	if logger == nil {
 		return fmt.Errorf("no logger")
 	}
 
-	return logger.Logs(w)
+	return logger.GetLogs(w)
+}
+
+func ClearLogs() error {
+	if logger == nil {
+		return fmt.Errorf("no logger")
+	}
+
+	return logger.ClearLogs()
 }
 
 func LogsAvailable() bool {
