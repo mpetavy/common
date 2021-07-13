@@ -346,7 +346,13 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 		if menu.Caption != "" {
 			caption := menu.Caption
 			if menu.Icon != "" {
-				caption = "--%" + menu.Icon + "%--" + caption
+				if strings.HasPrefix(menu.Icon, "data:") {
+					htmlImg := htmlAhref.CreateElement("img")
+					htmlImg.CreateAttr("src", menu.Icon)
+					htmlImg.CreateAttr("style", "float:left;display: inline-block;width: 14px;height: 14px;margin-right: 4px;text-align: center;")
+				} else {
+					caption = "--%" + menu.Icon + "%--" + caption
+				}
 			}
 
 			htmlAhref.SetText(caption)
