@@ -228,7 +228,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 	if errs.Exists() {
 		Error(errs.Get())
 
-		return nil, errs.Get()
+		//return nil, errs.Get()
 	}
 
 	Debug("reading answers ...")
