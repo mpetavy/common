@@ -226,9 +226,11 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 	wg.Wait()
 
 	if errs.Exists() {
-		Error(errs.Get())
+		for _, e := range errs.GetAll() {
+			Error(e)
+		}
 
-		//return nil, errs.Get()
+		return nil, errs.Get()
 	}
 
 	Debug("reading answers ...")
