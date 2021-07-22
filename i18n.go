@@ -2,7 +2,6 @@ package common
 
 import (
 	"bufio"
-	"bytes"
 	"cloud.google.com/go/translate"
 	"context"
 	"flag"
@@ -47,20 +46,14 @@ func GetSystemLanguage() (string, error) {
 	DebugFunc()
 
 	if IsWindowsOS() {
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-
 		cmd := exec.Command("powershell", "Get-WinSystemLocale")
 
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-
-		err := WatchdogCmd(cmd, time.Second*3)
+		ba, err := WatchdogCmd(cmd, time.Second*3)
 		if Error(err) {
 			return "", err
 		}
 
-		output := string(stdout.Bytes())
+		output := string(ba)
 
 		r := bufio.NewReader(strings.NewReader(output))
 
@@ -92,9 +85,6 @@ func GetSystemLanguage() (string, error) {
 			}
 		}
 	} else {
-		var stdout bytes.Buffer
-		var stderr bytes.Buffer
-
 		_, err := exec.LookPath("locale")
 		if err != nil {
 			return "en", nil
@@ -102,15 +92,12 @@ func GetSystemLanguage() (string, error) {
 
 		cmd := exec.Command("locale")
 
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-
-		err = WatchdogCmd(cmd, time.Second)
+		ba, err := WatchdogCmd(cmd, time.Second)
 		if Error(err) {
 			return "", err
 		}
 
-		output := strings.TrimSpace(string(stdout.Bytes()))
+		output := strings.TrimSpace(string(ba))
 
 		r := bufio.NewReader(strings.NewReader(output))
 

@@ -92,7 +92,7 @@ func (server *DiscoverServer) Start() error {
 					break
 				}
 
-				addrs, err := GetHostAddrs(true, remote)
+				addrs, err := GetHostAddrs(true, false, remote)
 				if Error(err) {
 					break
 				}
@@ -158,14 +158,14 @@ func (server *DiscoverServer) Stop() error {
 func Discover(address string, timeout time.Duration, uid string) (map[string]string, error) {
 	DebugFunc("discover uid: %s", uid)
 
-	_, discoverPort, err := net.SplitHostPort(address)
+	discoverIp, discoverPort, err := net.SplitHostPort(address)
 	if Error(err) {
 		return nil, err
 	}
 
 	discoveredIps := make(map[string]string)
 
-	addrs, err := GetHostAddrs(false, nil)
+	addrs, err := GetHostAddrs(false, true, nil)
 	if Error(err) {
 		return nil, err
 	}
@@ -190,6 +190,10 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 		ip = ip.To4()
 
 		if ip == nil {
+			continue
+		}
+
+		if discoverIp != "" && ip.String() != discoverIp {
 			continue
 		}
 

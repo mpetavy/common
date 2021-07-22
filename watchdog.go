@@ -19,17 +19,22 @@ func (e *ErrWatchdog) Error() string {
 	return e.Msg
 }
 
-func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
+func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
+	var buf bytes.Buffer
+
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+
 	doneCh := make(chan error)
 
 	start := time.Now()
 
 	err := cmd.Start()
 	if Error(err) {
-		return err
+		return nil, err
 	}
 
-	Debug("Watchdog process started pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
+	Debug("process started pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
 
 	go func() {
 		doneCh <- cmd.Wait()
@@ -37,10 +42,10 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 
 	select {
 	case <-time.After(timeout):
-		Debug("Watchdog process will be killed pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
+		Debug("process will be killed pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
 		Error(cmd.Process.Kill())
 
-		return &ErrWatchdog{Msg: fmt.Sprintf("Watchdog killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start))}
+		return nil, &ErrWatchdog{Msg: fmt.Sprintf("killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start))}
 	case err = <-doneCh:
 		exitcode := 0
 		if err != nil {
@@ -52,22 +57,20 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) error {
 		}
 
 		exitstate := ""
+		var output []byte
+
 		switch exitcode {
 		case 0:
 			exitstate = "successfull"
+			output = buf.Bytes()
 		default:
 			exitstate = "failed"
 		}
 
-		output := "<na>"
-		bu, ok := cmd.Stdout.(*bytes.Buffer)
-		if ok {
-			output = "\n" + string(bu.Bytes())
-		}
+		Debug("process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start))
+		Debug("%s", string(output))
 
-		Debug("Watchdog process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s output: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start), output)
-
-		return err
+		return output, err
 	}
 }
 

@@ -243,7 +243,7 @@ func Run(mandatoryFlags []string) {
 			}
 
 			if !alreadyOne {
-				Panic(fmt.Errorf("none mandatory flags is defined: %s", allChoices))
+				Panic(fmt.Errorf("mandatory flag is not defined: %s", allChoices))
 			}
 		}
 	}

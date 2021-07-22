@@ -124,7 +124,7 @@ func (networkClient *NetworkClient) Connect() (*NetworkConnection, error) {
 	if networkClient.tlsConfig != nil {
 		Debug("Dial TLS connection: %s...", networkClient.address)
 
-		socket, err := tls.DialWithDialer(&net.Dialer{Deadline: time.Now().Add(MillisecondToDuration(*FlagIoNetworkConnectTimeout))}, "tcp", networkClient.address, networkClient.tlsConfig)
+		socket, err := tls.DialWithDialer(&net.Dialer{Deadline: time.Now().Add(MillisecondToDuration(*FlagIoConnectTimeout))}, "tcp", networkClient.address, networkClient.tlsConfig)
 		if Error(err) {
 			return nil, err
 		}
@@ -135,7 +135,7 @@ func (networkClient *NetworkClient) Connect() (*NetworkConnection, error) {
 	} else {
 		Debug("Dial connection: %s...", networkClient.address)
 
-		socket, err := net.DialTimeout("tcp", networkClient.address, MillisecondToDuration(*FlagIoNetworkConnectTimeout))
+		socket, err := net.DialTimeout("tcp", networkClient.address, MillisecondToDuration(*FlagIoConnectTimeout))
 		if Error(err) {
 			return nil, err
 		}
@@ -168,7 +168,7 @@ func (networkServer *NetworkServer) Start() error {
 	networkServer.mu.Lock()
 	defer networkServer.mu.Unlock()
 
-	ips, err := GetHostAddrs(true, nil)
+	ips, err := GetHostAddrs(true, false, nil)
 	if Error(err) {
 		return err
 	}

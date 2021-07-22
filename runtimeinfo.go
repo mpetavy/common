@@ -55,18 +55,14 @@ func (this *Runner) execute(wg *sync.WaitGroup) error {
 		}
 	}()
 
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+	var ba []byte
 
-	this.cmd.Stdout = &stdout
-	this.cmd.Stderr = &stderr
-
-	this.Err = WatchdogCmd(this.cmd, this.timeout)
+	ba, this.Err = WatchdogCmd(this.cmd, this.timeout)
 	if Error(this.Err) {
 		return this.Err
 	}
 
-	this.Output = string(stdout.Bytes())
+	this.Output = string(ba)
 
 	return nil
 }

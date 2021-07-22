@@ -2,7 +2,6 @@ package common
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -20,13 +19,15 @@ const (
 )
 
 const (
+	FlagNameIoPrimaryIface     = "io.primary.iface"
 	FlagNameIoConnectTimeout   = "io.connect.timeout"
 	FlagNameIoReadwriteTimeout = "io.readwrite.timeout"
 )
 
 var (
-	FlagIoNetworkConnectTimeout   = flag.Int(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
-	FlagIoNetworkReadwriteTimeout = flag.Int(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
+	FlagIoPrimaryIface     = flag.String(FlagNameIoPrimaryIface, "", "ethernet interface holding primary ip")
+	FlagIoConnectTimeout   = flag.Int(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
+	FlagIoReadwriteTimeout = flag.Int(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
 )
 
 func DeadlineByMsec(msec int) time.Time {
@@ -45,10 +46,51 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 	}
 }
 
-func GetOutboundIP() (net.IP, error) {
-	conn, err := net.Dial("tcp4", "iana.org:443")
+func GetPrimaryIP() (net.IP, error) {
+	DebugFunc("...")
+
+	if *FlagIoPrimaryIface != "" {
+		DebugFunc("try to get ip by iface %v...", *FlagIoPrimaryIface)
+
+		addrs, err := GetHostAddrs(true, false, nil)
+		if !DebugError(err) {
+			for _, addr := range addrs {
+				if addr.IFace.Name == *FlagIoPrimaryIface {
+					DebugFunc(net.ParseIP(addr.IP))
+
+					return net.ParseIP(addr.IP), nil
+				}
+			}
+		}
+	}
+
+	if IsLinuxOS() {
+		DebugFunc("try to get ip by ip routing to 8.8.8.8...")
+
+		cmd := exec.Command("ip", "-o", "route", "get", "to", "8.8.8.8")
+
+		ba, err := WatchdogCmd(cmd, time.Second)
+		if !DebugError(err) {
+			output := string(ba)
+
+			p := strings.Index(output, "src ")
+			if p != -1 {
+				output = output[p+4:]
+				p := strings.Index(output, " ")
+				output = output[:p]
+
+				DebugFunc(net.ParseIP(output))
+
+				return net.ParseIP(output), nil
+			}
+		}
+	}
+
+	DebugFunc("try to get ip by dial ip routing ...")
+
+	conn, err := net.DialTimeout("tcp4", "iana.org:443", MillisecondToDuration(*FlagIoConnectTimeout))
 	if err != nil {
-		conn, err = net.Dial("tcp4", "zeiss.de:443")
+		conn, err = net.DialTimeout("tcp4", "zeiss.de:443", MillisecondToDuration(*FlagIoConnectTimeout))
 	}
 
 	if DebugError(err) {
@@ -75,14 +117,16 @@ func assignIP(currentIp, newIp net.IP) net.IP {
 }
 
 func GetHost() (net.IP, string, error) {
+	DebugFunc("...")
+
 	hostname, err := os.Hostname()
 	if Error(err) {
 		return nil, "", err
 	}
 
-	ip, err := GetOutboundIP()
+	ip, err := GetPrimaryIP()
 	if DebugError(err) {
-		addrs, err := GetHostAddrs(true, nil)
+		addrs, err := GetHostAddrs(true, false, nil)
 
 		if !DebugError(err) {
 			for _, addr := range addrs {
@@ -101,15 +145,9 @@ func GetHost() (net.IP, string, error) {
 		if err == nil {
 			cmd := exec.Command(path, hostname)
 
-			var stdout bytes.Buffer
-			var stderr bytes.Buffer
-
-			cmd.Stdout = &stdout
-			cmd.Stderr = &stderr
-
-			err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkConnectTimeout))
+			ba, err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoConnectTimeout))
 			if err == nil {
-				output := string(stdout.Bytes())
+				output := string(ba)
 
 				scanner := bufio.NewScanner(strings.NewReader(output))
 				line := ""
@@ -151,18 +189,12 @@ func GetHost() (net.IP, string, error) {
 		if err == nil {
 			cmd := exec.Command(path, hostname)
 
-			var stdout bytes.Buffer
-			var stderr bytes.Buffer
-
-			cmd.Stdout = &stdout
-			cmd.Stderr = &stderr
-
-			err = WatchdogCmd(cmd, MillisecondToDuration(*FlagIoNetworkConnectTimeout))
+			ba, err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoConnectTimeout))
 			if Error(err) {
 				return nil, "", err
 			}
 
-			output := string(stdout.Bytes())
+			output := string(ba)
 
 			ss := strings.Split(output, " ")
 
@@ -203,12 +235,15 @@ func GetHost() (net.IP, string, error) {
 }
 
 type hostAddress struct {
-	Mac  string
-	IP   string
-	Addr net.Addr
+	IFace net.Interface
+	Mac   string
+	IP    string
+	Addr  net.Addr
 }
 
-func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
+func GetHostAddrs(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([]hostAddress, error) {
+	DebugFunc("...")
+
 	var list []hostAddress
 
 	intfs, err := net.Interfaces()
@@ -218,6 +253,10 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 
 	for _, intf := range intfs {
 		if intf.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		if onlyBroadcastIface && (intf.Flags&net.FlagBroadcast) == 0 {
 			continue
 		}
 
@@ -264,9 +303,10 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 			}
 
 			list = append(list, hostAddress{
-				Mac:  mac,
-				IP:   ip.IP.To4().String(),
-				Addr: addr,
+				IFace: intf,
+				Mac:   mac,
+				IP:    ip.IP.To4().String(),
+				Addr:  addr,
 			})
 		}
 	}
@@ -281,6 +321,8 @@ func GetHostAddrs(inclLocalhost bool, remote net.IP) ([]hostAddress, error) {
 }
 
 func GetHostInterface(ip net.IP) (*net.Interface, net.Addr, error) {
+	DebugFunc()
+
 	intfs, err := net.Interfaces()
 	if Error(err) {
 		return nil, nil, err
@@ -339,6 +381,8 @@ func IsPortAvailable(network string, port int) (bool, error) {
 }
 
 func FindFreePort(network string, startPort int, excludedPorts []int) (int, error) {
+	DebugFunc()
+
 	for port := startPort; port < 65536; port++ {
 		if IndexOf(excludedPorts, port) == -1 {
 			b, _ := IsPortAvailable(network, port)
@@ -406,7 +450,7 @@ func WaitUntilNetworkIsAvailable(lookupIp string) error {
 	}
 
 	return NewTimeoutOperation(time.Millisecond*500, time.Second*10, func() error {
-		addrs, err := GetHostAddrs(false, nil)
+		addrs, err := GetHostAddrs(false, false, nil)
 
 		if DebugError(err) {
 			return err

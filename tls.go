@@ -539,7 +539,7 @@ func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 		BasicConstraintsValid: true,
 	}
 
-	addrs, err := GetHostAddrs(true, nil)
+	addrs, err := GetHostAddrs(true, false, nil)
 	if Error(err) {
 		return nil, err
 	}
