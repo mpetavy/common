@@ -92,7 +92,7 @@ func (server *DiscoverServer) Start() error {
 					break
 				}
 
-				addrs, err := GetHostAddrs(true, false, remote)
+				addrs, err := GetHostInfos(true, false, remote)
 				if Error(err) {
 					break
 				}
@@ -165,7 +165,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 
 	discoveredIps := make(map[string]string)
 
-	addrs, err := GetHostAddrs(false, true, nil)
+	addrs, err := GetHostInfos(false, true, nil)
 	if Error(err) {
 		return nil, err
 	}

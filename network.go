@@ -1,7 +1,6 @@
 package common
 
 import (
-	"bufio"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -20,12 +19,14 @@ const (
 
 const (
 	FlagNameIoPrimaryIface     = "io.primary.iface"
+	FlagNameIoNetworkTimeout   = "io.network.timeout"
 	FlagNameIoConnectTimeout   = "io.connect.timeout"
 	FlagNameIoReadwriteTimeout = "io.readwrite.timeout"
 )
 
 var (
 	FlagIoPrimaryIface     = flag.String(FlagNameIoPrimaryIface, "", "ethernet interface holding primary ip")
+	FlagIoNetworkTimeout   = flag.Int(FlagNameIoNetworkTimeout, 10*1000, "network server and client dial timeout")
 	FlagIoConnectTimeout   = flag.Int(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
 	FlagIoReadwriteTimeout = flag.Int(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
 )
@@ -46,19 +47,32 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 	}
 }
 
-func GetPrimaryIP() (net.IP, error) {
+type HostInfo struct {
+	IFace net.Interface
+	Mac   string
+	IP    string
+	IPNet *net.IPNet
+	Addr  net.Addr
+}
+
+func GetHostInfo() (*HostInfo, string, error) {
 	DebugFunc("...")
+
+	hostName, err := os.Hostname()
+	if Error(err) {
+		return nil, "", err
+	}
 
 	if *FlagIoPrimaryIface != "" {
 		DebugFunc("try to get ip by iface %v...", *FlagIoPrimaryIface)
 
-		addrs, err := GetHostAddrs(true, false, nil)
+		addrs, err := GetHostInfos(true, false, nil)
 		if !DebugError(err) {
 			for _, addr := range addrs {
 				if addr.IFace.Name == *FlagIoPrimaryIface {
-					DebugFunc(net.ParseIP(addr.IP))
+					DebugFunc(addr)
 
-					return net.ParseIP(addr.IP), nil
+					return &addr, hostName, nil
 				}
 			}
 		}
@@ -79,172 +93,38 @@ func GetPrimaryIP() (net.IP, error) {
 				p := strings.Index(output, " ")
 				output = output[:p]
 
-				DebugFunc(net.ParseIP(output))
+				hostAddress, err := GetHostInfo4IP(net.ParseIP(output))
 
-				return net.ParseIP(output), nil
+				if !DebugError(err) {
+					DebugFunc(hostAddress)
+
+					return hostAddress, hostName, nil
+				}
 			}
 		}
 	}
 
-	DebugFunc("try to get ip by dial ip routing ...")
+	addrs, err := net.LookupHost(hostName)
+	if err == nil {
+		ip := net.ParseIP(addrs[0])
+		if ip != nil {
+			hostAddress, err := GetHostInfo4IP(ip)
 
-	conn, err := net.DialTimeout("tcp4", "iana.org:443", MillisecondToDuration(*FlagIoConnectTimeout))
-	if err != nil {
-		conn, err = net.DialTimeout("tcp4", "zeiss.de:443", MillisecondToDuration(*FlagIoConnectTimeout))
+			if !DebugError(err) {
+				DebugFunc(hostAddress)
+
+				return hostAddress, hostName, nil
+			}
+		}
 	}
 
-	if DebugError(err) {
-		return nil, err
-	}
-
-	defer func() {
-		DebugError(conn.Close())
-	}()
-
-	localAddr := conn.LocalAddr().(*net.TCPAddr)
-
-	DebugFunc(localAddr.String())
-
-	return localAddr.IP, nil
+	return nil, "", fmt.Errorf("cannot determine primary address")
 }
 
-func assignIP(currentIp, newIp net.IP) net.IP {
-	if (currentIp == nil) || (IsLocalhost(currentIp) && !IsLocalhost(newIp)) {
-		return newIp
-	}
-
-	return currentIp
-}
-
-func GetHost() (net.IP, string, error) {
+func GetHostInfos(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([]HostInfo, error) {
 	DebugFunc("...")
 
-	hostname, err := os.Hostname()
-	if Error(err) {
-		return nil, "", err
-	}
-
-	ip, err := GetPrimaryIP()
-	if DebugError(err) {
-		addrs, err := GetHostAddrs(true, false, nil)
-
-		if !DebugError(err) {
-			for _, addr := range addrs {
-				newIp, _, err := net.ParseCIDR(addr.Addr.String())
-				if Error(err) {
-					continue
-				}
-
-				ip = assignIP(ip, newIp)
-			}
-		}
-	}
-
-	if ip == nil || IsLocalhost(ip) {
-		path, err := exec.LookPath("nslookup")
-		if err == nil {
-			cmd := exec.Command(path, hostname)
-
-			ba, err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoConnectTimeout))
-			if err == nil {
-				output := string(ba)
-
-				scanner := bufio.NewScanner(strings.NewReader(output))
-				line := ""
-
-				nslookupHostnameFound := false
-
-				for scanner.Scan() {
-					line = strings.TrimSpace(scanner.Text())
-
-					if !nslookupHostnameFound {
-						nslookupHostnameFound = strings.HasPrefix(line, "Name:")
-
-						if nslookupHostnameFound {
-							hostname = strings.TrimSpace(line[5:])
-						}
-					} else {
-						if strings.HasPrefix(line, "Address:") {
-							addr := strings.TrimSpace(line[8:])
-							newIp := net.ParseIP(addr)
-
-							if ip == nil {
-								return nil, "", fmt.Errorf("cannot parse IP: %s", addr)
-							}
-
-							ip = assignIP(ip, newIp)
-
-							break
-						}
-					}
-				}
-
-				Debug("nslookup result: hostname: %s ip: %s", hostname, ip)
-			}
-		}
-	}
-
-	if ip == nil || IsLocalhost(ip) {
-		path, err := exec.LookPath("host")
-		if err == nil {
-			cmd := exec.Command(path, hostname)
-
-			ba, err := WatchdogCmd(cmd, MillisecondToDuration(*FlagIoConnectTimeout))
-			if Error(err) {
-				return nil, "", err
-			}
-
-			output := string(ba)
-
-			ss := strings.Split(output, " ")
-
-			if len(ss) > 0 {
-				addr := strings.TrimSpace(ss[len(ss)-1])
-				newIp := net.ParseIP(addr)
-
-				if ip == nil {
-					return nil, "", fmt.Errorf("cannot parse IP: %s", addr)
-				}
-
-				ip = assignIP(ip, newIp)
-			}
-
-			Debug("host result: ip: %s", ip)
-		}
-	}
-
-	if ip == nil || IsLocalhost(ip) {
-		addrs, err := net.LookupHost(hostname)
-		if err == nil {
-			newIp := net.ParseIP(addrs[0])
-			if newIp == nil {
-				return nil, "", fmt.Errorf("cannot parse IP: %s", addrs[0])
-			}
-
-			ip = assignIP(ip, newIp)
-		}
-	}
-
-	if ip == nil {
-		return nil, "", fmt.Errorf("cannot find main ip for %s", hostname)
-	}
-
-	DebugFunc("IP: %s, FQDN: %s", ip, hostname)
-
-	return ip, hostname, nil
-}
-
-type hostAddress struct {
-	IFace net.Interface
-	Mac   string
-	IP    string
-	Addr  net.Addr
-}
-
-func GetHostAddrs(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([]hostAddress, error) {
-	DebugFunc("...")
-
-	var list []hostAddress
+	var list []HostInfo
 
 	intfs, err := net.Interfaces()
 	if Error(err) {
@@ -302,10 +182,11 @@ func GetHostAddrs(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([
 				DebugFunc("Local IP for Remote IP %v: %v", remoteIP.String(), localIP.String())
 			}
 
-			list = append(list, hostAddress{
+			list = append(list, HostInfo{
 				IFace: intf,
 				Mac:   mac,
 				IP:    ip.IP.To4().String(),
+				IPNet: ip,
 				Addr:  addr,
 			})
 		}
@@ -320,12 +201,12 @@ func GetHostAddrs(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([
 	return list, nil
 }
 
-func GetHostInterface(ip net.IP) (*net.Interface, net.Addr, error) {
+func GetHostInfo4IP(ip net.IP) (*HostInfo, error) {
 	DebugFunc()
 
 	intfs, err := net.Interfaces()
 	if Error(err) {
-		return nil, nil, err
+		return nil, err
 	}
 
 	for _, intf := range intfs {
@@ -335,17 +216,28 @@ func GetHostInterface(ip net.IP) (*net.Interface, net.Addr, error) {
 
 		addrs, err := intf.Addrs()
 		if Error(err) {
-			return nil, nil, err
+			return nil, err
 		}
 
 		for _, addr := range addrs {
 			if strings.Contains(addr.String(), ip.String()) {
-				return &intf, addr, nil
+				_, ipnet, err := net.ParseCIDR(addr.String())
+				if Error(err) {
+					return nil, err
+				}
+
+				return &HostInfo{
+					IFace: intf,
+					Mac:   intf.HardwareAddr.String(),
+					IP:    ip.To4().String(),
+					IPNet: ipnet,
+					Addr:  addr,
+				}, nil
 			}
 		}
 	}
 
-	return nil, nil, nil
+	return nil, nil
 }
 
 func IsPortAvailable(network string, port int) (bool, error) {
@@ -449,8 +341,8 @@ func WaitUntilNetworkIsAvailable(lookupIp string) error {
 		DebugFunc()
 	}
 
-	return NewTimeoutOperation(time.Millisecond*500, time.Second*10, func() error {
-		addrs, err := GetHostAddrs(false, false, nil)
+	return NewTimeoutOperation(time.Millisecond*500, MillisecondToDuration(*FlagIoNetworkTimeout), func() error {
+		addrs, err := GetHostInfos(lookupIp == "", false, nil)
 
 		if DebugError(err) {
 			return err

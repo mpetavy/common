@@ -168,7 +168,7 @@ func (networkServer *NetworkServer) Start() error {
 	networkServer.mu.Lock()
 	defer networkServer.mu.Unlock()
 
-	ips, err := GetHostAddrs(true, false, nil)
+	ips, err := GetHostInfos(true, false, nil)
 	if Error(err) {
 		return err
 	}

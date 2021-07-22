@@ -307,7 +307,6 @@ func TlsDebugConnection(typ string, tlsConn *tls.Conn) {
 		Debug("TLS connection %s: HandshakeComplete : %v\n", typ, connstate.HandshakeComplete)
 		Debug("TLS connection %s: DidResume : %v\n", typ, connstate.DidResume)
 		Debug("TLS connection %s: NegotiatedProtocol : %x\n", typ, connstate.NegotiatedProtocol)
-		Debug("TLS connection %s: NegotiatedProtocolIsMutual : %v\n", typ, connstate.NegotiatedProtocolIsMutual)
 		Debug("TLS connection %s: ServerName : %s\n", typ, connstate.ServerName)
 
 		for i := range connstate.PeerCertificates {
@@ -515,7 +514,7 @@ func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 		return nil, err
 	}
 
-	_, hostname, err := GetHost()
+	_, hostname, err := GetHostInfo()
 	if Error(err) {
 		return nil, err
 	}
@@ -539,7 +538,7 @@ func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 		BasicConstraintsValid: true,
 	}
 
-	addrs, err := GetHostAddrs(true, false, nil)
+	addrs, err := GetHostInfos(true, false, nil)
 	if Error(err) {
 		return nil, err
 	}
