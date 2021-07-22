@@ -165,7 +165,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 
 	discoveredIps := make(map[string]string)
 
-	addrs, err := GetHostInfos(false, true, nil)
+	addrs, err := GetHostInfos(true, true, nil)
 	if Error(err) {
 		return nil, err
 	}
