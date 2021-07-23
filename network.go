@@ -106,14 +106,48 @@ func GetHostInfo() (*HostInfo, string, error) {
 
 	addrs, err := net.LookupHost(hostName)
 	if err == nil {
-		ip := net.ParseIP(addrs[0])
-		if ip != nil {
-			hostAddress, err := GetHostInfo4IP(ip)
+		for _, addr := range addrs {
+			ip := net.ParseIP(addr)
+			if ip != nil {
+				hostAddress, err := GetHostInfo4IP(ip)
 
-			if !DebugError(err) {
-				DebugFunc(hostAddress)
+				if !DebugError(err) {
+					DebugFunc(hostAddress)
 
-				return hostAddress, hostName, nil
+					return hostAddress, hostName, nil
+				}
+			}
+		}
+	}
+
+	intfs, err := net.Interfaces()
+	if intfs != nil {
+		for _, intf := range intfs {
+			if intf.Flags&net.FlagUp == 0 {
+				continue
+			}
+
+			mac := intf.HardwareAddr.String()
+
+			addrs, _ := intf.Addrs()
+			if addrs != nil {
+				for _, addr := range addrs {
+					ip, ok := addr.(*net.IPNet)
+
+					if !ok {
+						continue
+					}
+
+					if ip.IP.To4() != nil && IsLocalhost(ip.IP) {
+						return &HostInfo{
+							IFace: intf,
+							Mac:   mac,
+							IP:    ip.IP.To4().String(),
+							IPNet: ip,
+							Addr:  addr,
+						}, hostName, nil
+					}
+				}
 			}
 		}
 	}
