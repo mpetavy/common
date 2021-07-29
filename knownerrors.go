@@ -17,6 +17,16 @@ var (
 	}
 )
 
+func IsErrExit(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	_, ok := err.(*ErrExit)
+
+	return ok
+}
+
 func IsErrTimeout(err error) bool {
 	if err == nil {
 		return false
