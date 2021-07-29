@@ -17,12 +17,22 @@ var (
 	}
 )
 
-func IsErrExit(err error) bool {
+func IsErrTimeout(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	_, ok := err.(*ErrExit)
+	errTimeout, ok := err.(net.Error)
+
+	return ok && errTimeout.Timeout()
+}
+
+func IsErrOp(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	_, ok := err.(*net.OpError)
 
 	return ok
 }
@@ -67,12 +77,12 @@ func HandleCopyBufferError(written int64, err error) (int64, error) {
 		return written, nil
 	}
 
-	if neterr, ok := err.(net.Error); ok && neterr.Timeout() {
-		return written, fmt.Errorf("Timeout error: %s", neterr.Error())
+	if IsErrTimeout(err) {
+		return written, fmt.Errorf("Timeout error: %s", err.Error())
 	}
 
-	if operr, ok := err.(*net.OpError); ok {
-		return written, fmt.Errorf("Operation error: %s", operr.Error())
+	if IsErrOp(err) {
+		return written, fmt.Errorf("Operation error: %s", err.Error())
 	}
 
 	if IsErrNetClosing(err) || IsErrUnexpectedEOF(err) {

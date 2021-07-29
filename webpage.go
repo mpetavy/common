@@ -363,7 +363,11 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 				htmlAhref.CreateAttr("onClick", "return false;")
 			} else {
 				if strings.Index(menu.Action, ";") != -1 {
-					htmlAhref.CreateAttr("onClick", menu.Action)
+					if menu.Message != "" {
+						htmlAhref.CreateAttr("onClick", fmt.Sprintf("if(confirm(--$%s$--)) { %s }", menu.Message, menu.Action))
+					} else {
+						htmlAhref.CreateAttr("onClick", menu.Action)
+					}
 				} else {
 					if menu.Message != "" {
 						htmlAhref.CreateAttr("onClick", fmt.Sprintf("if(confirm(--$%s$--)) { window.location.replace(--$%s$--); }", menu.Message, menu.Action))
@@ -411,8 +415,13 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 
 	htmlGroup := htmlForm.CreateElement("div")
 	htmlGroup.CreateAttr("class", CSS_BUTTON_GROUP)
+	htmlGroup.CreateAttr("style", "display:flex;justify-content:flex-end;")
 
-	htmlGroupCenter := htmlGroup.CreateElement("center")
+	htmlGroupH1 := htmlGroup.CreateElement("h1")
+	htmlGroupH1.SetText(caption)
+	htmlGroupH1.CreateAttr("style", "margin:auto;")
+
+	htmlGroupCenter := htmlGroup.CreateElement("div")
 
 	htmlFieldset := htmlForm.CreateElement("fieldset")
 	htmlFieldset.CreateAttr("id", "fieldset")
@@ -885,7 +894,11 @@ func NewButton(parent *etree.Element, primary bool, actionItem ActionItem) *etre
 		if strings.Index(actionItem.Action, ";") != -1 {
 			button.CreateAttr("onclick", actionItem.Action)
 		} else {
-			button.CreateAttr("onclick", "location.href=--$"+actionItem.Action+"$--")
+			if actionItem.Message != "" {
+				button.CreateAttr("onClick", fmt.Sprintf("if(confirm(--$%s$--)) { location.href=--$%s$--; }", actionItem.Message, actionItem.Action))
+			} else {
+				button.CreateAttr("onclick", fmt.Sprintf("location.href=--$%s$--", actionItem.Action))
+			}
 		}
 	} else {
 		button.CreateAttr("type", actionItem.Action)

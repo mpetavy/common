@@ -79,9 +79,9 @@ func GetHostInfo() (*HostInfo, string, error) {
 	}
 
 	if IsLinuxOS() {
-		DebugFunc("try to get ip by ip routing to 8.8.8.8...")
+		DebugFunc("try to get ip by ip routing to 1.1.1.1...")
 
-		cmd := exec.Command("ip", "-o", "route", "get", "to", "8.8.8.8")
+		cmd := exec.Command("ip", "-o", "route", "get", "to", "1.1.1.1")
 
 		ba, err := WatchdogCmd(cmd, time.Second)
 		if !DebugError(err) {

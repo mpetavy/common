@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -69,7 +70,7 @@ func (server *DiscoverServer) Start() error {
 
 				n, peer, err := server.listener.ReadFrom(b)
 				if err != nil {
-					if err, ok := err.(net.Error); ok && err.Timeout() {
+					if IsErrTimeout(err) {
 						break
 					} else {
 						if server.lifecycle.IsSet() {
@@ -155,7 +156,7 @@ func (server *DiscoverServer) Stop() error {
 	return nil
 }
 
-func Discover(address string, timeout time.Duration, uid string) (map[string]string, error) {
+func Discover(address string, timeout time.Duration, uid string) ([]string, error) {
 	DebugFunc("discover uid: %s", uid)
 
 	discoverIp, discoverPort, err := net.SplitHostPort(address)
@@ -163,7 +164,7 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 		return nil, err
 	}
 
-	discoveredIps := make(map[string]string)
+	list := make([]string, 0)
 
 	addrs, err := GetHostInfos(true, true, nil)
 	if Error(err) {
@@ -248,10 +249,10 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 
 		n, peer, err := c.ReadFrom(b)
 		if err != nil {
-			if err, ok := err.(net.Error); ok && err.Timeout() {
+			if IsErrTimeout(err) {
 				break
 			} else {
-				return discoveredIps, err
+				return list, err
 			}
 		}
 
@@ -266,10 +267,12 @@ func Discover(address string, timeout time.Duration, uid string) (map[string]str
 		info = strings.ReplaceAll(info, "$port", port)
 		info = strings.ReplaceAll(info, "$address", peer.String())
 
-		discoveredIps[peer.String()] = info
+		list = append(list, info)
 
 		Debug("%d bytes read from %s: %s\n", n, peer.String(), info)
 	}
 
-	return discoveredIps, nil
+	sort.Strings(list)
+
+	return list, nil
 }
