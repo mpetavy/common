@@ -20,12 +20,16 @@ func TestChanReceiver(t *testing.T) {
 	var listener2Received tickEvent
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		for event := range listener1 {
 			listener1Received = event.(tickEvent)
 		}
 	}()
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		for event := range listener2 {
 			listener2Received = event.(tickEvent)
 		}

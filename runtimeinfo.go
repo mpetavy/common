@@ -74,6 +74,8 @@ func MultiRunner(runners []Runner) error {
 
 	for i := range runners {
 		go func(r *Runner) {
+			defer UnregisterGoRoutine(RegisterGoRoutine())
+
 			err := r.execute(&wg)
 			if err != nil {
 				chErr.Add(err)
@@ -235,18 +237,28 @@ func GetSystemInfo() (*SystemInfo, error) {
 	machineRunner := NewRunner(exec.Command("uname", "-m"), time.Second)
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		Error(kernelNameRunner.execute(&wg))
 	}()
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		Error(kernelReleaseRunner.execute(&wg))
 	}()
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		Error(kernelVersionRunner.execute(&wg))
 	}()
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		Error(machineRunner.execute(&wg))
 	}()
 	go func(si *SystemInfo) {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		defer wg.Done()
 
 		ba, err := os.ReadFile("/proc/meminfo")

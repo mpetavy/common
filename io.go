@@ -710,6 +710,8 @@ func (this *TimeoutReader) Read(p []byte) (int, error) {
 	ch := make(chan interface{})
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		n, err = this.reader.Read(p)
 
 		close(ch)
@@ -759,6 +761,8 @@ func (this *TimeoutWriter) Write(p []byte) (int, error) {
 	ch := make(chan interface{})
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		n, err = this.writer.Write(p)
 
 		close(ch)

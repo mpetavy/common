@@ -37,6 +37,8 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 	Debug("process started pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		doneCh <- cmd.Wait()
 	}()
 
@@ -82,6 +84,8 @@ func WatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
 	var err error
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine())
+
 		doneCh <- fn()
 	}()
 

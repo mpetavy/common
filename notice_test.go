@@ -18,6 +18,8 @@ func TestNoticeChannel(t *testing.T) {
 
 		wg.Add(1)
 		go func() {
+			defer UnregisterGoRoutine(RegisterGoRoutine())
+
 			defer wg.Done()
 
 			<-n.NewChannel()

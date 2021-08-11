@@ -329,6 +329,8 @@ func (app *application) applicationRun() error {
 
 	if app.RunFunc != nil && app.RunTime == 0 {
 		go func() {
+			defer UnregisterGoRoutine(RegisterGoRoutine())
+
 			err := app.RunFunc()
 
 			errCh <- err
@@ -380,6 +382,8 @@ func (app *application) Start(s service.Service) error {
 
 	if !IsRunningInteractive() {
 		go func() {
+			defer UnregisterGoRoutine(RegisterGoRoutine())
+
 			Error(app.applicationLoop())
 		}()
 	} else {

@@ -201,6 +201,8 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 		wg.Add(1)
 
 		go func(ip net.IP, ipNet *net.IPNet) {
+			defer UnregisterGoRoutine(RegisterGoRoutine())
+
 			defer wg.Done()
 
 			ones, bits := ipNet.Mask.Size()
