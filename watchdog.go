@@ -19,7 +19,7 @@ func (e *ErrWatchdog) Error() string {
 	return e.Msg
 }
 
-func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
+func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 	var buf bytes.Buffer
 
 	cmd.Stdout = &buf
@@ -37,7 +37,7 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 	Debug("process started pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
 
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(2))
 
 		doneCh <- cmd.Wait()
 	}()
@@ -76,7 +76,7 @@ func WatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 	}
 }
 
-func WatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
+func NewWatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
 	doneCh := make(chan error)
 
 	start := time.Now()
@@ -84,7 +84,7 @@ func WatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
 	var err error
 
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(2))
 
 		doneCh <- fn()
 	}()

@@ -48,7 +48,7 @@ func GetSystemLanguage() (string, error) {
 	if IsWindowsOS() {
 		cmd := exec.Command("powershell", "Get-WinSystemLocale")
 
-		ba, err := WatchdogCmd(cmd, time.Second*3)
+		ba, err := NewWatchdogCmd(cmd, time.Second*3)
 		if Error(err) {
 			return "", err
 		}
@@ -92,7 +92,7 @@ func GetSystemLanguage() (string, error) {
 
 		cmd := exec.Command("locale")
 
-		ba, err := WatchdogCmd(cmd, time.Second)
+		ba, err := NewWatchdogCmd(cmd, time.Second)
 		if Error(err) {
 			return "", err
 		}

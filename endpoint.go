@@ -421,7 +421,7 @@ func DataTransfer(leftName string, left io.ReadWriter, rightName string, right i
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 		_, err := CopyBuffer(cancel, fmt.Sprintf("%s <- %s", leftName, rightName), left, right, 0)
 
@@ -429,7 +429,7 @@ func DataTransfer(leftName string, left io.ReadWriter, rightName string, right i
 	}()
 
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 		_, err := CopyBuffer(cancel, fmt.Sprintf("%s -> %s", leftName, rightName), right, left, 0)
 

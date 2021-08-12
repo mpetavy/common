@@ -55,7 +55,7 @@ func (server *DiscoverServer) Start() error {
 	}
 
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 	loop:
 		for server.lifecycle.isSet {
@@ -201,7 +201,7 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 		wg.Add(1)
 
 		go func(ip net.IP, ipNet *net.IPNet) {
-			defer UnregisterGoRoutine(RegisterGoRoutine())
+			defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 			defer wg.Done()
 

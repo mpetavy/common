@@ -43,7 +43,7 @@ func TestBlocking(t *testing.T) {
 	d := time.Millisecond * 100
 
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 		time.Sleep(d)
 		pass0.Unlock()
@@ -71,7 +71,7 @@ func TestLock(t *testing.T) {
 
 			wg.Add(1)
 			go func(goroutine int) {
-				defer UnregisterGoRoutine(RegisterGoRoutine())
+				defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 				defer func() {
 					wg.Done()

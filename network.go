@@ -83,7 +83,7 @@ func GetHostInfo() (*HostInfo, string, error) {
 
 		cmd := exec.Command("ip", "-o", "route", "get", "to", "1.1.1.1")
 
-		ba, err := WatchdogCmd(cmd, time.Second)
+		ba, err := NewWatchdogCmd(cmd, time.Second)
 		if !DebugError(err) {
 			output := string(ba)
 

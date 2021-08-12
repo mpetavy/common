@@ -57,7 +57,7 @@ func (this *Runner) execute(wg *sync.WaitGroup) error {
 
 	var ba []byte
 
-	ba, this.Err = WatchdogCmd(this.cmd, this.timeout)
+	ba, this.Err = NewWatchdogCmd(this.cmd, this.timeout)
 	if Error(this.Err) {
 		return this.Err
 	}
@@ -74,7 +74,7 @@ func MultiRunner(runners []Runner) error {
 
 	for i := range runners {
 		go func(r *Runner) {
-			defer UnregisterGoRoutine(RegisterGoRoutine())
+			defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 			err := r.execute(&wg)
 			if err != nil {
@@ -237,27 +237,27 @@ func GetSystemInfo() (*SystemInfo, error) {
 	machineRunner := NewRunner(exec.Command("uname", "-m"), time.Second)
 
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 		Error(kernelNameRunner.execute(&wg))
 	}()
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 		Error(kernelReleaseRunner.execute(&wg))
 	}()
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 		Error(kernelVersionRunner.execute(&wg))
 	}()
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 		Error(machineRunner.execute(&wg))
 	}()
 	go func(si *SystemInfo) {
-		defer UnregisterGoRoutine(RegisterGoRoutine())
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 		defer wg.Done()
 

@@ -52,11 +52,11 @@ var (
 	routinesMutex   = sync.Mutex{}
 )
 
-func RegisterGoRoutine() int {
+func RegisterGoRoutine(index int) int {
 	routinesMutex.Lock()
 	defer routinesMutex.Unlock()
 
-	ri := GetRuntimeInfo(1)
+	ri := GetRuntimeInfo(index)
 	id := routinesCounter
 	routinesCounter++
 
