@@ -18,14 +18,14 @@ const (
 )
 
 const (
-	FlagNameIoPrimaryIface     = "io.primary.iface"
+	FlagNameIoNetworkIface     = "io.network.iface"
 	FlagNameIoNetworkTimeout   = "io.network.timeout"
 	FlagNameIoConnectTimeout   = "io.connect.timeout"
 	FlagNameIoReadwriteTimeout = "io.readwrite.timeout"
 )
 
 var (
-	FlagIoPrimaryIface     = flag.String(FlagNameIoPrimaryIface, "", "ethernet interface holding primary ip")
+	FlagIoPrimaryIface     = flag.String(FlagNameIoNetworkIface, "", "primary ethernet interface")
 	FlagIoNetworkTimeout   = flag.Int(FlagNameIoNetworkTimeout, 10*1000, "network server and client dial timeout")
 	FlagIoConnectTimeout   = flag.Int(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
 	FlagIoReadwriteTimeout = flag.Int(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
@@ -79,26 +79,29 @@ func GetHostInfo() (*HostInfo, string, error) {
 	}
 
 	if IsLinuxOS() {
-		DebugFunc("try to get ip by ip routing to 1.1.1.1...")
+		ipPath, err := exec.LookPath("ip")
+		if err == nil {
+			DebugFunc("try to get ip by ip routing to 1.1.1.1...")
 
-		cmd := exec.Command("ip", "-o", "route", "get", "to", "1.1.1.1")
+			cmd := exec.Command(ipPath, "-o", "route", "get", "to", "1.1.1.1")
 
-		ba, err := NewWatchdogCmd(cmd, time.Second)
-		if !DebugError(err) {
-			output := string(ba)
+			ba, err := NewWatchdogCmd(cmd, time.Second)
+			if !DebugError(err) {
+				output := string(ba)
 
-			p := strings.Index(output, "src ")
-			if p != -1 {
-				output = output[p+4:]
-				p := strings.Index(output, " ")
-				output = output[:p]
+				p := strings.Index(output, "src ")
+				if p != -1 {
+					output = output[p+4:]
+					p := strings.Index(output, " ")
+					output = output[:p]
 
-				hostAddress, err := GetHostInfo4IP(net.ParseIP(output))
+					hostAddress, err := GetHostInfo4IP(net.ParseIP(output))
 
-				if !DebugError(err) {
-					DebugFunc(hostAddress)
+					if !DebugError(err) {
+						DebugFunc(hostAddress)
 
-					return hostAddress, hostName, nil
+						return hostAddress, hostName, nil
+					}
 				}
 			}
 		}
