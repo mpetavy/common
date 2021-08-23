@@ -152,7 +152,7 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 }
 
 func PullFlash(context echo.Context, flashName string) []string {
-	cookie := getCookie(context)
+	cookie := GetCookie(context)
 	if cookie != nil {
 		flashes := cookie.Flashes(flashName)
 		if len(flashes) > 0 {
@@ -175,7 +175,7 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 
 	list = append(list, flash)
 
-	cookie := getCookie(context)
+	cookie := GetCookie(context)
 	if cookie != nil {
 		cookie.AddFlash(strings.Join(list, "??br"), flashName)
 	}
@@ -188,7 +188,7 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 	return nil
 }
 
-func getCookie(context echo.Context) *sessions.Session {
+func GetCookie(context echo.Context) *sessions.Session {
 	cookie, _ := session.Get(Title(), context)
 
 	// Ignore the error (maybe the current cookie was encrypted with an outdated httpServer.store key)
@@ -210,7 +210,7 @@ func getCookie(context echo.Context) *sessions.Session {
 }
 
 func DisableCookie(context echo.Context) error {
-	cookie := getCookie(context)
+	cookie := GetCookie(context)
 
 	cookie.Options.MaxAge = -1
 	delete(cookie.Values, COOKIE_PASSWORD)
@@ -225,7 +225,7 @@ func DisableCookie(context echo.Context) error {
 }
 
 func RefreshCookie(context echo.Context, timeout time.Duration) error {
-	cookie := getCookie(context)
+	cookie := GetCookie(context)
 
 	cookie.Options.MaxAge = int(timeout.Seconds())
 	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
@@ -239,7 +239,7 @@ func RefreshCookie(context echo.Context, timeout time.Duration) error {
 }
 
 func AuthenticateCookie(context echo.Context, password string, timeout time.Duration) error {
-	cookie := getCookie(context)
+	cookie := GetCookie(context)
 
 	// Ignore the error (maybe the current cookie was encrypted with an outdated httpServer.store key)
 
