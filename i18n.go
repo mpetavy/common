@@ -392,7 +392,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 
 	// update all languages with found i18ns
 
-	secNames := []string{DEFAULT_LANGUAGE, "nl", "it", "el", "es", "ar", "zh", "fr", "th"}
+	secNames := []string{DEFAULT_LANGUAGE, "nl", "it", "el", "es", "ar", "zh", "fr", "th", "de"}
 	for _, sec := range i18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
 			if IndexOf(secNames, sec) == -1 {

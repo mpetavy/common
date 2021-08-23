@@ -112,10 +112,14 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 	scanner.Split(ScanLinesWithLF)
 
 	stack := ""
+	count := 0
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "\t") {
-			stack += line
+			count++
+			if count > 3 {
+				stack += line
+			}
 		}
 	}
 
