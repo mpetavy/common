@@ -22,6 +22,7 @@ const UNKNOWN = "unknwon"
 type RuntimeInfo struct {
 	Dir, Pack, File, Fn, Stack string
 	Line                       int
+	Timestamp                  time.Time
 }
 
 type SystemInfo struct {
@@ -110,10 +111,6 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 	scanner := bufio.NewScanner(strings.NewReader(string(debug.Stack())))
 	scanner.Split(ScanLinesWithLF)
 
-	for i := 0; i < 1+((2+pos)*2); i++ {
-		scanner.Scan()
-	}
-
 	stack := ""
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -123,7 +120,7 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 	}
 
 	if !ok {
-		return RuntimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, 0}
+		return RuntimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, 0, time.Time{}}
 	}
 
 	f := runtime.FuncForPC(pc)
@@ -141,7 +138,7 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 	pack = pack[strings.LastIndex(pack, "/")+1:]
 	pack = pack[0:strings.Index(pack, ".")]
 
-	return RuntimeInfo{dir, pack, file, fn, stack, line}
+	return RuntimeInfo{dir, pack, file, fn, stack, line, time.Now()}
 }
 
 func readStringTable(txt string, separator string) []string {

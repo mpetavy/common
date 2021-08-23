@@ -97,3 +97,11 @@ func GoRoutineId() uint64 {
 
 	return n
 }
+
+func GoRoutineName() string {
+	buf := make([]byte, 100)
+	runtime.Stack(buf, true)
+	buf = bytes.Split(buf, []byte{'\n'})[0]
+	buf = buf[:len(buf)-1]
+	return string(bytes.TrimSuffix(buf, []byte("[running]")))
+}
