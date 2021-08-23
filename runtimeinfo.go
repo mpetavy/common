@@ -106,7 +106,11 @@ func (r RuntimeInfo) Filename() string {
 }
 
 func GetRuntimeInfo(pos int) RuntimeInfo {
-	pc, _, _, ok := runtime.Caller(1 + pos)
+	pc, file, line, ok := runtime.Caller(1 + pos)
+
+	if !ok {
+		return RuntimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, 0, time.Time{}}
+	}
 
 	scanner := bufio.NewScanner(strings.NewReader(string(debug.Stack())))
 	scanner.Split(ScanLinesWithLF)
@@ -123,16 +127,10 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 		}
 	}
 
-	if !ok {
-		return RuntimeInfo{UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, UNKNOWN, 0, time.Time{}}
-	}
-
 	f := runtime.FuncForPC(pc)
 
 	fn := f.Name()
 	fn = fn[strings.LastIndex(fn, ".")+1:]
-
-	file, line := f.FileLine(pc)
 
 	dir := filepath.Base(filepath.Dir(file))
 

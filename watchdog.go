@@ -25,21 +25,28 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
 
-	doneCh := make(chan error)
+	doneCh := make(chan error, 1)
 
 	start := time.Now()
-
-	err := cmd.Start()
-	if Error(err) {
-		return nil, err
-	}
-
-	Debug("process started pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
 
 	go func() {
 		defer UnregisterGoRoutine(RegisterGoRoutine(2))
 
-		doneCh <- cmd.Wait()
+		err := cmd.Start()
+		if Error(err) {
+			doneCh <- err
+
+			return
+		}
+
+		Debug("process started pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
+
+		err = cmd.Wait()
+		if Error(err) {
+			doneCh <- err
+		}
+
+		close(doneCh)
 	}()
 
 	select {
@@ -48,7 +55,7 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 		Error(cmd.Process.Kill())
 
 		return nil, &ErrWatchdog{Msg: fmt.Sprintf("killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start))}
-	case err = <-doneCh:
+	case err := <-doneCh:
 		exitcode := 0
 		if err != nil {
 			if exitError, ok := err.(*exec.ExitError); ok {
@@ -77,7 +84,7 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 }
 
 func NewWatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
-	doneCh := make(chan error)
+	doneCh := make(chan error, 1)
 
 	start := time.Now()
 
