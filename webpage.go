@@ -56,6 +56,8 @@ const (
 	CSS_COLOR_OFF = "#CFCFCF"
 	CSS_COLOR_ON  = "MediumSeaGreen"
 
+	MAX_INPUT_LENGTH = "10240"
+
 	FLASH_WARNING = "warning-flash"
 	FLASH_ERROR   = "error-flash"
 	FLASH_SUCCESS = "success-flash"
@@ -675,6 +677,7 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 			if IndexOf(tagHtml.Options, OPTION_MULTILINE) != -1 || IndexOf(tagHtml.Options, OPTION_MEGALINE) != -1 {
 				htmlInput = htmlDiv.CreateElement("textarea")
 				htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
+				htmlInput.CreateAttr("maxlength", MAX_INPUT_LENGTH)
 				htmlInput.CreateAttr("cols", "65")
 
 				if IndexOf(tagHtml.Options, OPTION_MULTILINE) != -1 {
@@ -830,6 +833,7 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 						htmlInput.CreateAttr("type", "text")
 					}
 					htmlInput.CreateAttr("value", fieldValue.String())
+					htmlInput.CreateAttr("maxlength", MAX_INPUT_LENGTH)
 				}
 			}
 
