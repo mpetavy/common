@@ -548,7 +548,7 @@ func appendLog(level int, ri RuntimeInfo, msg string, err error) {
 
 	// fileLogger or memoryLogger
 	if logger != nil {
-		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", s))
+		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entry.String(*FlagLogJson, true)))
 	}
 
 	if level != LEVEL_PROLOG {
