@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	ctxio "github.com/jbenet/go-context/io"
 	"io"
 	"net/http"
 	"os"
@@ -436,7 +437,7 @@ func ScanLinesWithLF(data []byte, atEOF bool) (advance int, token []byte, err er
 	return 0, nil, nil
 }
 
-func CopyBuffer(cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader, bufferSize int) (int64, error) {
+func CopyBuffer(ctx context.Context, cancel context.CancelFunc, name string, writer io.Writer, reader io.Reader, bufferSize int) (int64, error) {
 	Debug("CopyBuffer %s start", name)
 
 	defer func() {
@@ -455,7 +456,7 @@ func CopyBuffer(cancel context.CancelFunc, name string, writer io.Writer, reader
 		reader = io.TeeReader(reader, &debugWriter{name, "READ"})
 	}
 
-	return io.CopyBuffer(writer, reader, buf)
+	return io.CopyBuffer(ctxio.NewWriter(ctx, writer), ctxio.NewReader(ctx, reader), buf)
 }
 
 type FilePermission struct {

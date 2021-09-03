@@ -415,15 +415,13 @@ func evaluateTTYOptions(device string) (string, *serial.Mode, error) {
 	}, nil
 }
 
-func DataTransfer(leftName string, left io.ReadWriter, rightName string, right io.ReadWriter) {
+func DataTransfer(ctx context.Context, cancel context.CancelFunc, leftName string, left io.ReadWriter, rightName string, right io.ReadWriter) {
 	DebugFunc("start")
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
 		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
-		_, err := CopyBuffer(cancel, fmt.Sprintf("%s <- %s", leftName, rightName), left, right, 0)
+		_, err := CopyBuffer(ctx, cancel, fmt.Sprintf("%s <- %s", leftName, rightName), left, right, 0)
 
 		DebugError(err)
 	}()
@@ -431,7 +429,7 @@ func DataTransfer(leftName string, left io.ReadWriter, rightName string, right i
 	go func() {
 		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
-		_, err := CopyBuffer(cancel, fmt.Sprintf("%s -> %s", leftName, rightName), right, left, 0)
+		_, err := CopyBuffer(ctx, cancel, fmt.Sprintf("%s -> %s", leftName, rightName), right, left, 0)
 
 		DebugError(err)
 	}()

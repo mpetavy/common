@@ -13,6 +13,7 @@ require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/h2non/filetype v1.1.1
+	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
 	github.com/kardianos/service v1.2.1-0.20210610114949-8eb6809ed2e7
 	github.com/labstack/echo-contrib v0.11.0
 	github.com/labstack/echo/v4 v4.4.0
