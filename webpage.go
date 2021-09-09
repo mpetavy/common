@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
+	"github.com/quasoft/memstore"
 	"io"
 	"net/http"
 	"reflect"
@@ -68,6 +69,10 @@ const (
 	FLASH_TIMEOUT = time.Second
 )
 
+var (
+	SessionStore *memstore.MemStore
+)
+
 type Webpage struct {
 	doc *etree.Document
 
@@ -90,6 +95,16 @@ type ActionItem struct {
 	Message  string
 	Enabled  bool
 	SubItems []ActionItem
+}
+
+func init() {
+	storeSecret, err := GenerateRandomBytes(32)
+	Panic(err)
+
+	SessionStore = memstore.NewMemStore(storeSecret)
+	SessionStore.Options.HttpOnly = true
+	SessionStore.Options.Secure = true
+	SessionStore.Options.SameSite = http.SameSiteStrictMode
 }
 
 func NewPage(context echo.Context, contentStyle string, title string) (*Webpage, error) {
@@ -198,14 +213,9 @@ func GetCookie(context echo.Context) *sessions.Session {
 	if cookie.IsNew {
 		cookie.Options.Path = "/"
 		cookie.Options.MaxAge = 0
-		cookie.Options.HttpOnly = true
-		if context.IsTLS() {
-			cookie.Options.Secure = true
-			cookie.Options.SameSite = http.SameSiteStrictMode
-		} else {
-			cookie.Options.Secure = false
-			cookie.Options.SameSite = http.SameSiteDefaultMode
-		}
+		cookie.Options.HttpOnly = SessionStore.Options.HttpOnly
+		cookie.Options.Secure = SessionStore.Options.Secure
+		cookie.Options.SameSite = SessionStore.Options.SameSite
 	}
 
 	return cookie
