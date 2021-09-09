@@ -259,10 +259,7 @@ func AuthenticateCookie(context echo.Context, password string, timeout time.Dura
 }
 
 func CheckCookieAuthenticated(context echo.Context, password string) error {
-	cookie, err := session.Get(Title(), context)
-	if err != nil {
-		return fmt.Errorf("no cookie %s available", Title())
-	}
+	cookie := GetCookie(context)
 
 	expire, ok := cookie.Values[COOKIE_EXPIRE]
 	if !ok {
@@ -1002,12 +999,5 @@ func Hack4BrowserUpdate() string {
 }
 
 func SessionId(context echo.Context) string {
-	var sessionID string
-
-	cookie, err := session.Get(Title(), context)
-	if err == nil {
-		sessionID = cookie.ID
-	}
-
-	return sessionID
+	return GetCookie(context).ID
 }

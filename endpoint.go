@@ -188,7 +188,7 @@ func (networkServer *NetworkServer) Start() error {
 			return err
 		}
 
-		Debug("Create TLS listener: %s ...", networkServer.address)
+		Debug("Create listener: %s ...", networkServer.address)
 
 		networkServer.listener, err = net.ListenTCP("tcp", tcpAddr)
 		if Error(err) {

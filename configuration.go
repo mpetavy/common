@@ -134,12 +134,12 @@ func InitConfiguration() error {
 		}
 	}
 
-	ba, err := readFile()
+	ba, err := LoadConfigurationFile()
 	if Error(err) {
 		return err
 	}
 
-	err = setFlags(ba)
+	err = ActiveConfigurationFile(ba)
 	if Error(err) {
 		return err
 	}
@@ -153,7 +153,7 @@ func ResetConfiguration() error {
 	buf := &bytes.Buffer{}
 
 	if Events.Emit(EventConfigurationReset{buf}) && buf.Len() > 0 {
-		err := writeFile(buf.Bytes())
+		err := SaveConfigurationFile(buf.Bytes())
 		if Error(err) {
 			return err
 		}
@@ -162,10 +162,10 @@ func ResetConfiguration() error {
 	return nil
 }
 
-func GetConfiguration() (*Configuration, error) {
+func LoadConfiguration() (*Configuration, error) {
 	DebugFunc()
 
-	ba, err := GetConfigurationBuffer()
+	ba, err := LoadConfigurationFile()
 	if Error(err) {
 		return nil, err
 	}
@@ -184,27 +184,13 @@ func GetConfiguration() (*Configuration, error) {
 	return cfg, nil
 }
 
-func GetConfigurationBuffer() ([]byte, error) {
-	return readFile()
-}
-
-func SetConfiguration(cfg interface{}) error {
+func SaveConfiguration(cfg interface{}) error {
 	ba, err := json.MarshalIndent(cfg, "", "  ")
 	if Error(err) {
 		return err
 	}
 
-	s := string(ba)
-	s = strings.Replace(s, "\"application\": \"\",", fmt.Sprintf("\"application\": \"%s\",", TitleVersion(true, true, true)), 1)
-
-	ba = []byte(s)
-
-	err = writeFile(ba)
-	if Error(err) {
-		return err
-	}
-
-	err = setFlags(ba)
+	err = SaveConfigurationFile(ba)
 	if Error(err) {
 		return err
 	}
@@ -212,7 +198,7 @@ func SetConfiguration(cfg interface{}) error {
 	return nil
 }
 
-func readFile() ([]byte, error) {
+func LoadConfigurationFile() ([]byte, error) {
 	DebugFunc(*FlagCfgFile)
 
 	if !FileExists(*FlagCfgFile) {
@@ -227,7 +213,7 @@ func readFile() ([]byte, error) {
 	return []byte(RemoveJsonComments(string(ba))), nil
 }
 
-func writeFile(ba []byte) error {
+func SaveConfigurationFile(ba []byte) error {
 	DebugFunc(*FlagCfgFile)
 
 	buf := bytes.Buffer{}
@@ -263,7 +249,7 @@ func writeFile(ba []byte) error {
 		return err
 	}
 
-	fileConfig, err := readFile()
+	fileConfig, err := LoadConfigurationFile()
 	if Error(err) {
 		return err
 	}
@@ -292,7 +278,16 @@ func getValue(m map[string]string, key string) (string, bool) {
 	return v, ok
 }
 
-func setFlags(ba []byte) error {
+func ActiveConfiguration(cfg *Configuration) error {
+	ba, err := json.MarshalIndent(cfg, "", "  ")
+	if Error(err) {
+		return err
+	}
+
+	return ActiveConfigurationFile(ba)
+}
+
+func ActiveConfigurationFile(ba []byte) error {
 	DebugFunc()
 
 	mapFlag, err := registerArgsFlags()
