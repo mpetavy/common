@@ -20,7 +20,7 @@ require (
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/pkg/errors v0.9.1
-	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b // indirect
+	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
 	github.com/stretchr/testify v1.7.0
 	go.bug.st/serial v1.3.1
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
