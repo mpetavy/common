@@ -139,7 +139,7 @@ func InitConfiguration() error {
 		return err
 	}
 
-	err = ActiveConfigurationFile(ba)
+	err = ActivateConfigurationFile(ba)
 	if Error(err) {
 		return err
 	}
@@ -278,16 +278,16 @@ func getValue(m map[string]string, key string) (string, bool) {
 	return v, ok
 }
 
-func ActiveConfiguration(cfg *Configuration) error {
+func ActivateConfiguration(cfg *Configuration) error {
 	ba, err := json.MarshalIndent(cfg, "", "  ")
 	if Error(err) {
 		return err
 	}
 
-	return ActiveConfigurationFile(ba)
+	return ActivateConfigurationFile(ba)
 }
 
-func ActiveConfigurationFile(ba []byte) error {
+func ActivateConfigurationFile(ba []byte) error {
 	DebugFunc()
 
 	mapFlag, err := registerArgsFlags()
