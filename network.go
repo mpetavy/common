@@ -26,7 +26,7 @@ const (
 
 var (
 	FlagIoPrimaryIface     = flag.String(FlagNameIoNetworkIface, "", "primary ethernet interface")
-	FlagIoNetworkTimeout   = flag.Int(FlagNameIoNetworkTimeout, 10*1000, "network server and client dial timeout")
+	FlagIoNetworkTimeout   = flag.Int(FlagNameIoNetworkTimeout, 10*1000, "network ready timeout")
 	FlagIoConnectTimeout   = flag.Int(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
 	FlagIoReadwriteTimeout = flag.Int(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
 )

@@ -20,6 +20,8 @@ func (e *ErrWatchdog) Error() string {
 }
 
 func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
+	DebugFunc("%s: %d msec...", CmdToString(cmd), timeout.Milliseconds())
+
 	var buf bytes.Buffer
 
 	cmd.Stdout = &buf
@@ -39,7 +41,7 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 			return
 		}
 
-		Debug("process started pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
+		Debug("Watchdog process started pid: %d timeout: %v cmd: %s ...", cmd.Process.Pid, timeout, CmdToString(cmd))
 
 		err = cmd.Wait()
 		if Error(err) {
@@ -51,7 +53,7 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 
 	select {
 	case <-time.After(timeout):
-		Debug("process will be killed pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
+		Debug("Watchdog process will be killed pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
 		Error(cmd.Process.Kill())
 
 		return nil, &ErrWatchdog{Msg: fmt.Sprintf("killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start))}
@@ -76,7 +78,7 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 			exitstate = "failed"
 		}
 
-		Debug("process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start))
+		Debug("Watchdog process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start))
 		Debug("%s", string(output))
 
 		return output, err
@@ -84,6 +86,8 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 }
 
 func NewWatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
+	DebugFunc("%s: %d msec...", msg, timeout.Milliseconds())
+
 	doneCh := make(chan error, 1)
 
 	start := time.Now()
