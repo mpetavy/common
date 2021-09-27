@@ -200,8 +200,6 @@ func SaveConfiguration(cfg interface{}) error {
 }
 
 func LoadConfigurationFile() ([]byte, error) {
-	DebugFunc(*FlagCfgFile)
-
 	if !FileExists(*FlagCfgFile) {
 		exe, err := os.Executable()
 		if Error(err) {
@@ -210,7 +208,6 @@ func LoadConfigurationFile() ([]byte, error) {
 
 		f := CleanPath(filepath.Join(filepath.Dir(exe), filepath.Base(*FlagCfgFile)))
 
-		fmt.Printf("%s\n", f)
 		if !FileExists(f) {
 			return nil, nil
 		}
@@ -220,6 +217,8 @@ func LoadConfigurationFile() ([]byte, error) {
 			return nil, err
 		}
 	}
+
+	DebugFunc(*FlagCfgFile)
 
 	ba, err := os.ReadFile(*FlagCfgFile)
 	if Error(err) {
