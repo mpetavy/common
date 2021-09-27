@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -32,7 +33,7 @@ const (
 )
 
 func init() {
-	FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(AppFilename(".json")), "Configuration file")
+	FlagCfgFile = flag.String(FlagNameCfgFile, AppFilename(".json"), "Configuration file")
 	FlagCfgReset = flag.Bool(FlagNameCfgReset, false, "Reset configuration file")
 	FlagCfgCreate = flag.Bool(FlagNameCfgCreate, false, "Reset configuration file and exit")
 }
@@ -202,7 +203,22 @@ func LoadConfigurationFile() ([]byte, error) {
 	DebugFunc(*FlagCfgFile)
 
 	if !FileExists(*FlagCfgFile) {
-		return nil, nil
+		exe, err := os.Executable()
+		if Error(err) {
+			return nil, err
+		}
+
+		f := CleanPath(filepath.Join(filepath.Dir(exe), filepath.Base(*FlagCfgFile)))
+
+		fmt.Printf("%s\n", f)
+		if !FileExists(f) {
+			return nil, nil
+		}
+
+		err = flag.Set(FlagNameCfgFile, f)
+		if Error(err) {
+			return nil, err
+		}
 	}
 
 	ba, err := os.ReadFile(*FlagCfgFile)
