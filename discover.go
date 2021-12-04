@@ -63,7 +63,7 @@ func (server *DiscoverServer) Start() error {
 			case <-server.lifecycle.NewChannel():
 				break loop
 			default:
-				err := server.listener.SetDeadline(DeadlineByDuration(server.timeout))
+				err := server.listener.SetReadDeadline(DeadlineByDuration(server.timeout))
 				if Error(err) {
 					break
 				}
@@ -240,7 +240,7 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 
 	b := make([]byte, maxInfoLength)
 	for {
-		err := c.SetDeadline(DeadlineByDuration(timeout))
+		err := c.SetReadDeadline(DeadlineByDuration(timeout))
 		if Error(err) {
 			break
 		}
