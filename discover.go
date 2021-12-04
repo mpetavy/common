@@ -159,7 +159,7 @@ func (server *DiscoverServer) Stop() error {
 func Discover(address string, timeout time.Duration, uid string) ([]string, error) {
 	DebugFunc("discover uid: %s", uid)
 
-	discoverIp, discoverPort, err := net.SplitHostPort(address)
+	_, discoverPort, err := net.SplitHostPort(address)
 	if Error(err) {
 		return nil, err
 	}
@@ -191,10 +191,6 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 		ip = ip.To4()
 
 		if ip == nil {
-			continue
-		}
-
-		if discoverIp != "" && ip.String() != discoverIp {
 			continue
 		}
 
