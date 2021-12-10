@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"flag"
 	"fmt"
 	"github.com/beevik/etree"
 	"github.com/fatih/structtag"
@@ -70,7 +71,9 @@ const (
 )
 
 var (
-	SessionStore *memstore.MemStore
+	SessionStore       *memstore.MemStore
+	FlagSessionTimeout = flag.Int("session.timeout", int((time.Minute * 10).Milliseconds()), "GUI session timeout")
+	FlagUnloadTimeout  = flag.Int("unload.timeout", int((time.Second * 5).Milliseconds()), "GUI unload timeout")
 )
 
 type Webpage struct {
@@ -175,7 +178,7 @@ func PullFlash(context echo.Context, flashName string) []string {
 		if len(flashes) > 0 {
 			flash := strings.Split(flashes[0].(string), "??br")
 
-			err := cookie.Save(context.Request(), context.Response())
+			err := RefreshCookie(context, cookie, true)
 			if Error(err) {
 				return nil
 			}
@@ -197,7 +200,7 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 		cookie.AddFlash(strings.Join(list, "??br"), flashName)
 	}
 
-	err := cookie.Save(context.Request(), context.Response())
+	err := RefreshCookie(context, cookie, true)
 	if Error(err) {
 		return err
 	}
@@ -236,10 +239,15 @@ func DisableCookie(context echo.Context) error {
 	return nil
 }
 
-func RefreshCookie(context echo.Context, timeout time.Duration) error {
-	cookie := GetCookie(context)
+func RefreshCookie(context echo.Context, cookie *sessions.Session, sessionTimeout bool) error {
+	var timeout time.Duration
 
-	cookie.Options.MaxAge = int(timeout.Seconds())
+	if sessionTimeout {
+		timeout = MillisecondToDuration(*FlagSessionTimeout)
+	} else {
+		timeout = MillisecondToDuration(*FlagUnloadTimeout)
+	}
+
 	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
 
 	err := cookie.Save(context.Request(), context.Response())
@@ -250,17 +258,14 @@ func RefreshCookie(context echo.Context, timeout time.Duration) error {
 	return nil
 }
 
-func AuthenticateCookie(context echo.Context, password string, timeout time.Duration) error {
+func AuthenticateCookie(context echo.Context, password string) error {
 	cookie := GetCookie(context)
 
 	// Ignore the error (maybe the current cookie was encrypted with an outdated httpServer.store key)
 
-	cookie.Options.MaxAge = int(timeout.Seconds())
-
 	cookie.Values[COOKIE_PASSWORD] = password
-	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
 
-	err := cookie.Save(context.Request(), context.Response())
+	err := RefreshCookie(context, cookie, true)
 	if Error(err) {
 		return err
 	}
