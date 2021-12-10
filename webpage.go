@@ -106,6 +106,7 @@ func init() {
 
 	SessionStore = memstore.NewMemStore(storeSecret)
 	SessionStore.Options.HttpOnly = true
+	SessionStore.Options.MaxAge = 0
 	SessionStore.Options.Secure = true
 	SessionStore.Options.SameSite = http.SameSiteStrictMode
 }
