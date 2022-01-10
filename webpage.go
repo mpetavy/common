@@ -13,7 +13,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/quasoft/memstore"
 	"io"
-	"net/http"
 	"reflect"
 	"regexp"
 	"sort"
@@ -107,8 +106,6 @@ func init() {
 	SessionStore = memstore.NewMemStore(storeSecret)
 	SessionStore.Options.HttpOnly = true
 	SessionStore.Options.MaxAge = 0
-	SessionStore.Options.Secure = true
-	SessionStore.Options.SameSite = http.SameSiteStrictMode
 }
 
 func NewPage(context echo.Context, contentStyle string, title string) (*Webpage, error) {
