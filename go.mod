@@ -16,17 +16,15 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
 	github.com/kardianos/service v1.2.1-0.20210610114949-8eb6809ed2e7
 	github.com/labstack/echo-contrib v0.11.0
-	github.com/labstack/echo/v4 v4.4.0
-	github.com/mattn/go-isatty v0.0.13 // indirect
+	github.com/labstack/echo/v4 v4.6.3
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/pkg/errors v0.9.1
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
 	github.com/stretchr/testify v1.7.0
 	go.bug.st/serial v1.3.1
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	golang.org/x/net v0.0.0-20210716203947-853a461950ff // indirect
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
-	golang.org/x/text v0.3.6
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	golang.org/x/sys v0.0.0-20211103235746-7861aae1554b
+	golang.org/x/text v0.3.7
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	google.golang.org/api v0.51.0
 	google.golang.org/genproto v0.0.0-20210722135532-667f2b7c528f // indirect
