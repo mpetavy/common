@@ -21,7 +21,6 @@ import (
 	"os"
 	"runtime"
 	"software.sslmate.com/src/go-pkcs12"
-	"sort"
 	"strings"
 	"time"
 )
@@ -38,7 +37,6 @@ var (
 	FlagTlsMutual      *string
 	FlagTlsKeyLen      *int
 	defaultCiphers     []*tls.CipherSuite
-	preferredCiphers   []uint16
 	defautVersions     []uint16
 
 	// Check the cpu flags for each platform that has optimized GCM implementations.
@@ -84,7 +82,7 @@ func init() {
 	FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
 	FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
 	FlagTlsMutual = flag.String(FlagNameTlsMutual, "", "Mutual TLS PKCS12 certificates & privkey container file or buffer")
-	FlagTlsKeyLen = flag.Int(FlagNameTlsKeylen, Eval(hasAESGCMHardwareSupport, 2048, 1024).(int), "RSA key length")
+	FlagTlsKeyLen = flag.Int(FlagNameTlsKeylen, 2048, "RSA key length")
 
 	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initTls()
@@ -104,38 +102,6 @@ func initTls() {
 	}
 
 	defautVersions = append(defautVersions, tls.VersionTLS12, tls.VersionTLS13)
-
-	if hasAESGCMHardwareSupport {
-		// If AES-GCM hardware is provided then prioritise AES-GCM
-		// cipher suites.
-		preferredCiphers = []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-
-			tls.TLS_AES_128_GCM_SHA256,
-			tls.TLS_CHACHA20_POLY1305_SHA256,
-			tls.TLS_AES_256_GCM_SHA384,
-		}
-	} else {
-		// Without AES-GCM hardware, we put the ChaCha20-Poly1305
-		// cipher suites first.
-		preferredCiphers = []uint16{
-			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-
-			tls.TLS_CHACHA20_POLY1305_SHA256,
-			tls.TLS_AES_128_GCM_SHA256,
-			tls.TLS_AES_256_GCM_SHA384,
-		}
-	}
 
 	defaultCiphers = make([]*tls.CipherSuite, 0)
 	defaultCiphers = append(defaultCiphers, tls.CipherSuites()...)
@@ -159,22 +125,6 @@ func initTls() {
 		} else {
 			defaultCiphers = append(defaultCiphers[:i], defaultCiphers[i+1:]...)
 		}
-
-		sort.SliceStable(defaultCiphers, func(i, j int) bool {
-			ii := indexPreferred(defaultCiphers[i].ID)
-			ij := indexPreferred(defaultCiphers[j].ID)
-
-			switch {
-			case ii != -1 && ij != -1:
-				return ii < ij
-			case ii == -1 && ij == -1:
-				return strings.Compare(defaultCiphers[i].Name, defaultCiphers[j].Name) == -1
-			case ii != -1:
-				return true
-			default:
-				return false
-			}
-		})
 	}
 
 	for i := 0; i < len(defaultCiphers); i++ {
@@ -238,16 +188,6 @@ func TlsDescriptionToCipher(name string) *tls.CipherSuite {
 	}
 
 	return nil
-}
-
-func indexPreferred(id uint16) int {
-	for i, cs := range preferredCiphers {
-		if cs == id {
-			return i
-		}
-	}
-
-	return -1
 }
 
 func TlsCipherSelectionsToIds(s string) []uint16 {
