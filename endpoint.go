@@ -204,7 +204,7 @@ func (networkServer *NetworkServer) Stop() error {
 	defer networkServer.mu.Unlock()
 
 	defer func() {
-		networkServer.listener = nil
+		//networkServer.listener = nil
 	}()
 
 	if networkServer.listener != nil {
