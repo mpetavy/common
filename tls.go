@@ -77,7 +77,7 @@ func init() {
 	FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS certificates and server name")
 	FlagTlsServername = flag.String(FlagNameTlsServername, ".*", "TLS expected servername")
 	FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, TlsVersion12, "TLS min version")
-	FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, TlsVersion13, "TLS max version")
+	FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, TlsVersion12, "TLS max version")
 	FlagTlsCiphers = flag.String(FlagNameTlsCiphers, "", "TLS ciphers zo use")
 	FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
 	FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
