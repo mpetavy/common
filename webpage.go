@@ -32,13 +32,14 @@ const (
 	OPTION_REQUIRED      = "required"
 	OPTION_READONLY      = "readonly"
 	OPTION_MULTILINE     = "multiline"
+	OPTION_WIDE          = "wide"
 	OPTION_MEGALINE      = "megaline"
 	OPTION_NOLABEL       = "nolabel"
 	OPTION_EXPERTVIEW    = "expertview"
 	OPTION_NOPLACEHOLDER = "noplaceholder"
 
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
-	INPUT_WIDTH_WIDE   = "pure-input-2-4"
+	INPUT_WIDTH_WIDE   = "pure-input-1-2"
 
 	CSS_DIALOG_CONTENT     = "css-dialog-content pure-controls"
 	CSS_DEFAULT_CONTENT    = "css-default-content pure-controls"
@@ -782,7 +783,11 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 			}
 
 			htmlInput = htmlDiv.CreateElement("input")
-			htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
+			if IndexOf(tagHtml.Options, OPTION_WIDE) != -1 {
+				htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
+			} else {
+				htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
+			}
 			htmlInput.CreateAttr("onclick", "this.select();")
 
 			if fieldType.Type.Kind() == reflect.Int {
