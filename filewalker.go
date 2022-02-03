@@ -3,25 +3,21 @@ package common
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-type filewalker struct {
-	path        string
-	filemask    string
-	recursive   bool
-	ignoreError bool
-	walkFunc    func(path string) error
+type Filewalker struct {
+	Path                    string
+	Filemask                string
+	Recursive               bool
+	IgnoreError             bool
+	IgnoreHiddenDirectories bool
+	walkFunc                func(path string) error
 }
 
-func (this *filewalker) walkfunc(path string, fi os.FileInfo, err error) error {
-	var f os.FileInfo
-
-	if err == nil {
-		f, err = os.Stat(path)
-	}
-
+func (this *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
 	if err != nil {
-		if this.ignoreError {
+		if this.IgnoreError {
 			Warn("cannot access: %s", path)
 
 			return filepath.SkipDir
@@ -31,10 +27,10 @@ func (this *filewalker) walkfunc(path string, fi os.FileInfo, err error) error {
 	}
 
 	if !f.IsDir() {
-		b := this.filemask == ""
+		b := this.Filemask == ""
 
 		if !b {
-			b, err = EqualWildcards(filepath.Base(path), this.filemask)
+			b, err = EqualWildcards(filepath.Base(path), this.Filemask)
 			if Error(err) {
 				return err
 			}
@@ -47,14 +43,22 @@ func (this *filewalker) walkfunc(path string, fi os.FileInfo, err error) error {
 		return this.walkFunc(path)
 	}
 
-	if this.recursive || path == this.path {
+	if this.IgnoreHiddenDirectories && strings.HasPrefix(f.Name(), ".") {
+		return filepath.SkipDir
+	}
+
+	if this.Recursive || path == this.Path {
 		return nil
 	}
 
 	return filepath.SkipDir
 }
 
-func WalkFilepath(filemask string, recursive bool, ignoreError bool, walkFunc func(path string) error) error {
+func (this *Filewalker) Run() error {
+	return filepath.Walk(this.Path, this.Walkfunc)
+}
+
+func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc func(path string) error) *Filewalker {
 	path := ""
 	filemask = CleanPath(filemask)
 
@@ -76,13 +80,11 @@ func WalkFilepath(filemask string, recursive bool, ignoreError bool, walkFunc fu
 		}
 	}
 
-	w := filewalker{
-		path:        path,
-		filemask:    filemask,
-		recursive:   recursive,
-		ignoreError: ignoreError,
+	return &Filewalker{
+		Path:        path,
+		Filemask:    filemask,
+		Recursive:   recursive,
+		IgnoreError: ignoreError,
 		walkFunc:    walkFunc,
 	}
-
-	return filepath.Walk(path, w.walkfunc)
 }

@@ -296,7 +296,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	paths := []string{"*.go", "../common/*.go"}
 
 	for _, path := range paths {
-		err := WalkFilepath(path, true, false, func(path string) error {
+		fw := NewFilewalker(path, true, false, func(path string) error {
 			Debug("extract i18n from source file: %s", path)
 
 			ba, err := os.ReadFile(path)
@@ -325,6 +325,8 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 
 			return nil
 		})
+
+		err := fw.Run()
 		if Error(err) {
 			return err
 		}
