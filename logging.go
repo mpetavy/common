@@ -32,6 +32,7 @@ var (
 	FlagLogFileSize    *int
 	FlagLogJson        *bool
 	FlagLogSys         *bool
+	FlagLogCount       *int
 	logger             logWriter
 	defaultLogFilename string
 	mu                 sync.Mutex
@@ -48,6 +49,7 @@ const (
 	FlagNameLogIO       = "log.io"
 	FlagNameLogJson     = "log.json"
 	FlagNameLogSys      = "log.sys"
+	FlagNameLogCount    = "log.count"
 )
 
 func init() {
@@ -59,6 +61,7 @@ func init() {
 	FlagLogIO = flag.Bool(FlagNameLogIO, false, "trace logging")
 	FlagLogJson = flag.Bool(FlagNameLogJson, false, "JSON output")
 	FlagLogSys = flag.Bool(FlagNameLogSys, false, "Use OS system logger")
+	FlagLogCount = flag.Int(FlagNameLogCount, 1000, "log count")
 }
 
 func InitTesting(v goTesting) {
