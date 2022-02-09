@@ -111,8 +111,10 @@ func (this *memoryWriter) WriteString(level int, txt string) {
 		return
 	}
 
-	if len(this.lines) == 1000 {
-		this.lines = this.lines[1:]
+	if len(this.lines) >= *FlagLogCount {
+		start := len(this.lines) - *FlagLogCount + 1
+
+		this.lines = this.lines[start:]
 	}
 
 	this.lines = append(this.lines, txt)
