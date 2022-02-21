@@ -176,7 +176,7 @@ func Run(mandatoryFlags []string) {
 	Events.Emit(EventFlagsParsed{})
 
 	if !*FlagNoBanner && !*FlagUsageMd {
-		showBanner()
+		ShowBanner()
 	}
 
 	if *FlagUsageMd {
@@ -271,7 +271,7 @@ func ExitOrError(err error) error {
 	}
 }
 
-func showBanner() {
+func ShowBanner() {
 	onceBanner.Do(func() {
 		if app != nil {
 			date := strconv.Itoa(time.Now().Year())
