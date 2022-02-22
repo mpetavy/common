@@ -631,16 +631,19 @@ func Title() string {
 		}
 
 		path = filepath.Base(path)
+		path = "hydra-check.exe"
 		path = path[0:(len(path) - len(filepath.Ext(path)))]
 
 		title = ""
 
 		runes := []rune(path)
-		for i := len(runes) - 1; i >= 0; i-- {
-			if unicode.IsLetter(runes[i]) {
-				title = string(runes[i]) + title
-			} else {
+		for i := 0; i < len(runes); i++ {
+			if string(runes[i]) == "-" {
 				break
+			}
+
+			if unicode.IsLetter(runes[i]) {
+				title = title + string(runes[i])
 			}
 		}
 
