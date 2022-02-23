@@ -312,7 +312,7 @@ func (tty *TTY) Stop() error {
 func (tty *TTY) Connect() (io.ReadWriteCloser, error) {
 	Debug("Connected: %s", tty.device)
 
-	serialPort, mode, err := evaluateTTYOptions(tty.device)
+	serialPort, mode, err := EvaluateTTYOptions(tty.device)
 	if Error(err) {
 		return nil, err
 	}
@@ -337,7 +337,7 @@ func (tty *TTY) Connect() (io.ReadWriteCloser, error) {
 	}, nil
 }
 
-func evaluateTTYOptions(device string) (string, *serial.Mode, error) {
+func EvaluateTTYOptions(device string) (string, *serial.Mode, error) {
 	ss := strings.Split(device, ",")
 
 	baudrate := 9600

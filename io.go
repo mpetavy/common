@@ -692,7 +692,6 @@ func NewTimeoutReader(reader io.Reader, timeout time.Duration, initalTimeout boo
 
 func (this *TimeoutReader) Read(p []byte) (int, error) {
 	if !this.initalTimeout {
-
 		this.initalTimeout = true
 
 		n, err := this.reader.Read(p)
@@ -743,7 +742,6 @@ func NewTimeoutWriter(writer io.Writer, timeout time.Duration, initalTimeout boo
 
 func (this *TimeoutWriter) Write(p []byte) (int, error) {
 	if !this.initalTimeout {
-
 		this.initalTimeout = true
 
 		n, err := this.writer.Write(p)
