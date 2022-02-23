@@ -9,7 +9,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.3.1
 	github.com/go-ini/ini v1.62.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/gookit/color v1.4.2
+	github.com/gookit/color v1.5.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/h2non/filetype v1.1.1

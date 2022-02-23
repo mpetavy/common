@@ -40,6 +40,13 @@ var (
 	syslogLoggerCh     chan<- error
 	syslogLogger       service.Logger
 	gotest             goTesting
+
+	ColorDefault color.Color = 0
+	ColorDebug   color.Color = ColorDefault
+	ColorInfo    color.Color = ColorDefault
+	ColorWarn    color.Color = color.Yellow
+	ColorError   color.Color = color.Red
+	ColorPanic   color.Color = color.Red
 )
 
 const (
@@ -75,6 +82,7 @@ type goTesting interface {
 
 type logEntry struct {
 	levelInt int
+	color    color.Color
 	Clock    string `json:"clock"`
 	Level    string `json:"level"`
 	Runtime  string `json:"runtime"`
@@ -385,7 +393,7 @@ func prolog(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	appendLog(LEVEL_PROLOG, GetRuntimeInfo(1), t, nil)
+	appendLog(LEVEL_PROLOG, ColorDefault, GetRuntimeInfo(1), t, nil)
 }
 
 // Debug prints out the information
@@ -398,7 +406,7 @@ func Debug(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	appendLog(LEVEL_DEBUG, GetRuntimeInfo(1), t, nil)
+	appendLog(LEVEL_DEBUG, ColorDebug, GetRuntimeInfo(1), t, nil)
 }
 
 // DebugError prints out the error
@@ -410,7 +418,7 @@ func DebugError(err error) bool {
 	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
-		appendLog(LEVEL_DEBUG, ri, errorString(LEVEL_ERROR, ri, err), nil)
+		appendLog(LEVEL_DEBUG, ColorDebug, ri, errorString(LEVEL_ERROR, ri, err), nil)
 	}
 
 	return err != nil
@@ -426,7 +434,7 @@ func Info(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	appendLog(LEVEL_INFO, GetRuntimeInfo(1), t, nil)
+	appendLog(LEVEL_INFO, ColorInfo, GetRuntimeInfo(1), t, nil)
 }
 
 // Warn prints out the information
@@ -439,7 +447,7 @@ func Warn(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	appendLog(LEVEL_WARN, GetRuntimeInfo(1), t, nil)
+	appendLog(LEVEL_WARN, ColorWarn, GetRuntimeInfo(1), t, nil)
 }
 
 func WarnError(err error) bool {
@@ -450,7 +458,7 @@ func WarnError(err error) bool {
 	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
-		appendLog(LEVEL_WARN, ri, errorString(LEVEL_ERROR, ri, err), nil)
+		appendLog(LEVEL_WARN, ColorWarn, ri, errorString(LEVEL_ERROR, ri, err), nil)
 	}
 
 	return err != nil
@@ -487,7 +495,7 @@ func DebugFunc(arg ...interface{}) {
 		}
 	}
 
-	appendLog(LEVEL_DEBUG, ri, t, nil)
+	appendLog(LEVEL_DEBUG, ColorDebug, ri, t, nil)
 }
 
 // Ignore just ignores the error
@@ -508,7 +516,7 @@ func Panic(err error) {
 
 	ri := GetRuntimeInfo(1)
 
-	appendLog(LEVEL_PANIC, ri, errorString(LEVEL_PANIC, ri, err), err)
+	appendLog(LEVEL_PANIC, ColorPanic, ri, errorString(LEVEL_PANIC, ri, err), err)
 
 	Exit(1)
 }
@@ -521,13 +529,13 @@ func Error(err error) bool {
 	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
-		appendLog(LEVEL_ERROR, ri, errorString(LEVEL_ERROR, ri, err), err)
+		appendLog(LEVEL_ERROR, ColorError, ri, errorString(LEVEL_ERROR, ri, err), err)
 	}
 
 	return err != nil
 }
 
-func appendLog(level int, ri RuntimeInfo, msg string, err error) {
+func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -543,6 +551,7 @@ func appendLog(level int, ri RuntimeInfo, msg string, err error) {
 
 	entry := logEntry{
 		levelInt: level,
+		color:    color,
 		Level:    strings.ToUpper(levelToString(level)),
 		Clock:    time.Now().Format(DateTimeMilliMask),
 		Runtime:  ri.String(),
@@ -570,36 +579,15 @@ func appendLog(level int, ri RuntimeInfo, msg string, err error) {
 			case LEVEL_INFO:
 				Error(syslogLogger.Info(entry.Msg))
 			}
+		}
+
+		if gotest != nil {
+			gotest.Logf(s)
 		} else {
-			if *FlagLogVerbose {
-				switch entry.levelInt {
-				case LEVEL_WARN:
-					if gotest != nil {
-						gotest.Logf(s)
-					} else {
-						color.Warn.Println(s)
-					}
-				case LEVEL_ERROR:
-					if gotest != nil {
-						gotest.Fatalf(s)
-					} else {
-						color.Error.Println(s)
-					}
-				case LEVEL_PANIC:
-					if gotest != nil {
-						gotest.Fatalf(s)
-					} else {
-						color.Error.Println(s)
-					}
-				default:
-					if gotest != nil {
-						gotest.Logf(s)
-					} else {
-						fmt.Printf("%s\n", s)
-					}
-				}
+			if entry.color != ColorDefault {
+				entry.color.Println(s)
 			} else {
-				fmt.Printf("%s\n", s)
+				fmt.Println(s)
 			}
 		}
 	}
