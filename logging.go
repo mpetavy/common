@@ -447,7 +447,7 @@ func Warn(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	appendLog(LEVEL_WARN, ColorWarn, GetRuntimeInfo(1), t, nil)
+	appendLog(LEVEL_WARN, ColorWarn, GetRuntimeInfo(1), warnString(LEVEL_WARN, t), nil)
 }
 
 func WarnError(err error) bool {
@@ -462,6 +462,14 @@ func WarnError(err error) bool {
 	}
 
 	return err != nil
+}
+
+func warnString(level int, msg string) string {
+	if *FlagLogVerbose {
+		return msg
+	}
+
+	return fmt.Sprintf("%s: %s", Capitalize(levelToString(level)), msg)
 }
 
 func errorString(level int, ri RuntimeInfo, err error) string {
