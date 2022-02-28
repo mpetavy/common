@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/quasoft/memstore"
 	"io"
+	"net/http"
 	"reflect"
 	"regexp"
 	"sort"
@@ -105,6 +106,8 @@ func init() {
 	Panic(err)
 
 	SessionStore = memstore.NewMemStore(storeSecret)
+	SessionStore.Options.Secure = true
+	SessionStore.Options.SameSite = http.SameSiteStrictMode
 	SessionStore.Options.HttpOnly = true
 	SessionStore.Options.MaxAge = 0
 }
@@ -130,6 +133,9 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 
 	htmlMeta = p.HtmlHead.CreateElement("meta")
 	htmlMeta.CreateAttr("charset", "UTF-8")
+
+	htmlMeta = p.HtmlHead.CreateElement("meta")
+	htmlMeta.CreateAttr("cache-control", "no-cache, no-store, must-revalidate")
 
 	p.HtmlBody = p.HtmlRoot.CreateElement("body")
 
@@ -215,9 +221,9 @@ func GetCookie(context echo.Context) *sessions.Session {
 	if cookie.IsNew {
 		cookie.Options.Path = "/"
 		cookie.Options.MaxAge = 0
-		cookie.Options.HttpOnly = SessionStore.Options.HttpOnly
 		cookie.Options.Secure = SessionStore.Options.Secure
 		cookie.Options.SameSite = SessionStore.Options.SameSite
+		cookie.Options.HttpOnly = SessionStore.Options.HttpOnly
 	}
 
 	return cookie
