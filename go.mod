@@ -18,7 +18,6 @@ require (
 	github.com/labstack/echo-contrib v0.11.0
 	github.com/labstack/echo/v4 v4.6.3
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
-	github.com/pkg/errors v0.9.1
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
 	github.com/stretchr/testify v1.7.0
 	go.bug.st/serial v1.3.1
