@@ -631,7 +631,6 @@ func Title() string {
 		}
 
 		path = filepath.Base(path)
-		path = "hydra-check.exe"
 		path = path[0:(len(path) - len(filepath.Ext(path)))]
 
 		title = ""

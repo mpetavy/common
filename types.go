@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/paulrosania/go-charset/charset"
 	_ "github.com/paulrosania/go-charset/data"
-	"github.com/pkg/errors"
 	"io"
 	"math"
 	"reflect"
@@ -207,7 +206,7 @@ func IndexOf(slice interface{}, search interface{}) int {
 
 func ToStrings(slice interface{}) ([]string, error) {
 	if reflect.TypeOf(slice).Kind() != reflect.Slice {
-		return []string{}, errors.WithStack(fmt.Errorf("not a slice: %v", slice))
+		return []string{}, fmt.Errorf("not a slice: %v", slice)
 	}
 
 	sl := reflect.ValueOf(slice)
@@ -438,10 +437,10 @@ func ParseMemory(txt string) (int64, error) {
 	return int64(f * math.Pow(1024, float64(0))), nil
 }
 
-func FormatMemory(mem int64) string {
-	neg := mem < 0
+func FormatMemory(bytes int64) string {
+	neg := bytes < 0
 
-	f := math.Abs(float64(mem))
+	fbytes := math.Abs(float64(bytes))
 
 	var i int
 	var d float64
@@ -449,12 +448,12 @@ func FormatMemory(mem int64) string {
 	for i = len(MEMORY_UNITS) - 1; i >= 0; i-- {
 		d = math.Pow(1024, float64(i))
 
-		if f > d && (f/d > 10) {
+		if fbytes > d && (fbytes/d > 10) {
 			break
 		}
 	}
 
-	r := f / d
+	r := fbytes / d
 
 	if neg {
 		r = r * -1
