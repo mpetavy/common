@@ -75,7 +75,7 @@ const (
 func init() {
 	FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
 	FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS certificates and server name")
-	FlagTlsServername = flag.String(FlagNameTlsServername, ".*", "TLS expected servername")
+	FlagTlsServername = flag.String(FlagNameTlsServername, "", "TLS expected servername")
 	FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, TlsVersion12, "TLS min version")
 	FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, TlsVersion12, "TLS max version")
 	FlagTlsCiphers = flag.String(FlagNameTlsCiphers, "", "TLS ciphers zo use")
@@ -249,14 +249,14 @@ func TlsDebugConnection(typ string, tlsConn *tls.Conn) {
 		Debug("TLS connection %s: NegotiatedProtocol : %x\n", typ, connstate.NegotiatedProtocol)
 		Debug("TLS connection %s: ServerName : %s\n", typ, connstate.ServerName)
 
-		for i := range connstate.PeerCertificates {
-			peercert := &connstate.PeerCertificates[i]
-			Debug("TLS connection info %s: PeerCertificate %d : %d\n", typ, i, peercert)
+		for i, peercert := range connstate.PeerCertificates {
+			Debug("TLS connection info %s: PeerCertificate %d : %+v\n", typ, i, *peercert)
 		}
 
-		for r := range connstate.VerifiedChains {
-			vchains := &connstate.VerifiedChains[r]
-			Debug("TLS connection info %s: Verified Chains %d : %d\n", typ, r, vchains)
+		for i := range connstate.VerifiedChains {
+			for k, rootcert := range connstate.VerifiedChains[i] {
+				Debug("TLS connection info %s: Verified Chains %d : %+v\n", typ, k, rootcert)
+			}
 		}
 	}
 }
