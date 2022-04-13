@@ -422,3 +422,11 @@ func SplitHost(addr string) (string, error) {
 
 	return host, err
 }
+
+func FormatIP(ip net.IP) string {
+	if ip.To4() != nil {
+		return ip.To4().String()
+	} else {
+		return fmt.Sprintf("[%s]", ip.To16().String())
+	}
+}

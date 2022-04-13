@@ -72,15 +72,26 @@ func NewEndpoint(device string, isClient bool, tlsConfig *tls.Config) (Endpoint,
 }
 
 type NetworkConnection struct {
-	Socket net.Conn
+	io.ReadWriteCloser
+
+	Socket     net.Conn
+	unregister func()
 }
 
 func (networkConnection *NetworkConnection) Read(p []byte) (n int, err error) {
-	return networkConnection.Socket.Read(p)
+	if networkConnection != nil {
+		return networkConnection.Socket.Read(p)
+	} else {
+		return 0, io.EOF
+	}
 }
 
 func (networkConnection *NetworkConnection) Write(p []byte) (n int, err error) {
-	return networkConnection.Socket.Write(p)
+	if networkConnection != nil {
+		return networkConnection.Socket.Write(p)
+	} else {
+		return 0, io.ErrShortWrite
+	}
 }
 
 func (networkConnection *NetworkConnection) Close() error {
@@ -89,9 +100,18 @@ func (networkConnection *NetworkConnection) Close() error {
 	}()
 
 	if networkConnection.Socket != nil {
+		tcpConn, ok := networkConnection.Socket.(*net.TCPConn)
+		if ok {
+			tcpConn.SetLinger(0)
+		}
+
 		err := networkConnection.Socket.Close()
 		if Error(err) {
 			return err
+		}
+
+		if networkConnection.unregister != nil {
+			networkConnection.unregister()
 		}
 	}
 
@@ -147,10 +167,13 @@ func (networkClient *NetworkClient) Connect() (*NetworkConnection, error) {
 }
 
 type NetworkServer struct {
-	mu        sync.Mutex
-	address   string
-	tlsConfig *tls.Config
-	listener  net.Listener
+	Endpoint
+
+	mu          sync.Mutex
+	address     string
+	tlsConfig   *tls.Config
+	listener    net.Listener
+	connections []*NetworkConnection
 }
 
 func NewNetworkServer(address string, tlsConfig *tls.Config) (*NetworkServer, error) {
@@ -204,7 +227,7 @@ func (networkServer *NetworkServer) Stop() error {
 	defer networkServer.mu.Unlock()
 
 	defer func() {
-		//networkServer.listener = nil
+		networkServer.listener = nil
 	}()
 
 	if networkServer.listener != nil {
@@ -227,9 +250,26 @@ func (networkServer *NetworkServer) Connect() (*NetworkConnection, error) {
 
 	Debug("Connected: %s", socket.RemoteAddr().String())
 
-	return &NetworkConnection{
+	networkConnection := &NetworkConnection{
 		Socket: socket,
-	}, nil
+	}
+
+	networkServer.connections = append(networkServer.connections, networkConnection)
+
+	networkConnection.unregister = func() {
+		networkServer.mu.Lock()
+		defer networkServer.mu.Unlock()
+
+		for i := 0; i < len(networkServer.connections); i++ {
+			if networkServer.connections[i] == networkConnection {
+				networkServer.connections = append(networkServer.connections[:i], networkServer.connections[i+1:]...)
+
+				break
+			}
+		}
+	}
+
+	return networkConnection, nil
 }
 
 func (this *NetworkServer) Serve() ([]byte, error) {
@@ -259,15 +299,25 @@ func (this *NetworkServer) Serve() ([]byte, error) {
 }
 
 type TTYConnection struct {
+	io.ReadWriteCloser
+
 	port serial.Port
 }
 
 func (ttyConnection *TTYConnection) Read(p []byte) (n int, err error) {
-	return ttyConnection.port.Read(p)
+	if ttyConnection != nil {
+		return ttyConnection.port.Read(p)
+	} else {
+		return 0, io.EOF
+	}
 }
 
 func (ttyConnection *TTYConnection) Write(p []byte) (n int, err error) {
-	return ttyConnection.port.Write(p)
+	if ttyConnection != nil {
+		return ttyConnection.port.Write(p)
+	} else {
+		return 0, io.ErrShortWrite
+	}
 }
 
 func (ttyConnection *TTYConnection) Close() error {
@@ -312,7 +362,7 @@ func (tty *TTY) Stop() error {
 func (tty *TTY) Connect() (io.ReadWriteCloser, error) {
 	Debug("Connected: %s", tty.device)
 
-	serialPort, mode, err := EvaluateTTYOptions(tty.device)
+	serialPort, mode, err := ParseTTYOptions(tty.device)
 	if Error(err) {
 		return nil, err
 	}
@@ -337,7 +387,33 @@ func (tty *TTY) Connect() (io.ReadWriteCloser, error) {
 	}, nil
 }
 
-func EvaluateTTYOptions(device string) (string, *serial.Mode, error) {
+func CreateTTYOptions(device string, mode *serial.Mode) (string, error) {
+	var paritymode string
+
+	switch mode.Parity {
+	case serial.NoParity:
+		paritymode = "N"
+	case serial.OddParity:
+		paritymode = "O"
+	case serial.EvenParity:
+		paritymode = "E"
+	}
+
+	var stopbits string
+
+	switch mode.StopBits {
+	case serial.OneStopBit:
+		stopbits = "1"
+	case serial.OnePointFiveStopBits:
+		stopbits = "1.5"
+	case serial.TwoStopBits:
+		stopbits = "2"
+	}
+
+	return fmt.Sprintf("%s,%d,%d,%s,%s", device, mode.BaudRate, mode.DataBits, paritymode, stopbits), nil
+}
+
+func ParseTTYOptions(device string) (string, *serial.Mode, error) {
 	ss := strings.Split(device, ",")
 
 	baudrate := 9600

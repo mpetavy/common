@@ -293,15 +293,6 @@ func getValue(m map[string]string, key string) (string, bool) {
 	return v, ok
 }
 
-func ActivateConfiguration(cfg *Configuration) error {
-	ba, err := json.MarshalIndent(cfg, "", "  ")
-	if Error(err) {
-		return err
-	}
-
-	return ActivateConfigurationFile(ba)
-}
-
 func ActivateConfigurationFile(ba []byte) error {
 	DebugFunc()
 

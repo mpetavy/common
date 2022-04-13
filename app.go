@@ -72,9 +72,6 @@ type EventFlagsParsed struct {
 type EventFlagsSet struct {
 }
 
-type EventRestart struct {
-}
-
 type ErrExit struct {
 }
 
@@ -423,8 +420,6 @@ func (app *application) applicationLoop() error {
 		if Error(err) {
 			return err
 		}
-
-		Events.Emit(EventRestart{})
 	}
 
 	appLifecycle.Unset()

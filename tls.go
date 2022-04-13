@@ -87,10 +87,6 @@ func init() {
 	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initTls()
 	})
-
-	Events.NewFuncReceiver(EventRestart{}, func(ev Event) {
-		initTls()
-	})
 }
 
 func initTls() {
