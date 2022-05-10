@@ -545,12 +545,12 @@ func readP12Flag(fileOrBuffer string, password string) (*tls.Config, error) {
 		return tlsConfig, nil
 	}
 
-	ba, err := base64.StdEncoding.DecodeString(fileOrBuffer)
-	if err == nil {
-		return TlsConfigFromBuffer(ba, password)
+	tlsConfig, err := TlsConfigFromBuffer([]byte(fileOrBuffer), password)
+	if Error(err) {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("no valid P12 file or buffer provided: %s", fileOrBuffer)
+	return tlsConfig, nil
 }
 
 func NewTlsConfig(
