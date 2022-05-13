@@ -11,18 +11,18 @@ import (
 )
 
 type require struct {
-	Name        string
-	Version     string
-	Comment     string
-	LicenseName string
-	LicenseUrl  string
-	LicenseText string
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Comment     string `json:"comment"`
+	LicenseName string `json:"licenseName"`
+	LicenseUrl  string `json:"licenseUrl"`
+	LicenseText string `json:"licenseText"`
 }
 
 type ModuleInfo struct {
-	Module   string
-	Version  string
-	Requires []require
+	Module   string    `json:"module"`
+	Version  string    `json:"version"`
+	Requires []require `json:"requires"`
 }
 
 func CreateModuleInfo() (*ModuleInfo, error) {
