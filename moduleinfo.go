@@ -20,9 +20,10 @@ type require struct {
 }
 
 type ModuleInfo struct {
-	Module   string    `json:"module"`
-	Version  string    `json:"version"`
-	Requires []require `json:"requires"`
+	Disclosure string    `json:"disclosure"`
+	Software   string    `json:"software"`
+	Version    string    `json:"version"`
+	Requires   []require `json:"requires"`
 }
 
 func CreateModuleInfo() (*ModuleInfo, error) {
@@ -185,13 +186,13 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 		}
 
 		if strings.HasPrefix(line, "module") {
-			moduleInfo.Module = strings.TrimSpace(line[len("module"):])
+			moduleInfo.Software = strings.TrimSpace(line[len("module"):])
 
 			continue
 		}
 
 		if strings.HasPrefix(line, "go ") {
-			moduleInfo.Version = TitleVersion(true, true, true)
+			moduleInfo.Version = Version(true, true, true)
 
 			continue
 		}
