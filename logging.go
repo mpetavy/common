@@ -186,10 +186,6 @@ func (this *fileWriter) WriteString(level int, txt string) {
 		this.file, _ = os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
 	}
 
-	if this.file == nil {
-		return
-	}
-
 	ba := []byte(txt)
 
 	Ignore(this.file.Write(ba))
@@ -198,9 +194,6 @@ func (this *fileWriter) WriteString(level int, txt string) {
 }
 
 func (this fileWriter) ClearLogs() error {
-	mu.Lock()
-	defer mu.Unlock()
-
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -273,6 +266,9 @@ func (this *fileWriter) GetLogs(w io.Writer) error {
 }
 
 func (this *fileWriter) Close() {
+	mu.Lock()
+	defer mu.Unlock()
+
 	if this.file != nil {
 		Ignore(this.file.Close())
 		this.file = nil
