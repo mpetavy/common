@@ -179,7 +179,7 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 		return nil, err
 	}
 	defer func() {
-		Ignore(c.Close())
+		DebugError(c.Close())
 	}()
 
 	for _, addr := range addrs {

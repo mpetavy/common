@@ -468,7 +468,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 					return err
 				}
 
-				Ignore(newSec.NewKey(key, k.String()))
+				newSec.NewKey(key, k.String())
 			}
 		}
 	}

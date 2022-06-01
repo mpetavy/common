@@ -26,20 +26,19 @@ const (
 )
 
 var (
-	FlagLogVerbose     *bool
-	FlagLogIO          *bool
-	FlagLogFileName    *string
-	FlagLogFileSize    *int
-	FlagLogJson        *bool
-	FlagLogSys         *bool
-	FlagLogCount       *int
-	logger             logWriter
-	defaultLogFilename string
-	mu                 sync.Mutex
-	lastErr            string
-	syslogLoggerCh     chan<- error
-	syslogLogger       service.Logger
-	gotest             goTesting
+	FlagLogVerbose  *bool
+	FlagLogIO       *bool
+	FlagLogFileName *string
+	FlagLogFileSize *int
+	FlagLogJson     *bool
+	FlagLogSys      *bool
+	FlagLogCount    *int
+	logger          logWriter
+	mu              sync.Mutex
+	lastErr         string
+	syslogLoggerCh  chan<- error
+	syslogLogger    service.Logger
+	gotest          goTesting
 
 	ColorDefault color.Color = 0
 	ColorDebug   color.Color = ColorDefault
@@ -60,9 +59,7 @@ const (
 )
 
 func init() {
-	defaultLogFilename = CleanPath(AppFilename(".log"))
-
-	FlagLogFileName = flag.String(FlagNameLogFileName, "", fmt.Sprintf("filename to log logFile (use \".\" for %s)", defaultLogFilename))
+	FlagLogFileName = flag.String(FlagNameLogFileName, "", "filename to log file")
 	FlagLogFileSize = flag.Int(FlagNameLogFileSize, 5*1024*1024, "max log file size")
 	FlagLogVerbose = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
 	FlagLogIO = flag.Bool(FlagNameLogIO, false, "trace logging")
@@ -89,9 +86,10 @@ type logEntry struct {
 	Msg      string `json:"msg"`
 }
 
-func (l *logEntry) String(jsn bool, verbose bool) string {
-	if jsn {
-		ba, _ := json.Marshal(l)
+func (l *logEntry) String(asJson bool, verbose bool) string {
+	if asJson {
+		ba, err := json.Marshal(l)
+		loggingError(err)
 
 		return string(ba)
 	} else {
@@ -177,20 +175,25 @@ func (this *fileWriter) WriteString(level int, txt string) {
 		this.filesize = 0
 
 		if this.file != nil {
-			Ignore(this.file.Close())
+			loggingError(this.file.Close())
 			this.file = nil
 		}
 
-		Ignore(FileBackup(realLogFilename()))
+		loggingError(FileBackup(*FlagLogFileName))
 
-		this.file, _ = os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
+		var err error
+
+		this.file, err = os.OpenFile(*FlagLogFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
+
+		loggingError(err)
 	}
 
 	ba := []byte(txt)
 
-	Ignore(this.file.Write(ba))
+	n, err := this.file.Write(ba)
+	loggingError(err)
 
-	this.filesize += int64(len(ba))
+	this.filesize += int64(n)
 }
 
 func (this fileWriter) ClearLogs() error {
@@ -201,18 +204,18 @@ func (this fileWriter) ClearLogs() error {
 		var src string
 
 		if *FlagIoFileBackups == 1 {
-			src = realLogFilename() + ".bak"
+			src = *FlagLogFileName + ".bak"
 
-			if !fileExists(src) {
+			if !FileExists_(src) {
 				src = ""
 			}
 		}
 
 		if src == "" {
 			if i > 0 {
-				src = realLogFilename() + "." + strconv.Itoa(i)
+				src = *FlagLogFileName + "." + strconv.Itoa(i)
 			} else {
-				src = realLogFilename()
+				src = *FlagLogFileName
 			}
 		}
 
@@ -235,30 +238,33 @@ func (this *fileWriter) GetLogs(w io.Writer) error {
 		var src string
 
 		if *FlagIoFileBackups == 1 {
-			src = realLogFilename() + ".bak"
+			src = *FlagLogFileName + ".bak"
 
-			if !fileExists(src) {
+			if !FileExists_(src) {
 				src = ""
 			}
 		}
 
 		if src == "" {
 			if i > 0 {
-				src = realLogFilename() + "." + strconv.Itoa(i)
+				src = *FlagLogFileName + "." + strconv.Itoa(i)
 			} else {
-				src = realLogFilename()
+				src = *FlagLogFileName
 			}
 		}
 
 		file, err := os.Open(src)
-		if err != nil {
+		if loggingError(err) {
 			continue
 		}
 
 		_, err = io.Copy(w, file)
-		_ = file.Close()
-		if Error(err) {
-			return err
+		if loggingError(err) {
+			continue
+		}
+		err = file.Close()
+		if loggingError(err) {
+			continue
 		}
 	}
 
@@ -270,7 +276,7 @@ func (this *fileWriter) Close() {
 	defer mu.Unlock()
 
 	if this.file != nil {
-		Ignore(this.file.Close())
+		loggingError(this.file.Close())
 		this.file = nil
 	}
 }
@@ -278,16 +284,16 @@ func (this *fileWriter) Close() {
 func newFileWriter() (*fileWriter, error) {
 	filesize := int64(0)
 
-	if FileExists(realLogFilename()) {
+	if FileExists(*FlagLogFileName) {
 		var err error
 
-		filesize, err = FileSize(realLogFilename())
+		filesize, err = FileSize(*FlagLogFileName)
 		if Error(err) {
 			return nil, err
 		}
 	}
 
-	logFile, err := os.OpenFile(realLogFilename(), os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
+	logFile, err := os.OpenFile(*FlagLogFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
 	if Error(err) {
 		return nil, err
 	}
@@ -347,7 +353,7 @@ func (r *redirectGoLogger) Write(p []byte) (int, error) {
 func initLog() {
 	DebugFunc()
 
-	if realLogFilename() != "" {
+	if *FlagLogFileName != "" {
 		var err error
 
 		logger, err = newFileWriter()
@@ -403,6 +409,17 @@ func Debug(t string, arg ...interface{}) {
 	}
 
 	appendLog(LEVEL_DEBUG, ColorDebug, GetRuntimeInfo(1), t, nil)
+}
+
+// DebugError prints out the error
+func loggingError(err error) bool {
+	if err != nil && logger != nil {
+		entry := newLogEntry(LEVEL_ERROR, ColorError, GetRuntimeInfo(1), err.Error())
+
+		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entry.String(*FlagLogJson, true)))
+	}
+
+	return err != nil
 }
 
 // DebugError prints out the error
@@ -502,17 +519,6 @@ func DebugFunc(arg ...interface{}) {
 	appendLog(LEVEL_DEBUG, ColorDebug, ri, t, nil)
 }
 
-// Ignore just ignores the error
-func Ignore(arg ...interface{}) bool {
-	b := false
-
-	if len(arg) > 0 {
-		_, b = arg[len(arg)-1].(error)
-	}
-
-	return b
-}
-
 func Panic(err error) {
 	if err == nil {
 		return
@@ -539,6 +545,17 @@ func Error(err error) bool {
 	return err != nil
 }
 
+func newLogEntry(level int, color color.Color, ri RuntimeInfo, msg string) logEntry {
+	return logEntry{
+		levelInt: level,
+		color:    color,
+		Level:    strings.ToUpper(levelToString(level)),
+		Clock:    time.Now().Format(DateTimeMilliMask),
+		Runtime:  ri.String(),
+		Msg:      Capitalize(strings.TrimRight(strings.TrimSpace(msg), "\r\n")),
+	}
+}
+
 func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -553,20 +570,12 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 		lastErr = ""
 	}
 
-	entry := logEntry{
-		levelInt: level,
-		color:    color,
-		Level:    strings.ToUpper(levelToString(level)),
-		Clock:    time.Now().Format(DateTimeMilliMask),
-		Runtime:  ri.String(),
-		Msg:      Capitalize(strings.TrimRight(strings.TrimSpace(msg), "\r\n")),
-	}
-
-	s := entry.String(*FlagLogJson, *FlagLogVerbose)
+	entry := newLogEntry(level, color, ri, msg)
+	entryAsString := entry.String(*FlagLogJson, *FlagLogVerbose)
 
 	// fileLogger or memoryLogger
 	if logger != nil {
-		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entry.String(*FlagLogJson, true)))
+		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entryAsString))
 	}
 
 	if level != LEVEL_PROLOG {
@@ -586,12 +595,12 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 		}
 
 		if gotest != nil {
-			gotest.Logf(s)
+			gotest.Logf(entryAsString)
 		} else {
 			if entry.color != ColorDefault {
-				entry.color.Println(s)
+				entry.color.Println(entryAsString)
 			} else {
-				fmt.Println(s)
+				fmt.Println(entryAsString)
 			}
 		}
 	}
@@ -621,12 +630,4 @@ func ClearLogs() error {
 
 func LogsAvailable() bool {
 	return logger != nil
-}
-
-func realLogFilename() string {
-	if *FlagLogFileName == "." {
-		return defaultLogFilename
-	} else {
-		return *FlagLogFileName
-	}
 }

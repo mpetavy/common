@@ -142,7 +142,7 @@ func CreateTempFile() (file *os.File, err error) {
 		return nil, err
 	}
 	defer func() {
-		Ignore(file.Close())
+		DebugError(file.Close())
 	}()
 
 	Debug(fmt.Sprintf("CreateTempFile : %s", file.Name()))
@@ -164,7 +164,7 @@ func CreateTempDir() (string, error) {
 	return tempdir, err
 }
 
-func fileExists(filename string) bool {
+func FileExists_(filename string) bool {
 	_, err := os.Stat(filename)
 
 	if os.IsNotExist(err) || err != nil {
@@ -176,7 +176,7 @@ func fileExists(filename string) bool {
 
 // FileExists does ... guess what :-)
 func FileExists(filename string) bool {
-	b := fileExists(filename)
+	b := FileExists_(filename)
 
 	Debug(fmt.Sprintf("FileExists %s: %v", filename, b))
 
@@ -260,7 +260,7 @@ func FileStore(filename string, r io.Reader) error {
 
 	// care about final cleanup of open file
 	defer func() {
-		Ignore(out.Close())
+		DebugError(out.Close())
 	}()
 
 	// download the remote resource to the file
@@ -291,8 +291,8 @@ func FileBackup(filename string) error {
 			dst = filename + "." + strconv.Itoa(i+1)
 		}
 
-		if fileExists(src) {
-			if fileExists(dst) {
+		if FileExists_(src) {
+			if FileExists_(dst) {
 				err := FileDelete(dst)
 				if Error(err) {
 					return err
@@ -316,7 +316,7 @@ func IsFileReadOnly(path string) bool {
 		return true
 	}
 
-	Ignore(file.Close())
+	DebugError(file.Close())
 
 	return false
 }
