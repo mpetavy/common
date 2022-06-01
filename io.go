@@ -399,7 +399,7 @@ func CleanPath(path string) string {
 		var dir string
 		var err error
 
-		if IsRunningInteractive() {
+		if IsRunningInteractive() || strings.HasPrefix(path, "."+string(filepath.Separator)) {
 			dir, err = os.Getwd()
 		} else {
 			dir, err = os.Executable()
