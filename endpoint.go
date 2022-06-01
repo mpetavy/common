@@ -79,26 +79,14 @@ type NetworkConnection struct {
 }
 
 func (networkConnection *NetworkConnection) Read(p []byte) (n int, err error) {
-	if networkConnection != nil {
-		return networkConnection.Socket.Read(p)
-	} else {
-		return 0, io.EOF
-	}
+	return networkConnection.Socket.Read(p)
 }
 
 func (networkConnection *NetworkConnection) Write(p []byte) (n int, err error) {
-	if networkConnection != nil {
-		return networkConnection.Socket.Write(p)
-	} else {
-		return 0, io.ErrShortWrite
-	}
+	return networkConnection.Socket.Write(p)
 }
 
 func (networkConnection *NetworkConnection) Close() error {
-	defer func() {
-		networkConnection.Socket = nil
-	}()
-
 	if networkConnection.Socket != nil {
 		tcpConn, ok := networkConnection.Socket.(*net.TCPConn)
 		if ok {
@@ -226,15 +214,9 @@ func (networkServer *NetworkServer) Stop() error {
 	networkServer.mu.Lock()
 	defer networkServer.mu.Unlock()
 
-	defer func() {
-		networkServer.listener = nil
-	}()
-
-	if networkServer.listener != nil {
-		err := networkServer.listener.Close()
-		if Error(err) {
-			return err
-		}
+	err := networkServer.listener.Close()
+	if Error(err) {
+		return err
 	}
 
 	return nil
@@ -321,18 +303,12 @@ func (ttyConnection *TTYConnection) Write(p []byte) (n int, err error) {
 }
 
 func (ttyConnection *TTYConnection) Close() error {
-	defer func() {
-		ttyConnection.port = nil
-	}()
-
-	if ttyConnection.port != nil {
-		err := ttyConnection.port.Close()
-		if Error(err) {
-			return err
-		}
-
-		time.Sleep(time.Millisecond * 200)
+	err := ttyConnection.port.Close()
+	if Error(err) {
+		return err
 	}
+
+	time.Sleep(time.Millisecond * 200)
 
 	return nil
 }
