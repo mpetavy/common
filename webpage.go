@@ -102,7 +102,7 @@ type ActionItem struct {
 }
 
 func init() {
-	storeSecret, err := GenerateRandomBytes(32)
+	storeSecret, err := RndBytes(32)
 	Panic(err)
 
 	SessionStore = memstore.NewMemStore(storeSecret)

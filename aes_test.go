@@ -8,7 +8,7 @@ import (
 func TestEncrypt(t *testing.T) {
 	InitTesting(t)
 
-	key, err := GenerateRandomBytes(16)
+	key, err := RndBytes(16)
 	if err != nil {
 		Error(err)
 	}

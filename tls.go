@@ -10,7 +10,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -264,16 +263,11 @@ func Rnd(max int) int {
 	return int(nBig.Int64())
 }
 
-// GenerateRandomBytes returns securely generated random bytes.
-// It will return an error if the system's secure random
-// number generator fails to function correctly, in which
-// case the caller should not continue.
-func GenerateRandomBytes(n int) ([]byte, error) {
+func RndBytes(n int) ([]byte, error) {
 	DebugFunc()
 
 	b := make([]byte, n)
 	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
 	if Error(err) {
 		return nil, err
 	}
@@ -281,13 +275,18 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-// GenerateRandomString returns a URL-safe, base64 encoded
-// securely generated random string.
-func GenerateRandomString(s int) (string, error) {
+func RndString(l int) (string, error) {
 	DebugFunc()
 
-	b, err := GenerateRandomBytes(s)
-	return base64.URLEncoding.EncodeToString(b), err
+	var letters = []rune("012345678abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	var lenLetter = len(letters)
+
+	sb := strings.Builder{}
+	for i := 0; i < l; i++ {
+		sb.WriteRune(letters[Rnd(lenLetter)])
+	}
+
+	return sb.String(), nil
 }
 
 // the priority on entities inside p12 must be honored
