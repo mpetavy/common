@@ -277,9 +277,7 @@ func GetHostInfo4IP(ip net.IP) (*HostInfo, error) {
 	return nil, nil
 }
 
-func IsPortAvailable(network string, port int) (bool, error) {
-	DebugFunc("network: %s, port: %d", network, port)
-
+func IsPortAvailable(network string, port int) (available bool) {
 	switch network {
 	case "tcp":
 		if network == "tcp" {
@@ -287,10 +285,8 @@ func IsPortAvailable(network string, port int) (bool, error) {
 			if tcpListener != nil {
 				Error(tcpListener.Close())
 			}
-			if err != nil {
-				return false, err
-			}
 
+			available = err == nil
 		}
 	case "udp":
 		if network == "udp" {
@@ -298,15 +294,14 @@ func IsPortAvailable(network string, port int) (bool, error) {
 			if udpListener != nil {
 				Error(udpListener.Close())
 			}
-			if err != nil {
-				return false, err
-			}
+
+			available = err == nil
 		}
-	default:
-		return false, fmt.Errorf("unknown network: %s", network)
 	}
 
-	return true, nil
+	DebugFunc("%d/%s : %v", port, network, available)
+
+	return available
 }
 
 func FindFreePort(network string, startPort int, excludedPorts []int) (int, error) {
@@ -314,7 +309,7 @@ func FindFreePort(network string, startPort int, excludedPorts []int) (int, erro
 
 	for port := startPort; port < 65536; port++ {
 		if IndexOf(excludedPorts, port) == -1 {
-			b, _ := IsPortAvailable(network, port)
+			b := IsPortAvailable(network, port)
 
 			if !b {
 				continue

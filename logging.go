@@ -367,7 +367,7 @@ func initLog() {
 	log.SetOutput(&redirectGoLogger{})
 
 	if *FlagLogSys && !IsRunningInteractive() {
-		syslogLoggerCh = make(chan error, 5)
+		syslogLoggerCh = make(chan error)
 
 		var err error
 
