@@ -14,7 +14,7 @@ require (
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/h2non/filetype v1.1.1
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
-	github.com/kardianos/service v1.2.1-0.20210610114949-8eb6809ed2e7
+	github.com/kardianos/service v1.2.1
 	github.com/labstack/echo-contrib v0.11.0
 	github.com/labstack/echo/v4 v4.6.3
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.bug.st/serial v1.3.1
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
-	golang.org/x/sys v0.0.0-20211103235746-7861aae1554b
+	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e
 	golang.org/x/text v0.3.7
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	google.golang.org/api v0.51.0
