@@ -8,12 +8,11 @@ import (
 type StringTable struct {
 	cols     [][]interface{}
 	NoHeader bool
+	Markdown bool
 }
 
-func NewStringTable(NoHeader bool) *StringTable {
-	return &StringTable{
-		NoHeader: NoHeader,
-	}
+func NewStringTable() *StringTable {
+	return &StringTable{}
 }
 
 func (st *StringTable) Clear() {
@@ -43,7 +42,11 @@ func (st *StringTable) rower(cols []interface{}, colLengths []int, cross bool) s
 		format := fmt.Sprintf("%%-%dv", colLengths[x])
 		if line.Len() > 0 {
 			if cross {
-				line.WriteString("-+-")
+				if st.Markdown {
+					line.WriteString(" | ")
+				} else {
+					line.WriteString("-+-")
+				}
 			} else {
 				line.WriteString(" | ")
 			}
@@ -51,9 +54,15 @@ func (st *StringTable) rower(cols []interface{}, colLengths []int, cross bool) s
 		line.WriteString(fmt.Sprintf(format, cols[x]))
 	}
 
-	line.WriteString("\n")
+	txt := line.String()
 
-	return line.String()
+	if st.Markdown {
+		txt = "| " + txt + " |"
+	}
+
+	txt += "\n"
+
+	return txt
 }
 
 func (st *StringTable) String() string {
