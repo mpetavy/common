@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
-	"flag"
 	"fmt"
 	"github.com/beevik/etree"
 	"github.com/fatih/structtag"
@@ -68,13 +67,12 @@ const (
 	COOKIE_PASSWORD = "password"
 	COOKIE_EXPIRE   = "expire"
 
-	FLASH_TIMEOUT = time.Second
+	FLASH_TIMEOUT   = time.Second
+	REFRESH_TIMEOUT = time.Second * 5
 )
 
 var (
-	SessionStore       *memstore.MemStore
-	FlagSessionTimeout = flag.Int("session.timeout", int((time.Minute * 10).Milliseconds()), "GUI session timeout")
-	FlagUnloadTimeout  = flag.Int("unload.timeout", int((time.Second * 5).Milliseconds()), "GUI unload timeout")
+	SessionStore *memstore.MemStore
 )
 
 type Webpage struct {
@@ -186,7 +184,7 @@ func PullFlash(context echo.Context, flashName string) []string {
 		if len(flashes) > 0 {
 			flash := strings.Split(flashes[0].(string), "??br")
 
-			err := RefreshCookie(context, cookie, true)
+			err := RefreshCookie(context, cookie, REFRESH_TIMEOUT)
 			if Error(err) {
 				return nil
 			}
@@ -208,7 +206,7 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 		cookie.AddFlash(strings.Join(list, "??br"), flashName)
 	}
 
-	err := RefreshCookie(context, cookie, true)
+	err := RefreshCookie(context, cookie, REFRESH_TIMEOUT)
 	if Error(err) {
 		return err
 	}
@@ -247,15 +245,7 @@ func DisableCookie(context echo.Context) error {
 	return nil
 }
 
-func RefreshCookie(context echo.Context, cookie *sessions.Session, sessionTimeout bool) error {
-	var timeout time.Duration
-
-	if sessionTimeout {
-		timeout = MillisecondToDuration(*FlagSessionTimeout)
-	} else {
-		timeout = MillisecondToDuration(*FlagUnloadTimeout)
-	}
-
+func RefreshCookie(context echo.Context, cookie *sessions.Session, timeout time.Duration) error {
 	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
 
 	err := cookie.Save(context.Request(), context.Response())
@@ -273,7 +263,7 @@ func AuthenticateCookie(context echo.Context, password string) error {
 
 	cookie.Values[COOKIE_PASSWORD] = password
 
-	err := RefreshCookie(context, cookie, true)
+	err := RefreshCookie(context, cookie, REFRESH_TIMEOUT)
 	if Error(err) {
 		return err
 	}
