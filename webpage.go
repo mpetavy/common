@@ -87,6 +87,9 @@ type Webpage struct {
 	HtmlBody          *etree.Element
 	HtmlScrollContent *etree.Element
 	HtmlContent       *etree.Element
+	redirectTimeout   time.Duration
+	redirectUrl       string
+	onLoad            string
 }
 
 type FuncFieldIterator func(string, reflect.StructField, reflect.Value, *structtag.Tag) (bool, []string)
@@ -322,6 +325,11 @@ func IsCookieAuthenticated(context echo.Context, password string) bool {
 	}
 
 	return true
+}
+
+func (page *Webpage) SetRedirectTimeout(timeout time.Duration, url string) {
+	page.redirectTimeout = timeout
+	page.redirectUrl = url
 }
 
 func NewMenu(page *Webpage, menuItems []ActionItem, selectedTitle string, disableMenues bool) {
@@ -970,6 +978,22 @@ func NewTable(parent *etree.Element, cells [][]string) *etree.Element {
 }
 
 func (this *Webpage) HTML() (string, error) {
+	var onLoad strings.Builder
+
+	if this.redirectUrl != "" {
+		onLoad.WriteString(fmt.Sprintf("setTimeout(function() {redirectToUrl(--$%s$--);}, %d)", this.redirectUrl, DurationToMillisecond(this.redirectTimeout)))
+	}
+
+	attr := this.HtmlBody.SelectAttr("onload")
+	if attr != nil {
+		onLoad.WriteString(";")
+		onLoad.WriteString(attr.Value)
+	}
+
+	if onLoad.Len() > 0 {
+		this.HtmlBody.CreateAttr("onload", onLoad.String())
+	}
+
 	this.doc.Indent(4)
 	this.doc.WriteSettings = etree.WriteSettings{
 		CanonicalEndTags: true,
