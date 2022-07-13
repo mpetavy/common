@@ -68,7 +68,7 @@ const (
 	COOKIE_EXPIRE   = "expire"
 
 	FLASH_TIMEOUT   = time.Second
-	REFRESH_TIMEOUT = time.Second * 5
+	REFRESH_TIMEOUT = time.Second * 15
 )
 
 var (

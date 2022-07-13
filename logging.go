@@ -253,6 +253,10 @@ func (this *fileWriter) GetLogs(w io.Writer) error {
 			}
 		}
 
+		if !FileExists_(src) {
+			continue
+		}
+
 		file, err := os.Open(src)
 		if loggingError(err) {
 			continue
@@ -411,12 +415,11 @@ func Debug(t string, arg ...interface{}) {
 	appendLog(LEVEL_DEBUG, ColorDebug, GetRuntimeInfo(1), t, nil)
 }
 
-// DebugError prints out the error
 func loggingError(err error) bool {
 	if err != nil && logger != nil {
 		entry := newLogEntry(LEVEL_ERROR, ColorError, GetRuntimeInfo(1), err.Error())
 
-		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entry.String(*FlagLogJson, true)))
+		logger.WriteString(LEVEL_DEBUG, fmt.Sprintf("%s\n", entry.String(*FlagLogJson, true)))
 	}
 
 	return err != nil
