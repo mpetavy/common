@@ -3,9 +3,7 @@ package common
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"os/exec"
-	"syscall"
 	"time"
 )
 
@@ -53,10 +51,9 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 
 	select {
 	case <-time.After(timeout):
-		Debug("Watchdog process will be killed pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))
 		Error(cmd.Process.Kill())
 
-		return nil, &ErrWatchdog{Msg: fmt.Sprintf("killed process pid: %d cmd: %s after: %v", cmd.Process.Pid, CmdToString(cmd), time.Since(start))}
+		return nil, &ErrWatchdog{Msg: fmt.Sprintf("Watchdog process is killed by timeout! pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))}
 	case err := <-doneCh:
 		exitcode := 0
 		if err != nil {
@@ -70,59 +67,22 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 		exitstate := ""
 		var output []byte
 
-		switch exitcode {
-		case 0:
+		if exitcode == 0 {
 			exitstate = "successfull"
 			output = buf.Bytes()
-		default:
-			exitstate = "failed"
-		}
-
-		Debug("Watchdog process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start))
-		Debug("%s", string(output))
-
-		return output, err
-	}
-}
-
-func NewWatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
-	DebugFunc("%s: %d msec...", msg, timeout.Milliseconds())
-
-	doneCh := make(chan error, 1)
-
-	start := time.Now()
-
-	var err error
-
-	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine(2))
-
-		doneCh <- fn()
-	}()
-
-	select {
-	case <-time.After(timeout):
-		Debug("Watchdog function killed! time: %v", time.Since(start))
-
-		return &ErrWatchdog{Msg: msg}
-	case err = <-doneCh:
-		exitstate := ""
-		if err != nil {
-			exitstate = "failed"
 		} else {
-			exitstate = "successfull"
+			exitstate = "failed"
 		}
 
-		Debug("Watchdog function %s! time: %s", exitstate, time.Since(start))
-		return err
-	}
-}
+		msg := fmt.Sprintf("Watchdog process %s! pid: %d exitcode: %d timeout: %v cmd: %s time: %s error: %v", exitstate, cmd.Process.Pid, exitcode, timeout, CmdToString(cmd), time.Since(start), err)
 
-func StillAlive(pid int) bool {
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	} else {
-		return process.Signal(syscall.Signal(0)) != nil
+		if exitcode == 0 {
+			Debug(msg)
+			Debug("%s", string(output))
+
+			return output, nil
+		} else {
+			return nil, fmt.Errorf(msg)
+		}
 	}
 }
