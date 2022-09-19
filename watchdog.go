@@ -86,3 +86,34 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 		}
 	}
 }
+
+func NewWatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
+	DebugFunc("%s: %d msec...", msg, timeout.Milliseconds())
+
+	doneCh := make(chan error, 1)
+
+	start := time.Now()
+
+	var err error
+
+	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine(2))
+
+		doneCh <- fn()
+	}()
+
+	select {
+	case <-time.After(timeout):
+		return &ErrWatchdog{Msg: fmt.Sprintf("Watchdog function is killed by timeout! time: %v", time.Since(start))}
+	case err = <-doneCh:
+		exitstate := ""
+		if err != nil {
+			exitstate = "failed"
+		} else {
+			exitstate = "successfull"
+		}
+
+		Debug("Watchdog function %s! time: %s", exitstate, time.Since(start))
+		return err
+	}
+}
