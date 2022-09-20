@@ -22,21 +22,20 @@ import (
 )
 
 const (
-	OPTION_FILE          = "file"
-	OPTION_HIDDEN        = "hidden"
-	OPTION_SELECT        = "select"
-	OPTION_MULTISELECT   = "multiselect"
-	OPTION_DATALIST      = "datalist"
-	OPTION_PASSWORD      = "password"
-	OPTION_AUTOFOCUS     = "autofocus"
-	OPTION_REQUIRED      = "required"
-	OPTION_READONLY      = "readonly"
-	OPTION_MULTILINE     = "multiline"
-	OPTION_WIDE          = "wide"
-	OPTION_MEGALINE      = "megaline"
-	OPTION_NOLABEL       = "nolabel"
-	OPTION_EXPERTVIEW    = "expertview"
-	OPTION_NOPLACEHOLDER = "noplaceholder"
+	OPTION_FILE        = "file"
+	OPTION_HIDDEN      = "hidden"
+	OPTION_SELECT      = "select"
+	OPTION_MULTISELECT = "multiselect"
+	OPTION_DATALIST    = "datalist"
+	OPTION_PASSWORD    = "password"
+	OPTION_AUTOFOCUS   = "autofocus"
+	OPTION_REQUIRED    = "required"
+	OPTION_READONLY    = "readonly"
+	OPTION_MULTILINE   = "multiline"
+	OPTION_WIDE        = "wide"
+	OPTION_MEGALINE    = "megaline"
+	OPTION_NOLABEL     = "nolabel"
+	OPTION_EXPERTVIEW  = "expertview"
 
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
 	INPUT_WIDTH_WIDE   = "pure-input-1-2"
@@ -133,10 +132,15 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 	htmlMeta.CreateAttr("content", "width = device-width, initial-scale = 1")
 
 	htmlMeta = p.HtmlHead.CreateElement("meta")
+	htmlMeta.CreateAttr("http-equiv", "X-UA-Compatible")
+	htmlMeta.CreateAttr("content", "IE=Edge")
+
+	htmlMeta = p.HtmlHead.CreateElement("meta")
 	htmlMeta.CreateAttr("charset", "UTF-8")
 
 	htmlMeta = p.HtmlHead.CreateElement("meta")
-	htmlMeta.CreateAttr("cache-control", "no-cache, no-store, must-revalidate")
+	htmlMeta.CreateAttr("http-equiv", "cache-control")
+	htmlMeta.CreateAttr("content", "no-cache, no-store, must-revalidate")
 
 	p.HtmlBody = p.HtmlRoot.CreateElement("body")
 
@@ -366,6 +370,7 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 				if strings.HasPrefix(menu.Icon, "data:") {
 					htmlImg := htmlAhref.CreateElement("img")
 					htmlImg.CreateAttr("src", menu.Icon)
+					htmlImg.CreateAttr("alt", "")
 					htmlImg.CreateAttr("style", "float:left;display: inline-block;width: 14px;height: 14px;margin-right: 4px;text-align: center;")
 				} else {
 					caption = "--%" + menu.Icon + "%--" + caption
@@ -432,7 +437,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 
 	htmlGroup := htmlForm.CreateElement("div")
 	htmlGroup.CreateAttr("class", CSS_BUTTON_GROUP)
-	htmlGroup.CreateAttr("style", "display:flex;justify-content:flex-end;")
+	htmlGroup.CreateAttr("style", "display:flex;")
 
 	htmlGroupH1 := htmlGroup.CreateElement("h1")
 	htmlGroupH1.SetText(caption)
@@ -440,10 +445,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 
 	htmlGroupCenter := htmlGroup.CreateElement("div")
 
-	htmlFieldset := htmlForm.CreateElement("fieldset")
-	htmlFieldset.CreateAttr("id", "fieldset")
-
-	isFieldExpertView, err := newFieldset(true, htmlFieldset, caption, data, "", readOnly, isExpertViewAvailable, funcFieldIterator)
+	isFieldExpertView, err := newFieldset(true, htmlForm, caption, data, "", readOnly, isExpertViewAvailable, funcFieldIterator)
 	if Error(err) {
 		return nil, nil, err
 	}
@@ -456,7 +458,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 		expertViewCheckbox := newCheckbox(htmlGroupCenter, isExpertViewAvailable)
 		expertViewCheckbox.SetText(Translate("Expert view"))
 		expertViewCheckbox.CreateAttr("onClick", fmt.Sprintf("setExpertViewVisible(--$fieldset$--);"))
-		expertViewCheckbox.CreateAttr("style", "display: flex; justify-content: flex-end")
+		expertViewCheckbox.CreateAttr("style", "display:flex;")
 	} else {
 		if len(actions) == 0 {
 			htmlForm.RemoveChild(htmlGroup)
@@ -594,6 +596,8 @@ func newCheckbox(parent *etree.Element, checked bool) *etree.Element {
 }
 
 func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, data interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
+	parent = parent.CreateElement("fieldset")
+
 	expertViewFieldExists := false
 
 	if reflect.TypeOf(data).Kind() == reflect.Ptr {
@@ -718,6 +722,8 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 			}
 
 			if IndexOf(tagHtml.Options, OPTION_MULTISELECT) != -1 {
+				htmlLabel.RemoveAttr("for")
+
 				htmlSpan := htmlDiv.CreateElement("span")
 				htmlSpan.CreateAttr("class", CSS_CHECKLIST)
 
@@ -775,7 +781,6 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 
 				for _, value := range fieldValues {
 					htmlOption := htmlInput.CreateElement("option")
-					htmlOption.CreateAttr("value", value)
 					htmlOption.SetText(value)
 
 					if preselectedValues[value] {
@@ -864,7 +869,6 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 
 				for _, value := range fieldValues {
 					htmlOption := htmlDatalist.CreateElement("option")
-					htmlOption.CreateAttr("value", value)
 					htmlOption.SetText(value)
 				}
 			}
@@ -873,10 +877,6 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 		htmlInput.CreateAttr("name", fieldPath)
 		htmlInput.CreateAttr("id", fieldPath)
 		htmlInput.CreateAttr("spellcheck", "false")
-
-		if IndexOf(tagHtml.Options, OPTION_NOPLACEHOLDER) == -1 {
-			htmlInput.CreateAttr("placeholder", Translate(tagHtml.Name))
-		}
 
 		if IndexOf(tagHtml.Options, OPTION_AUTOFOCUS) != -1 {
 			htmlInput.CreateAttr("autofocus", "")
@@ -1018,7 +1018,7 @@ func (this *Webpage) HTML() (string, error) {
 
 	html = strings.ReplaceAll(html, "<a href ", "<a href=\"\" ")
 
-	strayEnds := []string{"></link>", "></meta>", "></input>"}
+	strayEnds := []string{"></link>", "></meta>", "></input>", "></img>", "></br>"}
 	for _, strayEnd := range strayEnds {
 		html = strings.ReplaceAll(html, strayEnd, "/>")
 	}

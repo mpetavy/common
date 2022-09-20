@@ -3,11 +3,13 @@ package common
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 var (
 	resourcesDirectory string
 	resourcesMimeTypes = make(map[string]string)
+	resourcesLock      sync.Mutex
 )
 
 func ResourcesDirectory() string {
@@ -36,6 +38,9 @@ func ReadResource(filename string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
+
+	resourcesLock.Lock()
+	defer resourcesLock.Unlock()
 
 	mimeType, ok := resourcesMimeTypes[filename]
 	if !ok {
