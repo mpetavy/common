@@ -16,7 +16,7 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
 	github.com/kardianos/service v1.2.1
 	github.com/labstack/echo-contrib v0.11.0
-	github.com/labstack/echo/v4 v4.6.3
+	github.com/labstack/echo/v4 v4.9.0
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
 	github.com/stretchr/testify v1.7.0
