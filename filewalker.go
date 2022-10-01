@@ -13,7 +13,7 @@ type Filewalker struct {
 	Recursive               bool
 	IgnoreError             bool
 	IgnoreHiddenDirectories bool
-	walkFunc                func(path string) error
+	walkFunc                func(path string, f os.FileInfo) error
 }
 
 func (this *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
@@ -41,7 +41,7 @@ func (this *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
 			return nil
 		}
 
-		return this.walkFunc(path)
+		return this.walkFunc(path, f)
 	}
 
 	if this.IgnoreHiddenDirectories && strings.HasPrefix(f.Name(), ".") {
@@ -59,7 +59,7 @@ func (this *Filewalker) Run() error {
 	return filepath.Walk(this.Path, this.Walkfunc)
 }
 
-func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc func(path string) error) *Filewalker {
+func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, f os.FileInfo) error) *Filewalker {
 	path := ""
 	filemask = CleanPath(filemask)
 

@@ -41,7 +41,7 @@ func init() {
 	})
 }
 
-//GetSystemLanguage return BCP 47 standard language name
+// GetSystemLanguage return BCP 47 standard language name
 func GetSystemLanguage() (string, error) {
 	DebugFunc()
 
@@ -171,7 +171,7 @@ func scanStruct(i18ns *[]string, data interface{}) error {
 	})
 }
 
-//SetLanguage sets the language file to translation
+// SetLanguage sets the language file to translation
 func SetLanguage(lang string) error {
 	DebugFunc(lang)
 
@@ -189,7 +189,7 @@ func SetLanguage(lang string) error {
 	return nil
 }
 
-//GetLanguages lists all available languages
+// GetLanguages lists all available languages
 func GetLanguages() ([]string, error) {
 	list := make([]string, 0)
 
@@ -296,7 +296,11 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	paths := []string{"*.go", "../common/*.go"}
 
 	for _, path := range paths {
-		fw := NewFilewalker(path, true, false, func(path string) error {
+		fw := NewFilewalker(path, true, false, func(path string, f os.FileInfo) error {
+			if f.IsDir() {
+				return nil
+			}
+
 			Debug("extract i18n from source file: %s", path)
 
 			ba, err := os.ReadFile(path)
