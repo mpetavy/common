@@ -27,7 +27,9 @@ func (this *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
 		return err
 	}
 
-	if !f.IsDir() {
+	if f.IsDir() {
+		return this.walkFunc(path, f)
+	} else {
 		b := this.Filemask == ""
 
 		if !b {
