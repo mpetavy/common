@@ -32,5 +32,3 @@ require (
 	gopkg.in/ini.v1 v1.49.0 // indirect
 	software.sslmate.com/src/go-pkcs12 v0.0.0-20210415151418-c5206de65a78
 )
-
-replace github.com/kardianos/service v1.2.1 => github.com/mpetavy/service v0.0.0
