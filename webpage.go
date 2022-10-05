@@ -362,7 +362,11 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 
 		htmlAhref := htmlMenu.CreateElement("a")
 		htmlAhref.CreateAttr("class", "pure-menu-link")
-		htmlAhref.CreateAttr("style", "cursor: pointer")
+		textAlign := "left"
+		if mainMenu {
+			textAlign = "center"
+		}
+		htmlAhref.CreateAttr("style", fmt.Sprintf("cursor: pointer;text-align: %s;", textAlign))
 
 		if menu.Caption != "" {
 			caption := menu.Caption
