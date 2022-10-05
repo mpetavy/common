@@ -93,7 +93,14 @@ func (server *DiscoverServer) Start() error {
 					break
 				}
 
-				info := strings.ReplaceAll(server.info, "<host>", remote.String())
+				addrs, err := GetHostInfos(true, false, remote)
+				if Error(err) {
+					Error(fmt.Errorf("cannot parse ip: %s", host))
+
+					break
+				}
+
+				info := strings.ReplaceAll(server.info, "<host>", addrs[0].IP)
 
 				receivedUID := string(b[:n])
 
