@@ -93,22 +93,13 @@ func (server *DiscoverServer) Start() error {
 					break
 				}
 
-				addrs, err := GetHostInfos(true, false, remote)
-				if Error(err) {
-					Error(fmt.Errorf("cannot parse ip: %s", host))
-
-					break
-				}
-
-				info := strings.ReplaceAll(server.info, "<host>", addrs[0].IP)
-
 				receivedUID := string(b[:n])
 
 				Debug("received UDP broadcast from %+v: %s\n", peer, receivedUID)
 
 				b, err := EqualWildcards(server.uid, receivedUID)
 				if Error(err) {
-					continue
+					break
 				}
 
 				if !b {
@@ -116,6 +107,13 @@ func (server *DiscoverServer) Start() error {
 
 					break
 				}
+
+				addrs, err := GetHostInfos(true, false, remote)
+				if Error(err) {
+					break
+				}
+
+				info := strings.ReplaceAll(server.info, "<host>", addrs[0].IP)
 
 				Debug("answer positive discover with info %s to %+v", info, peer)
 
