@@ -1,91 +1,66 @@
 package common
 
-import (
-	"reflect"
-)
+import "golang.org/x/exp/slices"
 
-type OrderedMap struct {
-	m map[interface{}]interface{}
-	l []interface{}
+type OrderedMap[K comparable, V any] struct {
+	m map[K]V
+	l []K
 }
 
-type ErrInvalidType struct {
-	Msg string
+func NewOrderedMap[K comparable, V any]() *OrderedMap[K, V] {
+	return &OrderedMap[K, V]{
+		m: make(map[K]V),
+		l: nil,
+	}
 }
 
-func (e *ErrInvalidType) Error() string {
-	return e.Msg
+func (om *OrderedMap[K, V]) Len() int {
+	return len(om.l)
 }
 
-func NewOrderedMap(m ...interface{}) *OrderedMap {
-	o := OrderedMap{make(map[interface{}]interface{}), make([]interface{}, 0)}
+func (om *OrderedMap[K, V]) Get(k K) V {
+	return om.m[k]
+}
 
-	if len(m) > 0 {
-		o.SetMap(m[0])
+func (om *OrderedMap[K, V]) GetOk(k K) (V, bool) {
+	v, ok := om.m[k]
+
+	return v, ok
+}
+
+func (om *OrderedMap[K, V]) Add(k K, v V) *OrderedMap[K, V] {
+	om.m[k] = v
+	om.l = append(om.l, k)
+
+	return om
+}
+
+func (om *OrderedMap[K, V]) Remove(k K) *OrderedMap[K, V] {
+	delete(om.m, k)
+
+	p := slices.Index(om.l, k)
+	if p != -1 {
+		om.l = slices.Delete(om.l, p, p+1)
 	}
 
-	return &o
+	return om
 }
 
-func (o *OrderedMap) Clear() *OrderedMap {
-	o.m = make(map[interface{}]interface{})
-	o.l = make([]interface{}, 0)
+func (om *OrderedMap[K, V]) Clear() *OrderedMap[K, V] {
+	om.m = make(map[K]V)
 
-	return o
+	return om
 }
 
-func (o *OrderedMap) SetMap(m ...interface{}) *OrderedMap {
-	o.Clear()
+func (om *OrderedMap[K, V]) Keys() []K {
+	lcopy := make([]K, len(om.l))
+	copy(lcopy, om.l)
 
-	if len(m) > 1 || reflect.TypeOf(m[0]).Kind() != reflect.Map {
-		panic(&ErrInvalidType{"not a valid map type provided"})
+	return om.l
+}
 
+func (om *OrderedMap[K, V]) Range(fn func(K, V)) {
+	for _, k := range om.l {
+		fn(k, om.m[k])
 	}
-
-	if len(m) == 1 {
-		v := reflect.ValueOf(m[0])
-
-		for _, key := range v.MapKeys() {
-			value := v.MapIndex(key)
-			o.Set(key.Interface(), value.Interface())
-		}
-	}
-
-	return o
-}
-
-func (o *OrderedMap) Set(key interface{}, value interface{}) *OrderedMap {
-	delete(o.m, key)
-
-	o.m[key] = value
-	o.l = append(o.l, key)
-
-	return o
-}
-
-func (o *OrderedMap) Get(key interface{}) (interface{}, bool) {
-	value, ok := o.m[key]
-
-	return value, ok
-}
-
-func (o *OrderedMap) Delete(key interface{}) *OrderedMap {
-	delete(o.m, key)
-
-	for i, k := range o.l {
-		if key == k {
-			o.l = append(o.l[:i], o.l[i+1:]...)
-			break
-		}
-	}
-
-	return o
-}
-
-func (o *OrderedMap) Len() int {
-	return len(o.m)
-}
-
-func (o *OrderedMap) Keys() []interface{} {
-	return o.l
 }

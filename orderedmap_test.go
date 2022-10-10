@@ -7,53 +7,53 @@ import (
 )
 
 func TestDefault(t *testing.T) {
-	o := NewOrderedMap()
+	orderedMap := NewOrderedMap[int, string]()
 
 	for i := 0; i < 100; i++ {
-		o.Set(i, strconv.Itoa(i))
+		orderedMap.Add(i, strconv.Itoa(i))
 	}
 
 	for i := 0; i < 100; i++ {
-		v, ok := o.Get(i)
+		v, ok := orderedMap.GetOk(i)
 
 		assert.True(t, ok)
-		assert.Equal(t, strconv.Itoa(i), v.(string))
+		assert.Equal(t, strconv.Itoa(i), v)
 	}
 
-	for i, k := range o.Keys() {
-		assert.Equal(t, i, k.(int))
+	for i, k := range orderedMap.Keys() {
+		assert.Equal(t, i, k)
 	}
 }
 
 func TestFilled(t *testing.T) {
-	m := make(map[int]string)
+	mab := make(map[int]string)
+	orderedMap := NewOrderedMap[int, string]()
 
 	for i := 0; i < 100; i++ {
-		m[i] = strconv.Itoa(i)
+		v := strconv.Itoa(i)
+		mab[i] = v
+		orderedMap.Add(i, v)
 	}
-
-	o := NewOrderedMap(m)
 
 	for i := 0; i < 10; i++ {
 		var k int
 		for {
 			k = Rnd(100)
 
-			_, ok := m[k]
-
+			_, ok := mab[k]
 			if ok {
 				break
 			}
 		}
 
-		delete(m, k)
-		o.Delete(k)
+		delete(mab, k)
+		orderedMap.Remove(k)
 	}
 
-	for _, k := range o.Keys() {
-		v, ok := o.Get(k)
+	for _, k := range orderedMap.Keys() {
+		v, ok := orderedMap.GetOk(k)
 
 		assert.True(t, ok)
-		assert.Equal(t, m[k.(int)], v)
+		assert.Equal(t, mab[k], v)
 	}
 }
