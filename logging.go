@@ -39,6 +39,7 @@ var (
 	syslogLoggerCh  chan<- error
 	syslogLogger    service.Logger
 	gotest          goTesting
+	notice          = NewNotice(false)
 
 	ColorDefault color.Color = 0
 	ColorDebug   color.Color = ColorDefault
@@ -547,6 +548,11 @@ func newLogEntry(level int, color color.Color, ri RuntimeInfo, msg string) logEn
 }
 
 func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err error) {
+	if !notice.Set() {
+		return
+	}
+	defer notice.Unset()
+
 	mu.Lock()
 	defer mu.Unlock()
 

@@ -34,7 +34,7 @@ func NewDiscoverServer(address string, timeout time.Duration, uid string, info s
 		timeout:   timeout,
 		uid:       uid,
 		info:      info,
-		lifecycle: NewNotice(),
+		lifecycle: NewNotice(true),
 		listener:  nil,
 	}, nil
 }

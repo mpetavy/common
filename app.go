@@ -28,7 +28,7 @@ const (
 	SERVICE_UNINSTALL = "uninstall"
 )
 
-//Info information of the application
+// Info information of the application
 type application struct {
 	// IsService
 	CanRunAsService bool
@@ -99,7 +99,7 @@ var (
 	FlagUsageMd             *bool
 	FlagNoBanner            *bool
 	ticker                  *time.Ticker
-	appLifecycle            = NewNotice()
+	appLifecycle            = NewNotice(true)
 	onceBanner              sync.Once
 	onceRunningAsService    sync.Once
 	onceRunningAsExecutable sync.Once

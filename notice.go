@@ -3,20 +3,21 @@ package common
 import "sync"
 
 type Notice struct {
-	sync.Mutex
-
-	isSet     bool
-	lastIsSet bool
-	chs       []chan struct{}
+	isSet bool
+	mu    sync.Mutex
+	chs   []chan struct{}
 }
 
-func NewNotice() *Notice {
-	return &Notice{isSet: true, chs: make([]chan struct{}, 0)}
+func NewNotice(isSet bool) *Notice {
+	return &Notice{
+		isSet: isSet,
+		chs:   make([]chan struct{}, 0),
+	}
 }
 
 func (this *Notice) NewChannel() chan struct{} {
-	this.Lock()
-	defer this.Unlock()
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
 	ch := make(chan struct{})
 
@@ -26,25 +27,17 @@ func (this *Notice) NewChannel() chan struct{} {
 }
 
 func (this *Notice) IsSet() bool {
-	this.Lock()
-	defer this.Unlock()
-
-	if this.lastIsSet != this.isSet {
-		this.lastIsSet = this.isSet
-
-		DebugFunc(this.isSet)
-	}
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
 	return this.isSet
 }
 
 func (this *Notice) Set() bool {
-	this.Lock()
-	defer this.Unlock()
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
 	if !this.isSet {
-		DebugFunc()
-
 		this.isSet = true
 
 		this.chs = make([]chan struct{}, 0)
@@ -56,12 +49,10 @@ func (this *Notice) Set() bool {
 }
 
 func (this *Notice) Unset() bool {
-	this.Lock()
-	defer this.Unlock()
+	this.mu.Lock()
+	defer this.mu.Unlock()
 
 	if this.isSet {
-		DebugFunc()
-
 		this.isSet = false
 
 		for len(this.chs) > 0 {

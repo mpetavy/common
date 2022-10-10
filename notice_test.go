@@ -8,7 +8,7 @@ import (
 )
 
 func TestNoticeChannel(t *testing.T) {
-	n := NewNotice()
+	n := NewNotice(true)
 	mu := sync.Mutex{}
 	wg := sync.WaitGroup{}
 	c := 0
