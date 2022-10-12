@@ -430,7 +430,7 @@ func NewRefreshPage(name string, url string) (*Webpage, error) {
 	return &p, nil
 }
 
-func NewForm(parent *etree.Element, caption string, data interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewAvailable bool, funcFieldIterator FuncFieldIterator) (*etree.Element, *etree.Element, error) {
+func NewForm(parent *etree.Element, caption string, data interface{}, defaultData interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewAvailable bool, funcFieldIterator FuncFieldIterator) (*etree.Element, *etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
 	htmlForm.CreateAttr("enctype", echo.MIMEMultipartForm)
@@ -449,7 +449,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, method str
 
 	htmlGroupCenter := htmlGroup.CreateElement("div")
 
-	isFieldExpertView, err := newFieldset(true, htmlForm, caption, data, "", readOnly, isExpertViewAvailable, funcFieldIterator)
+	isFieldExpertView, err := newFieldset(true, htmlForm, caption, data, defaultData, "", readOnly, isExpertViewAvailable, funcFieldIterator)
 	if Error(err) {
 		return nil, nil, err
 	}
@@ -580,7 +580,7 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 	return err
 }
 
-func newCheckbox(parent *etree.Element, checked bool) *etree.Element {
+func newCheckbox(parent *etree.Element, value bool) *etree.Element {
 	var htmlInput *etree.Element
 
 	if parent == nil {
@@ -592,38 +592,63 @@ func newCheckbox(parent *etree.Element, checked bool) *etree.Element {
 	htmlInput.CreateAttr("type", "checkbox")
 	htmlInput.CreateAttr("class", CSS_CHECKBOX)
 	htmlInput.CreateAttr("value", "true")
-	if checked {
+
+	if value {
 		htmlInput.CreateAttr("checked", "")
 	}
 
 	return htmlInput
 }
 
-func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, data interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
+func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, data interface{}, dataDefault interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
 	parent = parent.CreateElement("fieldset")
 
-	expertViewFieldExists := false
+	htmlLegend := parent.CreateElement("legend")
+	htmlLegend.SetText(Translate(caption))
+
+	// -----------------------------------------------------......................
 
 	if reflect.TypeOf(data).Kind() == reflect.Ptr {
 		data = reflect.ValueOf(data).Elem()
 	}
 
-	htmlLegend := parent.CreateElement("legend")
-	htmlLegend.SetText(Translate(caption))
+	useDefaultValue := dataDefault != nil
+
+	if useDefaultValue && reflect.TypeOf(dataDefault).Kind() == reflect.Ptr {
+		dataDefault = reflect.ValueOf(dataDefault).Elem()
+	}
 
 	structValue := reflect.ValueOf(data)
+
+	var structValueDefault reflect.Value
+	if useDefaultValue {
+		structValueDefault = reflect.ValueOf(dataDefault)
+	}
+
+	// -----------------------------------------------------......................
+
+	useDefaultValueBackup := useDefaultValue
+	expertViewFieldExists := false
 	hasMultipleFieldsets := false
 
 	for i := 0; i < structValue.NumField(); i++ {
-		fieldType := structValue.Type().Field(i)
-		fieldPath := fieldType.Name
+		useDefaultValue = useDefaultValueBackup
+
+		field := structValue.Type().Field(i)
+		fieldPath := field.Name
 		if path != "" {
 			fieldPath = strings.Join([]string{path, fieldPath}, "_")
 		}
-		fieldValue := structValue.Field(i)
-		fieldValues := []string{}
 
-		fieldTags, err := structtag.Parse(string(fieldType.Tag))
+		fieldValue := structValue.Field(i)
+		fieldValueOptions := []string{}
+
+		var fieldValueDefault reflect.Value
+		if useDefaultValue {
+			fieldValueDefault = structValueDefault.Field(i)
+		}
+
+		fieldTags, err := structtag.Parse(string(field.Tag))
 		if Error(err) {
 			return false, err
 		}
@@ -636,16 +661,16 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 		if funcFieldIterator != nil {
 			var fieldVisible bool
 
-			fieldVisible, fieldValues = funcFieldIterator(fieldPath, fieldType, fieldValue, tagHtml)
+			fieldVisible, fieldValueOptions = funcFieldIterator(fieldPath, field, fieldValue, tagHtml)
 
 			if !fieldVisible {
 				continue
 			}
 		}
 
-		Debug("%+v", fieldType)
+		Debug("%+v", field)
 
-		if fieldType.Type.Kind() == reflect.Struct {
+		if field.Type.Kind() == reflect.Struct {
 			if i == 0 {
 				parent.RemoveChildAt(0)
 			}
@@ -654,7 +679,13 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 
 			hasMultipleFieldsets = true
 
-			ev, err = newFieldset(false, parent, tagHtml.Name, fieldValue.Interface(), fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
+			subStruct := fieldValue.Interface()
+			var subStructDefault interface{}
+			if useDefaultValue {
+				subStructDefault = fieldValueDefault.Interface()
+			}
+
+			ev, err = newFieldset(false, parent, tagHtml.Name, subStruct, subStructDefault, fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
 			if Error(err) {
 				return false, err
 			}
@@ -671,6 +702,9 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 		isFieldExpertView := IndexOf(tagHtml.Options, OPTION_EXPERTVIEW) != -1
 		isFieldHidden := (IndexOf(tagHtml.Options, OPTION_HIDDEN) != -1) || (isFieldExpertView && !isExpertViewActive)
 		isFieldReadOnly := (IndexOf(tagHtml.Options, OPTION_READONLY) != -1)
+		isFieldPassword := (IndexOf(tagHtml.Options, OPTION_PASSWORD) != -1)
+
+		useDefaultValue = useDefaultValue && !isFieldReadOnly && !isFieldPassword
 
 		expertViewFieldExists = expertViewFieldExists || isFieldExpertView
 
@@ -693,7 +727,7 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 
 		var htmlInput *etree.Element
 
-		switch fieldType.Type.Kind() {
+		switch field.Type.Kind() {
 		case reflect.Bool:
 			htmlInput = newCheckbox(htmlDiv, fieldValue.Bool())
 		default:
@@ -726,9 +760,8 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 			}
 
 			if IndexOf(tagHtml.Options, OPTION_MULTISELECT) != -1 {
-				htmlLabel.RemoveAttr("for")
-
 				htmlSpan := htmlDiv.CreateElement("span")
+				htmlSpan.CreateAttr("id", fieldPath+".span")
 				htmlSpan.CreateAttr("class", CSS_CHECKLIST)
 
 				preselectValue := fieldValue.String()
@@ -744,13 +777,16 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 					preselectedValues[v] = true
 				}
 
-				for _, value := range fieldValues {
+				for _, value := range fieldValueOptions {
 					htmlItem := htmlSpan.CreateElement("input")
 					htmlItem.CreateAttr("type", "checkbox")
 					htmlItem.CreateAttr("value", value)
 					htmlItem.CreateAttr("name", fieldPath)
+					htmlItem.CreateAttr("id", fieldPath+"."+value)
 					htmlItem.CreateAttr("class", CSS_CHECKLIST_CHECKBOX)
 					htmlItem.CreateAttr("onkeypress", "multiCheck(event);")
+					htmlItem.CreateAttr("data-default-value", strconv.FormatBool(preselectedValues[value]))
+					htmlItem.CreateAttr("onclick", fmt.Sprintf("checkDefaultValue(--$%s$--);", fieldPath+"."+value))
 					htmlItem.SetText(value)
 
 					if preselectedValues[value] {
@@ -779,11 +815,12 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Int {
 					preselectValue = strconv.Itoa(int(fieldValue.Int()))
 				}
+				htmlInput.CreateAttr("data-default-value", preselectValue)
 
 				preselectedValues := make(map[string]bool)
 				preselectedValues[preselectValue] = true
 
-				for _, value := range fieldValues {
+				for _, value := range fieldValueOptions {
 					htmlOption := htmlInput.CreateElement("option")
 					htmlOption.SetText(value)
 
@@ -803,9 +840,10 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 			}
 			htmlInput.CreateAttr("onclick", "this.select();")
 
-			if fieldType.Type.Kind() == reflect.Int {
+			if field.Type.Kind() == reflect.Int {
 				htmlInput.CreateAttr("type", "number")
 				htmlInput.CreateAttr("value", fmt.Sprintf("%d", fieldValue.Int()))
+
 				option, err := fieldTags.Get("html_min")
 				if err == nil {
 					htmlInput.CreateAttr("min", fmt.Sprintf("%s", option.Value()))
@@ -834,11 +872,14 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 						htmlRange.CreateAttr("max", fmt.Sprintf("%s", option.Value()))
 					}
 
-					htmlRange.CreateAttr("oninput", fmt.Sprintf("document.getElementById(--$%s$--).value = this.value;", fieldPath))
+					htmlRange.CreateAttr("oninput", fmt.Sprintf("document.getElementById(--$%s$--).value = this.value;checkDefaultValue(--$%s$--);", fieldPath, fieldPath))  // does NOT work with IE10
+					htmlRange.CreateAttr("onchange", fmt.Sprintf("document.getElementById(--$%s$--).value = this.value;checkDefaultValue(--$%s$--);", fieldPath, fieldPath)) // IE 10 only
 				}
 			} else {
 				if IndexOf(tagHtml.Options, OPTION_FILE) != -1 {
 					htmlInput.CreateAttr("type", "file")
+
+					useDefaultValue = false
 
 					tagAccept, err := fieldTags.Get("accept")
 					if err == nil {
@@ -855,7 +896,7 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 						icon.CreateAttr("class", "fa fa-trash")
 					}
 				} else {
-					if IndexOf(tagHtml.Options, OPTION_PASSWORD) != -1 {
+					if isFieldPassword {
 						htmlInput.CreateAttr("type", "password")
 					} else {
 						htmlInput.CreateAttr("type", "text")
@@ -866,12 +907,12 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 			}
 
 			if IndexOf(tagHtml.Options, OPTION_DATALIST) != -1 {
-				htmlInput.CreateAttr("list", fieldPath+"_list")
+				htmlInput.CreateAttr("list", fieldPath+".datalist")
 
 				htmlDatalist := htmlDiv.CreateElement("datalist")
-				htmlDatalist.CreateAttr("id", fieldPath+"_list")
+				htmlDatalist.CreateAttr("id", fieldPath+".datalist")
 
-				for _, value := range fieldValues {
+				for _, value := range fieldValueOptions {
 					htmlOption := htmlDatalist.CreateElement("option")
 					htmlOption.SetText(value)
 				}
@@ -881,6 +922,27 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 		htmlInput.CreateAttr("name", fieldPath)
 		htmlInput.CreateAttr("id", fieldPath)
 		htmlInput.CreateAttr("spellcheck", "false")
+
+		if fieldPath == "Tls_Servername" {
+			fmt.Printf("stop")
+		}
+
+		if useDefaultValue {
+			defaultValue := fmt.Sprintf("%v", fieldValueDefault)
+			if defaultValue == "" {
+				defaultValue = "nil"
+			}
+			htmlInput.CreateAttr("data-default-value", defaultValue)
+			if field.Type.Kind() == reflect.Bool {
+				htmlInput.CreateAttr("onclick", fmt.Sprintf("checkDefaultValue(--$%s$--);", fieldPath))
+			} else {
+				htmlInput.CreateAttr("oninput", fmt.Sprintf("checkDefaultValue(--$%s$--);", fieldPath))
+			}
+		}
+
+		if isFieldReadOnly {
+			htmlInput.CreateAttr("tabIndex", "-1")
+		}
 
 		if IndexOf(tagHtml.Options, OPTION_AUTOFOCUS) != -1 {
 			htmlInput.CreateAttr("autofocus", "")
@@ -901,7 +963,6 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 			pattern = strings.ReplaceAll(pattern, ";", ",")
 
 			htmlInput.CreateAttr("pattern", pattern)
-			htmlInput.CreateAttr("title", Translate("Invalid characters used in the input. Valid %v", pattern))
 		}
 	}
 
@@ -973,6 +1034,8 @@ func NewTable(parent *etree.Element, cells [][]string) *etree.Element {
 
 func (this *Webpage) HTML() (string, error) {
 	var onLoad strings.Builder
+
+	onLoad.WriteString("checkDefaultValues();")
 
 	if this.redirectUrl != "" {
 		onLoad.WriteString(fmt.Sprintf("setTimeout(function() {redirectToUrl(--$%s$--);}, %d)", this.redirectUrl, DurationToMillisecond(this.redirectTimeout)))
