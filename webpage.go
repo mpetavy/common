@@ -629,6 +629,7 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 
 	useDefaultValueBackup := useDefaultValue
 	expertViewFieldExists := false
+	allFieldsAreExpertView := true
 	hasMultipleFieldsets := false
 
 	for i := 0; i < structValue.NumField(); i++ {
@@ -707,6 +708,10 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 		useDefaultValue = useDefaultValue && !isFieldReadOnly && !isFieldPassword
 
 		expertViewFieldExists = expertViewFieldExists || isFieldExpertView
+
+		if !isFieldExpertView {
+			allFieldsAreExpertView = false
+		}
 
 		if isFieldExpertView {
 			classes = append(classes, OPTION_EXPERTVIEW)
@@ -923,10 +928,6 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 		htmlInput.CreateAttr("id", fieldPath)
 		htmlInput.CreateAttr("spellcheck", "false")
 
-		if fieldPath == "Tls_Servername" {
-			fmt.Printf("stop")
-		}
-
 		if useDefaultValue {
 			defaultValue := fmt.Sprintf("%v", fieldValueDefault)
 			if defaultValue == "" {
@@ -968,6 +969,15 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 
 	if isFirstFieldset && !hasMultipleFieldsets {
 		parent.RemoveChild(htmlLegend)
+	}
+
+	if allFieldsAreExpertView {
+		htmlLegend.CreateAttr("class", OPTION_EXPERTVIEW)
+
+		if !isExpertViewActive {
+			htmlLegend.CreateAttr("style", "display: none;")
+		}
+
 	}
 
 	return expertViewFieldExists, nil
