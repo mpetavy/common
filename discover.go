@@ -179,11 +179,11 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 			return nil, err
 		}
 
-		ip = ip.To4()
-
-		if ip == nil {
+		if !IsIPV4(ip) {
 			continue
 		}
+
+		ip = ip.To4()
 
 		wg.Add(1)
 

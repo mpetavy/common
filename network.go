@@ -137,11 +137,11 @@ func GetHostInfo() (*HostInfo, string, error) {
 				for _, addr := range addrs {
 					ip, ok := addr.(*net.IPNet)
 
-					if !ok {
+					if !ok || !IsIPV4(ip.IP) {
 						continue
 					}
 
-					if ip.IP.To4() != nil && IsLocalhost(ip.IP) {
+					if IsLocalhost(ip.IP) {
 						return &HostInfo{
 							IFace: intf,
 							Mac:   mac,
@@ -156,6 +156,16 @@ func GetHostInfo() (*HostInfo, string, error) {
 	}
 
 	return nil, "", fmt.Errorf("cannot determine primary address")
+}
+
+func IsIPV4(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+
+	ip = ip.To4()
+
+	return ip != nil && len(ip) == net.IPv4len
 }
 
 func GetHostInfos(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([]HostInfo, error) {
@@ -186,11 +196,11 @@ func GetHostInfos(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([
 
 		for _, addr := range addrs {
 			ip, ok := addr.(*net.IPNet)
-			if !ok || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && IsLocalhost(ip.IP)) {
+			if !ok || !IsIPV4(ip.IP) || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && IsLocalhost(ip.IP)) {
 				continue
 			}
 
-			if remote != nil && ip.IP.To4() != nil {
+			if remote != nil {
 				if len(ip.IP) != len(remote) {
 					continue
 				}
