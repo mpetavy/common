@@ -182,7 +182,10 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 }
 
 func PullFlash(context echo.Context, flashName string) []string {
-	cookie := GetCookie(context)
+	cookie, err := GetCookie(context)
+	if Error(err) {
+		return nil
+	}
 	if cookie != nil {
 		flashes := cookie.Flashes(flashName)
 		if len(flashes) > 0 {
@@ -205,12 +208,15 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 
 	list = append(list, flash)
 
-	cookie := GetCookie(context)
+	cookie, err := GetCookie(context)
+	if Error(err) {
+		return nil
+	}
 	if cookie != nil {
 		cookie.AddFlash(strings.Join(list, "??br"), flashName)
 	}
 
-	err := RefreshCookie(context, cookie, REFRESH_TIMEOUT)
+	err = RefreshCookie(context, cookie, REFRESH_TIMEOUT)
 	if Error(err) {
 		return err
 	}
@@ -218,7 +224,7 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 	return nil
 }
 
-func GetCookie(context echo.Context) *sessions.Session {
+func GetCookie(context echo.Context) (*sessions.Session, error) {
 	cookie, _ := session.Get(Title(), context)
 
 	// Ignore the error (maybe the current cookie was encrypted with an outdated httpServer.store key)
@@ -229,19 +235,27 @@ func GetCookie(context echo.Context) *sessions.Session {
 		cookie.Options.Secure = SessionStore.Options.Secure
 		cookie.Options.SameSite = SessionStore.Options.SameSite
 		cookie.Options.HttpOnly = SessionStore.Options.HttpOnly
+
+		err := cookie.Save(context.Request(), context.Response())
+		if Error(err) {
+			return nil, err
+		}
 	}
 
-	return cookie
+	return cookie, nil
 }
 
 func DisableCookie(context echo.Context) error {
-	cookie := GetCookie(context)
+	cookie, err := GetCookie(context)
+	if Error(err) {
+		return nil
+	}
 
 	cookie.Options.MaxAge = -1
 	delete(cookie.Values, COOKIE_PASSWORD)
 	delete(cookie.Values, COOKIE_EXPIRE)
 
-	err := cookie.Save(context.Request(), context.Response())
+	err = cookie.Save(context.Request(), context.Response())
 	if Error(err) {
 		return err
 	}
@@ -261,13 +275,16 @@ func RefreshCookie(context echo.Context, cookie *sessions.Session, timeout time.
 }
 
 func AuthenticateCookie(context echo.Context, password string) error {
-	cookie := GetCookie(context)
+	cookie, err := GetCookie(context)
+	if Error(err) {
+		return nil
+	}
 
 	// Ignore the error (maybe the current cookie was encrypted with an outdated httpServer.store key)
 
 	cookie.Values[COOKIE_PASSWORD] = password
 
-	err := RefreshCookie(context, cookie, REFRESH_TIMEOUT)
+	err = RefreshCookie(context, cookie, REFRESH_TIMEOUT)
 	if Error(err) {
 		return err
 	}
@@ -276,7 +293,10 @@ func AuthenticateCookie(context echo.Context, password string) error {
 }
 
 func CheckCookieAuthenticated(context echo.Context, password string) error {
-	cookie := GetCookie(context)
+	cookie, err := GetCookie(context)
+	if Error(err) {
+		return nil
+	}
 
 	expire, ok := cookie.Values[COOKIE_EXPIRE]
 	if !ok {
@@ -777,7 +797,6 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 				preselectedValues := make(map[string]bool)
 
 				list := strings.Split(preselectValue, ";")
-
 				for _, v := range list {
 					preselectedValues[v] = true
 				}
@@ -822,14 +841,11 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 				}
 				htmlInput.CreateAttr("data-default-value", preselectValue)
 
-				preselectedValues := make(map[string]bool)
-				preselectedValues[preselectValue] = true
-
 				for _, value := range fieldValueOptions {
 					htmlOption := htmlInput.CreateElement("option")
 					htmlOption.SetText(value)
 
-					if preselectedValues[value] {
+					if value == preselectValue {
 						htmlOption.CreateAttr("selected", "")
 					}
 				}
@@ -1045,8 +1061,6 @@ func NewTable(parent *etree.Element, cells [][]string) *etree.Element {
 func (this *Webpage) HTML() (string, error) {
 	var onLoad strings.Builder
 
-	onLoad.WriteString("checkDefaultValues();")
-
 	if this.redirectUrl != "" {
 		onLoad.WriteString(fmt.Sprintf("setTimeout(function() {redirectToUrl(--$%s$--);}, %d)", this.redirectUrl, DurationToMillisecond(this.redirectTimeout)))
 	}
@@ -1114,5 +1128,9 @@ func Hack4BrowserUpdate() string {
 }
 
 func SessionId(context echo.Context) string {
-	return GetCookie(context).ID
+	cookie, err := GetCookie(context)
+	if cookie == nil || Error(err) {
+		return ""
+	}
+	return cookie.ID
 }
