@@ -591,7 +591,12 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 		}
 
 		if gotest != nil {
-			gotest.Logf(entryAsString)
+			switch entry.levelInt {
+			case LEVEL_DEBUG:
+				gotest.Logf(entryAsString)
+			default:
+				gotest.Fatalf(entryAsString)
+			}
 		} else {
 			if entry.color != ColorDefault {
 				entry.color.Println(entryAsString)

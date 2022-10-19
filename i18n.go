@@ -296,7 +296,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	paths := []string{"*.go", "../common/*.go"}
 
 	for _, path := range paths {
-		fw := NewFilewalker(path, true, false, func(path string, f os.FileInfo) error {
+		fw, err := NewFilewalker(path, true, false, func(path string, f os.FileInfo) error {
 			if f.IsDir() {
 				return nil
 			}
@@ -329,8 +329,11 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 
 			return nil
 		})
+		if Error(err) {
+			return err
+		}
 
-		err := fw.Run()
+		err = fw.Run()
 		if Error(err) {
 			return err
 		}
@@ -472,7 +475,10 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 					return err
 				}
 
-				newSec.NewKey(key, k.String())
+				_, err = newSec.NewKey(key, k.String())
+				if Error(err) {
+					return err
+				}
 			}
 		}
 	}

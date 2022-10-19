@@ -2,23 +2,22 @@ package common
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type Filewalker struct {
-	Path                    string
-	Filemask                string
-	Recursive               bool
-	IgnoreError             bool
-	IgnoreHiddenDirectories bool
-	walkFunc                func(path string, f os.FileInfo) error
+	Path        string
+	Filemask    string
+	Recursive   bool
+	IgnoreError bool
+	walkFunc    func(path string, f os.FileInfo) error
 }
 
-func (this *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
+func (fw *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
 	if err != nil {
-		if this.IgnoreError {
+		if fw.IgnoreError {
 			Warn(fmt.Errorf("cannot access: %s", path))
 
 			return filepath.SkipDir
@@ -28,12 +27,16 @@ func (this *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
 	}
 
 	if f.IsDir() {
-		return this.walkFunc(path, f)
+		if path == fw.Path || fw.Recursive {
+			return fw.walkFunc(path, f)
+		} else {
+			return fs.SkipDir
+		}
 	} else {
-		b := this.Filemask == ""
+		b := fw.Filemask == ""
 
 		if !b {
-			b, err = EqualWildcards(filepath.Base(path), this.Filemask)
+			b, err = EqualWildcards(filepath.Base(path), fw.Filemask)
 			if Error(err) {
 				return err
 			}
@@ -43,25 +46,21 @@ func (this *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
 			return nil
 		}
 
-		return this.walkFunc(path, f)
+		return fw.walkFunc(path, f)
 	}
-
-	if this.IgnoreHiddenDirectories && strings.HasPrefix(f.Name(), ".") {
-		return filepath.SkipDir
-	}
-
-	if this.Recursive || path == this.Path {
-		return nil
-	}
-
-	return filepath.SkipDir
 }
 
-func (this *Filewalker) Run() error {
-	return filepath.Walk(this.Path, this.Walkfunc)
+func (fw *Filewalker) Run() error {
+	if !FileExists(fw.Path) || !IsDirectory(fw.Path) {
+		return &ErrFileNotFound{
+			FileName: fw.Path,
+		}
+	}
+
+	return filepath.Walk(fw.Path, fw.Walkfunc)
 }
 
-func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, f os.FileInfo) error) *Filewalker {
+func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, f os.FileInfo) error) (*Filewalker, error) {
 	path := ""
 	filemask = CleanPath(filemask)
 
@@ -78,8 +77,9 @@ func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc f
 				filemask = filepath.Base(filemask)
 			}
 		} else {
-			path = filepath.Dir(filemask)
-			filemask = filepath.Base(filemask)
+			return nil, &ErrFileNotFound{
+				FileName: filemask,
+			}
 		}
 	}
 
@@ -89,5 +89,5 @@ func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc f
 		Recursive:   recursive,
 		IgnoreError: ignoreError,
 		walkFunc:    walkFunc,
-	}
+	}, nil
 }
