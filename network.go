@@ -1,7 +1,6 @@
 package common
 
 import (
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"net"
@@ -208,21 +207,12 @@ func GetHostInfos(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([
 				localIP := ip.IP.To4()
 				remoteIP := remote.To4()
 
-				subnet, err := hex.DecodeString(ip.IP.DefaultMask().String())
+				bool, err := InSameSubnet(localIP, remoteIP, ip.Mask)
 				if Error(err) {
 					continue
 				}
 
-				found := false
-				for i := 0; i < len(subnet); i++ {
-					found = localIP[i]&subnet[i] == remoteIP[i]&subnet[i]
-
-					if !found {
-						break
-					}
-				}
-
-				if !found {
+				if !bool {
 					continue
 				}
 
@@ -434,4 +424,20 @@ func FormatIP(ip net.IP) string {
 	} else {
 		return fmt.Sprintf("[%s]", ip.To16().String())
 	}
+}
+
+func InSameSubnet(ip0 net.IP, ip1 net.IP, subnet net.IPMask) (bool, error) {
+	localIP := ip0.To4()
+	remoteIP := ip1.To4()
+
+	found := false
+	for i := 0; i < len(subnet); i++ {
+		found = localIP[i]&subnet[i] == remoteIP[i]&subnet[i]
+
+		if !found {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
