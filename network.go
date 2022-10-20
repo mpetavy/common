@@ -430,14 +430,16 @@ func InSameSubnet(ip0 net.IP, ip1 net.IP, subnet net.IPMask) (bool, error) {
 	localIP := ip0.To4()
 	remoteIP := ip1.To4()
 
-	found := false
+	b := false
 	for i := 0; i < len(subnet); i++ {
-		found = localIP[i]&subnet[i] == remoteIP[i]&subnet[i]
+		b = localIP[i]&subnet[i] == remoteIP[i]&subnet[i]
 
-		if !found {
-			return false, nil
+		if !b {
+			break
 		}
 	}
 
-	return true, nil
+	DebugFunc("ip0: %v ip1: %v subnet: %v: %v", localIP, remoteIP, subnet, b)
+
+	return b, nil
 }
