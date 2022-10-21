@@ -1,6 +1,7 @@
 package common
 
 import (
+	"golang.org/x/exp/constraints"
 	"runtime"
 	"strings"
 	"sync"
@@ -8,9 +9,7 @@ import (
 
 const (
 	MaxUint = ^uint(0)
-	MinUint = 0
 	MaxInt  = int(MaxUint >> 1)
-	MinInt  = -MaxInt - 1
 )
 
 type MultiValueFlag []string
@@ -105,8 +104,8 @@ func Eval(b bool, trueFunc interface{}, falseFunc interface{}) interface{} {
 	}
 }
 
-func Min(v ...int) int {
-	var r int
+func Min[T constraints.Ordered](v ...T) T {
+	var r T
 	for i, vi := range v {
 		if i == 0 {
 			r = vi
@@ -120,8 +119,8 @@ func Min(v ...int) int {
 	return r
 }
 
-func Max(v ...int) int {
-	var r int
+func Max[T constraints.Ordered](v ...T) T {
+	var r T
 	for i, vi := range v {
 		if i == 0 {
 			r = vi
