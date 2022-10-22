@@ -251,38 +251,20 @@ func ContainsWildcard(s string) bool {
 
 func EqualWildcards(s, mask string) (bool, error) {
 	if !ContainsWildcard(mask) {
-		return s == mask, nil
+		return strings.ToLower(s) == strings.ToLower(mask), nil
 	}
 
-	mask = strings.ReplaceAll(mask, ".", "\\.") // "."are NOT support as wildcard!
+	mask = strings.ReplaceAll(mask, ".", "\\.")
+	mask = strings.ReplaceAll(mask, "*", ".*")
+	mask = strings.ReplaceAll(mask, "?", ".")
+	mask = "(?i)" + mask
 
-	m := ""
-	var lastR rune
-
-	for _, r := range mask {
-		add := string(r)
-
-		if unicode.IsPrint(lastR) && lastR != rune('\\') {
-			if r == rune('*') {
-				add = ".*"
-			}
-			if r == rune('?') {
-				add = "."
-			}
-		}
-
-		m += add
-		lastR = r
-	}
-
-	mask = m
-
-	regexEqualWildcards, err := regexp.Compile("^" + mask + "$")
+	b, err := regexp.Match(mask, []byte(s))
 	if Error(err) {
 		return false, err
 	}
 
-	return regexEqualWildcards.MatchString(s), nil
+	return b, err
 }
 
 func ReflectStructField(Iface interface{}, FieldName string) (*reflect.Value, error) {

@@ -12,10 +12,10 @@ type Filewalker struct {
 	Filemask    string
 	Recursive   bool
 	IgnoreError bool
-	walkFunc    func(path string, f os.FileInfo) error
+	fileFunc    func(path string, f os.FileInfo) error
 }
 
-func (fw *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
+func (fw *Filewalker) walkfunc(path string, f os.FileInfo, err error) error {
 	if err != nil {
 		if fw.IgnoreError {
 			Warn(fmt.Errorf("cannot access: %s", path))
@@ -28,7 +28,7 @@ func (fw *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
 
 	if f.IsDir() {
 		if path == fw.Path || fw.Recursive {
-			return fw.walkFunc(path, f)
+			return fw.fileFunc(path, f)
 		} else {
 			return fs.SkipDir
 		}
@@ -46,7 +46,7 @@ func (fw *Filewalker) Walkfunc(path string, f os.FileInfo, err error) error {
 			return nil
 		}
 
-		return fw.walkFunc(path, f)
+		return fw.fileFunc(path, f)
 	}
 }
 
@@ -57,7 +57,7 @@ func (fw *Filewalker) Run() error {
 		}
 	}
 
-	return filepath.Walk(fw.Path, fw.Walkfunc)
+	return filepath.Walk(fw.Path, fw.walkfunc)
 }
 
 func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, f os.FileInfo) error) (*Filewalker, error) {
@@ -88,6 +88,6 @@ func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc f
 		Filemask:    filemask,
 		Recursive:   recursive,
 		IgnoreError: ignoreError,
-		walkFunc:    walkFunc,
+		fileFunc:    walkFunc,
 	}, nil
 }

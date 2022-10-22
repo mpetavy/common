@@ -22,21 +22,21 @@ func ew(t *testing.T, s string, m string) bool {
 }
 
 func TestEqualWildcards(t *testing.T) {
-	assert.True(t, ew(t, "test.go", "test.go"))
-	assert.False(t, ew(t, "test.go", "test.goo"))
-	assert.False(t, ew(t, "test.go", "test.go?"))
-	assert.True(t, ew(t, "test.go", "test.go*"))
-	assert.True(t, ew(t, "test.go", "*.go"))
-	assert.True(t, ew(t, "test.go", "test.*"))
-	assert.True(t, ew(t, "test.go", "??st.go"))
-	assert.True(t, ew(t, "test.go", "test.??"))
+	assert.True(t, ew(t, "TEST.GO", "test.go"))
+	assert.False(t, ew(t, "TEST.GO", "test.goo"))
+	assert.False(t, ew(t, "TEST.GO", "test.go?"))
+	assert.True(t, ew(t, "TEST.GO", "test.go*"))
+	assert.True(t, ew(t, "TEST.GO", "*.go"))
+	assert.True(t, ew(t, "TEST.GO", "test.*"))
+	assert.True(t, ew(t, "TEST.GO", "??st.go"))
+	assert.True(t, ew(t, "TEST.GO", "test.??"))
 	assert.True(t, ew(t, "?", "?"))
 	assert.True(t, ew(t, "?", "?"))
-	assert.True(t, ew(t, "cfg.file", "cfg.file*"))
-	assert.True(t, ew(t, "cfg.file.template", "cfg.file*"))
-	assert.True(t, ew(t, "?md", "?md"))
-	assert.False(t, ew(t, "?md", "?.md"))
-	assert.True(t, ew(t, "?md", "\\?md"))
+	assert.True(t, ew(t, "CFG.FILE", "cfg.file*"))
+	assert.True(t, ew(t, "CFG.FILE.TEMPLATE", "cfg.file*"))
+	assert.True(t, ew(t, "?MD", "?md"))
+	assert.False(t, ew(t, "?MD", "?.md"))
+	assert.False(t, ew(t, "?MD", "\\?md"))
 
 	masks := []string{
 		FlagNameCfgFile + "*",
