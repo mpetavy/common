@@ -204,19 +204,18 @@ func GetHostInfos(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([
 					continue
 				}
 
-				localIP := ip.IP.To4()
-				remoteIP := remote.To4()
-
-				bool, err := InSameSubnet(localIP, remoteIP, ip.Mask)
+				_, subnet, err := net.ParseCIDR(ip.String())
 				if Error(err) {
 					continue
 				}
+
+				bool := subnet.Contains(remote)
 
 				if !bool {
 					continue
 				}
 
-				DebugFunc("Local IP for Remote IP %v: %v", remoteIP.String(), localIP.String())
+				DebugFunc("ip0: %v ip1: %v: %v", ip, remote, bool)
 			}
 
 			list = append(list, HostInfo{
@@ -424,22 +423,4 @@ func FormatIP(ip net.IP) string {
 	} else {
 		return fmt.Sprintf("[%s]", ip.To16().String())
 	}
-}
-
-func InSameSubnet(ip0 net.IP, ip1 net.IP, subnet net.IPMask) (bool, error) {
-	localIP := ip0.To4()
-	remoteIP := ip1.To4()
-
-	b := false
-	for i := 0; i < len(subnet); i++ {
-		b = localIP[i]&subnet[i] == remoteIP[i]&subnet[i]
-
-		if !b {
-			break
-		}
-	}
-
-	DebugFunc("ip0: %v ip1: %v subnet: %v: %v", localIP, remoteIP, subnet, b)
-
-	return b, nil
 }

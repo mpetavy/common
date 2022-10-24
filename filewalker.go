@@ -64,22 +64,16 @@ func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc f
 	path := ""
 	filemask = CleanPath(filemask)
 
-	if ContainsWildcard(filemask) {
+	if ContainsWildcard(filemask) || !FileExists(filemask) {
 		path = filepath.Dir(filemask)
 		filemask = filepath.Base(filemask)
 	} else {
-		if FileExists(filemask) {
-			if IsDirectory(filemask) {
-				path = filemask
-				filemask = ""
-			} else {
-				path = filepath.Dir(filemask)
-				filemask = filepath.Base(filemask)
-			}
+		if IsDirectory(filemask) {
+			path = filemask
+			filemask = ""
 		} else {
-			return nil, &ErrFileNotFound{
-				FileName: filemask,
-			}
+			path = filepath.Dir(filemask)
+			filemask = filepath.Base(filemask)
 		}
 	}
 
