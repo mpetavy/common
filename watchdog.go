@@ -51,9 +51,13 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 
 	select {
 	case <-time.After(timeout):
-		Error(cmd.Process.Kill())
+		if cmd.Process != nil {
+			DebugError(cmd.Process.Kill())
 
-		return nil, &ErrWatchdog{Msg: fmt.Sprintf("Watchdog process is killed by timeout! pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))}
+			return nil, &ErrWatchdog{Msg: fmt.Sprintf("Watchdog process is killed by timeout! pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))}
+		}
+
+		return nil, &ErrWatchdog{Msg: fmt.Sprintf("Watchdog process is killed by timeout! timeout: %v cmd: %s time: %v", timeout, CmdToString(cmd), time.Since(start))}
 	case err := <-doneCh:
 		exitcode := 0
 		if err != nil {
