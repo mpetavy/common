@@ -454,7 +454,19 @@ func Info(t string, arg ...interface{}) {
 	appendLog(LEVEL_INFO, ColorInfo, GetRuntimeInfo(1), t, nil)
 }
 
-func Warn(err error) bool {
+func Warn(t string, arg ...interface{}) {
+	if FlagLogVerbose == nil || !*FlagLogVerbose {
+		return
+	}
+
+	if len(arg) > 0 {
+		t = fmt.Sprintf(t, arg...)
+	}
+
+	appendLog(LEVEL_WARN, ColorWarn, GetRuntimeInfo(1), t, nil)
+}
+
+func WarnError(err error) bool {
 	if FlagLogVerbose == nil {
 		return err != nil
 	}

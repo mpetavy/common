@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -18,7 +17,7 @@ type Filewalker struct {
 func (fw *Filewalker) walkfunc(path string, f os.FileInfo, err error) error {
 	if err != nil {
 		if fw.IgnoreError {
-			Warn(fmt.Errorf("cannot access: %s", path))
+			Warn("cannot access: %s", path)
 
 			return filepath.SkipDir
 		}
