@@ -33,7 +33,7 @@ const (
 )
 
 func init() {
-	FlagCfgFile = flag.String(FlagNameCfgFile, AppFilename(".json"), "Configuration file")
+	FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(AppFilename(".json")), "Configuration file")
 	FlagCfgReset = flag.Bool(FlagNameCfgReset, false, "Reset configuration file")
 	FlagCfgCreate = flag.Bool(FlagNameCfgCreate, false, "Reset configuration file and exit")
 }
