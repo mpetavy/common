@@ -434,22 +434,6 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 	}
 }
 
-func NewRefreshPage(name string, url string) (*Webpage, error) {
-	p := Webpage{doc: etree.NewDocument()}
-
-	p.HtmlRoot = p.doc.CreateElement("html")
-	p.HtmlHead = p.HtmlRoot.CreateElement("head")
-	p.HtmlTitle = p.HtmlHead.CreateElement("title")
-	p.HtmlTitle.SetText(name)
-	p.HtmlBody = p.HtmlRoot.CreateElement("body")
-
-	htmlMeta := p.HtmlHead.CreateElement("meta")
-	htmlMeta.CreateAttr("http-equiv", "refresh")
-	htmlMeta.CreateAttr("content", fmt.Sprintf("0; URL=%s", url))
-
-	return &p, nil
-}
-
 func NewForm(parent *etree.Element, caption string, data interface{}, defaultData interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewAvailable bool, funcFieldIterator FuncFieldIterator) (*etree.Element, *etree.Element, error) {
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"sort"
 	"strings"
 	"time"
@@ -72,35 +71,6 @@ func GetHostInfo() (*HostInfo, string, error) {
 					DebugFunc(addr)
 
 					return &addr, hostName, nil
-				}
-			}
-		}
-	}
-
-	if IsLinuxOS() {
-		ipPath, err := exec.LookPath("ip")
-		if err == nil {
-			DebugFunc("try to get ip by ip routing to 1.1.1.1...")
-
-			cmd := exec.Command(ipPath, "-o", "route", "get", "to", "1.1.1.1")
-
-			ba, err := NewWatchdogCmd(cmd, time.Second)
-			if !DebugError(err) {
-				output := string(ba)
-
-				p := strings.Index(output, "src ")
-				if p != -1 {
-					output = output[p+4:]
-					p := strings.Index(output, " ")
-					output = output[:p]
-
-					hostAddress, err := GetHostInfo4IP(net.ParseIP(output))
-
-					if !DebugError(err) {
-						DebugFunc(hostAddress)
-
-						return hostAddress, hostName, nil
-					}
 				}
 			}
 		}
