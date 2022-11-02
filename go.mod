@@ -13,7 +13,7 @@ require (
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
 	github.com/h2non/filetype v1.1.1
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
-	github.com/kardianos/service v1.2.1
+	github.com/kardianos/service v1.2.2
 	github.com/labstack/echo-contrib v0.11.0
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
@@ -22,7 +22,7 @@ require (
 	go.bug.st/serial v1.3.1
 	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be
 	golang.org/x/exp v0.0.0-20221006183845-316c7553db56
-	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
+	golang.org/x/sys v0.1.0
 	golang.org/x/text v0.3.7
 	google.golang.org/api v0.51.0
 	software.sslmate.com/src/go-pkcs12 v0.0.0-20210415151418-c5206de65a78
