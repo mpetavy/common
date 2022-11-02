@@ -449,7 +449,7 @@ func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 		return nil, err
 	}
 
-	_, hostname, err := GetHostInfo()
+	hostname, _, hostInfos, err := GetHostInfos()
 	if Error(err) {
 		return nil, err
 	}
@@ -473,25 +473,15 @@ func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 		BasicConstraintsValid: true,
 	}
 
-	addrs, err := GetHostInfos(true, false, nil)
-	if Error(err) {
-		return nil, err
-	}
-
-	parsedIps := make([]net.IP, 0)
-	for _, addr := range addrs {
-		ip, _, err := net.ParseCIDR(addr.Addr.String())
-		if Error(err) {
-			return nil, err
-		}
-
-		parsedIps = append(parsedIps, ip)
+	ips := make([]net.IP, 0)
+	for _, hostInfo := range hostInfos {
+		ips = append(ips, hostInfo.IPNet.IP)
 	}
 
 	certTmpl.IsCA = false
 	certTmpl.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature
 	certTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
-	certTmpl.IPAddresses = parsedIps
+	certTmpl.IPAddresses = ips
 
 	certDER, err := x509.CreateCertificate(rand.Reader, certTmpl, certTmpl, &key.PublicKey, key)
 	if Error(err) {

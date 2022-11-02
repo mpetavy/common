@@ -108,12 +108,25 @@ func (server *DiscoverServer) Start() error {
 					break
 				}
 
-				addrs, err := GetHostInfos(true, false, remote)
+				_, _, hostInfos, err := GetHostInfos()
 				if Error(err) {
 					break
 				}
 
-				info := strings.ReplaceAll(server.info, "<host>", addrs[0].IP)
+				var local net.IP
+
+				for _, hostInfo := range hostInfos {
+					if hostInfo.IPNet.Contains(remote) {
+						local = hostInfo.IPNet.IP
+
+						break
+					}
+				}
+
+				info := server.info
+				if local != nil {
+					info = strings.ReplaceAll(info, "<host>", local.String())
+				}
 
 				Debug("answer positive discover with info %s to %+v", info, peer)
 
@@ -157,7 +170,7 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 
 	list := make([]string, 0)
 
-	addrs, err := GetHostInfos(true, true, nil)
+	_, _, hostInfos, err := GetHostInfos()
 	if Error(err) {
 		return nil, err
 	}
@@ -173,12 +186,12 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 		DebugError(c.Close())
 	}()
 
-	for _, addr := range addrs {
-		ip, ipNet, err := net.ParseCIDR(addr.Addr.String())
-		if Error(err) {
-			return nil, err
+	for _, hostInfo := range hostInfos {
+		if hostInfo.Intf.Flags&net.FlagBroadcast == 0 {
+			continue
 		}
 
+		ip := hostInfo.IPNet.IP
 		if !IsIPV4(ip) {
 			continue
 		}
@@ -187,12 +200,12 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 
 		wg.Add(1)
 
-		go func(ip net.IP, ipNet *net.IPNet) {
+		go func(hostInfo HostInfo) {
 			defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 			defer wg.Done()
 
-			ones, bits := ipNet.Mask.Size()
+			ones, bits := hostInfo.IPNet.Mask.Size()
 			mask := net.CIDRMask(ones, bits)
 
 			broadcast := net.IP(make([]byte, 4))
@@ -200,7 +213,7 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 				broadcast[i] = ip[i] | ^mask[i]
 			}
 
-			Debug("UDP broadcast: %v for ip: %v on port: %s", broadcast.String(), ipNet, discoverPort)
+			Debug("UDP broadcast: %v for ip: %v on port: %s", broadcast.String(), hostInfo.IPNet, discoverPort)
 
 			dst, err := net.ResolveUDPAddr("udp4", broadcast.String()+":"+discoverPort)
 			if err != nil {
@@ -214,7 +227,7 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 
 				return
 			}
-		}(ip, ipNet)
+		}(hostInfo)
 	}
 
 	wg.Wait()

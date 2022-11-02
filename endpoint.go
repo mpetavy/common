@@ -179,12 +179,12 @@ func (networkServer *NetworkServer) Start() error {
 	networkServer.mu.Lock()
 	defer networkServer.mu.Unlock()
 
-	ips, err := GetHostInfos(true, false, nil)
+	_, _, hostInfos, err := GetHostInfos()
 	if Error(err) {
 		return err
 	}
 
-	Debug("Local IPs: %v", ips)
+	Debug("Local IPs: %v", hostInfos)
 
 	if networkServer.tlsConfig != nil {
 		Debug("Create TLS listener: %s...", networkServer.address)

@@ -1,10 +1,12 @@
 package common
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -46,105 +48,22 @@ func DeadlineByDuration(duration time.Duration) time.Time {
 }
 
 type HostInfo struct {
-	IFace net.Interface
-	Mac   string
-	IP    string
+	Intf  net.Interface
 	IPNet *net.IPNet
-	Addr  net.Addr
 }
 
-func GetHostInfo() (*HostInfo, string, error) {
-	DebugFunc("...")
+func GetHostInfos() (string, net.IP, []HostInfo, error) {
+	var hostInfos []HostInfo
+	var hostAddress net.IP
 
 	hostName, err := os.Hostname()
 	if Error(err) {
-		return nil, "", err
+		return "", nil, nil, err
 	}
-
-	if *FlagIoPrimaryIface != "" {
-		DebugFunc("try to get ip by iface %v...", *FlagIoPrimaryIface)
-
-		addrs, err := GetHostInfos(true, false, nil)
-		if !DebugError(err) {
-			for _, addr := range addrs {
-				if addr.IFace.Name == *FlagIoPrimaryIface {
-					DebugFunc(addr)
-
-					return &addr, hostName, nil
-				}
-			}
-		}
-	}
-
-	addrs, err := net.LookupHost(hostName)
-	if err == nil {
-		for _, addr := range addrs {
-			ip := net.ParseIP(addr)
-			if ip != nil {
-				hostAddress, err := GetHostInfo4IP(ip)
-
-				if !DebugError(err) {
-					DebugFunc(hostAddress)
-
-					return hostAddress, hostName, nil
-				}
-			}
-		}
-	}
-
-	intfs, err := net.Interfaces()
-	if intfs != nil {
-		for _, intf := range intfs {
-			if intf.Flags&net.FlagUp == 0 {
-				continue
-			}
-
-			mac := intf.HardwareAddr.String()
-
-			addrs, _ := intf.Addrs()
-			if addrs != nil {
-				for _, addr := range addrs {
-					ip, ok := addr.(*net.IPNet)
-
-					if !ok || !IsIPV4(ip.IP) {
-						continue
-					}
-
-					if IsLocalhost(ip.IP) {
-						return &HostInfo{
-							IFace: intf,
-							Mac:   mac,
-							IP:    ip.IP.To4().String(),
-							IPNet: ip,
-							Addr:  addr,
-						}, hostName, nil
-					}
-				}
-			}
-		}
-	}
-
-	return nil, "", fmt.Errorf("cannot determine primary address")
-}
-
-func IsIPV4(ip net.IP) bool {
-	if ip == nil {
-		return false
-	}
-
-	ip = ip.To4()
-
-	return ip != nil && len(ip) == net.IPv4len
-}
-
-func GetHostInfos(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([]HostInfo, error) {
-	DebugFunc("...")
-
-	var list []HostInfo
 
 	intfs, err := net.Interfaces()
 	if Error(err) {
-		return nil, err
+		return "", nil, nil, err
 	}
 
 	for _, intf := range intfs {
@@ -152,99 +71,110 @@ func GetHostInfos(inclLocalhost bool, onlyBroadcastIface bool, remote net.IP) ([
 			continue
 		}
 
-		if onlyBroadcastIface && (intf.Flags&net.FlagBroadcast) == 0 {
-			continue
-		}
-
-		mac := intf.HardwareAddr.String()
-
 		addrs, err := intf.Addrs()
 		if Error(err) {
-			return nil, err
+			return "", nil, nil, err
 		}
 
 		for _, addr := range addrs {
-			ip, ok := addr.(*net.IPNet)
-			if !ok || !IsIPV4(ip.IP) || ip.IP.IsLinkLocalUnicast() || ip.IP.IsLinkLocalMulticast() || (!inclLocalhost && IsLocalhost(ip.IP)) {
+			ipNet, ok := addr.(*net.IPNet)
+			if !ok || !IsIPV4(ipNet.IP) || ipNet.IP.IsLinkLocalUnicast() || ipNet.IP.IsLinkLocalMulticast() {
 				continue
 			}
 
-			if remote != nil {
-				if len(ip.IP) != len(remote) {
-					continue
-				}
+			//if remote != nil {
+			//	if len(ipNet.IP) != len(remote) {
+			//		continue
+			//	}
+			//
+			//	_, subnet, err := net.ParseCIDR(ipNet.String())
+			//	if Error(err) {
+			//		continue
+			//	}
+			//
+			//	bool := subnet.Contains(remote)
+			//
+			//	if !bool {
+			//		continue
+			//	}
+			//
+			//	DebugFunc("found local: %v for remote: %v: %v", ipNet, remote, bool)
+			//}
 
-				_, subnet, err := net.ParseCIDR(ip.String())
-				if Error(err) {
-					continue
-				}
+			hostInfos = append(hostInfos, HostInfo{
+				Intf:  intf,
+				IPNet: ipNet,
+			})
 
-				bool := subnet.Contains(remote)
-
-				if !bool {
-					continue
-				}
-
-				DebugFunc("ip0: %v ip1: %v: %v", ip, remote, bool)
+			if hostAddress == nil && *FlagIoPrimaryIface == intf.Name {
+				hostAddress = ipNet.IP
 			}
 
-			list = append(list, HostInfo{
-				IFace: intf,
-				Mac:   mac,
-				IP:    ip.IP.To4().String(),
-				IPNet: ip,
-				Addr:  addr,
-			})
+			break
 		}
 	}
 
-	sort.SliceStable(list, func(i, j int) bool {
-		return strings.ToUpper(list[i].Addr.String()) < strings.ToUpper(list[j].Addr.String())
+	if hostAddress == nil {
+		r := net.Resolver{}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		defer cancel()
+
+		ipStrings, err := r.LookupHost(ctx, hostName)
+		if !DebugError(err) {
+			for _, ipString := range ipStrings {
+				ip := net.ParseIP(ipString)
+				if ip != nil && !ip.IsLoopback() {
+					hostAddress = ip
+
+					break
+				}
+			}
+		}
+	}
+
+	sort.SliceStable(hostInfos, func(i, j int) bool {
+		return hostInfos[i].Intf.Index < hostInfos[j].Intf.Index
 	})
 
-	DebugFunc("%+v", list)
-
-	return list, nil
+	return hostName, hostAddress, hostInfos, nil
 }
 
-func GetHostInfo4IP(ip net.IP) (*HostInfo, error) {
-	DebugFunc()
-
-	intfs, err := net.Interfaces()
-	if Error(err) {
-		return nil, err
-	}
-
-	for _, intf := range intfs {
-		if intf.Flags&net.FlagUp == 0 {
-			continue
-		}
-
-		addrs, err := intf.Addrs()
-		if Error(err) {
-			return nil, err
-		}
-
-		for _, addr := range addrs {
-			if strings.Contains(addr.String(), ip.String()) {
-				_, ipnet, err := net.ParseCIDR(addr.String())
-				if Error(err) {
-					return nil, err
-				}
-
-				return &HostInfo{
-					IFace: intf,
-					Mac:   intf.HardwareAddr.String(),
-					IP:    ip.To4().String(),
-					IPNet: ipnet,
-					Addr:  addr,
-				}, nil
-			}
-		}
-	}
-
-	return nil, nil
-}
+//func GetHostInfo4IP(ip net.IP) (*HostInfo, error) {
+//	DebugFunc()
+//
+//	intfs, err := net.Interfaces()
+//	if Error(err) {
+//		return nil, err
+//	}
+//
+//	for _, intf := range intfs {
+//		if intf.Flags&net.FlagUp == 0 {
+//			continue
+//		}
+//
+//		addrs, err := intf.Addrs()
+//		if Error(err) {
+//			return nil, err
+//		}
+//
+//		for _, addr := range addrs {
+//			if strings.Contains(addr.String(), ip.String()) {
+//				_, ipnet, err := net.ParseCIDR(addr.String())
+//				if Error(err) {
+//					return nil, err
+//				}
+//
+//				return &HostInfo{
+//					Intf:  intf,
+//					IPNet: ipnet,
+//				}, nil
+//			}
+//		}
+//	}
+//
+//	return nil, nil
+//}
 
 func IsPortAvailable(network string, port int) (available bool) {
 	switch network {
@@ -293,79 +223,65 @@ func FindFreePort(network string, startPort int, excludedPorts []int) (int, erro
 	return -1, fmt.Errorf("cannot find free port")
 }
 
+func IsIPV4(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+
+	ip = ip.To4()
+
+	return ip != nil && len(ip) == net.IPv4len
+}
+
 func IsLocalhost(ip net.IP) bool {
-	list := []string{LOCALHOST_IP6, LOCALHOST_IP4, "localhost"}
-
-	b := false
-	for _, k := range list {
-		if ip.String() == k {
-			b = true
-
-			break
-		}
-	}
-
-	if !b {
-		_, localhostNet, err := net.ParseCIDR("127.0.0.0/8")
-		if err == nil {
-			b = localhostNet.Contains(ip)
-		}
-	}
+	b := ip.IsLoopback()
 
 	DebugFunc("%s: %v", ip, b)
 
 	return b
 }
 
-func IsPrivateIP(ip string) (bool, error) {
-	var err error
-
-	parsedIp := net.ParseIP(ip)
-	if parsedIp == nil {
-		return false, fmt.Errorf("Invalid IP: %v", ip)
-	}
+func IsPrivateIP(ip net.IP) bool {
 	_, private24BitBlock, _ := net.ParseCIDR("10.0.0.0/8")
 	_, private20BitBlock, _ := net.ParseCIDR("172.16.0.0/12")
 	_, private16BitBlock, _ := net.ParseCIDR("192.168.0.0/16")
 
-	private := private24BitBlock.Contains(parsedIp) || private20BitBlock.Contains(parsedIp) || private16BitBlock.Contains(parsedIp)
+	private := private24BitBlock.Contains(ip) || private20BitBlock.Contains(ip) || private16BitBlock.Contains(ip)
 
 	DebugFunc("%s: %v", ip, private)
 
-	return private, err
+	return private
 }
 
-func WaitUntilNetworkIsAvailable(lookupIp string) error {
-	if lookupIp != "" {
+func WaitUntilNetworkIsAvailable(lookupIp net.IP) error {
+	if lookupIp != nil {
 		DebugFunc(lookupIp)
 	} else {
 		DebugFunc()
 	}
 
 	return NewTimeoutOperation(time.Millisecond*500, MillisecondToDuration(*FlagIoNetworkTimeout), func() error {
-		addrs, err := GetHostInfos(lookupIp == "", false, nil)
+		_, _, hostInfos, err := GetHostInfos()
 
 		if DebugError(err) {
 			return err
 		}
 
-		if len(addrs) == 0 {
-			return fmt.Errorf("host networking is down")
-		}
+		//FIXME test on link
 
-		if lookupIp != "" {
-			for _, ip := range addrs {
-				if ip.IP == lookupIp {
-					DebugFunc("host networking with ip %s is available: %+v", lookupIp, addrs)
+		if lookupIp != nil {
+			for _, ip := range hostInfos {
+				if reflect.DeepEqual(ip.IPNet.IP, lookupIp) {
+					DebugFunc("host networking with ip %s is available: %+v", lookupIp, hostInfos)
 
 					return nil
 				}
 			}
 
-			return fmt.Errorf("host networking with ip %s is not available: %+v", lookupIp, addrs)
+			return fmt.Errorf("host networking with ip %s is not available: %+v", lookupIp, hostInfos)
 		}
 
-		DebugFunc("host networking is available: %+v", addrs)
+		DebugFunc("host networking is available: %+v", hostInfos)
 
 		return nil
 	})
