@@ -82,25 +82,6 @@ func GetHostInfos() (string, net.IP, []HostInfo, error) {
 				continue
 			}
 
-			//if remote != nil {
-			//	if len(ipNet.IP) != len(remote) {
-			//		continue
-			//	}
-			//
-			//	_, subnet, err := net.ParseCIDR(ipNet.String())
-			//	if Error(err) {
-			//		continue
-			//	}
-			//
-			//	bool := subnet.Contains(remote)
-			//
-			//	if !bool {
-			//		continue
-			//	}
-			//
-			//	DebugFunc("found local: %v for remote: %v: %v", ipNet, remote, bool)
-			//}
-
 			hostInfos = append(hostInfos, HostInfo{
 				Intf:  intf,
 				IPNet: ipNet,
@@ -139,42 +120,6 @@ func GetHostInfos() (string, net.IP, []HostInfo, error) {
 
 	return hostName, hostAddress, hostInfos, nil
 }
-
-//func GetHostInfo4IP(ip net.IP) (*HostInfo, error) {
-//	DebugFunc()
-//
-//	intfs, err := net.Interfaces()
-//	if Error(err) {
-//		return nil, err
-//	}
-//
-//	for _, intf := range intfs {
-//		if intf.Flags&net.FlagUp == 0 {
-//			continue
-//		}
-//
-//		addrs, err := intf.Addrs()
-//		if Error(err) {
-//			return nil, err
-//		}
-//
-//		for _, addr := range addrs {
-//			if strings.Contains(addr.String(), ip.String()) {
-//				_, ipnet, err := net.ParseCIDR(addr.String())
-//				if Error(err) {
-//					return nil, err
-//				}
-//
-//				return &HostInfo{
-//					Intf:  intf,
-//					IPNet: ipnet,
-//				}, nil
-//			}
-//		}
-//	}
-//
-//	return nil, nil
-//}
 
 func IsPortAvailable(network string, port int) (available bool) {
 	switch network {
