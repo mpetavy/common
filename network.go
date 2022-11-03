@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -254,4 +255,42 @@ func FormatIP(ip net.IP) string {
 	} else {
 		return fmt.Sprintf("[%s]", ip.To16().String())
 	}
+}
+
+func IsLinkUp(nic string) (bool, error) {
+	// https://linuxconfig.org/how-to-detect-whether-a-physical-cable-is-connected-to-network-card-slot-on-linux
+
+	if IsWindowsOS() {
+		return true, fmt.Errorf("not supported on Windows")
+	}
+
+	ba, err := os.ReadFile(fmt.Sprintf("/sys/class/net/%s/operstate", nic))
+	if Error(err) {
+		return false, err
+	}
+
+	s := strings.TrimSpace(string(ba))
+
+	return s == "up", nil
+}
+
+func IsLinkConnected(nic string) (bool, error) {
+	// https://linuxconfig.org/how-to-detect-whether-a-physical-cable-is-connected-to-network-card-slot-on-linux
+
+	if IsWindowsOS() {
+		return true, fmt.Errorf("not supported on Windows")
+	}
+
+	ba, err := os.ReadFile(fmt.Sprintf("/sys/class/net/%s/carrier", nic))
+	if Error(err) {
+		return false, err
+	}
+
+	s := strings.TrimSpace(string(ba))
+	v, err := strconv.Atoi(s)
+	if Error(err) {
+		return false, err
+	}
+
+	return v == 1, nil
 }
