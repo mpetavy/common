@@ -3,6 +3,7 @@ package common
 // https://www.golinuxcloud.com/tutorial-pki-certificates-authority-ocsp/
 // https://sockettools.com/kb/creating-certificate-using-openssl/
 // http://blog.fourthbit.com/2014/12/23/traffic-analysis-of-an-ssl-slash-tls-session/
+// https://www.atidur.dev/blog/dont-trust-standard-lib/
 
 import (
 	"crypto/ecdsa"
