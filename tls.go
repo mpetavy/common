@@ -5,8 +5,9 @@ package common
 // http://blog.fourthbit.com/2014/12/23/traffic-analysis-of-an-ssl-slash-tls-session/
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -81,7 +82,7 @@ func init() {
 	FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
 	FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
 	FlagTlsMutual = flag.String(FlagNameTlsMutual, "", "Mutual TLS PKCS12 certificates & privkey container file or buffer")
-	FlagTlsKeyLen = flag.Int(FlagNameTlsKeylen, 2048, "RSA key length")
+	FlagTlsKeyLen = flag.Int(FlagNameTlsKeylen, 256, "Key length")
 
 	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
 		initTls()
@@ -304,26 +305,29 @@ func TlsConfigFromFile(filename string, password string) (*tls.Config, error) {
 	return TlsConfigFromBuffer(ba, password)
 }
 
-func PrivateKeyAsPEM(privateKey *rsa.PrivateKey) []byte {
+func PrivateKeyAsPEM(privateKey *ecdsa.PrivateKey) ([]byte, error) {
+	ba, err := x509.MarshalECPrivateKey(privateKey)
+	if Error(err) {
+		return nil, err
+	}
+
 	return pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+			Type:  "PRIVATE KEY",
+			Bytes: ba,
 		},
-	)
+	), nil
 }
 
 func CertificateAsPEM(tlsCertificate *tls.Certificate) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: tlsCertificate.Certificate[0]})
 }
 
-func X509toTlsCertificate(certificate *x509.Certificate, privateKey *rsa.PrivateKey) (*tls.Certificate, error) {
-	keyPEM := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
-		},
-	)
+func X509toTlsCertificate(certificate *x509.Certificate, privateKey *ecdsa.PrivateKey) (*tls.Certificate, error) {
+	keyPEM, err := PrivateKeyAsPEM(privateKey)
+	if Error(err) {
+		return nil, err
+	}
 
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Raw})
 
@@ -387,7 +391,10 @@ func TlsConfigToP12(tlsConfig *tls.Config, password string) ([]byte, error) {
 		return nil, fmt.Errorf("cannot find PEM block with certificate")
 	}
 
-	keyPEM := PrivateKeyAsPEM(tlsConfig.Certificates[0].PrivateKey.(*rsa.PrivateKey))
+	keyPEM, err := PrivateKeyAsPEM(tlsConfig.Certificates[0].PrivateKey.(*ecdsa.PrivateKey))
+	if Error(err) {
+		return nil, err
+	}
 	keyBytes, _ := pem.Decode(keyPEM)
 	if keyBytes == nil {
 		return nil, fmt.Errorf("cannot find PEM block with key")
@@ -398,7 +405,7 @@ func TlsConfigToP12(tlsConfig *tls.Config, password string) ([]byte, error) {
 		return nil, err
 	}
 
-	priv, err := x509.ParsePKCS1PrivateKey(keyBytes.Bytes)
+	priv, err := x509.ParseECPrivateKey(keyBytes.Bytes)
 	if Error(err) {
 		return nil, err
 	}
@@ -428,7 +435,7 @@ func TlsConfigFromPEM(certPEM []byte, keyPEM []byte, password string) (*tls.Conf
 		return nil, err
 	}
 
-	priv, err := x509.ParsePKCS1PrivateKey(keyBytes.Bytes)
+	priv, err := x509.ParseECPrivateKey(keyBytes.Bytes)
 	if Error(err) {
 		return nil, err
 	}
@@ -444,7 +451,22 @@ func TlsConfigFromPEM(certPEM []byte, keyPEM []byte, password string) (*tls.Conf
 func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 	DebugFunc()
 
-	key, err := rsa.GenerateKey(rand.Reader, keylen)
+	var curve elliptic.Curve
+
+	switch keylen {
+	case 224:
+		curve = elliptic.P224()
+	case 256:
+		curve = elliptic.P256()
+	case 384:
+		curve = elliptic.P384()
+	case 521:
+		curve = elliptic.P521()
+	default:
+		return nil, fmt.Errorf("unknown key len: %d", keylen)
+	}
+
+	key, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if Error(err) {
 		return nil, err
 	}
@@ -466,7 +488,6 @@ func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 		Subject: pkix.Name{
 			CommonName:   hostname,
 			Organization: []string{TitleVersion(true, true, true)}},
-		SignatureAlgorithm:    x509.SHA256WithRSA,
 		NotBefore:             time.Now().Add(time.Duration(24) * time.Hour * -1),
 		NotAfter:              time.Now().Add(time.Duration(10) * 365 * 24 * time.Hour),
 		DNSNames:              []string{hostname, "localhost"},
@@ -499,7 +520,10 @@ func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 	}
 
 	certPEM := CertificateAsPEM(certTls)
-	keyPEM := PrivateKeyAsPEM(certTls.PrivateKey.(*rsa.PrivateKey))
+	keyPEM, err := PrivateKeyAsPEM(certTls.PrivateKey.(*ecdsa.PrivateKey))
+	if Error(err) {
+		return nil, err
+	}
 
 	return TlsConfigFromPEM(certPEM, keyPEM, password)
 }
@@ -599,7 +623,7 @@ func NewTlsConfig(
 	return tlsConfig, nil
 }
 
-func VerifyP12(ba []byte, password string) (privateKey *rsa.PrivateKey, certificate *x509.Certificate, caCerts []*x509.Certificate, err error) {
+func VerifyP12(ba []byte, password string) (privateKey *ecdsa.PrivateKey, certificate *x509.Certificate, caCerts []*x509.Certificate, err error) {
 	p12PrivateKey, p12Cert, p12RootCerts, err := pkcs12.DecodeChain(ba, password)
 	if Error(err) {
 		return nil, nil, nil, err
@@ -645,9 +669,9 @@ func VerifyP12(ba []byte, password string) (privateKey *rsa.PrivateKey, certific
 		return nil, nil, nil, fmt.Errorf("Certificate is not valid (NotBefore: %v, NotAfter: %v)", p12Cert.NotBefore, p12Cert.NotAfter)
 	}
 
-	p12PrivateKeyRsa, ok := p12PrivateKey.(*rsa.PrivateKey)
+	p12PrivateKeyRsa, ok := p12PrivateKey.(*ecdsa.PrivateKey)
 	if !ok {
-		return nil, nil, nil, fmt.Errorf("Expected RSA private key type")
+		return nil, nil, nil, fmt.Errorf("Expected private key type")
 	}
 
 	return p12PrivateKeyRsa, p12Cert, p12RootCerts, nil
