@@ -67,7 +67,7 @@ const (
 	COOKIE_EXPIRE   = "expire"
 
 	FLASH_TIMEOUT   = time.Second
-	REFRESH_TIMEOUT = time.Second * 15
+	REFRESH_TIMEOUT = time.Second * 30
 )
 
 var (
@@ -236,7 +236,7 @@ func GetCookie(context echo.Context) (*sessions.Session, error) {
 		cookie.Options.SameSite = SessionStore.Options.SameSite
 		cookie.Options.HttpOnly = SessionStore.Options.HttpOnly
 
-		err := cookie.Save(context.Request(), context.Response())
+		err := SessionStore.Save(context.Request(), context.Response(), cookie)
 		if Error(err) {
 			return nil, err
 		}
@@ -255,7 +255,7 @@ func DisableCookie(context echo.Context) error {
 	delete(cookie.Values, COOKIE_PASSWORD)
 	delete(cookie.Values, COOKIE_EXPIRE)
 
-	err = cookie.Save(context.Request(), context.Response())
+	err = SessionStore.Save(context.Request(), context.Response(), cookie)
 	if Error(err) {
 		return err
 	}
@@ -266,7 +266,7 @@ func DisableCookie(context echo.Context) error {
 func RefreshCookie(context echo.Context, cookie *sessions.Session, timeout time.Duration) error {
 	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
 
-	err := cookie.Save(context.Request(), context.Response())
+	err := SessionStore.Save(context.Request(), context.Response(), cookie)
 	if Error(err) {
 		return err
 	}
