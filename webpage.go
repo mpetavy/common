@@ -191,7 +191,7 @@ func PullFlash(context echo.Context, flashName string) []string {
 		if len(flashes) > 0 {
 			flash := strings.Split(flashes[0].(string), "??br")
 
-			err := RefreshCookie(context, cookie, REFRESH_TIMEOUT)
+			err := SetCookie(context, cookie, REFRESH_TIMEOUT)
 			if Error(err) {
 				return nil
 			}
@@ -216,7 +216,7 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 		cookie.AddFlash(strings.Join(list, "??br"), flashName)
 	}
 
-	err = RefreshCookie(context, cookie, REFRESH_TIMEOUT)
+	err = SetCookie(context, cookie, REFRESH_TIMEOUT)
 	if Error(err) {
 		return err
 	}
@@ -235,11 +235,11 @@ func GetCookie(context echo.Context) (*sessions.Session, error) {
 		cookie.Options.Secure = SessionStore.Options.Secure
 		cookie.Options.SameSite = SessionStore.Options.SameSite
 		cookie.Options.HttpOnly = SessionStore.Options.HttpOnly
+	}
 
-		err := SessionStore.Save(context.Request(), context.Response(), cookie)
-		if Error(err) {
-			return nil, err
-		}
+	err := SetCookie(context, cookie, REFRESH_TIMEOUT)
+	if Error(err) {
+		return nil, err
 	}
 
 	return cookie, nil
@@ -255,7 +255,7 @@ func DisableCookie(context echo.Context) error {
 	delete(cookie.Values, COOKIE_PASSWORD)
 	delete(cookie.Values, COOKIE_EXPIRE)
 
-	err = SessionStore.Save(context.Request(), context.Response(), cookie)
+	err = SetCookie(context, cookie, REFRESH_TIMEOUT)
 	if Error(err) {
 		return err
 	}
@@ -263,7 +263,7 @@ func DisableCookie(context echo.Context) error {
 	return nil
 }
 
-func RefreshCookie(context echo.Context, cookie *sessions.Session, timeout time.Duration) error {
+func SetCookie(context echo.Context, cookie *sessions.Session, timeout time.Duration) error {
 	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
 
 	err := SessionStore.Save(context.Request(), context.Response(), cookie)
@@ -284,7 +284,7 @@ func AuthenticateCookie(context echo.Context, password string) error {
 
 	cookie.Values[COOKIE_PASSWORD] = password
 
-	err = RefreshCookie(context, cookie, REFRESH_TIMEOUT)
+	err = SetCookie(context, cookie, REFRESH_TIMEOUT)
 	if Error(err) {
 		return err
 	}
