@@ -22,20 +22,21 @@ import (
 )
 
 const (
-	OPTION_FILE        = "file"
-	OPTION_HIDDEN      = "hidden"
-	OPTION_SELECT      = "select"
-	OPTION_MULTISELECT = "multiselect"
-	OPTION_DATALIST    = "datalist"
-	OPTION_PASSWORD    = "password"
-	OPTION_AUTOFOCUS   = "autofocus"
-	OPTION_REQUIRED    = "required"
-	OPTION_READONLY    = "readonly"
-	OPTION_MULTILINE   = "multiline"
-	OPTION_WIDE        = "wide"
-	OPTION_MEGALINE    = "megaline"
-	OPTION_NOLABEL     = "nolabel"
-	OPTION_EXPERTVIEW  = "expertview"
+	OPTION_FILE            = "file"
+	OPTION_HIDDEN          = "hidden"
+	OPTION_SELECT          = "select"
+	OPTION_MULTISELECT     = "multiselect"
+	OPTION_DATALIST        = "datalist"
+	OPTION_PASSWORD        = "password"
+	OPTION_AUTOFOCUS       = "autofocus"
+	OPTION_REQUIRED        = "required"
+	OPTION_READONLY        = "readonly"
+	OPTION_MULTILINE       = "multiline"
+	OPTION_WIDE            = "wide"
+	OPTION_MEGALINE        = "megaline"
+	OPTION_NOLABEL         = "nolabel"
+	OPTION_EXPERTVIEW      = "expertview"
+	OPTION_NODEFAULTBUTTON = "nodefaultbutton"
 
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
 	INPUT_WIDTH_WIDE   = "pure-input-1-2"
@@ -734,6 +735,24 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 			htmlLabel.SetText(Translate(tagHtml.Name))
 		}
 
+		var buttonDefaultValue *etree.Element
+
+		if IndexOf(tagHtml.Options, OPTION_NODEFAULTBUTTON) == -1 {
+			buttonDefaultValue = htmlDiv.CreateElement("button")
+			buttonDefaultValue.CreateAttr("class", "pure-button")
+			buttonDefaultValue.CreateAttr("tabIndex", "-1")
+
+			icon := buttonDefaultValue.CreateElement("i")
+			icon.CreateAttr("class", "fa fa-undo")
+
+			style := []string{"margin-right: 8", "background-color: white"}
+			if readOnly || isFieldReadOnly || IndexOf(tagHtml.Options, OPTION_FILE) != -1 {
+				style = append(style, "visibility: hidden")
+			}
+
+			buttonDefaultValue.CreateAttr("style", strings.Join(style, ";"))
+		}
+
 		var htmlInput *etree.Element
 
 		switch field.Type.Kind() {
@@ -895,6 +914,7 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 					if !readOnly && !isFieldReadOnly {
 						button := htmlDiv.CreateElement("button")
 						button.CreateAttr("class", "pure-button")
+						button.CreateAttr("style", "background-color: white")
 						button.CreateAttr("onclick", fmt.Sprintf("document.getElementById(--$%s$--).value = --$$--;var desc = document.getElementById(--$%sDescription$--); if (desc) { desc.value = --$ $--; };", fieldPath, fieldPath))
 
 						icon := button.CreateElement("i")
@@ -928,7 +948,7 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 		htmlInput.CreateAttr("id", fieldPath)
 		htmlInput.CreateAttr("spellcheck", "false")
 
-		if useDefaultValue {
+		if useDefaultValue && buttonDefaultValue != nil {
 			defaultValue := fmt.Sprintf("%v", fieldValueDefault)
 			if defaultValue == "" {
 				defaultValue = "nil"
@@ -939,6 +959,8 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 			} else {
 				htmlInput.CreateAttr("oninput", fmt.Sprintf("checkDefaultValue(--$%s$--);", fieldPath))
 			}
+
+			buttonDefaultValue.CreateAttr("onclick", fmt.Sprintf("resetDefaultValue(--$%s$--);return false;", fieldPath))
 		}
 
 		if isFieldReadOnly {
