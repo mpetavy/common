@@ -156,16 +156,6 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 		p.HtmlContent.CreateAttr("class", contentStyle)
 	}
 
-	//NewButton(p.HtmlContent, false, ActionItem{
-	//	Caption:  "Test",
-	//	Icon:     "fa fa-wave-square",
-	//	Action:   "testFunction();return false;",
-	//	Download: "",
-	//	Message:  "",
-	//	Enabled:  true,
-	//	SubItems: nil,
-	//})
-
 	if context != nil {
 		msgs := PullFlash(context, FLASH_WARNING)
 		if msgs != nil {
