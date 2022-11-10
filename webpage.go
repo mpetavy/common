@@ -156,6 +156,16 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 		p.HtmlContent.CreateAttr("class", contentStyle)
 	}
 
+	//NewButton(p.HtmlContent, false, ActionItem{
+	//	Caption:  "Test",
+	//	Icon:     "fa fa-wave-square",
+	//	Action:   "testFunction();return false;",
+	//	Download: "",
+	//	Message:  "",
+	//	Enabled:  true,
+	//	SubItems: nil,
+	//})
+
 	if context != nil {
 		msgs := PullFlash(context, FLASH_WARNING)
 		if msgs != nil {
@@ -739,18 +749,13 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 
 		if IndexOf(tagHtml.Options, OPTION_NODEFAULTBUTTON) == -1 {
 			buttonDefaultValue = htmlDiv.CreateElement("button")
-			buttonDefaultValue.CreateAttr("class", "pure-button")
+			buttonDefaultValue.CreateAttr("type", "button")
+			buttonDefaultValue.CreateAttr("class", "pure-button css-no-border-button")
 			buttonDefaultValue.CreateAttr("tabIndex", "-1")
+			buttonDefaultValue.CreateAttr("id", fieldPath+".defaultbutton")
 
 			icon := buttonDefaultValue.CreateElement("i")
 			icon.CreateAttr("class", "fa fa-undo")
-
-			style := []string{"margin-right: 8", "background-color: white"}
-			if readOnly || isFieldReadOnly || IndexOf(tagHtml.Options, OPTION_FILE) != -1 {
-				style = append(style, "visibility: hidden")
-			}
-
-			buttonDefaultValue.CreateAttr("style", strings.Join(style, ";"))
 		}
 
 		var htmlInput *etree.Element
@@ -804,6 +809,20 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 					preselectedValues[v] = true
 				}
 
+				preselectedDefaultValues := make(map[string]bool)
+
+				if useDefaultValue {
+					preselectDefaultValue := fieldValueDefault.String()
+					if reflect.TypeOf(fieldValueDefault.Interface()).Kind() == reflect.Int {
+						preselectDefaultValue = strconv.Itoa(int(fieldValueDefault.Int()))
+					}
+
+					listDefaultValues := strings.Split(preselectDefaultValue, ";")
+					for _, v := range listDefaultValues {
+						preselectedDefaultValues[v] = true
+					}
+				}
+
 				for _, value := range fieldValueOptions {
 					htmlItem := htmlSpan.CreateElement("input")
 					htmlItem.CreateAttr("type", "checkbox")
@@ -811,9 +830,9 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 					htmlItem.CreateAttr("name", fieldPath)
 					htmlItem.CreateAttr("id", fieldPath+"."+value)
 					htmlItem.CreateAttr("class", CSS_CHECKLIST_CHECKBOX)
-					htmlItem.CreateAttr("onkeypress", "multiCheck(event);")
-					htmlItem.CreateAttr("data-default-value", strconv.FormatBool(preselectedValues[value]))
-					htmlItem.CreateAttr("onclick", fmt.Sprintf("checkDefaultValue(--$%s$--);", fieldPath+"."+value))
+					htmlItem.CreateAttr("onkeypress", "multiCheck(event);checkDefaultValues();")
+					htmlItem.CreateAttr("data-default-value", strconv.FormatBool(preselectedDefaultValues[value]))
+					htmlItem.CreateAttr("onclick", fmt.Sprintf("checkDefaultValue(--$%s$--);showDefaultValuesOfSpan(--$%s$--);", fieldPath+"."+value, fieldPath+".span"))
 					htmlItem.SetText(value)
 
 					if preselectedValues[value] {
@@ -829,6 +848,10 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 					}
 
 					htmlSpan.CreateElement("br")
+				}
+
+				if useDefaultValue && buttonDefaultValue != nil {
+					buttonDefaultValue.CreateAttr("onclick", fmt.Sprintf("resetDefaultValuesOfSpan(--$%s$--);setOutline(--$%s$--,false);setDefaultButton(--$%s$--,false);return false;", fieldPath+".span", fieldPath+".span", fieldPath))
 				}
 
 				continue

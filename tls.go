@@ -670,12 +670,12 @@ func VerifyP12(ba []byte, password string) (privateKey *ecdsa.PrivateKey, certif
 		return nil, nil, nil, fmt.Errorf("Certificate is not valid (NotBefore: %v, NotAfter: %v)", p12Cert.NotBefore, p12Cert.NotAfter)
 	}
 
-	p12PrivateKeyRsa, ok := p12PrivateKey.(*ecdsa.PrivateKey)
+	p12PrivateKeyEcdsa, ok := p12PrivateKey.(*ecdsa.PrivateKey)
 	if !ok {
-		return nil, nil, nil, fmt.Errorf("Expected private key type")
+		return nil, nil, nil, fmt.Errorf("Unexpected private key type: %T", p12PrivateKey)
 	}
 
-	return p12PrivateKeyRsa, p12Cert, p12RootCerts, nil
+	return p12PrivateKeyEcdsa, p12Cert, p12RootCerts, nil
 }
 
 func CertificateInfoFromConnection(con *tls.Conn) (string, error) {
