@@ -232,11 +232,13 @@ func Run(mandatoryFlags []string) {
 					Panic(fmt.Errorf("unknown mandatory flag: \"%s\"", flagName))
 				}
 
-				if alreadyOne && fl.Value.String() != "" {
-					Panic(fmt.Errorf("only one mandatory flag allowed: %s", allChoices))
-				}
+				if fl.Value.String() != fl.DefValue {
+					if alreadyOne {
+						Panic(fmt.Errorf("only one mandatory flag allowed: %s", allChoices))
+					}
 
-				alreadyOne = alreadyOne || fl.Value.String() != ""
+					alreadyOne = true
+				}
 			}
 
 			if !alreadyOne {
