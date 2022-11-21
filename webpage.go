@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/beevik/etree"
 	"github.com/fatih/structtag"
+	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
@@ -73,6 +74,7 @@ const (
 
 var (
 	SessionStore *memstore.MemStore
+	CookieTitle  = uuid.New().String()
 )
 
 type Webpage struct {
@@ -226,7 +228,7 @@ func PushFlash(context echo.Context, flashName string, flash string) error {
 }
 
 func GetCookie(context echo.Context) (*sessions.Session, error) {
-	cookie, _ := session.Get(Title(), context)
+	cookie, _ := session.Get(CookieTitle, context)
 
 	// Ignore the error (maybe the current cookie was encrypted with an outdated httpServer.store key)
 
