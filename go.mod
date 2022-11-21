@@ -8,6 +8,7 @@ require (
 	github.com/fatih/structtag v1.2.0
 	github.com/gabriel-vasile/mimetype v1.3.1
 	github.com/go-ini/ini v1.62.0
+	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
@@ -34,7 +35,6 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.0.5 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
