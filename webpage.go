@@ -255,10 +255,8 @@ func DisableCookie(context echo.Context) error {
 	}
 
 	cookie.Options.MaxAge = -1
-	delete(cookie.Values, COOKIE_PASSWORD)
-	delete(cookie.Values, COOKIE_EXPIRE)
 
-	err = SetCookie(context, cookie, REFRESH_TIMEOUT)
+	err = SessionStore.Save(context.Request(), context.Response(), cookie)
 	if Error(err) {
 		return err
 	}
@@ -267,6 +265,7 @@ func DisableCookie(context echo.Context) error {
 }
 
 func SetCookie(context echo.Context, cookie *sessions.Session, timeout time.Duration) error {
+	cookie.Options.MaxAge = int(timeout.Seconds())
 	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
 
 	err := SessionStore.Save(context.Request(), context.Response(), cookie)
@@ -333,15 +332,7 @@ func CheckCookieAuthenticated(context echo.Context, password string) error {
 }
 
 func IsCookieAuthenticated(context echo.Context, password string) bool {
-	err := CheckCookieAuthenticated(context, password)
-
-	if err != nil {
-		DebugFunc(err.Error())
-
-		return false
-	}
-
-	return true
+	return CheckCookieAuthenticated(context, password) == nil
 }
 
 func (page *Webpage) SetRedirectTimeout(timeout time.Duration, url string) {
