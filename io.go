@@ -646,131 +646,98 @@ func (this RandomReader) Read(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-type DeadlineReader struct {
-	reader  io.Reader
-	timeout time.Duration
-	ctx     context.Context
-	cancel  context.CancelFunc
-}
-
-func NewDeadlineReader(reader io.Reader, timeout time.Duration) io.Reader {
-	return &DeadlineReader{
-		reader:  reader,
-		timeout: timeout,
-	}
-}
-
-func (this *DeadlineReader) Read(p []byte) (int, error) {
-	if this.ctx == nil {
-		this.ctx, this.cancel = context.WithDeadline(context.Background(), time.Now().Add(this.timeout))
-	}
-
-	select {
-	case <-this.ctx.Done():
-		this.cancel()
-
-		return 0, io.EOF
-	default:
-		return this.reader.Read(p)
-	}
-}
-
 type TimeoutReader struct {
-	reader        io.Reader
-	timeout       time.Duration
-	initalTimeout bool
-	FirstRead     time.Time
+	FirstRead        time.Time
+	immediateContext bool
+	reader           io.Reader
+	ctxFn            func() (context.Context, context.CancelFunc)
+	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
-func NewTimeoutReader(reader io.Reader, timeout time.Duration, initalTimeout bool) io.Reader {
+func NewTimeoutReader(reader io.Reader, immediateContext bool, ctxFn func() (context.Context, context.CancelFunc)) *TimeoutReader {
 	return &TimeoutReader{
-		reader:        reader,
-		timeout:       timeout,
-		initalTimeout: initalTimeout,
+		immediateContext: immediateContext,
+		reader:           reader,
+		ctxFn:            ctxFn,
 	}
 }
 
-func (this *TimeoutReader) Read(p []byte) (int, error) {
-	if !this.initalTimeout {
-		this.initalTimeout = true
+func (timeoutReader *TimeoutReader) Read(p []byte) (int, error) {
+	n := 0
 
-		n, err := this.reader.Read(p)
+	if !timeoutReader.immediateContext {
+		timeoutReader.immediateContext = true
 
-		this.FirstRead = time.Now()
+		var err error
 
-		return n, err
+		n, err = timeoutReader.reader.Read(p[0:1])
+		timeoutReader.FirstRead = time.Now()
+		if Error(err) || len(p) == 1 {
+			return n, err
+		}
+
+		p = p[1:]
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), this.timeout)
-	defer cancel()
-
-	var n int
-	var err error
-
-	ch := make(chan interface{})
-
-	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
-		n, err = this.reader.Read(p)
-
-		close(ch)
-	}()
-
-	select {
-	case <-ctx.Done():
-		return 0, io.EOF
-	case <-ch:
-		return n, err
+	if timeoutReader.ctx == nil {
+		timeoutReader.ctx, timeoutReader.cancel = timeoutReader.ctxFn()
 	}
+
+	r := ctxio.NewReader(timeoutReader.ctx, timeoutReader.reader)
+
+	n1, err := r.Read(p)
+	if IsErrTimeout(err) {
+		timeoutReader.cancel()
+	}
+
+	return n1 + n, err
 }
 
 type TimeoutWriter struct {
-	writer        io.Writer
-	timeout       time.Duration
-	initalTimeout bool
-	FirstWrite    time.Time
+	FirstWrite       time.Time
+	immediateContext bool
+	writer           io.Writer
+	ctxFn            func() (context.Context, context.CancelFunc)
+	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
-func NewTimeoutWriter(writer io.Writer, timeout time.Duration, initalTimeout bool) io.Writer {
+func NewTimeoutWriter(writer io.Writer, immediateContext bool, ctxFn func() (context.Context, context.CancelFunc)) *TimeoutWriter {
 	return &TimeoutWriter{
-		writer:        writer,
-		timeout:       timeout,
-		initalTimeout: initalTimeout,
+		immediateContext: immediateContext,
+		writer:           writer,
+		ctxFn:            ctxFn,
 	}
 }
 
-func (this *TimeoutWriter) Write(p []byte) (int, error) {
-	if !this.initalTimeout {
-		this.initalTimeout = true
+func (timeoutWriter TimeoutWriter) Write(p []byte) (int, error) {
+	n := 0
 
-		n, err := this.writer.Write(p)
+	if !timeoutWriter.immediateContext {
+		timeoutWriter.immediateContext = true
 
-		this.FirstWrite = time.Now()
+		var err error
 
-		return n, err
+		n, err = timeoutWriter.writer.Write(p[:1])
+		timeoutWriter.FirstWrite = time.Now()
+		if Error(err) || len(p) == 1 {
+			return n, err
+		}
+
+		p = p[1:]
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), this.timeout)
-	defer cancel()
-
-	var n int
-	var err error
-
-	ch := make(chan interface{})
-
-	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
-		n, err = this.writer.Write(p)
-
-		close(ch)
-	}()
-
-	select {
-	case <-ctx.Done():
-		return 0, io.EOF
-	case <-ch:
-		return n, err
+	if timeoutWriter.ctx == nil {
+		timeoutWriter.ctx, timeoutWriter.cancel = timeoutWriter.ctxFn()
 	}
+
+	r := ctxio.NewWriter(timeoutWriter.ctx, timeoutWriter.writer)
+
+	n1, err := r.Write(p)
+	if IsErrTimeout(err) {
+		timeoutWriter.cancel()
+	}
+
+	return n1 + n, err
 }
