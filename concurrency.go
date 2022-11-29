@@ -11,12 +11,16 @@ import (
 )
 
 type ErrTimeout struct {
-	Timeout time.Duration
-	Err     error
+	Duration time.Duration
+	Err      error
 }
 
 func (e *ErrTimeout) Error() string {
-	return fmt.Sprintf("Timeout error after: %+v, error: %+v", e.Timeout, e.Err)
+	return fmt.Sprintf("Timeout error after: %+v, error: %+v", e.Duration, e.Err)
+}
+
+func (e *ErrTimeout) Timeout() bool {
+	return true
 }
 
 func NewTimeoutOperation(checkDuration time.Duration, maxDuration time.Duration, fn func() error) error {

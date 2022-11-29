@@ -226,7 +226,7 @@ func (networkServer *NetworkServer) Connect() (*NetworkConnection, error) {
 	Debug("Accept connection ...")
 
 	socket, err := networkServer.listener.Accept()
-	if IsErrNetClosing(err) || DebugError(err) {
+	if IsErrNetClosed(err) || DebugError(err) {
 		return nil, err
 	}
 

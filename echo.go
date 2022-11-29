@@ -22,7 +22,9 @@ func (this echoLogger) Write(p []byte) (int, error) {
 	if isError {
 		DebugError(fmt.Errorf("Echo: %s", msg))
 	} else {
-		Debug("Echo: %s", msg)
+		if *FlagLogIO {
+			Debug("Echo: %s", msg)
+		}
 	}
 
 	return len(p), nil

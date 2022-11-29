@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"net"
 	"strings"
 )
@@ -28,16 +27,20 @@ func IsErrExit(err error) bool {
 }
 
 func IsErrTimeout(err error) bool {
+	type withTimeout interface {
+		Timeout() bool
+	}
+
 	if err == nil {
 		return false
 	}
 
-	errTimeout, ok := err.(net.Error)
+	errTimeout, ok := err.(withTimeout)
 
 	return ok && errTimeout.Timeout()
 }
 
-func IsErrOp(err error) bool {
+func IsErrNetOperation(err error) bool {
 	if err == nil {
 		return false
 	}
@@ -47,12 +50,13 @@ func IsErrOp(err error) bool {
 	return ok
 }
 
-func IsErrNetClosing(err error) bool {
+func IsErrNetClosed(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	return strings.Index(strings.ToLower(err.Error()), "use of closed network connection") != -1
+	return strings.Contains(strings.ToLower(err.Error()), "use of closed network connection") ||
+		strings.Contains(strings.ToLower(err.Error()), " connection was forcibly closed")
 }
 
 func IsErrUnexpectedEOF(err error) bool {
@@ -80,24 +84,4 @@ func IsSuppressedErrorMessage(err string) bool {
 	}
 
 	return false
-}
-
-func HandleCopyBufferError(written int64, err error) (int64, error) {
-	if err == nil {
-		return written, nil
-	}
-
-	if IsErrTimeout(err) {
-		return written, fmt.Errorf("Timeout error: %s", err.Error())
-	}
-
-	if IsErrOp(err) {
-		return written, fmt.Errorf("Operation error: %s", err.Error())
-	}
-
-	if IsErrNetClosing(err) || IsErrUnexpectedEOF(err) {
-		return written, nil
-	}
-
-	return written, err
 }
