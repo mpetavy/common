@@ -88,7 +88,7 @@ func GetHostInfos() (string, net.IP, []HostInfo, error) {
 				IPNet: ipNet,
 			})
 
-			if hostAddress == nil && *FlagIoPrimaryIface == intf.Name {
+			if hostAddress == nil || *FlagIoPrimaryIface == intf.Name {
 				hostAddress = ipNet.IP
 			}
 
