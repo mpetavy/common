@@ -24,6 +24,14 @@ var (
 	FlagCfgReset  *bool
 	FlagCfgCreate *bool
 	FlagCfgFile   *string
+
+	CmdlineOnlyFlags = []string{
+		FlagNameCfgFile,
+		FlagNameCfgReset,
+		FlagNameCfgCreate,
+		FlagNameUsage,
+		FlagNameUsageMd,
+	}
 )
 
 const (
@@ -77,15 +85,7 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 func IsCmdlineOnlyFlag(flagName string) bool {
 	r := false
 
-	list := []string{
-		FlagNameCfgFile,
-		FlagNameCfgReset,
-		FlagNameCfgCreate,
-		FlagNameUsage,
-		FlagNameUsageMd,
-	}
-
-	for _, mask := range list {
+	for _, mask := range CmdlineOnlyFlags {
 		if mask == flagName {
 			r = true
 
