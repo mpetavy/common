@@ -109,3 +109,73 @@ func GoRoutineName() string {
 	buf = buf[:len(buf)-1]
 	return string(bytes.TrimSuffix(buf, []byte("[running]")))
 }
+
+type Channel[K any] struct {
+	mu   sync.RWMutex
+	ch   chan K
+	open bool
+}
+
+func NewChannel[T any](len int) *Channel[T] {
+	return &Channel[T]{
+		ch:   make(chan T, len),
+		open: true,
+	}
+}
+
+func (ch *Channel[T]) isOpen() error {
+	if !ch.open {
+		return fmt.Errorf("channel closed")
+	}
+
+	return nil
+}
+
+func (ch *Channel[T]) IsOpen() error {
+	ch.mu.RLock()
+	defer ch.mu.RUnlock()
+
+	return ch.isOpen()
+}
+
+func (ch *Channel[T]) Put(value T) error {
+	ch.mu.Lock()
+	defer ch.mu.Unlock()
+
+	err := ch.isOpen()
+
+	if Error(err) {
+		return err
+	}
+
+	ch.ch <- value
+
+	return nil
+}
+
+func (ch *Channel[T]) Get() (T, bool) {
+	err := ch.IsOpen()
+
+	if err != nil {
+		return *new(T), false
+	}
+
+	value, ok := <-ch.ch
+
+	return value, ok
+}
+
+func (ch *Channel[T]) Close() error {
+	ch.mu.Lock()
+	defer ch.mu.Unlock()
+
+	err := ch.isOpen()
+
+	if Error(err) {
+		return err
+	}
+
+	close(ch.ch)
+
+	return nil
+}

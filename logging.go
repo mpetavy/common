@@ -39,7 +39,8 @@ var (
 	syslogLoggerCh  chan<- error
 	syslogLogger    service.Logger
 	gotest          goTesting
-	notice          = NewNotice(false)
+	logCh           = NewChannel[logEntry](1000)
+	wgLogCh         sync.WaitGroup
 
 	ColorDefault color.Color = 0
 	ColorDebug   color.Color = ColorDefault
@@ -87,7 +88,7 @@ type logEntry struct {
 	Msg      string `json:"msg"`
 }
 
-func (l *logEntry) String(asJson bool, verbose bool) string {
+func (l *logEntry) toString(asJson bool, verbose bool) string {
 	if asJson {
 		ba, err := json.Marshal(l)
 		loggingError(err)
@@ -384,6 +385,60 @@ func initLog() {
 		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 98)))
 		prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 	}
+
+	wgLogCh.Add(1)
+
+	go func() {
+		defer wgLogCh.Done()
+
+		for {
+			entry, ok := logCh.Get()
+			if !ok {
+				return
+			}
+
+			entryAsString := entry.toString(*FlagLogJson, *FlagLogVerbose)
+
+			// fileLogger or memoryLogger
+			if logger != nil {
+				logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entryAsString))
+			}
+
+			if entry.levelInt == LEVEL_PROLOG {
+				continue
+			}
+
+			if syslogLogger != nil {
+				switch entry.levelInt {
+				case LEVEL_WARN:
+					Error(syslogLogger.Warning(entry.Msg))
+				case LEVEL_ERROR:
+					Error(syslogLogger.Error(entry.Msg))
+				case LEVEL_PANIC:
+					Error(syslogLogger.Error(entry.Msg))
+				case LEVEL_DEBUG:
+					fallthrough
+				case LEVEL_INFO:
+					Error(syslogLogger.Info(entry.Msg))
+				}
+			}
+
+			if gotest != nil {
+				switch entry.levelInt {
+				case LEVEL_DEBUG:
+					gotest.Logf(entryAsString)
+				default:
+					gotest.Fatalf(entryAsString)
+				}
+			} else {
+				if entry.color != ColorDefault {
+					entry.color.Println(entryAsString)
+				} else {
+					fmt.Println(entryAsString)
+				}
+			}
+		}
+	}()
 }
 
 func closeLog() {
@@ -392,6 +447,10 @@ func closeLog() {
 	if logger != nil {
 		logger.Close()
 	}
+
+	logCh.Close()
+
+	wgLogCh.Wait()
 }
 
 // logFile prints out the information
@@ -420,7 +479,7 @@ func loggingError(err error) bool {
 	if err != nil && logger != nil {
 		entry := newLogEntry(LEVEL_ERROR, ColorError, GetRuntimeInfo(1), err.Error())
 
-		logger.WriteString(LEVEL_DEBUG, fmt.Sprintf("%s\n", entry.String(*FlagLogJson, true)))
+		logger.WriteString(LEVEL_DEBUG, fmt.Sprintf("%s\n", entry.toString(*FlagLogJson, true)))
 	}
 
 	return err != nil
@@ -560,11 +619,6 @@ func newLogEntry(level int, color color.Color, ri RuntimeInfo, msg string) logEn
 }
 
 func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err error) {
-	if !notice.Set() {
-		return
-	}
-	defer notice.Unset()
-
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -579,44 +633,8 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 	}
 
 	entry := newLogEntry(level, color, ri, msg)
-	entryAsString := entry.String(*FlagLogJson, *FlagLogVerbose)
 
-	// fileLogger or memoryLogger
-	if logger != nil {
-		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entryAsString))
-	}
-
-	if level != LEVEL_PROLOG {
-		if syslogLogger != nil {
-			switch entry.levelInt {
-			case LEVEL_WARN:
-				Error(syslogLogger.Warning(entry.Msg))
-			case LEVEL_ERROR:
-				Error(syslogLogger.Error(entry.Msg))
-			case LEVEL_PANIC:
-				Error(syslogLogger.Error(entry.Msg))
-			case LEVEL_DEBUG:
-				fallthrough
-			case LEVEL_INFO:
-				Error(syslogLogger.Info(entry.Msg))
-			}
-		}
-
-		if gotest != nil {
-			switch entry.levelInt {
-			case LEVEL_DEBUG:
-				gotest.Logf(entryAsString)
-			default:
-				gotest.Fatalf(entryAsString)
-			}
-		} else {
-			if entry.color != ColorDefault {
-				entry.color.Println(entryAsString)
-			} else {
-				fmt.Println(entryAsString)
-			}
-		}
-	}
+	logCh.Put(entry)
 }
 
 func CmdToString(cmd *exec.Cmd) string {
