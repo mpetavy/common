@@ -23,21 +23,22 @@ import (
 )
 
 const (
-	OPTION_FILE            = "file"
-	OPTION_HIDDEN          = "hidden"
-	OPTION_SELECT          = "select"
-	OPTION_MULTISELECT     = "multiselect"
-	OPTION_DATALIST        = "datalist"
-	OPTION_PASSWORD        = "password"
-	OPTION_AUTOFOCUS       = "autofocus"
-	OPTION_REQUIRED        = "required"
-	OPTION_READONLY        = "readonly"
-	OPTION_MULTILINE       = "multiline"
-	OPTION_WIDE            = "wide"
-	OPTION_MEGALINE        = "megaline"
-	OPTION_NOLABEL         = "nolabel"
-	OPTION_EXPERTVIEW      = "expertview"
-	OPTION_NODEFAULTBUTTON = "nodefaultbutton"
+	OPTION_FILE             = "file"
+	OPTION_HIDDEN           = "hidden"
+	OPTION_SELECT           = "select"
+	OPTION_MULTISELECT      = "multiselect"
+	OPTION_DATALIST         = "datalist"
+	OPTION_PASSWORD         = "password"
+	OPTION_AUTOFOCUS        = "autofocus"
+	OPTION_REQUIRED         = "required"
+	OPTION_READONLY         = "readonly"
+	OPTION_MULTILINE        = "multiline"
+	OPTION_WIDE             = "wide"
+	OPTION_MEGALINE         = "megaline"
+	OPTION_NO_LABEL         = "nolabel"
+	OPTION_EXPERTVIEW       = "expertview"
+	OPTION_NO_DEFAULTBUTTON = "no_defaultbutton"
+	OPTION_NO_LEGEND        = "no_legend"
 
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
 	INPUT_WIDTH_WIDE   = "pure-input-1-2"
@@ -447,7 +448,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, defaultDat
 
 	htmlGroupCenter := htmlGroup.CreateElement("div")
 
-	isFieldExpertView, err := newFieldset(true, htmlForm, caption, data, defaultData, "", readOnly, isExpertViewAvailable, funcFieldIterator)
+	isFieldExpertView, err := newFieldset(false, htmlForm, caption, data, defaultData, "", readOnly, isExpertViewAvailable, funcFieldIterator)
 	if Error(err) {
 		return nil, nil, err
 	}
@@ -598,7 +599,7 @@ func newCheckbox(parent *etree.Element, value bool) *etree.Element {
 	return htmlInput
 }
 
-func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, data interface{}, dataDefault interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
+func newFieldset(showLegend bool, parent *etree.Element, caption string, data interface{}, dataDefault interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
 	parent = parent.CreateElement("fieldset")
 
 	htmlLegend := parent.CreateElement("legend")
@@ -684,7 +685,9 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 				subStructDefault = fieldValueDefault.Interface()
 			}
 
-			ev, err = newFieldset(false, parent, tagHtml.Name, subStruct, subStructDefault, fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
+			showLegend := IndexOf(tagHtml.Options, OPTION_NO_LEGEND) == -1
+
+			ev, err = newFieldset(showLegend, parent, tagHtml.Name, subStruct, subStructDefault, fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
 			if Error(err) {
 				return false, err
 			}
@@ -724,13 +727,13 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 		htmlLabel := htmlDiv.CreateElement("label")
 		htmlLabel.CreateAttr("for", fieldPath)
 
-		if IndexOf(tagHtml.Options, OPTION_NOLABEL) == -1 {
+		if IndexOf(tagHtml.Options, OPTION_NO_LABEL) == -1 {
 			htmlLabel.SetText(Translate(tagHtml.Name))
 		}
 
 		var buttonDefaultValue *etree.Element
 
-		if IndexOf(tagHtml.Options, OPTION_NODEFAULTBUTTON) == -1 {
+		if IndexOf(tagHtml.Options, OPTION_NO_DEFAULTBUTTON) == -1 {
 			buttonDefaultValue = htmlDiv.CreateElement("button")
 			buttonDefaultValue.CreateAttr("type", "button")
 			buttonDefaultValue.CreateAttr("class", "pure-button css-no-border-button")
@@ -995,7 +998,7 @@ func newFieldset(isFirstFieldset bool, parent *etree.Element, caption string, da
 		}
 	}
 
-	if isFirstFieldset && !hasMultipleFieldsets {
+	if !showLegend || !hasMultipleFieldsets {
 		parent.RemoveChild(htmlLegend)
 	}
 
