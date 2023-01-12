@@ -1,10 +1,12 @@
 package common
 
 import (
+	"github.com/google/uuid"
 	"golang.org/x/exp/constraints"
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -132,4 +134,14 @@ func Max[T constraints.Ordered](v ...T) T {
 	}
 
 	return r
+}
+
+func Sleep(d time.Duration) {
+	id := uuid.New().String()
+
+	Debug("Sleep [%s] %v... ", id, d)
+
+	time.Sleep(d)
+
+	Debug("Sleep [%s] %v continue", id, d)
 }
