@@ -19,7 +19,15 @@ type Endpoint interface {
 	Stop() error
 }
 
-type EndpointConnector func() (io.ReadWriteCloser, error)
+type EndpointConnection interface {
+	io.ReadWriteCloser
+
+	SetDeadline(t time.Time) error
+	SetReadDeadline(t time.Time) error
+	SetWriteDeadline(t time.Time) error
+}
+
+type EndpointConnector func() (EndpointConnection, error)
 
 func IsTTYDevice(device string) bool {
 	return len(device) > 0 && (strings.Contains(device, ",") || !strings.Contains(device, ":"))
@@ -37,7 +45,7 @@ func NewEndpoint(device string, isClient bool, tlsConfig *tls.Config) (Endpoint,
 
 		ep = tty
 
-		connector = func() (io.ReadWriteCloser, error) {
+		connector = func() (EndpointConnection, error) {
 			return tty.Connect()
 		}
 
@@ -49,7 +57,7 @@ func NewEndpoint(device string, isClient bool, tlsConfig *tls.Config) (Endpoint,
 				return nil, nil, err
 			}
 
-			connector = func() (io.ReadWriteCloser, error) {
+			connector = func() (EndpointConnection, error) {
 				return networkClient.Connect()
 			}
 
@@ -60,7 +68,7 @@ func NewEndpoint(device string, isClient bool, tlsConfig *tls.Config) (Endpoint,
 				return nil, nil, err
 			}
 
-			connector = func() (io.ReadWriteCloser, error) {
+			connector = func() (EndpointConnection, error) {
 				return networkServer.Connect()
 			}
 
@@ -72,7 +80,7 @@ func NewEndpoint(device string, isClient bool, tlsConfig *tls.Config) (Endpoint,
 }
 
 type NetworkConnection struct {
-	io.ReadWriteCloser
+	EndpointConnection
 
 	Socket     net.Conn
 	unregister func()
@@ -104,6 +112,18 @@ func (networkConnection *NetworkConnection) Close() error {
 	}
 
 	return nil
+}
+
+func (networkConnection *NetworkConnection) SetDeadline(t time.Time) error {
+	return networkConnection.Socket.SetDeadline(t)
+}
+
+func (networkConnection *NetworkConnection) SetReadDeadline(t time.Time) error {
+	return networkConnection.Socket.SetReadDeadline(t)
+}
+
+func (networkConnection *NetworkConnection) SetWriteDeadline(t time.Time) error {
+	return networkConnection.Socket.SetWriteDeadline(t)
 }
 
 type NetworkClient struct {
@@ -281,7 +301,7 @@ func (this *NetworkServer) Serve() ([]byte, error) {
 }
 
 type TTYConnection struct {
-	io.ReadWriteCloser
+	EndpointConnection
 
 	port serial.Port
 }
@@ -313,6 +333,18 @@ func (ttyConnection *TTYConnection) Close() error {
 	return nil
 }
 
+func (ttyConnection *TTYConnection) SetDeadline(t time.Time) error {
+	return ttyConnection.port.SetReadTimeout(t.Sub(time.Now()))
+}
+
+func (ttyConnection *TTYConnection) SetReadDeadline(t time.Time) error {
+	return ttyConnection.port.SetReadTimeout(t.Sub(time.Now()))
+}
+
+func (ttyConnection *TTYConnection) SetWriteDeadline(t time.Time) error {
+	return nil
+}
+
 type TTY struct {
 	device string
 }
@@ -335,7 +367,7 @@ func (tty *TTY) Stop() error {
 	return nil
 }
 
-func (tty *TTY) Connect() (io.ReadWriteCloser, error) {
+func (tty *TTY) Connect() (EndpointConnection, error) {
 	Debug("Connected: %s", tty.device)
 
 	serialPort, mode, err := ParseTTYOptions(tty.device)
