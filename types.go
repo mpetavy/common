@@ -223,18 +223,6 @@ func ToStrings(slice interface{}) ([]string, error) {
 	return result, nil
 }
 
-func ConvertToOSspecificLF(s string) string {
-	if IsWindowsOS() {
-		s = strings.ReplaceAll(s, "\r", "\r\n")
-	}
-
-	return s
-}
-
-func CountRunes(s string) int {
-	return len([]rune(s))
-}
-
 func Rune(s string, index int) (rune, error) {
 	runes := []rune(s)
 

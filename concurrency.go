@@ -16,7 +16,11 @@ type ErrTimeout struct {
 }
 
 func (e *ErrTimeout) Error() string {
-	return fmt.Sprintf("Timeout error after: %+v, error: %+v", e.Duration, e.Err)
+	if e.Err != nil {
+		return fmt.Sprintf("Timeout error after: %+v, error: %+v", e.Duration, e.Err)
+	} else {
+		return fmt.Sprintf("Timeout error after: %+v", e.Duration)
+	}
 }
 
 func (e *ErrTimeout) Timeout() bool {
@@ -178,4 +182,35 @@ func (ch *Channel[T]) Close() error {
 	close(ch.ch)
 
 	return nil
+}
+
+type Chrono struct {
+	ticker *time.Ticker
+	done   chan struct{}
+	run    func(*Chrono)
+}
+
+func NewChrono(d time.Duration, run func(*Chrono)) *Chrono {
+	c := &Chrono{
+		ticker: time.NewTicker(d),
+		done:   make(chan struct{}),
+		run:    run,
+	}
+
+	go func() {
+		for {
+			select {
+			case <-c.done:
+				return
+			case _ = <-c.ticker.C:
+				c.run(c)
+			}
+		}
+	}()
+
+	return c
+}
+
+func (c *Chrono) Stop() {
+	close(c.done)
 }

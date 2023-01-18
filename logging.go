@@ -70,8 +70,8 @@ func init() {
 	FlagLogCount = flag.Int(FlagNameLogCount, 1000, "log count")
 }
 
-func InitTesting(v goTesting) {
-	gotest = v
+func InitTesting(t goTesting) {
+	gotest = t
 }
 
 type goTesting interface {
@@ -639,6 +639,19 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 	}
 
 	entry := newLogEntry(level, color, ri, msg)
+
+	if gotest != nil {
+		entryAsString := entry.toString(*FlagLogJson, *FlagLogVerbose)
+
+		switch entry.levelInt {
+		case LEVEL_DEBUG:
+			gotest.Logf(entryAsString)
+		default:
+			gotest.Fatalf(entryAsString)
+		}
+
+		return
+	}
 
 	logCh.Put(entry)
 }
