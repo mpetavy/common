@@ -61,6 +61,8 @@ func (engine *ScriptEngine) Run(timeout time.Duration) (value otto.Value, err er
 	defer close(watchdogCleanup)
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
+
 		select {
 		case <-time.After(timeout):
 			engine.otto.Interrupt <- func() {

@@ -198,6 +198,8 @@ func NewChrono(d time.Duration, run func(*Chrono)) *Chrono {
 	}
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
+
 		for {
 			select {
 			case <-c.done:

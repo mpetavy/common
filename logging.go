@@ -389,6 +389,8 @@ func initLog() {
 	wgLogCh.Add(1)
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
+
 		defer wgLogCh.Done()
 
 		for {
