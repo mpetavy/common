@@ -38,7 +38,6 @@ const (
 	OPTION_NO_LABEL         = "nolabel"
 	OPTION_EXPERTVIEW       = "expertview"
 	OPTION_NO_DEFAULTBUTTON = "no_defaultbutton"
-	OPTION_NO_LEGEND        = "no_legend"
 
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
 	INPUT_WIDTH_WIDE   = "pure-input-1-2"
@@ -448,7 +447,7 @@ func NewForm(parent *etree.Element, caption string, data interface{}, defaultDat
 
 	htmlGroupCenter := htmlGroup.CreateElement("div")
 
-	isFieldExpertView, err := newFieldset(false, htmlForm, caption, data, defaultData, "", readOnly, isExpertViewAvailable, funcFieldIterator)
+	isFieldExpertView, err := newFieldset(htmlForm, caption, data, defaultData, "", readOnly, isExpertViewAvailable, funcFieldIterator)
 	if Error(err) {
 		return nil, nil, err
 	}
@@ -599,7 +598,7 @@ func newCheckbox(parent *etree.Element, value bool) *etree.Element {
 	return htmlInput
 }
 
-func newFieldset(showLegend bool, parent *etree.Element, caption string, data interface{}, dataDefault interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
+func newFieldset(parent *etree.Element, caption string, data interface{}, dataDefault interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
 	parent = parent.CreateElement("fieldset")
 
 	htmlLegend := parent.CreateElement("legend")
@@ -629,7 +628,6 @@ func newFieldset(showLegend bool, parent *etree.Element, caption string, data in
 	useDefaultValueBackup := useDefaultValue
 	expertViewFieldExists := false
 	allFieldsAreExpertView := true
-	hasMultipleFieldsets := false
 
 	for i := 0; i < structValue.NumField(); i++ {
 		useDefaultValue = useDefaultValueBackup
@@ -677,17 +675,13 @@ func newFieldset(showLegend bool, parent *etree.Element, caption string, data in
 
 			var ev bool
 
-			hasMultipleFieldsets = true
-
 			subStruct := fieldValue.Interface()
 			var subStructDefault interface{}
 			if useDefaultValue {
 				subStructDefault = fieldValueDefault.Interface()
 			}
 
-			showLegend := IndexOf(tagHtml.Options, OPTION_NO_LEGEND) == -1
-
-			ev, err = newFieldset(showLegend, parent, tagHtml.Name, subStruct, subStructDefault, fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
+			ev, err = newFieldset(parent, tagHtml.Name, subStruct, subStructDefault, fieldPath, readOnly, isExpertViewActive, funcFieldIterator)
 			if Error(err) {
 				return false, err
 			}
@@ -706,7 +700,7 @@ func newFieldset(showLegend bool, parent *etree.Element, caption string, data in
 		isFieldReadOnly := (IndexOf(tagHtml.Options, OPTION_READONLY) != -1)
 		isFieldPassword := (IndexOf(tagHtml.Options, OPTION_PASSWORD) != -1)
 
-		useDefaultValue = useDefaultValue && !isFieldReadOnly && !isFieldPassword
+		useDefaultValue = useDefaultValue && !isFieldReadOnly && !isFieldPassword && IndexOf(tagHtml.Options, OPTION_NO_DEFAULTBUTTON) == -1
 
 		expertViewFieldExists = expertViewFieldExists || isFieldExpertView
 
@@ -731,17 +725,17 @@ func newFieldset(showLegend bool, parent *etree.Element, caption string, data in
 			htmlLabel.SetText(Translate(tagHtml.Name))
 		}
 
-		var buttonDefaultValue *etree.Element
+		buttonDefaultValue := htmlDiv.CreateElement("button")
+		buttonDefaultValue.CreateAttr("type", "button")
+		buttonDefaultValue.CreateAttr("class", "pure-button css-no-border-button")
+		buttonDefaultValue.CreateAttr("tabIndex", "-1")
+		buttonDefaultValue.CreateAttr("id", fieldPath+".defaultbutton")
 
-		if IndexOf(tagHtml.Options, OPTION_NO_DEFAULTBUTTON) == -1 {
-			buttonDefaultValue = htmlDiv.CreateElement("button")
-			buttonDefaultValue.CreateAttr("type", "button")
-			buttonDefaultValue.CreateAttr("class", "pure-button css-no-border-button")
-			buttonDefaultValue.CreateAttr("tabIndex", "-1")
-			buttonDefaultValue.CreateAttr("id", fieldPath+".defaultbutton")
+		icon := buttonDefaultValue.CreateElement("i")
+		icon.CreateAttr("class", "fa fa-undo")
 
-			icon := buttonDefaultValue.CreateElement("i")
-			icon.CreateAttr("class", "fa fa-undo")
+		if !useDefaultValue {
+			icon.CreateAttr("display", "hidden")
 		}
 
 		var htmlInput *etree.Element
@@ -996,10 +990,6 @@ func newFieldset(showLegend bool, parent *etree.Element, caption string, data in
 
 			htmlInput.CreateAttr("pattern", pattern)
 		}
-	}
-
-	if !showLegend || !hasMultipleFieldsets {
-		parent.RemoveChild(htmlLegend)
 	}
 
 	if allFieldsAreExpertView {
