@@ -273,7 +273,7 @@ func (tr *TimeoutRegister[T]) clean() {
 	}
 }
 
-func (tr *TimeoutRegister[T]) isRegistered(item T) bool {
+func (tr *TimeoutRegister[T]) IsRegistered(item T) bool {
 	tr.mutex.Lock()
 	defer tr.mutex.Unlock()
 
