@@ -216,3 +216,85 @@ func NewChrono(d time.Duration, run func(*Chrono)) *Chrono {
 func (c *Chrono) Stop() {
 	close(c.done)
 }
+
+type TimeoutRegister[T comparable] struct {
+	mutex    sync.Mutex
+	timeout  time.Duration
+	quit     chan struct{}
+	register map[T]time.Time
+	ticker   *time.Ticker
+}
+
+func NewTimeoutRegister[T comparable](timeout time.Duration) *TimeoutRegister[T] {
+	tr := &TimeoutRegister[T]{
+		mutex:    sync.Mutex{},
+		timeout:  timeout,
+		quit:     make(chan struct{}),
+		register: make(map[T]time.Time),
+		ticker:   time.NewTicker(time.Second),
+	}
+
+	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
+	loop:
+		for {
+			select {
+			case <-tr.ticker.C:
+				tr.clean()
+			case <-tr.quit:
+				tr.ticker.Stop()
+				break loop
+			}
+		}
+	}()
+
+	return tr
+}
+
+func (tr *TimeoutRegister[T]) clean() {
+	tr.mutex.Lock()
+	defer tr.mutex.Unlock()
+
+	modified := false
+
+	now := time.Now()
+	for k, v := range tr.register {
+		if v.Add(tr.timeout).Before(now) {
+			modified = true
+
+			delete(tr.register, k)
+
+			DebugFunc(k)
+		}
+	}
+
+	if modified {
+		DebugFunc("Remain: %d", len(tr.register))
+	}
+}
+
+func (tr *TimeoutRegister[T]) isRegistered(item T) bool {
+	tr.mutex.Lock()
+	defer tr.mutex.Unlock()
+
+	_, ok := tr.register[item]
+
+	DebugFunc("%s: %v", item, ok)
+
+	return ok
+}
+
+func (tr *TimeoutRegister[T]) Register(item T) {
+	tr.mutex.Lock()
+	defer tr.mutex.Unlock()
+
+	DebugFunc(item)
+
+	tr.register[item] = time.Now()
+}
+
+func (tr *TimeoutRegister[T]) Quit() {
+	DebugFunc()
+
+	tr.quit <- struct{}{}
+}
