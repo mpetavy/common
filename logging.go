@@ -399,48 +399,53 @@ func initLog() {
 				return
 			}
 
-			entryAsString := entry.toString(*FlagLogJson, *FlagLogVerbose)
+			logOutput(entry)
 
-			// fileLogger or memoryLogger
-			if logger != nil {
-				logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entryAsString))
-			}
-
-			if entry.levelInt == LEVEL_PROLOG {
-				continue
-			}
-
-			if syslogLogger != nil {
-				switch entry.levelInt {
-				case LEVEL_WARN:
-					Error(syslogLogger.Warning(entry.Msg))
-				case LEVEL_ERROR:
-					Error(syslogLogger.Error(entry.Msg))
-				case LEVEL_PANIC:
-					Error(syslogLogger.Error(entry.Msg))
-				case LEVEL_DEBUG:
-					fallthrough
-				case LEVEL_INFO:
-					Error(syslogLogger.Info(entry.Msg))
-				}
-			}
-
-			if gotest != nil {
-				switch entry.levelInt {
-				case LEVEL_DEBUG:
-					gotest.Logf(entryAsString)
-				default:
-					gotest.Fatalf(entryAsString)
-				}
-			} else {
-				if entry.color != ColorDefault {
-					entry.color.Println(entryAsString)
-				} else {
-					fmt.Println(entryAsString)
-				}
-			}
 		}
 	}()
+}
+
+func logOutput(entry logEntry) {
+	entryAsString := entry.toString(*FlagLogJson, *FlagLogVerbose)
+
+	// fileLogger or memoryLogger
+	if logger != nil {
+		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entryAsString))
+	}
+
+	if entry.levelInt == LEVEL_PROLOG {
+		return
+	}
+
+	if syslogLogger != nil {
+		switch entry.levelInt {
+		case LEVEL_WARN:
+			Error(syslogLogger.Warning(entry.Msg))
+		case LEVEL_ERROR:
+			Error(syslogLogger.Error(entry.Msg))
+		case LEVEL_PANIC:
+			Error(syslogLogger.Error(entry.Msg))
+		case LEVEL_DEBUG:
+			fallthrough
+		case LEVEL_INFO:
+			Error(syslogLogger.Info(entry.Msg))
+		}
+	}
+
+	if gotest != nil {
+		switch entry.levelInt {
+		case LEVEL_DEBUG:
+			gotest.Logf(entryAsString)
+		default:
+			gotest.Fatalf(entryAsString)
+		}
+	} else {
+		if entry.color != ColorDefault {
+			entry.color.Println(entryAsString)
+		} else {
+			fmt.Println(entryAsString)
+		}
+	}
 }
 
 func closeLog() {
@@ -655,7 +660,11 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 		return
 	}
 
-	logCh.Put(entry)
+	if FlagLogVerbose == nil || !*FlagLogVerbose {
+		logCh.Put(entry)
+	} else {
+		logOutput(entry)
+	}
 }
 
 func CmdToString(cmd *exec.Cmd) string {

@@ -1,21 +1,27 @@
 package common
 
 import (
+	"github.com/dop251/goja"
+	req "github.com/dop251/goja_nodejs/require"
 	"github.com/robertkrimen/otto"
 	"strings"
 	"time"
 )
 
-type ScriptEngine struct {
-	otto   *otto.Otto
-	script *otto.Script
+type ScriptEngine interface {
+	Run(time.Duration) (string, error)
 }
 
-var timeoutError = &ErrTimeout{}
+type ottoEngine struct {
+	ScriptEngine
 
-func NewScriptEngine(src string) (*ScriptEngine, error) {
-	o := otto.New()
-	o.Set("__log__", func(call otto.FunctionCall) otto.Value {
+	engine *otto.Otto
+	code   *otto.Script
+}
+
+func NewOttoEngine(src string) (ScriptEngine, error) {
+	vm := otto.New()
+	vm.Set("__log__", func(call otto.FunctionCall) otto.Value {
 		sb := strings.Builder{}
 		for _, v := range call.ArgumentList {
 			if sb.Len() > 0 {
@@ -30,19 +36,19 @@ func NewScriptEngine(src string) (*ScriptEngine, error) {
 		return otto.Value{}
 	})
 
-	s, err := o.Compile("", "console.log = __log__;"+src)
+	prog, err := vm.Compile("", "console.log = __log__;"+src)
 	if Error(err) {
 		return nil, err
 	}
 
-	engine := &ScriptEngine{
-		otto:   o,
-		script: s,
+	engine := &ottoEngine{
+		engine: vm,
+		code:   prog,
 	}
 	return engine, nil
 }
 
-func (engine *ScriptEngine) Run(timeout time.Duration) (value otto.Value, err error) {
+func (engine *ottoEngine) Run(timeout time.Duration) (result string, err error) {
 	timeoutErr := &ErrTimeout{
 		Duration: timeout,
 	}
@@ -56,27 +62,109 @@ func (engine *ScriptEngine) Run(timeout time.Duration) (value otto.Value, err er
 		}
 	}()
 
-	engine.otto.Interrupt = make(chan func(), 1)
+	engine.engine.Interrupt = make(chan func(), 1)
 	watchdogCleanup := make(chan struct{})
 	defer close(watchdogCleanup)
 
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
 		select {
 		case <-time.After(timeout):
-			engine.otto.Interrupt <- func() {
+			engine.engine.Interrupt <- func() {
 				panic(timeoutErr)
 			}
 		case <-watchdogCleanup:
 		}
-		close(engine.otto.Interrupt)
+		close(engine.engine.Interrupt)
 	}()
 
-	value, err = engine.otto.Run(engine.script) // Here be dragons (risky code)
+	value, err := engine.engine.Run(engine.code)
 	if Error(err) {
-		return value, err
+		return "", err
 	}
 
-	return value, err
+	result, err = value.ToString()
+	if Error(err) {
+		return "", err
+	}
+
+	return result, nil
+}
+
+type gojaEngine struct {
+	ScriptEngine
+
+	engine *goja.Runtime
+	code   *goja.Program
+}
+
+type console struct{}
+
+func (c *console) log(msg string) {
+	Debug(msg)
+}
+
+func newConsole(vm *goja.Runtime) *goja.Object {
+	c := &console{}
+
+	obj := vm.NewObject()
+	obj.Set("log", c.log)
+
+	return obj
+}
+
+func NewGojaEngine(src string) (ScriptEngine, error) {
+	vm := goja.New()
+
+	vm.Set("console", newConsole(vm))
+
+	new(req.Registry).Enable(vm)
+
+	prog, err := goja.Compile("", src, true)
+	if Error(err) {
+		return nil, err
+	}
+
+	engine := &gojaEngine{
+		engine: vm,
+		code:   prog,
+	}
+
+	return engine, nil
+}
+
+func (engine *gojaEngine) Run(timeout time.Duration) (string, error) {
+	type result struct {
+		value string
+		err   error
+	}
+
+	ch := make(chan result)
+
+	go func() {
+		value, err := engine.engine.RunProgram(engine.code)
+		if err != nil {
+			ch <- result{
+				value: "",
+				err:   err,
+			}
+
+			return
+		}
+
+		ch <- result{
+			value: value.String(),
+			err:   nil,
+		}
+	}()
+
+	select {
+	case <-time.After(timeout):
+		engine.engine.Interrupt(nil)
+		return "", &ErrTimeout{
+			Duration: timeout,
+			Err:      nil,
+		}
+	case result := <-ch:
+		return result.value, result.err
+	}
 }

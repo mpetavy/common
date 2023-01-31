@@ -5,6 +5,8 @@ go 1.19
 require (
 	cloud.google.com/go v0.88.0
 	github.com/beevik/etree v1.1.0
+	github.com/dop251/goja v0.0.0-20230119130012-17fd568758fe
+	github.com/dop251/goja_nodejs v0.0.0-20211022123610-8dd9abb0616d
 	github.com/fatih/structtag v1.2.0
 	github.com/gabriel-vasile/mimetype v1.3.1
 	github.com/go-ini/ini v1.62.0
@@ -33,6 +35,8 @@ require (
 require (
 	github.com/creack/goselect v0.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dlclark/regexp2 v1.7.0 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
