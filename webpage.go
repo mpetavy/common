@@ -966,6 +966,10 @@ func newFieldset(parent *etree.Element, caption string, data interface{}, dataDe
 			buttonDefaultValue.CreateAttr("onclick", fmt.Sprintf("resetDefaultValue(--$%s$--);return false;", fieldPath))
 		}
 
+		if dataDefault == nil {
+			htmlDiv.RemoveChild(buttonDefaultValue)
+		}
+
 		if isFieldReadOnly {
 			htmlInput.CreateAttr("tabIndex", "-1")
 		}
