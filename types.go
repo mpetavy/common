@@ -1,6 +1,8 @@
 package common
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/paulrosania/go-charset/charset"
 	_ "github.com/paulrosania/go-charset/data"
@@ -478,4 +480,52 @@ func Clear(v interface{}) error {
 	p.Set(reflect.Zero(p.Type()))
 
 	return nil
+}
+
+type separatorSplitFunc struct {
+	prefix []byte
+	suffix []byte
+
+	remove bool
+	fn     bufio.SplitFunc
+}
+
+func NewSeparatorSplitFunc(prefix []byte, suffix []byte, remove bool) bufio.SplitFunc {
+	s := separatorSplitFunc{
+		prefix: prefix,
+		suffix: suffix,
+		remove: remove,
+	}
+
+	return s.splitFunc
+}
+
+func (s *separatorSplitFunc) splitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	indexPrefix := 0
+	if s.prefix != nil {
+		indexPrefix = bytes.Index(data, s.prefix)
+	}
+	indexSuffix := bytes.Index(data, s.prefix)
+
+	if indexSuffix != -1 && (s.prefix == nil || (indexPrefix != -1 && indexPrefix < indexSuffix)) {
+		deltaPrefix := 0
+		deltaSuffix := 0
+
+		if s.remove {
+			deltaPrefix = len(s.prefix)
+			deltaSuffix = len(s.suffix)
+		}
+
+		return indexSuffix + len(s.suffix), data[indexPrefix+deltaPrefix : indexSuffix-deltaSuffix], nil
+	}
+
+	if atEOF {
+		return 0, nil, io.EOF
+	}
+
+	return 0, nil, nil
 }
