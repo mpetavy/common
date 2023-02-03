@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"golang.org/x/exp/constraints"
 	"runtime"
@@ -144,4 +145,27 @@ func Sleep(d time.Duration) {
 	time.Sleep(d)
 
 	Debug("Sleep [%s] %v continue", id, d)
+}
+
+func CatchPanic(fn func()) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch x := r.(type) {
+			case string:
+				err = fmt.Errorf(x)
+			case error:
+				err = x
+			default:
+				err = fmt.Errorf("unknown panic: %+v", r)
+			}
+		}
+	}()
+
+	fn()
+
+	return nil
+}
+
+func ToSlice[T any](slice ...T) []T {
+	return slice
 }

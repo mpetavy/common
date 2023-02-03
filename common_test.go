@@ -12,3 +12,11 @@ func TestMin(t *testing.T) {
 func TestMax(t *testing.T) {
 	assert.Equal(t, 5, Max(-5, 0, 5))
 }
+
+func TestCatchPanic(t *testing.T) {
+	err := CatchPanic(func() {
+		panic("panic")
+	})
+
+	assert.Equal(t, "panic", err.Error())
+}
