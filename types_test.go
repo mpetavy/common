@@ -3,6 +3,7 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
@@ -321,6 +322,16 @@ func TestNewSeparatorSplitFunc(t *testing.T) {
 			name:    "21",
 			args:    args{},
 			wantErr: true,
+		},
+		{
+			name: "22",
+			args: args{
+				prefix: nil,
+				suffix: []byte("\n"),
+				remove: true,
+			},
+			data: []byte(fmt.Sprintf("%s\n%s\n", hello, world)),
+			want: []byte(fmt.Sprintf("%s%s", hello, world)),
 		},
 	}
 

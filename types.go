@@ -524,7 +524,14 @@ func (s *separatorSplitFunc) splitFunc(data []byte, atEOF bool) (advance int, to
 			deltaSuffix = len(s.suffix)
 		}
 
-		return indexSuffix + len(s.suffix), data[indexPrefix+deltaPrefix : indexSuffix+len(s.suffix)-deltaSuffix], nil
+		advance := indexSuffix + len(s.suffix)
+		var err error
+
+		if len(data) == advance {
+			err = bufio.ErrFinalToken
+		}
+
+		return advance, data[indexPrefix+deltaPrefix : indexSuffix+len(s.suffix)-deltaSuffix], err
 	}
 
 	if atEOF {
