@@ -490,14 +490,18 @@ type separatorSplitFunc struct {
 	fn     bufio.SplitFunc
 }
 
-func NewSeparatorSplitFunc(prefix []byte, suffix []byte, remove bool) bufio.SplitFunc {
+func NewSplitFuncSeparator(prefix []byte, suffix []byte, remove bool) (bufio.SplitFunc, error) {
+	if suffix == nil {
+		return nil, fmt.Errorf("at least the suffix must be defined")
+	}
+
 	s := separatorSplitFunc{
 		prefix: prefix,
 		suffix: suffix,
 		remove: remove,
 	}
 
-	return s.splitFunc
+	return s.splitFunc, nil
 }
 
 func (s *separatorSplitFunc) splitFunc(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -509,7 +513,7 @@ func (s *separatorSplitFunc) splitFunc(data []byte, atEOF bool) (advance int, to
 	if s.prefix != nil {
 		indexPrefix = bytes.Index(data, s.prefix)
 	}
-	indexSuffix := bytes.Index(data, s.prefix)
+	indexSuffix := bytes.Index(data, s.suffix)
 
 	if indexSuffix != -1 && (s.prefix == nil || (indexPrefix != -1 && indexPrefix < indexSuffix)) {
 		deltaPrefix := 0
@@ -520,7 +524,7 @@ func (s *separatorSplitFunc) splitFunc(data []byte, atEOF bool) (advance int, to
 			deltaSuffix = len(s.suffix)
 		}
 
-		return indexSuffix + len(s.suffix), data[indexPrefix+deltaPrefix : indexSuffix-deltaSuffix], nil
+		return indexSuffix + len(s.suffix), data[indexPrefix+deltaPrefix : indexSuffix+len(s.suffix)-deltaSuffix], nil
 	}
 
 	if atEOF {
