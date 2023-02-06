@@ -372,7 +372,10 @@ func (app *application) applicationRun() error {
 
 			ticker.Stop()
 
-			Error(app.RunFunc())
+			err := app.RunFunc()
+			if Error(err) {
+				return err
+			}
 
 			ticker = nextTicker()
 		}
