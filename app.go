@@ -114,6 +114,7 @@ var (
 	shutdownHooks           = make([]func(), 0)
 	restartCh               = make(chan struct{})
 	ctrlC                   = make(chan os.Signal, 1)
+	isFirstTicker           = true
 )
 
 func init() {
@@ -299,9 +300,13 @@ func ShowBanner() {
 func nextTicker() *time.Ticker {
 	tickerSleep := time.Second
 
-	if app.RunTime > 0 {
-		nextTick := time.Now().Truncate(app.RunTime).Add(app.RunTime)
-		tickerSleep = nextTick.Sub(time.Now())
+	if isFirstTicker {
+		tickerSleep = time.Millisecond
+	} else {
+		if app.RunTime > 0 {
+			nextTick := time.Now().Truncate(app.RunTime).Add(app.RunTime)
+			tickerSleep = nextTick.Sub(time.Now())
+		}
 	}
 
 	newTicker := time.NewTicker(tickerSleep)
@@ -309,8 +314,12 @@ func nextTicker() *time.Ticker {
 	if app.RunTime == 0 {
 		newTicker.Stop()
 	} else {
-		Debug("next tick: %s sleep: %v\n", time.Now().Add(tickerSleep).Truncate(app.RunTime).Format(DateTimeMilliMask), tickerSleep)
+		if !isFirstTicker {
+			Debug("next tick: %s sleep: %v\n", time.Now().Add(tickerSleep).Truncate(app.RunTime).Format(DateTimeMilliMask), tickerSleep)
+		}
 	}
+
+	isFirstTicker = false
 
 	return newTicker
 }
