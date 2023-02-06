@@ -58,8 +58,6 @@ type application struct {
 	StopFunc func() error
 	//RunFunc
 	RunFunc func() error
-	//TickTime
-	RunTime time.Duration
 	//Service
 	Service service.Service
 	//ServiceConfig
@@ -79,6 +77,7 @@ func (e *ErrExit) Error() string { return "" }
 
 const (
 	FlagNameAppProduct      = "app.product"
+	FlagNameAppTicker       = "app.ticker"
 	FlagNameService         = "service"
 	FlagNameServiceUsername = "service.username"
 	FlagNameServicePassword = "service.password"
@@ -91,6 +90,7 @@ const (
 var (
 	app                     *application
 	FlagAppProduct          *string
+	FlagAppTicker           *int
 	FlagService             *string
 	FlagServiceUser         *string
 	FlagServicePassword     *string
@@ -118,7 +118,6 @@ var (
 )
 
 func init() {
-	FlagAppProduct = flag.String(FlagNameAppProduct, "", "app product")
 	FlagService = new(string)
 	FlagServiceUser = new(string)
 	FlagServicePassword = new(string)
@@ -129,6 +128,9 @@ func init() {
 }
 
 func Init(isService bool, version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+	FlagAppProduct = flag.String(FlagNameAppProduct, Title(), "app product")
+	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
+
 	app = &application{
 		CanRunAsService: isService,
 		Name:            Title(),
@@ -144,7 +146,6 @@ func Init(isService bool, version string, git string, build string, date string,
 		StartFunc:       startFunc,
 		StopFunc:        stopFunc,
 		RunFunc:         runFunc,
-		RunTime:         runTime,
 	}
 
 	executable, err := os.Executable()
@@ -303,19 +304,19 @@ func nextTicker() *time.Ticker {
 	if isFirstTicker {
 		tickerSleep = time.Millisecond
 	} else {
-		if app.RunTime > 0 {
-			nextTick := time.Now().Truncate(app.RunTime).Add(app.RunTime)
+		if *FlagAppTicker > 0 {
+			nextTick := time.Now().Truncate(MillisecondToDuration(*FlagAppTicker)).Add(MillisecondToDuration(*FlagAppTicker))
 			tickerSleep = nextTick.Sub(time.Now())
 		}
 	}
 
 	newTicker := time.NewTicker(tickerSleep)
 
-	if app.RunTime == 0 {
+	if *FlagAppTicker == 0 {
 		newTicker.Stop()
 	} else {
 		if !isFirstTicker {
-			Debug("next tick: %s sleep: %v\n", time.Now().Add(tickerSleep).Truncate(app.RunTime).Format(DateTimeMilliMask), tickerSleep)
+			Debug("next tick: %s sleep: %v\n", time.Now().Add(tickerSleep).Truncate(MillisecondToDuration(*FlagAppTicker)).Format(DateTimeMilliMask), tickerSleep)
 		}
 	}
 
@@ -335,7 +336,7 @@ func (app *application) applicationRun() error {
 
 	errCh := make(chan error)
 
-	if app.RunFunc != nil && app.RunTime == 0 {
+	if app.RunFunc != nil && *FlagAppTicker == 0 {
 		go func() {
 			defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
