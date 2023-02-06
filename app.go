@@ -30,8 +30,6 @@ const (
 
 // Info information of the application
 type application struct {
-	// IsService
-	CanRunAsService bool
 	// Name of the application
 	Name string
 	// Version of the application
@@ -127,25 +125,24 @@ func init() {
 	FlagNoBanner = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
 }
 
-func Init(isService bool, version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+func Init(version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	FlagAppProduct = flag.String(FlagNameAppProduct, Title(), "app product")
 	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
 
 	app = &application{
-		CanRunAsService: isService,
-		Name:            Title(),
-		Version:         version,
-		Git:             git,
-		Build:           build,
-		Date:            date,
-		Description:     description,
-		Developer:       developer,
-		License:         license,
-		Homepage:        homepage,
-		Resources:       resources,
-		StartFunc:       startFunc,
-		StopFunc:        stopFunc,
-		RunFunc:         runFunc,
+		Name:        Title(),
+		Version:     version,
+		Git:         git,
+		Build:       build,
+		Date:        date,
+		Description: description,
+		Developer:   developer,
+		License:     license,
+		Homepage:    homepage,
+		Resources:   resources,
+		StartFunc:   startFunc,
+		StopFunc:    stopFunc,
+		RunFunc:     runFunc,
 	}
 
 	executable, err := os.Executable()
@@ -163,7 +160,7 @@ func Init(isService bool, version string, git string, build string, date string,
 }
 
 func Run(mandatoryFlags []string) {
-	if app.CanRunAsService {
+	if app.StartFunc != nil {
 		FlagService = flag.String(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
 		FlagServiceUser = flag.String(FlagNameServiceUsername, "", "Service user")
 		FlagServicePassword = flag.String(FlagNameServicePassword, "", "Service password")

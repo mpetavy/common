@@ -600,12 +600,6 @@ func Panic(err error) {
 	Exit(1)
 }
 
-func TrackError(err error) error {
-	Error(err)
-
-	return err
-}
-
 func Error(err error) bool {
 	if FlagLogVerbose == nil {
 		return err != nil
