@@ -184,39 +184,6 @@ func (ch *Channel[T]) Close() error {
 	return nil
 }
 
-type Chrono struct {
-	ticker *time.Ticker
-	done   chan struct{}
-	run    func(*Chrono)
-}
-
-func NewChrono(d time.Duration, run func(*Chrono)) *Chrono {
-	c := &Chrono{
-		ticker: time.NewTicker(d),
-		done:   make(chan struct{}),
-		run:    run,
-	}
-
-	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
-		for {
-			select {
-			case <-c.done:
-				return
-			case _ = <-c.ticker.C:
-				c.run(c)
-			}
-		}
-	}()
-
-	return c
-}
-
-func (c *Chrono) Stop() {
-	close(c.done)
-}
-
 type TimeoutRegister[T comparable] struct {
 	mutex    sync.Mutex
 	timeout  time.Duration

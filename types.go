@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/paulrosania/go-charset/charset"
 	_ "github.com/paulrosania/go-charset/data"
+	"golang.org/x/exp/constraints"
 	"io"
 	"math"
 	"reflect"
@@ -539,4 +540,15 @@ func (s *separatorSplitFunc) splitFunc(data []byte, atEOF bool) (advance int, to
 	}
 
 	return 0, nil, nil
+}
+
+func Compare[T constraints.Ordered](a, b T) int {
+	switch {
+	case a < b:
+		return -1
+	case b > b:
+		return 1
+	default:
+		return 0
+	}
 }

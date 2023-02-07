@@ -265,7 +265,7 @@ func DisableCookie(context echo.Context) error {
 }
 
 func SetCookie(context echo.Context, cookie *sessions.Session, timeout time.Duration) error {
-	cookie.Options.MaxAge = int(timeout.Seconds())
+	cookie.Options.MaxAge = 0
 	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
 
 	err := SessionStore.Save(context.Request(), context.Response(), cookie)
@@ -1040,18 +1040,16 @@ func NewTable(parent *etree.Element, cells [][]string) *etree.Element {
 	htmlTable := parent.CreateElement("table")
 	htmlTable.CreateAttr("class", "pure-table pure-table.bordered")
 
-	var htmlHeader, htmlRow *etree.Element
-	var tagName string
+	var htmlRow *etree.Element
+
+	htmlHeader := htmlTable.CreateElement("thead")
+	htmlBody := htmlTable.CreateElement("tbody")
 
 	for rowIndex, row := range cells {
 		if rowIndex == 0 {
-			htmlHeader = htmlTable.CreateElement("thead")
 			htmlRow = htmlHeader.CreateElement("tr")
-			tagName = "th"
 		} else {
-			htmlHeader = htmlTable.CreateElement("tbody")
-			htmlRow = htmlHeader.CreateElement("tr")
-			tagName = "td"
+			htmlRow = htmlBody.CreateElement("tr")
 		}
 
 		if rowIndex%2 == 1 {
@@ -1059,7 +1057,14 @@ func NewTable(parent *etree.Element, cells [][]string) *etree.Element {
 		}
 
 		for _, cell := range row {
-			htmlCell := htmlRow.CreateElement(tagName)
+			var htmlCell *etree.Element
+
+			if rowIndex == 0 {
+				htmlCell = htmlRow.CreateElement("th")
+			} else {
+				htmlCell = htmlRow.CreateElement("td")
+			}
+
 			htmlCell.SetText(cell)
 		}
 	}
@@ -1122,6 +1127,8 @@ func (this *Webpage) HTML() (string, error) {
 	for _, strayEnd := range strayEnds {
 		html = strings.ReplaceAll(html, strayEnd, "/>")
 	}
+
+	html = fmt.Sprintf("%s\n%s", "<button onclick='checkTables();'>Click Here</button>", html)
 
 	html = fmt.Sprintf("<!DOCTYPE html>\n%s", html)
 

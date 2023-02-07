@@ -59,7 +59,7 @@ func (fw *Filewalker) Run() error {
 	return filepath.Walk(fw.Path, fw.walkfunc)
 }
 
-func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, f os.FileInfo) error) (*Filewalker, error) {
+func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, fi os.FileInfo) error) (*Filewalker, error) {
 	path := ""
 	filemask = CleanPath(filemask)
 

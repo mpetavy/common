@@ -357,7 +357,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 
 	for i := 1; i < len(i18ns); i++ {
 		if r.Match([]byte(i18ns[i])) {
-			return fmt.Errorf("invalid substitution parameter foud: %s", i18ns[i])
+			return fmt.Errorf("invalid substitution parameter found: %s", i18ns[i])
 		}
 
 		if i18ns[i] == i18ns[i-1] {
