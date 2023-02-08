@@ -491,7 +491,7 @@ type separatorSplitFunc struct {
 	fn     bufio.SplitFunc
 }
 
-func NewSplitFuncSeparator(prefix []byte, suffix []byte, remove bool) (bufio.SplitFunc, error) {
+func NewSeparatorSplitFunc(prefix []byte, suffix []byte, remove bool) (bufio.SplitFunc, error) {
 	if suffix == nil {
 		return nil, fmt.Errorf("at least the suffix must be defined")
 	}

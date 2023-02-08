@@ -337,7 +337,7 @@ func TestNewSeparatorSplitFunc(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sf, err := NewSplitFuncSeparator(tt.args.prefix, tt.args.suffix, tt.args.remove)
+			sf, err := NewSeparatorSplitFunc(tt.args.prefix, tt.args.suffix, tt.args.remove)
 
 			assert.Equal(t, tt.wantErr, err != nil)
 
