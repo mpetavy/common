@@ -13,12 +13,14 @@ const (
 	message = "Hello world"
 )
 
-func readerTest(t *testing.T, immediateContext bool) (bytes.Buffer, int64, error) {
+func readerTest(initialContext bool) (bytes.Buffer, int64, error) {
 	pr, pw := io.Pipe()
 
 	go func() {
 		// close the writer, so the reader knows there's no more data
-		defer pw.Close()
+		defer func() {
+			Error(pw.Close())
+		}()
 
 		time.Sleep(time.Second)
 
@@ -27,7 +29,7 @@ func readerTest(t *testing.T, immediateContext bool) (bytes.Buffer, int64, error
 
 	buf := bytes.Buffer{}
 
-	reader := NewTimeoutReader(pr, immediateContext,
+	reader := NewTimeoutReader(pr, initialContext,
 		func() (context.Context, context.CancelFunc) {
 			return context.WithTimeout(context.Background(), time.Duration(500*time.Millisecond))
 		})
@@ -38,7 +40,7 @@ func readerTest(t *testing.T, immediateContext bool) (bytes.Buffer, int64, error
 }
 
 func TestTimeoutReader(t *testing.T) {
-	buf, n, err := readerTest(t, false)
+	buf, n, err := readerTest(false)
 
 	assert.Nil(t, err)
 	assert.Equal(t, int(n), buf.Len())
@@ -46,47 +48,47 @@ func TestTimeoutReader(t *testing.T) {
 }
 
 func TestTimeoutReaderError(t *testing.T) {
-	_, _, err := readerTest(t, true)
+	_, _, err := readerTest(true)
 
 	assert.NotNil(t, err)
 	assert.Equal(t, true, IsErrTimeout(err))
 }
 
 type writer struct {
-	ImmediateContext bool
-	W                io.Writer
-	Sleep            time.Duration
+	initialContext bool
+	w              io.Writer
+	sleep          time.Duration
 }
 
 func (w writer) Write(p []byte) (int, error) {
 	n := 0
-	if w.ImmediateContext {
+	if w.initialContext {
 		var err error
 
-		n, err = w.W.Write(p[:1])
+		n, err = w.w.Write(p[:1])
 		if err != nil {
 			return n, err
 		}
 
 		p = p[1:]
 
-		time.Sleep(w.Sleep)
+		time.Sleep(w.sleep)
 	}
 
-	n1, err := w.W.Write(p)
+	n1, err := w.w.Write(p)
 
 	return n + n1, err
 }
 
-func writerTest(t *testing.T, immediateContext bool) (bytes.Buffer, int, error) {
+func writerTest(initialContext bool) (bytes.Buffer, int, error) {
 	buf := bytes.Buffer{}
 	w := &writer{
-		ImmediateContext: immediateContext,
-		W:                &buf,
-		Sleep:            time.Second,
+		initialContext: initialContext,
+		w:              &buf,
+		sleep:          time.Second,
 	}
 
-	writer := NewTimeoutWriter(w, immediateContext,
+	writer := NewTimeoutWriter(w, initialContext,
 		func() (context.Context, context.CancelFunc) {
 			return context.WithTimeout(context.Background(), time.Duration(500*time.Millisecond))
 		})
@@ -97,7 +99,7 @@ func writerTest(t *testing.T, immediateContext bool) (bytes.Buffer, int, error) 
 }
 
 func TestTimeoutWriter(t *testing.T) {
-	buf, n, err := writerTest(t, false)
+	buf, n, err := writerTest(false)
 
 	assert.Nil(t, err)
 	assert.Equal(t, int(n), buf.Len())
@@ -105,7 +107,7 @@ func TestTimeoutWriter(t *testing.T) {
 }
 
 func TestTimeoutWriterError(t *testing.T) {
-	_, _, err := writerTest(t, true)
+	_, _, err := writerTest(true)
 
 	assert.NotNil(t, err)
 	assert.Equal(t, true, IsErrTimeout(err))
