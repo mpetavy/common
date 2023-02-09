@@ -1128,8 +1128,6 @@ func (this *Webpage) HTML() (string, error) {
 		html = strings.ReplaceAll(html, strayEnd, "/>")
 	}
 
-	html = fmt.Sprintf("%s\n%s", "<button onclick='checkTables();'>Click Here</button>", html)
-
 	html = fmt.Sprintf("<!DOCTYPE html>\n%s", html)
 
 	return html, nil
