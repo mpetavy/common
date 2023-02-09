@@ -52,7 +52,10 @@ var (
 func Trim4Path(path string) string {
 	spath := []rune(path)
 	for i, ch := range spath {
-		if ch == ':' || ch == '\\' {
+		if ch == '\\' || ch == ' ' {
+			spath[i] = '-'
+		}
+		if ch == ':' || ch == '.' {
 			spath[i] = '_'
 		}
 	}

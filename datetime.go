@@ -40,23 +40,14 @@ func ToTime(v asDateTime) time.Time {
 	return time.Date(v.Year(), v.Month(), v.Day(), 0, 0, 0, 0, time.Local)
 }
 
-// DateMaskFilena,e parses for date value for file names
-var DateMaskFilename = Year + "-" + Month + "-" + Day
-
-// DateMask parses only for date values
 var DateMask = Day + DateSeparator + Month + DateSeparator + Year
-
-// TimeMask parses only for time values
 var TimeMask = Hour + TimeSeparator + Minute + TimeSeparator + Second
 
-// DateTimeMask parses for date and time values
 var DateTimeMask = DateMask + Separator + TimeMask
-
-// DateTimeMilliMask parses for date and time values
 var DateTimeMilliMask = DateMask + Separator + TimeMask + Msec
 
-// SortedDateTimeMilliMask parses for date and time values
-var SortedDateTimeMilliMask = Year + "/" + Month + "/" + Day + Separator + TimeMask + Msec
+var SortedDateMask = Trim4Path(Year + DateSeparator + Month + DateSeparator + Day)
+var SortedDateTimeMilliMask = Trim4Path(SortedDateMask + Separator + TimeMask + Msec)
 
 // ParseDateTime parses only date, but no time
 func ParseDateTime(mask string, v string) (time.Time, error) {
