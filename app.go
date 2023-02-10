@@ -86,16 +86,17 @@ const (
 )
 
 var (
+	FlagService             = flag.String(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
+	FlagServiceUser         = flag.String(FlagNameServiceUsername, "", "Service user")
+	FlagServicePassword     = flag.String(FlagNameServicePassword, "", "Service password")
+	FlagServiceStartTimeout = flag.Int(FlagNameServiceTimeout, 1000, "Service timeout")
+	FlagUsage               = flag.Bool(FlagNameUsage, false, "show flags description and usage")
+	FlagUsageMd             = flag.Bool(FlagNameUsageMd, false, "show flags description and usage in markdown format")
+	FlagNoBanner            = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
+
 	app                     *application
 	FlagAppProduct          *string
 	FlagAppTicker           *int
-	FlagService             *string
-	FlagServiceUser         *string
-	FlagServicePassword     *string
-	FlagServiceStartTimeout *int
-	FlagUsage               *bool
-	FlagUsageMd             *bool
-	FlagNoBanner            *bool
 	ticker                  *time.Ticker
 	appLifecycle            = NewNotice(true)
 	onceBanner              sync.Once
@@ -114,16 +115,6 @@ var (
 	ctrlC                   = make(chan os.Signal, 1)
 	isFirstTicker           = true
 )
-
-func init() {
-	FlagService = new(string)
-	FlagServiceUser = new(string)
-	FlagServicePassword = new(string)
-	FlagServiceStartTimeout = new(int)
-	FlagUsage = flag.Bool(FlagNameUsage, false, "show flags description and usage")
-	FlagUsageMd = flag.Bool(FlagNameUsageMd, false, "show flags description and usage in markdown format")
-	FlagNoBanner = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
-}
 
 func Init(version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	FlagAppProduct = flag.String(FlagNameAppProduct, Title(), "app product")
@@ -160,13 +151,6 @@ func Init(version string, git string, build string, date string, description str
 }
 
 func Run(mandatoryFlags []string) {
-	if app.StartFunc != nil {
-		FlagService = flag.String(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
-		FlagServiceUser = flag.String(FlagNameServiceUsername, "", "Service user")
-		FlagServicePassword = flag.String(FlagNameServicePassword, "", "Service password")
-		FlagServiceStartTimeout = flag.Int(FlagNameServiceTimeout, 1000, "Service timeout")
-	}
-
 	flag.Parse()
 
 	Events.Emit(EventFlagsParsed{})
