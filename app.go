@@ -13,7 +13,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"unicode"
 )
 
 const (
@@ -31,7 +30,7 @@ const (
 // Info information of the application
 type application struct {
 	// Name of the application
-	Name string
+	Title string
 	// Version of the application
 	Version string
 	// Git label development
@@ -116,12 +115,12 @@ var (
 	isFirstTicker           = true
 )
 
-func Init(version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+func Init(title string, version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	FlagAppProduct = flag.String(FlagNameAppProduct, Title(), "app product")
 	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
 
 	app = &application{
-		Name:        Title(),
+		Title:       title,
 		Version:     version,
 		Git:         git,
 		Build:       build,
@@ -140,8 +139,8 @@ func Init(version string, git string, build string, date string, description str
 	Panic(err)
 
 	app.ServiceConfig = &service.Config{
-		Name:             Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
-		DisplayName:      Eval(IsWindowsOS(), Capitalize(app.Name), app.Name).(string),
+		Name:             Eval(IsWindowsOS(), Capitalize(app.Title), app.Title).(string),
+		DisplayName:      Eval(IsWindowsOS(), Capitalize(app.Title), app.Title).(string),
 		Description:      Capitalize(app.Description),
 		WorkingDirectory: filepath.Dir(executable),
 	}
@@ -263,7 +262,7 @@ func ShowBanner() {
 			}
 
 			fmt.Printf("\n")
-			fmt.Printf("%s %s %s\n", strings.ToUpper(app.Name), app.Version, app.Description)
+			fmt.Printf("%s %s %s\n", strings.ToUpper(app.Title), app.Version, app.Description)
 			fmt.Printf("\n")
 			fmt.Printf("Copyright: © %s %s\n", date, app.Developer)
 			fmt.Printf("Homepage:  %s\n", app.Homepage)
@@ -615,32 +614,7 @@ func AppFilename(newExt string) string {
 }
 
 func Title() string {
-	onceTitle.Do(func() {
-		path, err := os.Executable()
-		if err != nil {
-			path = os.Args[0]
-		}
-
-		path = filepath.Base(path)
-		path = path[0:(len(path) - len(filepath.Ext(path)))]
-
-		title = ""
-
-		runes := []rune(path)
-		for i := 0; i < len(runes); i++ {
-			if string(runes[i]) == "-" {
-				break
-			}
-
-			if unicode.IsLetter(runes[i]) {
-				title = title + string(runes[i])
-			}
-		}
-
-		DebugFunc(title)
-	})
-
-	return title
+	return app.Title
 }
 
 func Version(major bool, minor bool, patch bool) string {

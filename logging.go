@@ -382,7 +382,7 @@ func initLog() {
 	}
 
 	if app != nil {
-		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 98)))
+		prolog(fmt.Sprintf(">>> Start - %s %s %s", strings.ToUpper(app.Title), app.Version, strings.Repeat("-", 98)))
 		prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 	}
 
@@ -449,7 +449,7 @@ func logOutput(entry logEntry) {
 }
 
 func closeLog() {
-	prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
+	prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Title), app.Version, strings.Repeat("-", 100)))
 
 	if logger != nil {
 		logger.Close()
