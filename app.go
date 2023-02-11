@@ -186,21 +186,22 @@ func usage() error {
 	return nil
 }
 
-func checkMandatoryFlags(mandatoryFlags []string) error {
+func checkMandatoryFlags(flags []string) error {
 	if *FlagService == SERVICE_UNINSTALL {
 		return nil
 	}
 
-	if mandatoryFlags != nil {
-		for _, mf := range mandatoryFlags {
-			alreadyOne := false
+	if flags != nil {
+		notDefined := strings.Builder{}
 
+		for _, mf := range flags {
 			choices := strings.Split(mf, "|")
 			for i := 0; i < len(choices); i++ {
 				choices[i] = "\"-" + choices[i] + "\""
 			}
 
 			allChoices := strings.Join(choices, " or ")
+			defined := 0
 
 			for _, flagName := range strings.Split(mf, "|") {
 				fl := flag.Lookup(flagName)
@@ -209,18 +210,24 @@ func checkMandatoryFlags(mandatoryFlags []string) error {
 					return fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
 				}
 
-				if fl.Value.String() != fl.DefValue {
-					if alreadyOne {
-						return fmt.Errorf("only one mandatory flag allowed: %s", allChoices)
-					}
-
-					alreadyOne = true
+				if fl.Value.String() != "" {
+					defined++
 				}
 			}
 
-			if !alreadyOne {
-				return fmt.Errorf("mandatory flag is not defined: %s", allChoices)
+			switch {
+			case defined == 0:
+				if notDefined.Len() > 0 {
+					notDefined.WriteString(", ")
+				}
+				notDefined.WriteString(allChoices)
+			case defined > 1:
+				return TraceError(fmt.Errorf("only one mandatory flag allowed: %s", allChoices))
 			}
+		}
+
+		if notDefined.Len() > 0 {
+			return TraceError(fmt.Errorf("mandatory flag not defined: %s", notDefined.String()))
 		}
 	}
 
