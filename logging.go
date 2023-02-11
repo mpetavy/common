@@ -104,17 +104,17 @@ func (l *logEntry) toString(asJson bool, verbose bool) string {
 }
 
 type logWriter interface {
-	WriteString(int, string)
-	GetLogs(io.Writer) error
-	ClearLogs() error
-	Close()
+	writeString(int, string)
+	getLogs(io.Writer) error
+	clearLogs() error
+	close()
 }
 
 type memoryWriter struct {
 	lines []string
 }
 
-func (this *memoryWriter) WriteString(level int, txt string) {
+func (this *memoryWriter) writeString(level int, txt string) {
 	if level == LEVEL_PROLOG {
 		return
 	}
@@ -128,7 +128,7 @@ func (this *memoryWriter) WriteString(level int, txt string) {
 	this.lines = append(this.lines, txt)
 }
 
-func (this *memoryWriter) ClearLogs() error {
+func (this *memoryWriter) clearLogs() error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -137,7 +137,7 @@ func (this *memoryWriter) ClearLogs() error {
 	return nil
 }
 
-func (this *memoryWriter) GetLogs(w io.Writer) error {
+func (this *memoryWriter) getLogs(w io.Writer) error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -152,7 +152,7 @@ func (this *memoryWriter) GetLogs(w io.Writer) error {
 	return nil
 }
 
-func (this *memoryWriter) Close() {
+func (this *memoryWriter) close() {
 }
 
 func newMemoryWriter() *memoryWriter {
@@ -168,7 +168,7 @@ type fileWriter struct {
 	file     *os.File
 }
 
-func (this *fileWriter) WriteString(level int, txt string) {
+func (this *fileWriter) writeString(level int, txt string) {
 	if this.file == nil {
 		return
 	}
@@ -198,7 +198,7 @@ func (this *fileWriter) WriteString(level int, txt string) {
 	this.filesize += int64(n)
 }
 
-func (this fileWriter) ClearLogs() error {
+func (this fileWriter) clearLogs() error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -232,7 +232,7 @@ func (this fileWriter) ClearLogs() error {
 	return nil
 }
 
-func (this *fileWriter) GetLogs(w io.Writer) error {
+func (this *fileWriter) getLogs(w io.Writer) error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -277,7 +277,7 @@ func (this *fileWriter) GetLogs(w io.Writer) error {
 	return nil
 }
 
-func (this *fileWriter) Close() {
+func (this *fileWriter) close() {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -356,7 +356,7 @@ func (r *redirectGoLogger) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func initLog() {
+func initLog() error {
 	DebugFunc()
 
 	if *FlagLogFileName != "" {
@@ -403,6 +403,8 @@ func initLog() {
 
 		}
 	}()
+
+	return nil
 }
 
 func logOutput(entry logEntry) {
@@ -410,7 +412,7 @@ func logOutput(entry logEntry) {
 
 	// fileLogger or memoryLogger
 	if logger != nil {
-		logger.WriteString(entry.levelInt, fmt.Sprintf("%s\n", entryAsString))
+		logger.writeString(entry.levelInt, fmt.Sprintf("%s\n", entryAsString))
 	}
 
 	if entry.levelInt == LEVEL_PROLOG {
@@ -452,10 +454,10 @@ func closeLog() {
 	prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
 
 	if logger != nil {
-		logger.Close()
+		logger.close()
 	}
 
-	logCh.Close()
+	Error(logCh.Close())
 
 	wgLogCh.Wait()
 }
@@ -486,7 +488,7 @@ func loggingError(err error) bool {
 	if err != nil && logger != nil {
 		entry := newLogEntry(LEVEL_ERROR, ColorError, GetRuntimeInfo(1), err.Error())
 
-		logger.WriteString(LEVEL_DEBUG, fmt.Sprintf("%s\n", entry.toString(*FlagLogJson, true)))
+		logger.writeString(LEVEL_DEBUG, fmt.Sprintf("%s\n", entry.toString(*FlagLogJson, true)))
 	}
 
 	return err != nil
@@ -546,14 +548,6 @@ func WarnError(err error) bool {
 	return err != nil
 }
 
-func warnString(level int, msg string) string {
-	if *FlagLogVerbose {
-		return msg
-	}
-
-	return fmt.Sprintf("%s: %s", Capitalize(levelToString(level)), msg)
-}
-
 func errorString(level int, ri RuntimeInfo, err error) string {
 	if *FlagLogVerbose {
 		return fmt.Sprintf("%s [%T]\n%s", err.Error(), err, ri.Stack)
@@ -589,7 +583,7 @@ func DebugFunc(arg ...interface{}) {
 }
 
 func Panic(err error) {
-	if err == nil {
+	if err == nil || IsErrExit(err) {
 		return
 	}
 
@@ -597,7 +591,9 @@ func Panic(err error) {
 
 	appendLog(LEVEL_PANIC, ColorPanic, ri, errorString(LEVEL_PANIC, ri, err), err)
 
-	Exit(1)
+	Done()
+
+	os.Exit(1)
 }
 
 func Error(err error) bool {
@@ -654,8 +650,8 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 		return
 	}
 
-	if FlagLogVerbose == nil || !*FlagLogVerbose {
-		logCh.Put(entry)
+	if level != LEVEL_PANIC && (FlagLogVerbose == nil || !*FlagLogVerbose) {
+		Error(logCh.Put(entry))
 	} else {
 		logOutput(entry)
 	}
@@ -672,7 +668,7 @@ func GetLogs(w io.Writer) error {
 		return fmt.Errorf("no logger")
 	}
 
-	return logger.GetLogs(w)
+	return logger.getLogs(w)
 }
 
 func ClearLogs() error {
@@ -680,9 +676,15 @@ func ClearLogs() error {
 		return fmt.Errorf("no logger")
 	}
 
-	return logger.ClearLogs()
+	return logger.clearLogs()
 }
 
 func LogsAvailable() bool {
 	return logger != nil
+}
+
+func TraceError(err error) error {
+	Error(err)
+
+	return err
 }

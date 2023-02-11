@@ -113,7 +113,7 @@ func IsCmdlineOnlyFlag(flagName string) bool {
 	return r
 }
 
-func InitConfiguration() error {
+func initConfiguration() error {
 	DebugFunc()
 
 	*FlagCfgReset = *FlagCfgReset || !FileExists(*FlagCfgFile)

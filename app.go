@@ -150,19 +150,11 @@ func Init(version string, git string, build string, date string, description str
 	Panic(err)
 }
 
-func Run(mandatoryFlags []string) {
-	flag.Parse()
-
-	Events.Emit(EventFlagsParsed{})
-
-	if !*FlagNoBanner && !*FlagUsageMd {
-		ShowBanner()
-	}
-
+func usage() error {
 	if *FlagUsageMd {
 		dir, err := os.Getwd()
-		if err != nil {
-			panic(err)
+		if Error(err) {
+			return err
 		}
 
 		fmt.Printf("Parameter | Default value | Only CmdLine | Description\n")
@@ -181,21 +173,23 @@ func Run(mandatoryFlags []string) {
 
 			fmt.Printf("%s | %s | %s | %s\n", fl.Name, defValue, onlyCmdLine, fl.Usage)
 		})
-		os.Exit(0)
+
+		return &ErrExit{}
 	}
 
 	if *FlagUsage {
 		flag.Usage()
-		Exit(0)
+
+		return &ErrExit{}
 	}
 
-	if flag.NArg() > 0 {
-		Panic(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
+	return nil
+}
+
+func checkMandatoryFlags(mandatoryFlags []string) error {
+	if *FlagService == SERVICE_UNINSTALL {
+		return nil
 	}
-
-	Panic(InitConfiguration())
-
-	initLog()
 
 	if mandatoryFlags != nil {
 		for _, mf := range mandatoryFlags {
@@ -212,12 +206,12 @@ func Run(mandatoryFlags []string) {
 				fl := flag.Lookup(flagName)
 
 				if fl == nil || fl.Value == nil {
-					Panic(fmt.Errorf("unknown mandatory flag: \"%s\"", flagName))
+					return fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
 				}
 
 				if fl.Value.String() != fl.DefValue {
 					if alreadyOne {
-						Panic(fmt.Errorf("only one mandatory flag allowed: %s", allChoices))
+						return fmt.Errorf("only one mandatory flag allowed: %s", allChoices)
 					}
 
 					alreadyOne = true
@@ -225,24 +219,153 @@ func Run(mandatoryFlags []string) {
 			}
 
 			if !alreadyOne {
-				Panic(fmt.Errorf("mandatory flag is not defined: %s", allChoices))
+				return fmt.Errorf("mandatory flag is not defined: %s", allChoices)
 			}
 		}
 	}
 
-	err := run()
-
-	if err == nil || IsErrExit(err) {
-		Exit(0)
-	} else {
-		Panic(err)
-	}
+	return nil
 }
 
-func Exit(code int) {
-	Done()
+func installService() error {
+	args := os.Args[1:]
 
-	os.Exit(code)
+	for _, item := range []string{FlagNameService, FlagNameServiceUsername, FlagNameServicePassword} {
+		for i := range args {
+			if args[i] == "-"+item {
+				args = append(args[:i], args[i+2:]...)
+				break
+			}
+
+			if strings.HasPrefix(args[i], "-"+item) {
+				args = append(args[:i], args[i+1:]...)
+				break
+			}
+		}
+	}
+
+	if len(args) > 0 {
+		app.ServiceConfig.Arguments = args
+	}
+
+	if *FlagServiceUser != "" {
+		app.ServiceConfig.UserName = *FlagServiceUser
+	}
+
+	if *FlagServicePassword != "" {
+		option := service.KeyValue{}
+		option["Password"] = *FlagServicePassword
+
+		app.ServiceConfig.Option = option
+	}
+
+	if *FlagService != "" && *FlagService != SERVICE_SIMULATE {
+		if *FlagService == SERVICE_UNINSTALL {
+			status, err := app.Service.Status()
+			if Error(err) {
+				return err
+			}
+
+			if status == service.StatusRunning {
+				err = service.Control(app.Service, SERVICE_STOP)
+				if Error(err) {
+					return err
+				}
+			}
+		}
+
+		err := service.Control(app.Service, *FlagService)
+		if Error(err) {
+			return err
+		}
+
+		switch *FlagService {
+		case SERVICE_INSTALL:
+			Info(fmt.Sprintf("Service %s successfully installed", app.ServiceConfig.Name))
+		case SERVICE_UNINSTALL:
+			Info(fmt.Sprintf("Service %s successfully uninstalled", app.ServiceConfig.Name))
+		case SERVICE_START:
+			Info(fmt.Sprintf("Service %s successfully started", app.ServiceConfig.Name))
+		case SERVICE_STOP:
+			Info(fmt.Sprintf("Service %s successfully stopped", app.ServiceConfig.Name))
+		case SERVICE_RESTART:
+			Info(fmt.Sprintf("Service %s successfully restarted", app.ServiceConfig.Name))
+		default:
+			return fmt.Errorf("unknown service action: %s", *FlagService)
+		}
+
+		return &ErrExit{}
+	}
+
+	return nil
+}
+
+func Run(mandatoryFlags []string) {
+	defer Done()
+
+	run := func() error {
+		flag.Parse()
+
+		Events.Emit(EventFlagsParsed{})
+
+		if !*FlagNoBanner && !*FlagUsageMd {
+			showBanner()
+		}
+
+		if flag.NArg() > 0 {
+			return TraceError(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
+		}
+
+		err := usage()
+		if Error(err) {
+			return err
+		}
+
+		err = initConfiguration()
+		if Error(err) {
+			return err
+		}
+
+		err = initLog()
+		if Error(err) {
+			return err
+		}
+
+		err = checkMandatoryFlags(mandatoryFlags)
+		if Error(err) {
+			return err
+		}
+
+		err = installService()
+		if Error(err) {
+			return err
+		}
+
+		// run as real OS daemon
+
+		if !IsRunningInteractive() {
+			err := app.Service.Run()
+			if Error(err) {
+				return err
+			}
+		}
+
+		// simple app or simulated service
+
+		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
+
+		err = app.applicationLoop()
+		if Error(err) {
+			return err
+		}
+
+		return nil
+	}
+
+	err := run()
+	if err != nil && !IsErrExit(err) {
+		Error(err)
+	}
 }
 
 func ExitOrError(err error) error {
@@ -253,7 +376,7 @@ func ExitOrError(err error) error {
 	}
 }
 
-func ShowBanner() {
+func showBanner() {
 	onceBanner.Do(func() {
 		if app != nil {
 			date := strconv.Itoa(time.Now().Year())
@@ -412,7 +535,7 @@ func (app *application) applicationLoop() error {
 			}
 		}
 
-		err := InitConfiguration()
+		err := initConfiguration()
 		if Error(err) {
 			return err
 		}
@@ -448,92 +571,6 @@ func (app *application) Stop(s service.Service) error {
 	}
 
 	return nil
-}
-
-func run() error {
-	args := os.Args[1:]
-
-	for _, item := range []string{FlagNameService, FlagNameServiceUsername, FlagNameServicePassword} {
-		for i := range args {
-			if args[i] == "-"+item {
-				args = append(args[:i], args[i+2:]...)
-				break
-			}
-
-			if strings.HasPrefix(args[i], "-"+item) {
-				args = append(args[:i], args[i+1:]...)
-				break
-			}
-		}
-	}
-
-	if len(args) > 0 {
-		app.ServiceConfig.Arguments = args
-	}
-
-	if *FlagServiceUser != "" {
-		app.ServiceConfig.UserName = *FlagServiceUser
-	}
-
-	if *FlagServicePassword != "" {
-		option := service.KeyValue{}
-		option["Password"] = *FlagServicePassword
-
-		app.ServiceConfig.Option = option
-	}
-
-	if *FlagService != "" && *FlagService != SERVICE_SIMULATE {
-		if *FlagService == SERVICE_UNINSTALL {
-			status, err := app.Service.Status()
-			if Error(err) {
-				return err
-			}
-
-			if status == service.StatusRunning {
-				err = service.Control(app.Service, SERVICE_STOP)
-				if Error(err) {
-					return err
-				}
-			}
-		}
-
-		err := service.Control(app.Service, *FlagService)
-		if Error(err) {
-			return err
-		}
-
-		switch *FlagService {
-		case SERVICE_INSTALL:
-			Info(fmt.Sprintf("Service %s successfully installed", app.ServiceConfig.Name))
-			return nil
-		case SERVICE_UNINSTALL:
-			Info(fmt.Sprintf("Service %s successfully uninstalled", app.ServiceConfig.Name))
-			return nil
-		case SERVICE_START:
-			Info(fmt.Sprintf("Service %s successfully started", app.ServiceConfig.Name))
-			return nil
-		case SERVICE_STOP:
-			Info(fmt.Sprintf("Service %s successfully stopped", app.ServiceConfig.Name))
-			return nil
-		case SERVICE_RESTART:
-			Info(fmt.Sprintf("Service %s successfully restarted", app.ServiceConfig.Name))
-			return nil
-		default:
-			return fmt.Errorf("unknown service action: %s", *FlagService)
-		}
-	}
-
-	// run as real OS daemon
-
-	if !IsRunningInteractive() {
-		return app.Service.Run()
-	}
-
-	// simple app or simulated service
-
-	signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-
-	return app.applicationLoop()
 }
 
 func AppRestart() {
