@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"golang.org/x/exp/constraints"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -168,4 +169,10 @@ func CatchPanic(fn func()) (err error) {
 
 func ToSlice[T any](slice ...T) []T {
 	return slice
+}
+
+func Exit(code int) {
+	Done()
+
+	os.Exit(code)
 }
