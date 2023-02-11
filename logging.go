@@ -386,6 +386,8 @@ func initLog() error {
 		prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 	}
 
+	AddShutdownHook(closeLog)
+
 	wgLogCh.Add(1)
 
 	go func() {
