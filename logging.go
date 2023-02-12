@@ -593,7 +593,7 @@ func Panic(err error) {
 
 	appendLog(LEVEL_PANIC, ColorPanic, ri, errorString(LEVEL_PANIC, ri, err), err)
 
-	Done()
+	done()
 
 	os.Exit(1)
 }

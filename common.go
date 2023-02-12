@@ -172,7 +172,7 @@ func ToSlice[T any](slice ...T) []T {
 }
 
 func Exit(code int) {
-	Done()
+	done()
 
 	os.Exit(code)
 }

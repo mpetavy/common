@@ -308,7 +308,7 @@ func installService() error {
 }
 
 func Run(mandatoryFlags []string) {
-	defer Done()
+	defer done()
 
 	run := func() error {
 		flag.Parse()
@@ -631,7 +631,7 @@ func App() *application {
 	return app
 }
 
-func Done() {
+func done() {
 	onceShutdownHooks.Do(func() {
 		for _, f := range shutdownHooks {
 			f()
