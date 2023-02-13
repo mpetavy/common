@@ -73,9 +73,10 @@ func init() {
 		closeLog()
 	})
 
+	wgLogCh.Add(1)
+
 	go func() {
 		defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
 		defer wgLogCh.Done()
 
 		for {
@@ -657,8 +658,6 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 	}
 
 	if level != LEVEL_PANIC && (FlagLogVerbose == nil || !*FlagLogVerbose) {
-		wgLogCh.Add(1)
-
 		Error(logCh.Put(entry))
 	} else {
 		logOutput(entry)
