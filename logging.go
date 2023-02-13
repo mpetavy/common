@@ -68,6 +68,25 @@ func init() {
 	FlagLogJson = flag.Bool(FlagNameLogJson, false, "JSON output")
 	FlagLogSys = flag.Bool(FlagNameLogSys, false, "Use OS system logger")
 	FlagLogCount = flag.Int(FlagNameLogCount, 1000, "log count")
+
+	Events.NewFuncReceiver(EventShutdown{}, func(event Event) {
+		closeLog()
+	})
+
+	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
+
+		defer wgLogCh.Done()
+
+		for {
+			entry, ok := logCh.Get()
+			if !ok {
+				return
+			}
+
+			logOutput(entry)
+		}
+	}()
 }
 
 func InitTesting(t goTesting) {
@@ -386,28 +405,6 @@ func initLog() error {
 		prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 	}
 
-	Events.NewFuncReceiver(EventShutdown{}, func(event Event) {
-		closeLog()
-	})
-
-	wgLogCh.Add(1)
-
-	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
-		defer wgLogCh.Done()
-
-		for {
-			entry, ok := logCh.Get()
-			if !ok {
-				return
-			}
-
-			logOutput(entry)
-
-		}
-	}()
-
 	return nil
 }
 
@@ -660,6 +657,8 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 	}
 
 	if level != LEVEL_PANIC && (FlagLogVerbose == nil || !*FlagLogVerbose) {
+		wgLogCh.Add(1)
+
 		Error(logCh.Put(entry))
 	} else {
 		logOutput(entry)
