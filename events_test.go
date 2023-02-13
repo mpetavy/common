@@ -35,7 +35,7 @@ func TestChanReceiver(t *testing.T) {
 		}
 	}()
 
-	eventManager.Emit(tickEvent{true})
+	eventManager.Emit(tickEvent{true}, false)
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -48,7 +48,7 @@ func TestChanReceiver(t *testing.T) {
 
 	eventManager.DestroyChanReceiver(listener1)
 
-	eventManager.Emit(tickEvent{false})
+	eventManager.Emit(tickEvent{false}, false)
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -71,7 +71,7 @@ func TestFuncReceiver(t *testing.T) {
 		listener2Received = e.(tickEvent)
 	})
 
-	eventManager.Emit(tickEvent{true})
+	eventManager.Emit(tickEvent{true}, false)
 
 	// check that listeners are modified by Emit
 
@@ -82,7 +82,7 @@ func TestFuncReceiver(t *testing.T) {
 
 	eventManager.DestroyFuncReceiver(ef1)
 
-	eventManager.Emit(tickEvent{false})
+	eventManager.Emit(tickEvent{false}, false)
 
 	// listener1 must not be notified, listener2 still be notified
 

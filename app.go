@@ -62,10 +62,13 @@ type application struct {
 	ServiceConfig *service.Config
 }
 
-type EventFlagsParsed struct {
+type EventShutdown struct {
 }
 
 type EventFlagsSet struct {
+}
+
+type EventFlagsParsed struct {
 }
 
 type ErrExit struct {
@@ -110,7 +113,6 @@ var (
 	runningAsExecutable     bool
 	runningInteractive      bool
 	restart                 bool
-	shutdownHooks           = make([]func(), 0)
 	restartCh               = make(chan struct{})
 	ctrlC                   = make(chan os.Signal, 1)
 	isFirstTicker           = true
@@ -313,7 +315,7 @@ func Run(mandatoryFlags []string) {
 	run := func() error {
 		flag.Parse()
 
-		Events.Emit(EventFlagsParsed{})
+		Events.Emit(EventFlagsParsed{}, false)
 
 		if !*FlagNoBanner && !*FlagUsageMd {
 			showBanner()
@@ -633,16 +635,8 @@ func App() *application {
 
 func done() {
 	onceShutdownHooks.Do(func() {
-		for _, f := range shutdownHooks {
-			f()
-		}
+		Events.Emit(EventShutdown{}, true)
 	})
-}
-
-func AddShutdownHook(f func()) {
-	shutdownHooks = append(shutdownHooks, nil)
-	copy(shutdownHooks[1:], shutdownHooks[0:])
-	shutdownHooks[0] = f
 }
 
 func AppFilename(newExt string) string {

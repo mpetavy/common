@@ -155,7 +155,7 @@ func ResetConfiguration() error {
 
 	buf := &bytes.Buffer{}
 
-	if Events.Emit(EventConfigurationReset{buf}) && buf.Len() > 0 {
+	if Events.Emit(EventConfigurationReset{buf}, false) && buf.Len() > 0 {
 		err := SaveConfigurationFile(buf.Bytes())
 		if Error(err) {
 			return err
@@ -344,7 +344,7 @@ func ActivateConfigurationFile(ba []byte) error {
 		Debug("flag %s = %+v", fl.Name, v)
 	})
 
-	Events.Emit(EventFlagsSet{})
+	Events.Emit(EventFlagsSet{}, false)
 
 	return err
 }

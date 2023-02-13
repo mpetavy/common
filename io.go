@@ -91,7 +91,7 @@ func init() {
 	tempDir, err = os.MkdirTemp("", Title())
 	Panic(err)
 
-	AddShutdownHook(func() {
+	Events.NewFuncReceiver(EventShutdown{}, func(event Event) {
 		Error(deleteTempDir())
 	})
 

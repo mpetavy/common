@@ -386,7 +386,9 @@ func initLog() error {
 		prolog(fmt.Sprintf(">>> Cmdline : %s", strings.Join(SurroundWith(os.Args, "\""), " ")))
 	}
 
-	AddShutdownHook(closeLog)
+	Events.NewFuncReceiver(EventShutdown{}, func(event Event) {
+		closeLog()
+	})
 
 	wgLogCh.Add(1)
 
@@ -452,16 +454,21 @@ func logOutput(entry logEntry) {
 	}
 }
 
-func closeLog() {
+func closeLog() error {
 	prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Name), app.Version, strings.Repeat("-", 100)))
 
 	if logger != nil {
 		logger.close()
 	}
 
-	Error(logCh.Close())
+	err := logCh.Close()
+	if Error(err) {
+		return err
+	}
 
 	wgLogCh.Wait()
+
+	return nil
 }
 
 // logFile prints out the information

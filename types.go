@@ -555,3 +555,12 @@ func Compare[T constraints.Ordered](a, b T) int {
 		return 0
 	}
 }
+
+func ReverseSlice[T any](original []T) []T {
+	reversed := make([]T, len(original))
+	for i := 0; i < len(original); i++ {
+		reversed[i] = original[len(original)-i-1]
+	}
+
+	return reversed
+}
