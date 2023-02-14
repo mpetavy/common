@@ -13,6 +13,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
 )
 
 const (
@@ -650,7 +651,32 @@ func AppFilename(newExt string) string {
 }
 
 func Title() string {
-	return app.Title
+	onceTitle.Do(func() {
+		path, err := os.Executable()
+		if err != nil {
+			path = os.Args[0]
+		}
+
+		path = filepath.Base(path)
+		path = path[0:(len(path) - len(filepath.Ext(path)))]
+
+		title = ""
+
+		runes := []rune(path)
+		for i := 0; i < len(runes); i++ {
+			if string(runes[i]) == "-" {
+				break
+			}
+
+			if unicode.IsLetter(runes[i]) {
+				title = title + string(runes[i])
+			}
+		}
+
+		DebugFunc(title)
+	})
+
+	return title
 }
 
 func Version(major bool, minor bool, patch bool) string {
