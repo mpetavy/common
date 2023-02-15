@@ -96,11 +96,6 @@ func (networkConnection *NetworkConnection) Write(p []byte) (n int, err error) {
 
 func (networkConnection *NetworkConnection) Close() error {
 	if networkConnection.Socket != nil {
-		tcpConn, ok := networkConnection.Socket.(*net.TCPConn)
-		if ok {
-			tcpConn.SetLinger(0)
-		}
-
 		err := networkConnection.Socket.Close()
 		if Error(err) {
 			return err
@@ -376,16 +371,6 @@ func (tty *TTY) Connect() (EndpointConnection, error) {
 	}
 
 	port, err := serial.Open(serialPort, mode)
-	if Error(err) {
-		return nil, err
-	}
-
-	err = port.ResetInputBuffer()
-	if Error(err) {
-		return nil, err
-	}
-
-	err = port.ResetOutputBuffer()
 	if Error(err) {
 		return nil, err
 	}

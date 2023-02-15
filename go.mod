@@ -23,10 +23,10 @@ require (
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
 	github.com/robertkrimen/otto v0.2.1
 	github.com/stretchr/testify v1.8.1
-	go.bug.st/serial v1.3.1
+	go.bug.st/serial v1.5.0
 	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be
 	golang.org/x/exp v0.0.0-20221006183845-316c7553db56
-	golang.org/x/sys v0.1.0
+	golang.org/x/sys v0.5.0
 	golang.org/x/text v0.4.0
 	google.golang.org/api v0.51.0
 	software.sslmate.com/src/go-pkcs12 v0.0.0-20210415151418-c5206de65a78

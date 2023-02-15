@@ -650,82 +650,116 @@ type TimeoutReader struct {
 	FirstRead      time.Time
 	initialContext bool
 	reader         io.Reader
+	ctx            context.Context
+	cancel         context.CancelFunc
 	ctxFn          func() (context.Context, context.CancelFunc)
 }
 
 func NewTimeoutReader(reader io.Reader, initialContext bool, ctxFn func() (context.Context, context.CancelFunc)) *TimeoutReader {
-	return &TimeoutReader{
+	timeoutReader := &TimeoutReader{
 		initialContext: initialContext,
 		reader:         reader,
 		ctxFn:          ctxFn,
 	}
+
+	if initialContext {
+		timeoutReader.ctx, timeoutReader.cancel = timeoutReader.ctxFn()
+	}
+
+	return timeoutReader
 }
 
 func (timeoutReader *TimeoutReader) Read(p []byte) (int, error) {
-	n := 0
+	var n int
 
-	if !timeoutReader.initialContext {
-		timeoutReader.initialContext = true
-
+	if !timeoutReader.initialContext && timeoutReader.FirstRead.IsZero() {
 		var err error
 
 		n, err = timeoutReader.reader.Read(p[0:1])
 		timeoutReader.FirstRead = time.Now()
-		if Error(err) || len(p) == 1 {
+
+		if DebugError(err) || len(p) == 1 {
 			return n, err
 		}
 
 		p = p[1:]
 	}
 
-	ctx, cancel := timeoutReader.ctxFn()
-	defer cancel()
+	if !timeoutReader.initialContext {
+		timeoutReader.ctx, timeoutReader.cancel = timeoutReader.ctxFn()
+		defer timeoutReader.cancel()
+	}
 
-	r := ctxio.NewReader(ctx, timeoutReader.reader)
+	r := ctxio.NewReader(timeoutReader.ctx, timeoutReader.reader)
 
 	n1, err := r.Read(p)
 
-	return n1 + n, err
+	if timeoutReader.FirstRead.IsZero() {
+		timeoutReader.FirstRead = time.Now()
+	}
+
+	if timeoutReader.initialContext && err != nil {
+		defer timeoutReader.cancel()
+	}
+
+	return n + n1, err
 }
 
 type TimeoutWriter struct {
 	FirstWrite     time.Time
 	initialContext bool
 	writer         io.Writer
+	ctx            context.Context
+	cancel         context.CancelFunc
 	ctxFn          func() (context.Context, context.CancelFunc)
 }
 
 func NewTimeoutWriter(writer io.Writer, initialContext bool, ctxFn func() (context.Context, context.CancelFunc)) *TimeoutWriter {
-	return &TimeoutWriter{
+	timeoutWriter := &TimeoutWriter{
 		initialContext: initialContext,
 		writer:         writer,
 		ctxFn:          ctxFn,
 	}
+
+	if initialContext {
+		timeoutWriter.ctx, timeoutWriter.cancel = timeoutWriter.ctxFn()
+	}
+
+	return timeoutWriter
 }
 
-func (timeoutWriter TimeoutWriter) Write(p []byte) (int, error) {
-	n := 0
+func (timeoutWriter *TimeoutWriter) Write(p []byte) (int, error) {
+	var n int
 
-	if !timeoutWriter.initialContext {
-		timeoutWriter.initialContext = true
-
+	if !timeoutWriter.initialContext && timeoutWriter.FirstWrite.IsZero() {
 		var err error
 
-		n, err = timeoutWriter.writer.Write(p[:1])
+		n, err = timeoutWriter.writer.Write(p[0:1])
 		timeoutWriter.FirstWrite = time.Now()
-		if Error(err) || len(p) == 1 {
+
+		if DebugError(err) || len(p) == 1 {
 			return n, err
 		}
 
 		p = p[1:]
 	}
 
-	ctx, cancel := timeoutWriter.ctxFn()
-	defer cancel()
+	if !timeoutWriter.initialContext {
+		timeoutWriter.ctx, timeoutWriter.cancel = timeoutWriter.ctxFn()
+		defer timeoutWriter.cancel()
+	}
 
-	r := ctxio.NewWriter(ctx, timeoutWriter.writer)
+	r := ctxio.NewWriter(timeoutWriter.ctx, timeoutWriter.writer)
 
 	n1, err := r.Write(p)
 
-	return n1 + n, err
+	if timeoutWriter.FirstWrite.IsZero() {
+		timeoutWriter.FirstWrite = time.Now()
+	}
+
+	if timeoutWriter.initialContext && err != nil {
+		defer timeoutWriter.cancel()
+	}
+
+	return n + n1, err
 }
