@@ -57,10 +57,11 @@ func (server *DiscoverServer) Start() error {
 	go func() {
 		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
+		lifecycleCh := server.lifecycle.NewChannel()
 	loop:
 		for server.lifecycle.isSet {
 			select {
-			case <-server.lifecycle.NewChannel():
+			case <-lifecycleCh:
 				break loop
 			default:
 				err := server.listener.SetReadDeadline(DeadlineByDuration(server.timeout))
