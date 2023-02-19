@@ -33,6 +33,7 @@ var (
 	FlagLogJson     *bool
 	FlagLogSys      *bool
 	FlagLogCount    *int
+	FlagLogBreak    *bool
 	logger          logWriter
 	mu              sync.Mutex
 	lastErr         string
@@ -58,6 +59,7 @@ const (
 	FlagNameLogJson     = "log.json"
 	FlagNameLogSys      = "log.sys"
 	FlagNameLogCount    = "log.count"
+	FlagNameLogBreak    = "log.break"
 )
 
 func init() {
@@ -68,9 +70,10 @@ func init() {
 	FlagLogJson = flag.Bool(FlagNameLogJson, false, "JSON output")
 	FlagLogSys = flag.Bool(FlagNameLogSys, false, "Use OS system logger")
 	FlagLogCount = flag.Int(FlagNameLogCount, 1000, "log count")
+	FlagLogBreak = flag.Bool(FlagNameLogBreak, false, "break on error")
 
 	Events.NewFuncReceiver(EventShutdown{}, func(event Event) {
-		closeLog()
+		Error(closeLog())
 	})
 
 	wgLogCh.Add(1)
@@ -612,6 +615,10 @@ func Error(err error) bool {
 		ri := GetRuntimeInfo(1)
 
 		appendLog(LEVEL_ERROR, ColorError, ri, errorString(LEVEL_ERROR, ri, err), err)
+
+		if *FlagLogBreak {
+			Panic(fmt.Errorf("BREAK ON ERROR"))
+		}
 	}
 
 	return err != nil

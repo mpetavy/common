@@ -3,8 +3,10 @@ package common
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -162,5 +164,85 @@ func TestTimeoutWriter(t *testing.T) {
 				assert.Greater(t, timeout*2, time.Since(start))
 			}
 		})
+	}
+}
+
+func TestReadWithTimeout(t *testing.T) {
+	InitTesting(t)
+
+	port, err := FindFreePort("tcp", 1024, nil)
+	if Error(err) {
+		return
+	}
+
+	serverEndpoint, serverConnector, err := NewEndpoint(fmt.Sprintf(":%d", port), false, nil)
+	if Error(err) {
+		return
+	}
+
+	err = serverEndpoint.Start()
+	if Error(err) {
+		return
+	}
+
+	defer func() {
+		Error(serverEndpoint.Stop())
+	}()
+
+	clientEndpoint, clientConnector, err := NewEndpoint(fmt.Sprintf(":%d", port), true, nil)
+	if Error(err) {
+		return
+	}
+
+	err = clientEndpoint.Start()
+	if Error(err) {
+		return
+	}
+
+	defer func() {
+		Error(clientEndpoint.Stop())
+	}()
+
+	var serverConnection EndpointConnection
+	var clientConnection EndpointConnection
+
+	go func() {
+		var err error
+
+		serverConnection, err = serverConnector()
+		if Error(err) {
+			return
+		}
+
+		defer func() {
+			Error(serverConnection.Close())
+		}()
+
+		ba := make([]byte, 1)
+		_, err = serverConnection.Read(ba)
+		DebugError(err)
+	}()
+
+	time.Sleep(time.Millisecond * 500)
+
+	clientConnection, err = clientConnector()
+	if Error(err) {
+		return
+	}
+
+	defer func() {
+		Error(clientConnection.Close())
+	}()
+
+	ba := make([]byte, 1)
+	num := runtime.NumGoroutine()
+
+	for i := 0; i < 3; i++ {
+		n, err := ReadWithTimeout(clientConnection, time.Millisecond*100, ba)
+
+		assert.Equal(t, num, runtime.NumGoroutine())
+
+		assert.Equal(t, 0, n)
+		assert.True(t, IsErrTimeout(err))
 	}
 }

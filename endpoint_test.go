@@ -101,6 +101,8 @@ func TestEndpoint(t *testing.T) {
 		}
 	}()
 
+	time.Sleep(time.Second)
+
 	err = test(t, fmt.Sprintf(":%d", port), nil, txt, true)
 	if Error(err) {
 		return

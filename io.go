@@ -763,3 +763,76 @@ func (timeoutWriter *TimeoutWriter) Write(p []byte) (int, error) {
 
 	return n + n1, err
 }
+
+type hasReadDeadline interface {
+	SetReadDeadline(t time.Time) error
+}
+
+type hasReadTimeout interface {
+	SetReadTimeout(t time.Duration) error
+}
+
+type hasWriteDeadline interface {
+	SetWriteDeadline(t time.Time) error
+}
+
+func SetReadTimeout(reader io.Reader, timeout time.Duration) error {
+	deadliner, ok := reader.(hasReadDeadline)
+	if ok {
+		err := deadliner.SetReadDeadline(time.Now().Add(timeout))
+		if Error(err) {
+			return err
+		}
+
+		return nil
+	}
+
+	timeouter, ok := reader.(hasReadTimeout)
+	if ok {
+		err := timeouter.SetReadTimeout(timeout)
+		if Error(err) {
+			return err
+		}
+
+		return nil
+	}
+
+	return TraceError(fmt.Errorf("cannot set read deadline"))
+}
+
+func SetWriteTimeout(reader io.Reader, timeout time.Duration) error {
+	deadliner, ok := reader.(hasWriteDeadline)
+	if ok {
+		err := deadliner.SetWriteDeadline(time.Now().Add(timeout))
+		if Error(err) {
+			return err
+		}
+	}
+
+	return TraceError(fmt.Errorf("cannot set read deadline"))
+}
+
+func ReadWithTimeout(reader io.Reader, timeout time.Duration, ba []byte) (int, error) {
+	isDeadlineSet := false
+
+	if timeout > 0 {
+		err := SetReadTimeout(reader, timeout)
+		if Error(err) {
+			return 0, err
+		}
+
+		isDeadlineSet = true
+	}
+
+	start := time.Now()
+
+	n, err := reader.Read(ba)
+
+	if isDeadlineSet && time.Since(start) >= timeout && n == 0 {
+		return n, &ErrTimeout{
+			Duration: timeout,
+		}
+	}
+
+	return n, err
+}
