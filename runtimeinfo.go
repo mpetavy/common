@@ -122,6 +122,11 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 		if strings.HasPrefix(line, "\t") {
 			count++
 			if count > 3 {
+				p := strings.LastIndex(line, " +")
+				if p != -1 {
+					line = fmt.Sprintf("%s\n", line[:p])
+				}
+
 				stack += line
 			}
 		}

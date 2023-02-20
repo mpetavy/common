@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -646,6 +647,10 @@ func Error(err error) bool {
 	}
 
 	return err != nil
+}
+
+func IsError(err error, target error) bool {
+	return err != nil && reflect.TypeOf(err) == reflect.TypeOf(target)
 }
 
 func newLogEntry(level int, color color.Color, ri RuntimeInfo, msg string) logEntry {

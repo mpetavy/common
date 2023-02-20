@@ -53,6 +53,14 @@ func (e *ErrFileAlreadyExists) Error() string {
 	return fmt.Sprintf("file or path already exists: %s", e.FileName)
 }
 
+type ErrSetTimeout struct {
+	Mode string
+}
+
+func (e *ErrSetTimeout) Error() string {
+	return fmt.Sprintf("cannot set %s timeout", e.Mode)
+}
+
 type debugWriter struct {
 	Name   string
 	Action string
@@ -648,120 +656,106 @@ func (this RandomReader) Read(p []byte) (n int, err error) {
 
 type TimeoutReader struct {
 	FirstRead      time.Time
-	initialContext bool
+	initialTimeout bool
+	canSet         bool
 	reader         io.Reader
-	ctx            context.Context
-	cancel         context.CancelFunc
-	ctxFn          func() (context.Context, context.CancelFunc)
+	timeout        time.Duration
 }
 
-func NewTimeoutReader(reader io.Reader, initialContext bool, ctxFn func() (context.Context, context.CancelFunc)) *TimeoutReader {
+func NewTimeoutReader(reader io.Reader, initialTimeout bool, timeout time.Duration) *TimeoutReader {
 	timeoutReader := &TimeoutReader{
-		initialContext: initialContext,
+		initialTimeout: initialTimeout,
+		canSet:         CanSetReadTimeout(reader),
 		reader:         reader,
-		ctxFn:          ctxFn,
-	}
-
-	if initialContext {
-		timeoutReader.ctx, timeoutReader.cancel = timeoutReader.ctxFn()
+		timeout:        timeout,
 	}
 
 	return timeoutReader
 }
 
 func (timeoutReader *TimeoutReader) Read(p []byte) (int, error) {
-	var n int
+	if !timeoutReader.initialTimeout && timeoutReader.FirstRead.IsZero() {
+		n, err := timeoutReader.reader.Read(p[0:1])
 
-	if !timeoutReader.initialContext && timeoutReader.FirstRead.IsZero() {
-		var err error
-
-		n, err = timeoutReader.reader.Read(p[0:1])
 		timeoutReader.FirstRead = time.Now()
 
-		if DebugError(err) || len(p) == 1 {
-			return n, err
+		return n, err
+	}
+
+	if timeoutReader.canSet {
+		n, err := ReadWithTimeout(timeoutReader.reader, timeoutReader.timeout, p)
+
+		if timeoutReader.FirstRead.IsZero() {
+			timeoutReader.FirstRead = time.Now()
 		}
 
-		p = p[1:]
+		return n, err
 	}
 
-	if !timeoutReader.initialContext {
-		timeoutReader.ctx, timeoutReader.cancel = timeoutReader.ctxFn()
-		defer timeoutReader.cancel()
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutReader.timeout)
+	defer cancel()
 
-	r := ctxio.NewReader(timeoutReader.ctx, timeoutReader.reader)
+	r := ctxio.NewReader(ctx, timeoutReader.reader)
 
-	n1, err := r.Read(p)
+	n, err := r.Read(p)
 
 	if timeoutReader.FirstRead.IsZero() {
 		timeoutReader.FirstRead = time.Now()
 	}
 
-	if timeoutReader.initialContext && err != nil {
-		defer timeoutReader.cancel()
-	}
-
-	return n + n1, err
+	return n, err
 }
 
 type TimeoutWriter struct {
 	FirstWrite     time.Time
-	initialContext bool
+	initialTimeout bool
+	canSet         bool
 	writer         io.Writer
-	ctx            context.Context
-	cancel         context.CancelFunc
-	ctxFn          func() (context.Context, context.CancelFunc)
+	timeout        time.Duration
 }
 
-func NewTimeoutWriter(writer io.Writer, initialContext bool, ctxFn func() (context.Context, context.CancelFunc)) *TimeoutWriter {
+func NewTimeoutWriter(writer io.Writer, initialTimeout bool, timeout time.Duration) *TimeoutWriter {
 	timeoutWriter := &TimeoutWriter{
-		initialContext: initialContext,
+		initialTimeout: initialTimeout,
+		canSet:         CanSetWriteTimeout(writer),
 		writer:         writer,
-		ctxFn:          ctxFn,
-	}
-
-	if initialContext {
-		timeoutWriter.ctx, timeoutWriter.cancel = timeoutWriter.ctxFn()
+		timeout:        timeout,
 	}
 
 	return timeoutWriter
 }
 
 func (timeoutWriter *TimeoutWriter) Write(p []byte) (int, error) {
-	var n int
+	if !timeoutWriter.initialTimeout && timeoutWriter.FirstWrite.IsZero() {
+		n, err := timeoutWriter.writer.Write(p[0:1])
 
-	if !timeoutWriter.initialContext && timeoutWriter.FirstWrite.IsZero() {
-		var err error
-
-		n, err = timeoutWriter.writer.Write(p[0:1])
 		timeoutWriter.FirstWrite = time.Now()
 
-		if DebugError(err) || len(p) == 1 {
-			return n, err
+		return n, err
+	}
+
+	if timeoutWriter.canSet {
+		n, err := WriteWithTimeout(timeoutWriter.writer, timeoutWriter.timeout, p)
+
+		if timeoutWriter.FirstWrite.IsZero() {
+			timeoutWriter.FirstWrite = time.Now()
 		}
 
-		p = p[1:]
+		return n, err
 	}
 
-	if !timeoutWriter.initialContext {
-		timeoutWriter.ctx, timeoutWriter.cancel = timeoutWriter.ctxFn()
-		defer timeoutWriter.cancel()
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutWriter.timeout)
+	defer cancel()
 
-	r := ctxio.NewWriter(timeoutWriter.ctx, timeoutWriter.writer)
+	w := ctxio.NewWriter(ctx, timeoutWriter.writer)
 
-	n1, err := r.Write(p)
+	n, err := w.Write(p)
 
 	if timeoutWriter.FirstWrite.IsZero() {
 		timeoutWriter.FirstWrite = time.Now()
 	}
 
-	if timeoutWriter.initialContext && err != nil {
-		defer timeoutWriter.cancel()
-	}
-
-	return n + n1, err
+	return n, err
 }
 
 type hasReadDeadline interface {
@@ -774,6 +768,29 @@ type hasReadTimeout interface {
 
 type hasWriteDeadline interface {
 	SetWriteDeadline(t time.Time) error
+}
+
+func CanSetReadTimeout(reader io.Reader) bool {
+	_, ok := reader.(hasReadDeadline)
+	if ok {
+		return true
+	}
+
+	_, ok = reader.(hasReadTimeout)
+	if ok {
+		return true
+	}
+
+	return false
+}
+
+func CanSetWriteTimeout(writer io.Writer) bool {
+	_, ok := writer.(hasWriteDeadline)
+	if ok {
+		return true
+	}
+
+	return false
 }
 
 func SetReadTimeout(reader io.Reader, timeout time.Duration) error {
@@ -797,19 +814,25 @@ func SetReadTimeout(reader io.Reader, timeout time.Duration) error {
 		return nil
 	}
 
-	return TraceError(fmt.Errorf("cannot set read deadline"))
+	return TraceError(&ErrSetTimeout{
+		Mode: "READ",
+	})
 }
 
-func SetWriteTimeout(reader io.Reader, timeout time.Duration) error {
-	deadliner, ok := reader.(hasWriteDeadline)
+func SetWriteTimeout(writer io.Writer, timeout time.Duration) error {
+	deadliner, ok := writer.(hasWriteDeadline)
 	if ok {
 		err := deadliner.SetWriteDeadline(time.Now().Add(timeout))
 		if Error(err) {
 			return err
 		}
+
+		return nil
 	}
 
-	return TraceError(fmt.Errorf("cannot set read deadline"))
+	return TraceError(&ErrSetTimeout{
+		Mode: "WRITE",
+	})
 }
 
 func ReadWithTimeout(reader io.Reader, timeout time.Duration, ba []byte) (int, error) {
@@ -828,7 +851,32 @@ func ReadWithTimeout(reader io.Reader, timeout time.Duration, ba []byte) (int, e
 
 	n, err := reader.Read(ba)
 
-	if isDeadlineSet && time.Since(start) >= timeout && n == 0 {
+	if err == nil && isDeadlineSet && time.Since(start) >= timeout && n == 0 {
+		return n, &ErrTimeout{
+			Duration: timeout,
+		}
+	}
+
+	return n, err
+}
+
+func WriteWithTimeout(writer io.Writer, timeout time.Duration, ba []byte) (int, error) {
+	isDeadlineSet := false
+
+	if timeout > 0 {
+		err := SetWriteTimeout(writer, timeout)
+		if Error(err) {
+			return 0, err
+		}
+
+		isDeadlineSet = true
+	}
+
+	start := time.Now()
+
+	n, err := writer.Write(ba)
+
+	if err == nil && isDeadlineSet && time.Since(start) >= timeout && n == 0 {
 		return n, &ErrTimeout{
 			Duration: timeout,
 		}

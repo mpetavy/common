@@ -2,7 +2,6 @@ package common
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/stretchr/testify/assert"
@@ -38,9 +37,7 @@ func test(t *testing.T, address string, tlsConfig *tls.Config, txt string, isCli
 	if !isClient {
 		ba := make([]byte, 1000)
 
-		conn := NewTimeoutReader(conn, false, func() (context.Context, context.CancelFunc) {
-			return context.WithTimeout(context.Background(), time.Second)
-		})
+		conn := NewTimeoutReader(conn, false, time.Second)
 
 		buf := bytes.Buffer{}
 
