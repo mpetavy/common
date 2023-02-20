@@ -139,13 +139,19 @@ func Max[T constraints.Ordered](v ...T) T {
 }
 
 func Sleep(d time.Duration) {
+	if !*FlagLogVerbose {
+		time.Sleep(d)
+
+		return
+	}
+
 	id := uuid.New().String()
 
-	Debug("Sleep [%s] %v... ", id, d)
+	Debug("2~Sleep [%s] %v... ", id, d)
 
 	time.Sleep(d)
 
-	Debug("Sleep [%s] %v continue", id, d)
+	Debug("2~Sleep [%s] %v continue", id, d)
 }
 
 func CatchPanic(fn func()) (err error) {

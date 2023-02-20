@@ -30,7 +30,7 @@ func TestNoticeChannel(t *testing.T) {
 		}()
 	}
 
-	time.Sleep(time.Second)
+	Sleep(time.Second)
 
 	n.Unset()
 

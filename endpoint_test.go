@@ -70,7 +70,7 @@ func test(t *testing.T, address string, tlsConfig *tls.Config, txt string, isCli
 
 		assert.Equal(t, len(txt), n)
 
-		time.Sleep(time.Second)
+		Sleep(time.Second)
 	}
 
 	return nil
@@ -101,7 +101,7 @@ func TestEndpoint(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(time.Second)
+	Sleep(time.Second)
 
 	err = test(t, fmt.Sprintf(":%d", port), nil, txt, true)
 	if Error(err) {

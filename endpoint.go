@@ -323,7 +323,7 @@ func (ttyConnection *TTYConnection) Close() error {
 		return err
 	}
 
-	time.Sleep(time.Millisecond * 200)
+	Sleep(time.Millisecond * 200)
 
 	return nil
 }

@@ -37,7 +37,7 @@ func TestChanReceiver(t *testing.T) {
 
 	eventManager.Emit(tickEvent{true}, false)
 
-	time.Sleep(time.Millisecond * 100)
+	Sleep(time.Millisecond * 100)
 
 	// check that listeners are modified by Emit
 
@@ -50,7 +50,7 @@ func TestChanReceiver(t *testing.T) {
 
 	eventManager.Emit(tickEvent{false}, false)
 
-	time.Sleep(time.Millisecond * 100)
+	Sleep(time.Millisecond * 100)
 
 	// listener1 must not be notified, listener2 still be notified
 

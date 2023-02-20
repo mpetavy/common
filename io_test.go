@@ -19,7 +19,7 @@ const (
 
 func readerTest(reader io.Reader, initialContext bool, timeout time.Duration) ([]byte, int64, error) {
 	if !initialContext {
-		time.Sleep(timeout)
+		Sleep(timeout)
 	}
 
 	buf := bytes.Buffer{}
@@ -92,7 +92,7 @@ func TestTimeoutReader(t *testing.T) {
 
 func writerTest(reader io.Reader, initialContext bool, timeout time.Duration) ([]byte, int64, error) {
 	if !initialContext {
-		time.Sleep(timeout)
+		Sleep(timeout)
 	}
 
 	buf := &bytes.Buffer{}
@@ -223,7 +223,7 @@ func TestReadWithTimeout(t *testing.T) {
 		DebugError(err)
 	}()
 
-	time.Sleep(time.Millisecond * 500)
+	Sleep(time.Millisecond * 500)
 
 	clientConnection, err = clientConnector()
 	if Error(err) {

@@ -481,6 +481,24 @@ func prolog(t string, arg ...interface{}) {
 	appendLog(LEVEL_PROLOG, ColorDefault, GetRuntimeInfo(1), t, nil)
 }
 
+func getRuntimePos(t string) (int, string) {
+	pos := 1
+
+	p := strings.Index(t, "~")
+	if p != -1 {
+		var err error
+
+		pos, err = strconv.Atoi(t[:p])
+		if err != nil {
+			return 1, t
+		}
+
+		t = t[p+1:]
+	}
+
+	return pos, t
+}
+
 // Debug prints out the information
 func Debug(t string, arg ...interface{}) {
 	if FlagLogVerbose == nil || !*FlagLogVerbose {
@@ -491,7 +509,9 @@ func Debug(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	appendLog(LEVEL_DEBUG, ColorDebug, GetRuntimeInfo(1), t, nil)
+	riPos, t := getRuntimePos(t)
+
+	appendLog(LEVEL_DEBUG, ColorDebug, GetRuntimeInfo(riPos), t, nil)
 }
 
 func loggingError(err error) bool {
@@ -529,7 +549,9 @@ func Info(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	appendLog(LEVEL_INFO, ColorInfo, GetRuntimeInfo(1), t, nil)
+	riPos, t := getRuntimePos(t)
+
+	appendLog(LEVEL_INFO, ColorInfo, GetRuntimeInfo(riPos), t, nil)
 }
 
 func Warn(t string, arg ...interface{}) {
@@ -541,7 +563,9 @@ func Warn(t string, arg ...interface{}) {
 		t = fmt.Sprintf(t, arg...)
 	}
 
-	appendLog(LEVEL_WARN, ColorWarn, GetRuntimeInfo(1), t, nil)
+	riPos, t := getRuntimePos(t)
+
+	appendLog(LEVEL_WARN, ColorWarn, GetRuntimeInfo(riPos), t, nil)
 }
 
 func WarnError(err error) bool {

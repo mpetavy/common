@@ -57,7 +57,7 @@ func (this *throttledWriter) Write(p []byte) (n int, err error) {
 			d := this.lastSec.Sub(time.Now())
 
 			if d > 0 {
-				time.Sleep(d)
+				Sleep(d)
 			}
 		}
 	}
