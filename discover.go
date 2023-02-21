@@ -59,7 +59,7 @@ func (server *DiscoverServer) Start() error {
 
 		lifecycleCh := server.lifecycle.NewChannel()
 	loop:
-		for server.lifecycle.isSet {
+		for server.lifecycle.IsSet() {
 			select {
 			case <-lifecycleCh:
 				break loop
