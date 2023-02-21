@@ -37,7 +37,7 @@ func test(t *testing.T, address string, tlsConfig *tls.Config, txt string, isCli
 	if !isClient {
 		ba := make([]byte, 1000)
 
-		conn := NewTimeoutReader(conn, false, time.Second)
+		conn := NewTimeoutReader(conn, true, time.Second)
 
 		buf := bytes.Buffer{}
 

@@ -654,6 +654,27 @@ func (this RandomReader) Read(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+// CtxReader is only for NON-blocking readers usefull!
+type CtxReader struct {
+	reader io.Reader
+	ctx    context.Context
+}
+
+func NewCtxReader(ctx context.Context, reader io.Reader) *CtxReader {
+	ctxReader := &CtxReader{
+		reader: reader,
+		ctx:    ctx,
+	}
+
+	return ctxReader
+}
+
+func (ctxReader *CtxReader) Read(p []byte) (int, error) {
+	r := ctxio.NewReader(ctxReader.ctx, ctxReader.reader)
+
+	return r.Read(p)
+}
+
 type TimeoutReader struct {
 	FirstRead      time.Time
 	initialTimeout bool
