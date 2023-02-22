@@ -564,3 +564,26 @@ func ReverseSlice[T any](original []T) []T {
 
 	return reversed
 }
+
+func RemoveSlice[T comparable](slice []T, item T, count int) []T {
+	if count == 0 {
+		return slice
+	}
+
+	for i := 0; i < len(slice); {
+		if slice[i] == item {
+			slice = append(slice[:i], slice[i+1:]...)
+			if count > 0 {
+				count--
+
+				continue
+			}
+
+			return slice
+		} else {
+			i++
+		}
+	}
+
+	return slice
+}

@@ -9,7 +9,7 @@ import (
 )
 
 type ScriptEngine interface {
-	Run(time.Duration) (string, error)
+	Run(time.Duration, string) (string, error)
 }
 
 type ottoEngine struct {
@@ -21,7 +21,7 @@ type ottoEngine struct {
 
 func NewOttoEngine(src string) (ScriptEngine, error) {
 	vm := otto.New()
-	vm.Set("__log__", func(call otto.FunctionCall) otto.Value {
+	err := vm.Set("__log__", func(call otto.FunctionCall) otto.Value {
 		sb := strings.Builder{}
 		for _, v := range call.ArgumentList {
 			if sb.Len() > 0 {
@@ -35,6 +35,9 @@ func NewOttoEngine(src string) (ScriptEngine, error) {
 
 		return otto.Value{}
 	})
+	if Error(err) {
+		return nil, err
+	}
 
 	prog, err := vm.Compile("", "console.log = __log__;"+src)
 	if Error(err) {
@@ -45,10 +48,11 @@ func NewOttoEngine(src string) (ScriptEngine, error) {
 		engine: vm,
 		code:   prog,
 	}
+
 	return engine, nil
 }
 
-func (engine *ottoEngine) Run(timeout time.Duration) (result string, err error) {
+func (engine *ottoEngine) Run(timeout time.Duration, input string) (result string, err error) {
 	timeoutErr := &ErrTimeout{
 		Duration: timeout,
 	}
@@ -103,19 +107,27 @@ func (c *console) log(msg string) {
 	Debug(msg)
 }
 
-func newConsole(vm *goja.Runtime) *goja.Object {
+func newConsole(vm *goja.Runtime) (*goja.Object, error) {
 	c := &console{}
 
 	obj := vm.NewObject()
-	obj.Set("log", c.log)
+	err := obj.Set("log", c.log)
+	if Error(err) {
+		return nil, err
+	}
 
-	return obj
+	return obj, nil
 }
 
 func NewGojaEngine(src string) (ScriptEngine, error) {
 	vm := goja.New()
 
-	vm.Set("console", newConsole(vm))
+	console, err := newConsole(vm)
+
+	err = vm.Set("console", console)
+	if Error(err) {
+		return nil, err
+	}
 
 	new(req.Registry).Enable(vm)
 
@@ -132,7 +144,7 @@ func NewGojaEngine(src string) (ScriptEngine, error) {
 	return engine, nil
 }
 
-func (engine *gojaEngine) Run(timeout time.Duration) (string, error) {
+func (engine *gojaEngine) Run(timeout time.Duration, input string) (string, error) {
 	type result struct {
 		value string
 		err   error
