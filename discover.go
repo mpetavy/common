@@ -58,6 +58,8 @@ func (server *DiscoverServer) Start() error {
 		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 		lifecycleCh := server.lifecycle.NewChannel()
+		defer server.lifecycle.RemoveChannel(lifecycleCh)
+
 	loop:
 		for server.lifecycle.IsSet() {
 			select {

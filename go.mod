@@ -1,6 +1,6 @@
 module github.com/mpetavy/common
 
-go 1.20
+go 1.19
 
 require (
 	cloud.google.com/go v0.88.0

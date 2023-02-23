@@ -460,6 +460,7 @@ func (app *application) applicationRun() error {
 	}
 
 	lifecycleCh := appLifecycle.NewChannel()
+	defer appLifecycle.RemoveChannel(lifecycleCh)
 
 	restart = false
 

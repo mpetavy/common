@@ -73,7 +73,7 @@ func init() {
 	FlagLogCount = flag.Int(FlagNameLogCount, 1000, "log count")
 	FlagLogBreak = flag.Bool(FlagNameLogBreak, false, "break on error")
 
-	Events.NewFuncReceiver(EventShutdown{}, func(event Event) {
+	Events.AddListener(EventShutdown{}, func(event Event) {
 		Error(closeLog())
 	})
 

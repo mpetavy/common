@@ -99,7 +99,7 @@ func init() {
 	tempDir, err = os.MkdirTemp("", Title())
 	Panic(err)
 
-	Events.NewFuncReceiver(EventShutdown{}, func(event Event) {
+	Events.AddListener(EventShutdown{}, func(event Event) {
 		Error(deleteTempDir())
 	})
 

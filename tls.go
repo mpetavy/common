@@ -85,7 +85,7 @@ func init() {
 	FlagTlsMutual = flag.String(FlagNameTlsMutual, "", "Mutual TLS PKCS12 certificates & privkey container file or buffer")
 	FlagTlsKeyLen = flag.Int(FlagNameTlsKeylen, 256, "Key length")
 
-	Events.NewFuncReceiver(EventFlagsSet{}, func(ev Event) {
+	Events.AddListener(EventFlagsSet{}, func(ev Event) {
 		initTls()
 	})
 }

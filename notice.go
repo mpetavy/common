@@ -1,6 +1,9 @@
 package common
 
-import "sync"
+import (
+	"golang.org/x/exp/slices"
+	"sync"
+)
 
 type Notice struct {
 	isSet bool
@@ -24,6 +27,16 @@ func (this *Notice) NewChannel() chan struct{} {
 	this.chs = append(this.chs, ch)
 
 	return ch
+}
+
+func (this *Notice) RemoveChannel(ch chan struct{}) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+
+	p := slices.Index(this.chs, ch)
+	if p != -1 {
+		this.chs = slices.Delete(this.chs, p, p+1)
+	}
 }
 
 func (this *Notice) IsSet() bool {

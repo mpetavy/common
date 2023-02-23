@@ -45,7 +45,7 @@ func init() {
 	FlagCfgReset = flag.Bool(FlagNameCfgReset, false, "Reset configuration file")
 	FlagCfgCreate = flag.Bool(FlagNameCfgCreate, false, "Reset configuration file and exit")
 
-	Events.NewFuncReceiver(EventFlagsParsed{}, func(event Event) {
+	Events.AddListener(EventFlagsParsed{}, func(event Event) {
 		if *FlagCfgFile == "" {
 			*FlagCfgFile = CleanPath(AppFilename(".json"))
 		}
