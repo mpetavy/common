@@ -315,16 +315,26 @@ func TestNewSeparatorSplitFunc(t *testing.T) {
 				suffix: suffix,
 				remove: true,
 			},
+			data: join(noise, prefix, hello, suffix, noise, prefix, world, suffix),
+			want: join(hello, world),
+		},
+		{
+			name: "21",
+			args: args{
+				prefix: prefix,
+				suffix: suffix,
+				remove: true,
+			},
 			data: join(noise, prefix, hello, suffix, noise, prefix, world, suffix, noise),
 			want: join(hello, world),
 		},
 		{
-			name:    "21",
+			name:    "22",
 			args:    args{},
 			wantErr: true,
 		},
 		{
-			name: "22",
+			name: "23",
 			args: args{
 				prefix: nil,
 				suffix: []byte("\n"),
@@ -394,62 +404,6 @@ func TestReverseSlice(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, ReverseSlice(tt.args.original), "ReverseSlice(%v)", tt.args.original)
-		})
-	}
-}
-
-func TestRemoveSlice(t *testing.T) {
-	type args[T comparable] struct {
-		slice []T
-		item  T
-		count int
-	}
-	type testCase[T comparable] struct {
-		name string
-		args args[T]
-		want []T
-	}
-	tests := []testCase[int]{
-		{
-			name: "0",
-			args: args[int]{
-				slice: []int{},
-				item:  2,
-				count: -1,
-			},
-			want: []int{},
-		},
-		{
-			name: "1",
-			args: args[int]{
-				slice: []int{1},
-				item:  1,
-				count: 0,
-			},
-			want: []int{1},
-		},
-		{
-			name: "2",
-			args: args[int]{
-				slice: []int{1},
-				item:  1,
-				count: -1,
-			},
-			want: []int{},
-		},
-		{
-			name: "3",
-			args: args[int]{
-				slice: []int{1, 2, 1},
-				item:  1,
-				count: 2,
-			},
-			want: []int{2},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, RemoveSlice(tt.args.slice, tt.args.item, tt.args.count), "RemoveSlice(%v, %v, %v)", tt.args.slice, tt.args.item, tt.args.count)
 		})
 	}
 }

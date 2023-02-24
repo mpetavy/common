@@ -46,8 +46,8 @@ var TimeMask = Hour + TimeSeparator + Minute + TimeSeparator + Second
 var DateTimeMask = DateMask + Separator + TimeMask
 var DateTimeMilliMask = DateMask + Separator + TimeMask + Msec
 
-var SortedDateMask = Trim4Path(Year + DateSeparator + Month + DateSeparator + Day)
-var SortedDateTimeMilliMask = Trim4Path(SortedDateMask + Separator + TimeMask + Msec)
+var SortedDateMask = Year + DateSeparator + Month + DateSeparator + Day
+var SortedDateTimeMilliMask = SortedDateMask + Separator + TimeMask + Msec
 
 // ParseDateTime parses only date, but no time
 func ParseDateTime(mask string, v string) (time.Time, error) {

@@ -63,43 +63,6 @@ func Trim4Path(path string) string {
 	return string(spath)
 }
 
-// CompareIgnoreCase compares strings for equality ignoring case
-func CompareIgnoreCase(s0 string, s1 string) bool {
-	return strings.ToLower(s0) == strings.ToLower(s1)
-}
-
-// SplitWithQuotation splits a sequented string by spaces and respects quotation
-func SplitWithQuotation(txt string) []string {
-	var result []string
-	var line string
-	inQ := false
-
-	for _, c := range txt {
-		if c == '"' {
-			inQ = !inQ
-		} else if c == ' ' {
-			if !inQ {
-				if len(line) > 0 {
-					result = append(result, line)
-					line = ""
-				} else {
-					line += string(c)
-				}
-			} else {
-				line += string(c)
-			}
-		} else {
-			line += string(c)
-		}
-	}
-
-	if len(line) > 0 {
-		result = append(result, line)
-	}
-
-	return result
-}
-
 // Capitalize the first letter
 func Capitalize(txt string) string {
 	if len(txt) == 0 {
@@ -134,14 +97,6 @@ func SurroundWith(str []string, prefixSuffix string) []string {
 	}
 
 	return result
-}
-
-func Shortener(s string, max int) string {
-	if len(s) > max {
-		s = s[:max-4] + "..."
-	}
-
-	return s
 }
 
 func DefaultEncoding() string {
@@ -531,7 +486,7 @@ func (s *separatorSplitFunc) splitFunc(data []byte, atEOF bool) (advance int, to
 		advance := indexSuffix + len(s.suffix)
 		var err error
 
-		if len(data) == advance {
+		if len(data) == advance && atEOF {
 			err = bufio.ErrFinalToken
 		}
 
@@ -565,25 +520,10 @@ func ReverseSlice[T any](original []T) []T {
 	return reversed
 }
 
-func RemoveSlice[T comparable](slice []T, item T, count int) []T {
-	if count == 0 {
-		return slice
+func Split(s string, sep string) []string {
+	if s == "" {
+		return []string{}
 	}
 
-	for i := 0; i < len(slice); {
-		if slice[i] == item {
-			slice = append(slice[:i], slice[i+1:]...)
-			if count > 0 {
-				count--
-
-				continue
-			}
-
-			return slice
-		} else {
-			i++
-		}
-	}
-
-	return slice
+	return strings.Split(s, sep)
 }
