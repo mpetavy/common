@@ -70,7 +70,7 @@ func createTestFolders() (string, string, error) {
 	return root, sub, nil
 }
 
-func TestNewFilewalker(t *testing.T) {
+func TestFilewalker(t *testing.T) {
 	InitTesting(t)
 
 	root, sub, err := createTestFolders()
@@ -168,14 +168,13 @@ func TestNewFilewalker(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			founds = []string{}
-			this, err := NewFilewalker(
+			err := WalkFiles(
 				tt.fields.Filemask,
 				tt.fields.Recursive,
 				tt.fields.IgnoreError,
 				tt.fields.walkFunc,
 			)
 			assert.NoError(t, err)
-			assert.NoError(t, this.Run())
 			assert.Equal(t, len(tt.wantFiles), len(founds))
 			for _, item := range tt.wantFiles {
 				assert.True(t, slices.Contains(founds, item))

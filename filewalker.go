@@ -6,15 +6,15 @@ import (
 	"path/filepath"
 )
 
-type Filewalker struct {
+type filewalker struct {
 	Path        string
 	Filemask    string
 	Recursive   bool
 	IgnoreError bool
-	fileFunc    func(path string, f os.FileInfo) error
+	walkFunc    func(path string, f os.FileInfo) error
 }
 
-func (fw *Filewalker) walkfunc(path string, f os.FileInfo, err error) error {
+func (fw *filewalker) walkfunc(path string, f os.FileInfo, err error) error {
 	if err != nil {
 		if fw.IgnoreError {
 			Warn("cannot access: %s", path)
@@ -27,7 +27,7 @@ func (fw *Filewalker) walkfunc(path string, f os.FileInfo, err error) error {
 
 	if f.IsDir() {
 		if path == fw.Path || fw.Recursive {
-			return fw.fileFunc(path, f)
+			return fw.walkFunc(path, f)
 		} else {
 			return fs.SkipDir
 		}
@@ -45,21 +45,11 @@ func (fw *Filewalker) walkfunc(path string, f os.FileInfo, err error) error {
 			return nil
 		}
 
-		return fw.fileFunc(path, f)
+		return fw.walkFunc(path, f)
 	}
 }
 
-func (fw *Filewalker) Run() error {
-	if !FileExists(fw.Path) || !IsDirectory(fw.Path) {
-		return &ErrFileNotFound{
-			FileName: fw.Path,
-		}
-	}
-
-	return filepath.Walk(fw.Path, fw.walkfunc)
-}
-
-func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, fi os.FileInfo) error) (*Filewalker, error) {
+func WalkFiles(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, fi os.FileInfo) error) error {
 	path := ""
 	filemask = CleanPath(filemask)
 
@@ -76,11 +66,38 @@ func NewFilewalker(filemask string, recursive bool, ignoreError bool, walkFunc f
 		}
 	}
 
-	return &Filewalker{
+	if !FileExists(path) || !IsDirectory(path) {
+		return &ErrFileNotFound{
+			FileName: path,
+		}
+	}
+
+	fw := &filewalker{
 		Path:        path,
 		Filemask:    filemask,
 		Recursive:   recursive,
 		IgnoreError: ignoreError,
-		fileFunc:    walkFunc,
-	}, nil
+		walkFunc:    walkFunc,
+	}
+
+	return filepath.Walk(fw.Path, fw.walkfunc)
+}
+
+func ListFiles(filemask string, recursive bool) ([]string, error) {
+	var files []string
+
+	err := WalkFiles(filemask, recursive, false, func(path string, fi os.FileInfo) error {
+		if fi.IsDir() {
+			return nil
+		}
+
+		files = append(files, path)
+
+		return nil
+	})
+	if Error(err) {
+		return nil, err
+	}
+
+	return files, nil
 }
