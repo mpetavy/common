@@ -154,7 +154,7 @@ func Sleep(d time.Duration) {
 	Debug("2~Sleep [%s] %v continue", id, d)
 }
 
-func CatchPanic(fn func()) (err error) {
+func TryCatch(fn func()) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch x := r.(type) {

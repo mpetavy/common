@@ -24,7 +24,7 @@ func TestScriptEngine(t *testing.T) {
 	vms := []ScriptEngine{otto, goja}
 
 	for _, vm := range vms {
-		v, err := vm.Run(time.Millisecond*250, "")
+		v, err := vm.Run(time.Millisecond*250, "", "")
 		if Error(err) {
 			return
 		}
@@ -51,7 +51,7 @@ func TestScriptEngineTimeout(t *testing.T) {
 	vms := []ScriptEngine{otto, goja}
 
 	for _, vm := range vms {
-		_, err = vm.Run(time.Millisecond*500, "")
+		_, err = vm.Run(time.Millisecond*500, "", "")
 
 		assert.NotNil(t, err, "%T", vm)
 		assert.Equal(t, true, IsErrTimeout(err), "%T", vm)

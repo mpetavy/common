@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"github.com/dop251/goja"
 	req "github.com/dop251/goja_nodejs/require"
 	"github.com/robertkrimen/otto"
@@ -9,7 +10,7 @@ import (
 )
 
 type ScriptEngine interface {
-	Run(time.Duration, string) (string, error)
+	Run(time.Duration, string, string) (string, error)
 }
 
 type ottoEngine struct {
@@ -52,7 +53,7 @@ func NewOttoEngine(src string) (ScriptEngine, error) {
 	return engine, nil
 }
 
-func (engine *ottoEngine) Run(timeout time.Duration, input string) (result string, err error) {
+func (engine *ottoEngine) Run(timeout time.Duration, funcName string, input string) (result string, err error) {
 	timeoutErr := &ErrTimeout{
 		Duration: timeout,
 	}
@@ -86,6 +87,13 @@ func (engine *ottoEngine) Run(timeout time.Duration, input string) (result strin
 		return "", err
 	}
 
+	if funcName != "" {
+		value, err = engine.engine.Call(funcName, nil, input)
+		if Error(err) {
+			return "", err
+		}
+	}
+
 	result, err = value.ToString()
 	if Error(err) {
 		return "", err
@@ -97,11 +105,19 @@ func (engine *ottoEngine) Run(timeout time.Duration, input string) (result strin
 type gojaEngine struct {
 	ScriptEngine
 
-	engine *goja.Runtime
-	code   *goja.Program
+	VM      *goja.Runtime
+	program *goja.Program
 }
 
 type console struct{}
+
+func (c *console) error(msg string) {
+	Error(fmt.Errorf("%s", msg))
+}
+
+func (c *console) info(msg string) {
+	Info(msg)
+}
 
 func (c *console) log(msg string) {
 	Debug(msg)
@@ -111,7 +127,17 @@ func newConsole(vm *goja.Runtime) (*goja.Object, error) {
 	c := &console{}
 
 	obj := vm.NewObject()
-	err := obj.Set("log", c.log)
+	err := obj.Set("error", c.error)
+	if Error(err) {
+		return nil, err
+	}
+
+	err = obj.Set("info", c.info)
+	if Error(err) {
+		return nil, err
+	}
+
+	err = obj.Set("log", c.log)
 	if Error(err) {
 		return nil, err
 	}
@@ -123,6 +149,9 @@ func NewGojaEngine(src string) (ScriptEngine, error) {
 	vm := goja.New()
 
 	console, err := newConsole(vm)
+	if Error(err) {
+		return nil, err
+	}
 
 	err = vm.Set("console", console)
 	if Error(err) {
@@ -131,20 +160,20 @@ func NewGojaEngine(src string) (ScriptEngine, error) {
 
 	new(req.Registry).Enable(vm)
 
-	prog, err := goja.Compile("", src, true)
+	program, err := goja.Compile("", src, true)
 	if Error(err) {
 		return nil, err
 	}
 
 	engine := &gojaEngine{
-		engine: vm,
-		code:   prog,
+		VM:      vm,
+		program: program,
 	}
 
 	return engine, nil
 }
 
-func (engine *gojaEngine) Run(timeout time.Duration, input string) (string, error) {
+func (engine *gojaEngine) Run(timeout time.Duration, funcName string, input string) (string, error) {
 	type result struct {
 		value string
 		err   error
@@ -153,7 +182,33 @@ func (engine *gojaEngine) Run(timeout time.Duration, input string) (string, erro
 	ch := make(chan result)
 
 	go func() {
-		value, err := engine.engine.RunProgram(engine.code)
+		var value goja.Value
+		var err error
+
+		value, err = engine.VM.RunProgram(engine.program)
+
+		if funcName != "" {
+			fn := func() (goja.Value, error) {
+				var jsFunc func(goja.Value) goja.Value
+
+				err := engine.VM.ExportTo(engine.VM.GlobalObject().Get(funcName), &jsFunc)
+				if Error(err) {
+					return goja.Undefined(), err
+				}
+
+				err = TryCatch(func() {
+					value = jsFunc(engine.VM.ToValue(input))
+				})
+				if Error(err) {
+					return goja.Undefined(), err
+				}
+
+				return value, nil
+			}
+
+			value, err = fn()
+		}
+
 		if err != nil {
 			ch <- result{
 				value: "",
@@ -171,7 +226,7 @@ func (engine *gojaEngine) Run(timeout time.Duration, input string) (string, erro
 
 	select {
 	case <-time.After(timeout):
-		engine.engine.Interrupt(nil)
+		engine.VM.Interrupt(nil)
 		return "", &ErrTimeout{
 			Duration: timeout,
 			Err:      nil,
