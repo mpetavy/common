@@ -48,19 +48,36 @@ var (
 	MEMORY_UNITS = []string{"Bytes", "KB", "MB", "GB", "TB"}
 )
 
-// Trim4Path trims given path to be usefully as filename
+// Trim4Path trims given path to be usefull as filename
 func Trim4Path(path string) string {
-	spath := []rune(path)
-	for i, ch := range spath {
-		if ch == '\\' || ch == ' ' {
-			spath[i] = '-'
+	var spath string
+
+	for _, ch := range []rune(path) {
+		if strings.ContainsRune("\\ ", ch) {
+			ch = rune('-')
 		}
-		if ch == ':' || ch == '.' {
-			spath[i] = '_'
+		if strings.ContainsRune("<>:.\"/|?*", ch) {
+			ch = rune('_')
+		}
+
+		spath += string(ch)
+	}
+
+	path = string(spath)
+
+	if IsWindowsOS() {
+		reservedOnWindows := []string{"CON", "PRN", "AUX", "NUL", " COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
+
+		for _, reserved := range reservedOnWindows {
+			if path == reserved {
+				path = path + "$"
+
+				break
+			}
 		}
 	}
 
-	return string(spath)
+	return path
 }
 
 // Capitalize the first letter

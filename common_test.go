@@ -13,8 +13,8 @@ func TestMax(t *testing.T) {
 	assert.Equal(t, 5, Max(-5, 0, 5))
 }
 
-func TestTrayCatch(t *testing.T) {
-	err := TryCatch(func() {
+func TestCatch(t *testing.T) {
+	err := Catch(func() {
 		panic("panic")
 	})
 

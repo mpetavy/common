@@ -93,7 +93,7 @@ func TestEndpoint(t *testing.T) {
 		defer wg.Done()
 
 		err := test(t, fmt.Sprintf(":%d", port), nil, txt, false)
-		if Error(err) {
+		if IsErrNetClosed(err) || Error(err) {
 			return
 		}
 	}()

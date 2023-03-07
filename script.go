@@ -102,7 +102,7 @@ func (engine *ottoEngine) Run(timeout time.Duration, funcName string, input stri
 	return result, nil
 }
 
-type gojaEngine struct {
+type GojaEngine struct {
 	ScriptEngine
 
 	VM      *goja.Runtime
@@ -123,37 +123,37 @@ func (c *console) log(msg string) {
 	Debug(msg)
 }
 
-func newConsole(vm *goja.Runtime) (*goja.Object, error) {
+func registerConsole(vm *goja.Runtime) error {
 	c := &console{}
 
-	obj := vm.NewObject()
-	err := obj.Set("error", c.error)
+	console := vm.NewObject()
+	err := console.Set("error", c.error)
 	if Error(err) {
-		return nil, err
+		return err
 	}
 
-	err = obj.Set("info", c.info)
+	err = console.Set("info", c.info)
 	if Error(err) {
-		return nil, err
+		return err
 	}
 
-	err = obj.Set("log", c.log)
+	err = console.Set("log", c.log)
 	if Error(err) {
-		return nil, err
-	}
-
-	return obj, nil
-}
-
-func NewGojaEngine(src string) (ScriptEngine, error) {
-	vm := goja.New()
-
-	console, err := newConsole(vm)
-	if Error(err) {
-		return nil, err
+		return err
 	}
 
 	err = vm.Set("console", console)
+	if Error(err) {
+		return err
+	}
+
+	return nil
+}
+
+func NewGojaEngine(src string) (*GojaEngine, error) {
+	vm := goja.New()
+
+	err := registerConsole(vm)
 	if Error(err) {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func NewGojaEngine(src string) (ScriptEngine, error) {
 		return nil, err
 	}
 
-	engine := &gojaEngine{
+	engine := &GojaEngine{
 		VM:      vm,
 		program: program,
 	}
@@ -173,7 +173,7 @@ func NewGojaEngine(src string) (ScriptEngine, error) {
 	return engine, nil
 }
 
-func (engine *gojaEngine) Run(timeout time.Duration, funcName string, input string) (string, error) {
+func (engine *GojaEngine) Run(timeout time.Duration, funcName string, input string) (string, error) {
 	type result struct {
 		value string
 		err   error
@@ -196,7 +196,7 @@ func (engine *gojaEngine) Run(timeout time.Duration, funcName string, input stri
 					return goja.Undefined(), err
 				}
 
-				err = TryCatch(func() {
+				err = Catch(func() {
 					value = jsFunc(engine.VM.ToValue(input))
 				})
 				if Error(err) {

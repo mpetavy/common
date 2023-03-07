@@ -407,3 +407,34 @@ func TestReverseSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestTrim4Path(t *testing.T) {
+	type args struct {
+		path string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "0",
+			args: args{
+				path: "a\\ z",
+			},
+			want: "a--z",
+		},
+		{
+			name: "1",
+			args: args{
+				path: "a<>:.\"/|?*z",
+			},
+			want: "a_________z",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, Trim4Path(tt.args.path), "Trim4Path(%v)", tt.args.path)
+		})
+	}
+}

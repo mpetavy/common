@@ -16,6 +16,14 @@ const (
 	MaxInt  = int(MaxUint >> 1)
 )
 
+type ErrUndefinedFlag struct {
+	Flagname string
+}
+
+func (e *ErrUndefinedFlag) Error() string {
+	return fmt.Sprintf("Undefined flag: %s", e.Flagname)
+}
+
 type MultiValueFlag []string
 
 func (this *MultiValueFlag) String() string {
@@ -154,7 +162,7 @@ func Sleep(d time.Duration) {
 	Debug("2~Sleep [%s] %v continue", id, d)
 }
 
-func TryCatch(fn func()) (err error) {
+func Catch(fn func()) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch x := r.(type) {

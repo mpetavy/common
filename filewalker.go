@@ -49,6 +49,27 @@ func (fw *filewalker) walkfunc(path string, f os.FileInfo, err error) error {
 	}
 }
 
+type FileEntry struct {
+	path     string
+	fileInfo os.FileInfo
+}
+
+func NewFileEntry(path string, fileInfo os.FileInfo) (*FileEntry, error) {
+	if fileInfo == nil {
+		var err error
+
+		fileInfo, err = os.Stat(path)
+		if Error(err) {
+			return nil, err
+		}
+	}
+
+	return &FileEntry{
+		path:     path,
+		fileInfo: fileInfo,
+	}, nil
+}
+
 func WalkFiles(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, fi os.FileInfo) error) error {
 	path := ""
 	filemask = CleanPath(filemask)

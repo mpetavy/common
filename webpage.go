@@ -871,16 +871,22 @@ func newFieldset(parent *etree.Element, caption string, data interface{}, dataDe
 				htmlInput.CreateAttr("type", "number")
 				htmlInput.CreateAttr("value", fmt.Sprintf("%d", fieldValue.Int()))
 
+				rangeDefined := false
+
 				option, err := fieldTags.Get("html_min")
 				if err == nil {
+					rangeDefined = true
+
 					htmlInput.CreateAttr("min", fmt.Sprintf("%s", option.Value()))
 				}
 				option, err = fieldTags.Get("html_max")
 				if err == nil {
+					rangeDefined = true
+
 					htmlInput.CreateAttr("max", fmt.Sprintf("%s", option.Value()))
 				}
 
-				if !readOnly && !isFieldReadOnly {
+				if !readOnly && !isFieldReadOnly && rangeDefined {
 					htmlInput.CreateAttr("onchange", fmt.Sprintf("document.getElementById(--$%s.range$--).value = this.value;", fieldPath))
 
 					htmlRange := htmlDiv.CreateElement("input")
