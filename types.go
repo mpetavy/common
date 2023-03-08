@@ -3,6 +3,7 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"github.com/paulrosania/go-charset/charset"
 	_ "github.com/paulrosania/go-charset/data"
@@ -543,4 +544,19 @@ func Split(s string, sep string) []string {
 	}
 
 	return strings.Split(s, sep)
+}
+
+func PrintBytes(ba []byte) string {
+	sb := strings.Builder{}
+
+	for _, r := range []rune(string(ba)) {
+		if strconv.IsPrint(r) {
+			sb.WriteString(string(r))
+		} else {
+			sb.WriteString("\\x")
+			sb.WriteString(hex.EncodeToString([]byte(string(r))))
+		}
+	}
+
+	return sb.String()
 }

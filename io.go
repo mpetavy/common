@@ -67,7 +67,7 @@ type debugWriter struct {
 }
 
 func (this *debugWriter) Write(p []byte) (n int, err error) {
-	Debug("%s %s %d bytes: %+q", this.Name, this.Action, len(p), string(p))
+	Debug("%s %s %d bytes: %s", this.Name, this.Action, len(p), PrintBytes(p))
 
 	return len(p), nil
 }
