@@ -546,7 +546,7 @@ func Split(s string, sep string) []string {
 	return strings.Split(s, sep)
 }
 
-func PrintBytes(ba []byte) string {
+func PrintBytes(ba []byte, breakOnLineEndings bool) string {
 	sb := strings.Builder{}
 
 	for _, r := range []rune(string(ba)) {
@@ -558,5 +558,23 @@ func PrintBytes(ba []byte) string {
 		}
 	}
 
-	return sb.String()
+	str := sb.String()
+
+	if breakOnLineEndings {
+		endings := []string{
+			"\\x0d\\x0a",
+			"\\x0d",
+			"\\x0a",
+		}
+
+		for _, ending := range endings {
+			if strings.Index(str, "\\x0d\\x0a") != -1 {
+				str = strings.ReplaceAll(str, ending, ending+"\n")
+
+				break
+			}
+		}
+	}
+
+	return str
 }
