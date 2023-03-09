@@ -547,6 +547,10 @@ func Split(s string, sep string) []string {
 }
 
 func PrintBytes(ba []byte, breakOnLineEndings bool) string {
+	if ba == nil {
+		return ""
+	}
+
 	sb := strings.Builder{}
 
 	for _, r := range []rune(string(ba)) {
@@ -568,7 +572,7 @@ func PrintBytes(ba []byte, breakOnLineEndings bool) string {
 		}
 
 		for _, ending := range endings {
-			if strings.Index(str, "\\x0d\\x0a") != -1 {
+			if strings.Index(str, ending) != -1 {
 				str = strings.ReplaceAll(str, ending, ending+"\n")
 
 				break
