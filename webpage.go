@@ -150,6 +150,7 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 	p.HtmlMenu = p.HtmlBody.CreateElement("div")
 
 	p.HtmlScrollContent = p.HtmlBody.CreateElement("div")
+	p.HtmlScrollContent.CreateAttr("id", "scroll-content")
 	p.HtmlScrollContent.CreateAttr("class", CSS_CONTENT)
 
 	p.HtmlContent = p.HtmlScrollContent.CreateElement("div")
@@ -456,6 +457,26 @@ func NewForm(parent *etree.Element, caption string, data interface{}, defaultDat
 		NewButton(htmlGroupCenter, i == 0, action)
 	}
 
+	legends := []string{}
+	legend := ""
+
+	for _, legend := range htmlForm.FindElements("//legend") {
+		if legend.Text() == "" {
+			continue
+		}
+
+		legends = append(legends, legend.Text())
+	}
+
+	if len(legends) > 0 {
+		legend = legends[0]
+
+		htmlLegend := newSelect(htmlGroupCenter, reflect.ValueOf(legend), legends)
+		htmlLegend.CreateAttr("id", "combo_legend")
+		htmlLegend.CreateAttr("style", "width: 100%;display:flex;margin-top: 8px;margin-bottom: 8px;")
+		htmlLegend.CreateAttr("onchange", fmt.Sprintf("scrollToFieldset();"))
+	}
+
 	if isFieldExpertView {
 		expertViewCheckbox := newCheckbox(htmlGroupCenter, isExpertViewAvailable)
 		expertViewCheckbox.SetText(Translate("Expert view"))
@@ -598,11 +619,34 @@ func newCheckbox(parent *etree.Element, value bool) *etree.Element {
 	return htmlInput
 }
 
+func newSelect(parent *etree.Element, fieldValue reflect.Value, fieldValueOptions []string) *etree.Element {
+	htmlInput := parent.CreateElement("select")
+	htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
+
+	preselectValue := fieldValue.String()
+	if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Int {
+		preselectValue = strconv.Itoa(int(fieldValue.Int()))
+	}
+	htmlInput.CreateAttr("data-default-value", preselectValue)
+
+	for _, value := range fieldValueOptions {
+		htmlOption := htmlInput.CreateElement("option")
+		htmlOption.SetText(value)
+
+		if value == preselectValue {
+			htmlOption.CreateAttr("selected", "")
+		}
+	}
+
+	return htmlInput
+}
+
 func newFieldset(parent *etree.Element, caption string, data interface{}, dataDefault interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
 	parent = parent.CreateElement("fieldset")
 
 	htmlLegend := parent.CreateElement("legend")
 	htmlLegend.SetText(Translate(caption))
+	htmlLegend.CreateAttr("id", Translate(caption))
 
 	// -----------------------------------------------------......................
 
@@ -838,23 +882,7 @@ func newFieldset(parent *etree.Element, caption string, data interface{}, dataDe
 			}
 
 			if IndexOf(tagHtml.Options, OPTION_SELECT) != -1 {
-				htmlInput = htmlDiv.CreateElement("select")
-				htmlInput.CreateAttr("class", INPUT_WIDTH_NORMAL)
-
-				preselectValue := fieldValue.String()
-				if reflect.TypeOf(fieldValue.Interface()).Kind() == reflect.Int {
-					preselectValue = strconv.Itoa(int(fieldValue.Int()))
-				}
-				htmlInput.CreateAttr("data-default-value", preselectValue)
-
-				for _, value := range fieldValueOptions {
-					htmlOption := htmlInput.CreateElement("option")
-					htmlOption.SetText(value)
-
-					if value == preselectValue {
-						htmlOption.CreateAttr("selected", "")
-					}
-				}
+				htmlInput = newSelect(htmlDiv, fieldValue, fieldValueOptions)
 
 				break
 			}
