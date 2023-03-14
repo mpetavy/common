@@ -429,7 +429,24 @@ func newMenuitem(parent *etree.Element, mainMenu bool, menuItems []ActionItem, s
 	}
 }
 
+func traverse(node *etree.Element, fn func(element *etree.Element)) {
+	for _, child := range node.ChildElements() {
+		fn(child)
+		traverse(child, fn)
+	}
+}
+
 func NewForm(parent *etree.Element, caption string, data interface{}, defaultData interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewAvailable bool, funcFieldIterator FuncFieldIterator) (*etree.Element, *etree.Element, error) {
+	htmlGroup := parent.CreateElement("div")
+	htmlGroup.CreateAttr("class", CSS_BUTTON_GROUP)
+	htmlGroup.CreateAttr("style", "display:flex")
+
+	htmlGroupH1 := htmlGroup.CreateElement("h1")
+	htmlGroupH1.SetText(caption)
+	htmlGroupH1.CreateAttr("style", "margin:auto;")
+
+	htmlGroupButton := htmlGroup.CreateElement("div")
+
 	htmlForm := parent.CreateElement("form")
 	htmlForm.CreateAttr("method", method)
 	htmlForm.CreateAttr("enctype", echo.MIMEMultipartForm)
@@ -438,53 +455,49 @@ func NewForm(parent *etree.Element, caption string, data interface{}, defaultDat
 	htmlForm.CreateAttr("action", formAction)
 	htmlForm.CreateAttr("method", method)
 
-	htmlGroup := htmlForm.CreateElement("div")
-	htmlGroup.CreateAttr("class", CSS_BUTTON_GROUP)
-	htmlGroup.CreateAttr("style", "display:flex;")
-
-	htmlGroupH1 := htmlGroup.CreateElement("h1")
-	htmlGroupH1.SetText(caption)
-	htmlGroupH1.CreateAttr("style", "margin:auto;")
-
-	htmlGroupCenter := htmlGroup.CreateElement("div")
-
 	isFieldExpertView, err := newFieldset(htmlForm, caption, data, defaultData, "", readOnly, isExpertViewAvailable, funcFieldIterator)
 	if Error(err) {
 		return nil, nil, err
 	}
 
 	for i, action := range actions {
-		NewButton(htmlGroupCenter, i == 0, action)
+		NewButton(htmlGroupButton, i == 0, action)
 	}
 
 	legends := []string{}
 	legend := ""
 
-	for _, legend := range htmlForm.FindElements("//legend") {
-		if legend.Text() == "" {
-			continue
+	traverse(htmlForm, func(element *etree.Element) {
+		if element.Tag == "legend" && element.Text() != "" {
+			legends = append(legends, element.Text())
 		}
-
-		legends = append(legends, legend.Text())
-	}
+	})
 
 	if len(legends) > 0 {
 		legend = legends[0]
 
-		htmlLegend := newSelect(htmlGroupCenter, reflect.ValueOf(legend), legends)
+		htmlLegend := newSelect(htmlGroupButton, reflect.ValueOf(legend), legends)
 		htmlLegend.CreateAttr("id", "combo_legend")
 		htmlLegend.CreateAttr("style", "width: 100%;display:flex;margin-top: 8px;margin-bottom: 8px;")
 		htmlLegend.CreateAttr("onchange", fmt.Sprintf("scrollToFieldset();"))
+		htmlLegend.RemoveAttr("data-default-value")
 	}
 
 	if isFieldExpertView {
-		expertViewCheckbox := newCheckbox(htmlGroupCenter, isExpertViewAvailable)
-		expertViewCheckbox.SetText(Translate("Expert view"))
+		htmlDiv := htmlGroupButton.CreateElement("div")
+
+		expertViewCheckbox := newCheckbox(htmlDiv, isExpertViewAvailable)
+		expertViewCheckbox.CreateAttr("id", "expert_view")
 		expertViewCheckbox.CreateAttr("onClick", fmt.Sprintf("setExpertViewVisible(--$fieldset$--);"))
-		expertViewCheckbox.CreateAttr("style", "display:flex;")
+		expertViewCheckbox.CreateAttr("style", "margin: 0")
+
+		htmlLabel := htmlDiv.CreateElement("label")
+		htmlLabel.CreateAttr("for", "expert_view")
+		htmlLabel.SetText(Translate("Expert view"))
+
 	} else {
 		if len(actions) == 0 {
-			htmlForm.RemoveChild(htmlGroup)
+			parent.RemoveChild(htmlGroup)
 		}
 	}
 
@@ -642,9 +655,9 @@ func newSelect(parent *etree.Element, fieldValue reflect.Value, fieldValueOption
 }
 
 func newFieldset(parent *etree.Element, caption string, data interface{}, dataDefault interface{}, path string, readOnly bool, isExpertViewActive bool, funcFieldIterator FuncFieldIterator) (bool, error) {
-	parent = parent.CreateElement("fieldset")
+	fieldset := parent.CreateElement("fieldset")
 
-	htmlLegend := parent.CreateElement("legend")
+	htmlLegend := fieldset.CreateElement("legend")
 	htmlLegend.SetText(Translate(caption))
 	htmlLegend.CreateAttr("id", Translate(caption))
 
@@ -714,7 +727,7 @@ func newFieldset(parent *etree.Element, caption string, data interface{}, dataDe
 
 		if field.Type.Kind() == reflect.Struct {
 			if i == 0 {
-				parent.RemoveChildAt(0)
+				fieldset.RemoveChildAt(0)
 			}
 
 			var ev bool
@@ -735,7 +748,7 @@ func newFieldset(parent *etree.Element, caption string, data interface{}, dataDe
 			continue
 		}
 
-		htmlDiv := parent.CreateElement("div")
+		htmlDiv := fieldset.CreateElement("div")
 
 		classes := []string{"pure-control-group"}
 
