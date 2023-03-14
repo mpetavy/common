@@ -437,7 +437,14 @@ func traverse(node *etree.Element, fn func(element *etree.Element)) {
 }
 
 func NewForm(parent *etree.Element, caption string, data interface{}, defaultData interface{}, method string, formAction string, actions []ActionItem, readOnly bool, isExpertViewAvailable bool, funcFieldIterator FuncFieldIterator) (*etree.Element, *etree.Element, error) {
-	htmlGroup := parent.CreateElement("div")
+	htmlForm := parent.CreateElement("form")
+	htmlForm.CreateAttr("method", method)
+	htmlForm.CreateAttr("enctype", echo.MIMEMultipartForm)
+	htmlForm.CreateAttr("class", "pure-form pure-form-aligned")
+	htmlForm.CreateAttr("action", formAction)
+	htmlForm.CreateAttr("method", method)
+
+	htmlGroup := htmlForm.CreateElement("div")
 	htmlGroup.CreateAttr("class", CSS_BUTTON_GROUP)
 	htmlGroup.CreateAttr("style", "display:flex")
 
@@ -446,14 +453,6 @@ func NewForm(parent *etree.Element, caption string, data interface{}, defaultDat
 	htmlGroupH1.CreateAttr("style", "margin:auto;")
 
 	htmlGroupButton := htmlGroup.CreateElement("div")
-
-	htmlForm := parent.CreateElement("form")
-	htmlForm.CreateAttr("method", method)
-	htmlForm.CreateAttr("enctype", echo.MIMEMultipartForm)
-	htmlForm.CreateAttr("class", "pure-form pure-form-aligned")
-
-	htmlForm.CreateAttr("action", formAction)
-	htmlForm.CreateAttr("method", method)
 
 	isFieldExpertView, err := newFieldset(htmlForm, caption, data, defaultData, "", readOnly, isExpertViewAvailable, funcFieldIterator)
 	if Error(err) {
@@ -496,8 +495,8 @@ func NewForm(parent *etree.Element, caption string, data interface{}, defaultDat
 		htmlLabel.SetText(Translate("Expert view"))
 
 	} else {
-		if len(actions) == 0 {
-			parent.RemoveChild(htmlGroup)
+		if len(actions) < 2 {
+			htmlForm.RemoveChild(htmlGroup)
 		}
 	}
 
