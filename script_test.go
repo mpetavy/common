@@ -11,17 +11,12 @@ func TestScriptEngine(t *testing.T) {
 
 	src := "console.log('Hello world!'); 'Done!';"
 
-	otto, err := NewOttoEngine(src)
+	engine, err := NewScriptEngine(src)
 	if Error(err) {
 		return
 	}
 
-	goja, err := NewGojaEngine(src)
-	if Error(err) {
-		return
-	}
-
-	vms := []ScriptEngine{otto, goja}
+	vms := []*ScriptEngine{engine}
 
 	for _, vm := range vms {
 		v, err := vm.Run(time.Millisecond*250, "", "")
@@ -38,17 +33,12 @@ func TestScriptEngineTimeout(t *testing.T) {
 
 	src := "while(true) {}"
 
-	otto, err := NewOttoEngine(src)
+	engine, err := NewScriptEngine(src)
 	if Error(err) {
 		return
 	}
 
-	goja, err := NewGojaEngine(src)
-	if Error(err) {
-		return
-	}
-
-	vms := []ScriptEngine{otto, goja}
+	vms := []*ScriptEngine{engine}
 
 	for _, vm := range vms {
 		_, err = vm.Run(time.Millisecond*500, "", "")

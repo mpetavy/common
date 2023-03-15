@@ -21,7 +21,6 @@ require (
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
-	github.com/robertkrimen/otto v0.2.1
 	github.com/stretchr/testify v1.8.1
 	go.bug.st/serial v1.5.0
 	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be
@@ -59,6 +58,5 @@ require (
 	google.golang.org/grpc v1.39.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.49.0 // indirect
-	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
