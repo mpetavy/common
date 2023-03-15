@@ -9,7 +9,8 @@ import (
 func TestScriptEngine(t *testing.T) {
 	InitTesting(t)
 
-	src := "console.log('Hello world!'); 'Done!';"
+	//src := "console.log('Hello world!'); 'Done!';"
+	src := "let person = {firstName:'John', lastName:'Doe', age:50, eyeColor:'blue'};console.table(person);'Done!';"
 
 	engine, err := NewScriptEngine(src)
 	if Error(err) {

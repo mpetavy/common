@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/dop251/goja"
 	req "github.com/dop251/goja_nodejs/require"
+	"reflect"
+	"strconv"
 	"time"
 )
 
@@ -22,8 +24,58 @@ func (c *console) info(msg string) {
 	Info(msg)
 }
 
+func (c *console) debug(msg string) {
+	Debug(msg)
+}
+
+func (c *console) warn(msg string) {
+	Warn(msg)
+}
+
 func (c *console) log(msg string) {
 	Debug(msg)
+}
+
+func (c *console) table(data interface{}) {
+	val, ok := data.(reflect.Value)
+	if !ok {
+		val = reflect.Indirect(reflect.ValueOf(data))
+	}
+
+	st := NewStringTable()
+	st.AddCols("field", "value")
+
+	switch val.Type().Kind() {
+	case reflect.Map:
+		iter := val.MapRange()
+		for iter.Next() {
+			k := iter.Key()
+			v := iter.Value()
+
+			st.AddCols(k, fmt.Sprintf("%+v", v.Elem()))
+		}
+	case reflect.Struct:
+		err := IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
+			st.AddCols(fieldPath, fmt.Sprintf("%+v", fieldValue.Elem()))
+
+			return nil
+		})
+		if Error(err) {
+			return
+		}
+	case reflect.Array:
+		for i := 0; i < val.Len(); i++ {
+			st.AddCols(strconv.Itoa(i), val.Index(i))
+		}
+	case reflect.Slice:
+		for i := 0; i < val.Len(); i++ {
+			st.AddCols(strconv.Itoa(i), val.Slice(i, i+1))
+		}
+	default:
+		Error(TraceError(fmt.Errorf("unsupported type")))
+	}
+
+	Debug(st.String())
 }
 
 func registerConsole(vm *goja.Runtime) error {
@@ -35,12 +87,27 @@ func registerConsole(vm *goja.Runtime) error {
 		return err
 	}
 
+	err = console.Set("debug", c.debug)
+	if Error(err) {
+		return err
+	}
+
+	err = console.Set("warn", c.warn)
+	if Error(err) {
+		return err
+	}
+
 	err = console.Set("info", c.info)
 	if Error(err) {
 		return err
 	}
 
 	err = console.Set("log", c.log)
+	if Error(err) {
+		return err
+	}
+
+	err = console.Set("table", c.table)
 	if Error(err) {
 		return err
 	}
