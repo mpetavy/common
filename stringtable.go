@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -31,6 +32,16 @@ func (st *StringTable) AddCol(txt interface{}) {
 func (st *StringTable) AddCols(txts ...interface{}) {
 	st.AddRow()
 	for _, txt := range txts {
+		val := reflect.ValueOf(txt)
+		if val.Type().Kind() == reflect.Slice || val.Type().Kind() == reflect.Array {
+			for i := 0; i < val.Len(); i++ {
+				st.AddCol(val.Index(i))
+			}
+
+			continue
+
+		}
+
 		st.AddCol(txt)
 	}
 }

@@ -906,3 +906,41 @@ func WriteWithTimeout(writer io.Writer, timeout time.Duration, ba []byte) (int, 
 
 	return n, err
 }
+
+func WriteFully(w io.Writer, p []byte) (int, error) {
+	sum := 0
+
+	for {
+		n, err := w.Write(p)
+		sum += n
+
+		if Error(err) {
+			return sum, err
+		}
+
+		if n == len(p) {
+			return sum, nil
+		}
+
+		p = p[n:]
+	}
+}
+
+func ReadFully(r io.Reader, p []byte) (int, error) {
+	sum := 0
+
+	for {
+		n, err := r.Read(p)
+		sum += n
+
+		if Error(err) {
+			return sum, err
+		}
+
+		if n == len(p) {
+			return sum, nil
+		}
+
+		p = p[n:]
+	}
+}

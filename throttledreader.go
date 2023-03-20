@@ -6,68 +6,43 @@ import (
 )
 
 type throttledReader struct {
-	reader       io.Reader
-	bytesPerSecs int
-	lastSec      time.Time
-	lastSecRead  int
+	reader          io.Reader
+	bytesPerSeconds int
 }
 
-func (this *throttledReader) Read(p []byte) (n int, err error) {
-	if this.bytesPerSecs == 0 {
-		return this.reader.Read(p)
+func (w *throttledReader) Read(p []byte) (int, error) {
+	if w.bytesPerSeconds == 0 {
+		return w.reader.Read(p)
 	}
 
-	lenP := len(p)
 	index := 0
 
-	curSec := time.Now().Truncate(time.Second)
-	if this.lastSec.IsZero() || this.lastSec.Before(curSec) {
-		this.lastSec = curSec
-		this.lastSecRead = 0
-	}
-
 	for {
-		sleep := false
+		amount := Min(w.bytesPerSeconds, len(p)-index)
 
-		remainAllowedLen := this.bytesPerSecs - this.lastSecRead
-		remainBufferLen := lenP - index
-
-		if remainBufferLen > remainAllowedLen {
-			remainBufferLen = remainAllowedLen
-			sleep = true
-		}
-
-		n, err := this.reader.Read(p[index : index+remainBufferLen])
+		timestamp := time.Now()
+		n, err := ReadFully(w.reader, p[index:index+amount])
 
 		index += n
-		this.lastSecRead += n
 
-		if Error(nil) {
+		if err != nil {
 			return index, err
 		}
 
-		if sleep {
-			this.lastSec = this.lastSec.Add(time.Second)
-			this.lastSecRead = 0
-
-			d := this.lastSec.Sub(time.Now())
-
-			if d > 0 {
-				Sleep(d)
-			}
+		if index == len(p) {
+			return index, nil
 		}
 
-		if index == Min(this.bytesPerSecs, lenP) {
-			return index, nil
+		sleepTime := timestamp.Add(time.Second).Sub(time.Now())
+		if sleepTime > 0 {
+			time.Sleep(sleepTime)
 		}
 	}
 }
 
-func NewThrottledReader(reader io.Reader, bytesPerSecs int) io.Reader {
-	r := &throttledReader{
-		reader:       reader,
-		bytesPerSecs: bytesPerSecs,
+func NewThrottledReader(reader io.Reader, bytesPerSeconds int) io.Reader {
+	return &throttledReader{
+		reader:          reader,
+		bytesPerSeconds: bytesPerSeconds,
 	}
-
-	return r
 }
