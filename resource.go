@@ -17,7 +17,7 @@ func ResourcesDirectory() string {
 }
 
 func ReadResource(filename string) ([]byte, string, error) {
-	if app.Resources == nil {
+	if app == nil || app.Resources == nil {
 		return nil, "", fmt.Errorf("resources are not initialized")
 	}
 

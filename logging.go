@@ -100,7 +100,7 @@ func InitTesting(t goTesting) {
 
 type goTesting interface {
 	Logf(format string, args ...interface{})
-	Fatalf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
 }
 
 type logEntry struct {
@@ -444,8 +444,10 @@ func logOutput(entry logEntry) {
 		switch entry.levelInt {
 		case LEVEL_DEBUG:
 			gotest.Logf(entryAsString)
+		case LEVEL_INFO:
+			gotest.Logf(entryAsString)
 		default:
-			gotest.Fatalf(entryAsString)
+			gotest.Errorf(entryAsString)
 		}
 	} else {
 		if entry.color != ColorDefault {
@@ -686,8 +688,10 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 		switch entry.levelInt {
 		case LEVEL_DEBUG:
 			gotest.Logf(entryAsString)
+		case LEVEL_INFO:
+			gotest.Logf(entryAsString)
 		default:
-			gotest.Fatalf(entryAsString)
+			gotest.Errorf(entryAsString)
 		}
 
 		return

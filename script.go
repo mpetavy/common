@@ -3,37 +3,18 @@ package common
 import (
 	"fmt"
 	"github.com/dop251/goja"
-	req "github.com/dop251/goja_nodejs/require"
+	"github.com/dop251/goja_nodejs/require"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"time"
 )
 
 type ScriptEngine struct {
-	VM      *goja.Runtime
-	program *goja.Program
-}
-
-type console struct{}
-
-func (c *console) error(msg string) {
-	Error(fmt.Errorf("%s", msg))
-}
-
-func (c *console) info(msg string) {
-	Info(msg)
-}
-
-func (c *console) debug(msg string) {
-	Debug(msg)
-}
-
-func (c *console) warn(msg string) {
-	Warn(msg)
-}
-
-func (c *console) log(msg string) {
-	Debug(msg)
+	Registry *require.Registry
+	VM       *goja.Runtime
+	program  *goja.Program
 }
 
 func (c *console) table(data interface{}) {
@@ -78,49 +59,7 @@ func (c *console) table(data interface{}) {
 	Debug(st.String())
 }
 
-func registerConsole(vm *goja.Runtime) error {
-	c := &console{}
-
-	console := vm.NewObject()
-	err := console.Set("error", c.error)
-	if Error(err) {
-		return err
-	}
-
-	err = console.Set("debug", c.debug)
-	if Error(err) {
-		return err
-	}
-
-	err = console.Set("warn", c.warn)
-	if Error(err) {
-		return err
-	}
-
-	err = console.Set("info", c.info)
-	if Error(err) {
-		return err
-	}
-
-	err = console.Set("log", c.log)
-	if Error(err) {
-		return err
-	}
-
-	err = console.Set("table", c.table)
-	if Error(err) {
-		return err
-	}
-
-	err = vm.Set("console", console)
-	if Error(err) {
-		return err
-	}
-
-	return nil
-}
-
-func NewScriptEngine(src string) (*ScriptEngine, error) {
+func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	vm := goja.New()
 
 	err := registerConsole(vm)
@@ -128,7 +67,43 @@ func NewScriptEngine(src string) (*ScriptEngine, error) {
 		return nil, err
 	}
 
-	new(req.Registry).Enable(vm)
+	modulesPath = CleanPath(modulesPath)
+
+	registry := require.NewRegistry(
+		require.WithGlobalFolders(modulesPath),
+		require.WithLoader(func(path string) ([]byte, error) {
+			path = CleanPath(path)
+
+			Debug("load module: %s", path)
+
+			ba, _, err := ReadResource(filepath.Base(path))
+
+			if ba == nil && modulesPath != "" {
+				if filepath.Dir(path) == modulesPath {
+					ba, err = os.ReadFile(path)
+					if Error(err) {
+						return nil, err
+					}
+				} else {
+					return nil, TraceError(require.IllegalModuleNameError)
+				}
+			}
+
+			if ba == nil {
+				return nil, TraceError(require.ModuleFileDoesNotExistError)
+			}
+
+			str := fmt.Sprintf(`(function(__filename,__dirname){%s})(%q,%q)`,
+				ba,
+				path,
+				filepath.Dir(path),
+			)
+
+			return []byte(str), nil
+		}),
+	)
+
+	registry.Enable(vm)
 
 	program, err := goja.Compile("", src, true)
 	if Error(err) {
@@ -136,8 +111,9 @@ func NewScriptEngine(src string) (*ScriptEngine, error) {
 	}
 
 	engine := &ScriptEngine{
-		VM:      vm,
-		program: program,
+		Registry: registry,
+		VM:       vm,
+		program:  program,
 	}
 
 	return engine, nil

@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type require struct {
+type ModuleRequire struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`
 	Comment     string `json:"comment"`
@@ -20,10 +20,10 @@ type require struct {
 }
 
 type ModuleInfo struct {
-	Disclosure string    `json:"disclosure"`
-	Software   string    `json:"software"`
-	Version    string    `json:"version"`
-	Requires   []require `json:"requires"`
+	Disclosure string          `json:"disclosure"`
+	Software   string          `json:"software"`
+	Version    string          `json:"version"`
+	Requires   []ModuleRequire `json:"requires"`
 }
 
 func CreateModuleInfo() (*ModuleInfo, error) {
@@ -48,7 +48,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 	}
 
 	moduleInfo := ModuleInfo{}
-	moduleInfo.Requires = make([]require, 0)
+	moduleInfo.Requires = make([]ModuleRequire, 0)
 
 	scanner := bufio.NewScanner(bytes.NewReader(ba))
 	inRequire := false
@@ -60,7 +60,7 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 			inRequire = line != ")"
 
 			if inRequire {
-				req := require{}
+				req := ModuleRequire{}
 
 				p := strings.Index(line, " ")
 				if p != -1 {

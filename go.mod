@@ -10,6 +10,7 @@ require (
 	github.com/fatih/structtag v1.2.0
 	github.com/gabriel-vasile/mimetype v1.3.1
 	github.com/go-ini/ini v1.62.0
+	github.com/go-sql-driver/mysql v1.4.0
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.0
 	github.com/gorilla/sessions v1.2.1
@@ -19,6 +20,7 @@ require (
 	github.com/kardianos/service v1.2.2
 	github.com/labstack/echo-contrib v0.11.0
 	github.com/labstack/echo/v4 v4.9.0
+	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
 	github.com/stretchr/testify v1.8.1
