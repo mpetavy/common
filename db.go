@@ -225,31 +225,41 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
 		Columns: columns,
 	}
 
-	builder := dynamicstruct.NewStruct()
+	scanBuilder := dynamicstruct.NewStruct()
+	recordBuilder := dynamicstruct.NewStruct()
 
 	for i := 0; i < len(columns); i++ {
 		name := strings.ToUpper(columns[i])
 		tag := fmt.Sprintf("`json:\"%s\"`", name)
 
-		var v interface{}
+		var scanField interface{}
+		var recordField interface{}
 
 		switch types[i].ScanType() {
 		case reflect.TypeOf(sql.NullBool{}):
-			v = true
+			scanField = sql.NullBool{}
+			recordField = true
 		case reflect.TypeOf(sql.NullByte{}):
-			v = byte(0)
+			scanField = sql.NullByte{}
+			recordField = byte(0)
 		case reflect.TypeOf(sql.NullFloat64{}):
-			v = float64(0)
+			scanField = sql.NullFloat64{}
+			recordField = float64(0)
 		case reflect.TypeOf(sql.NullInt16{}):
-			v = 0
+			scanField = sql.NullInt16{}
+			recordField = 0
 		case reflect.TypeOf(sql.NullInt32{}):
-			v = 0
+			scanField = sql.NullInt32{}
+			recordField = 0
 		case reflect.TypeOf(sql.NullInt64{}):
-			v = 0
+			scanField = sql.NullInt64{}
+			recordField = 0
 		case reflect.TypeOf(sql.NullTime{}):
-			v = time.Time{}
+			scanField = sql.NullTime{}
+			recordField = time.Time{}
 		default:
-			v = ""
+			scanField = sql.NullString{}
+			recordField = ""
 		}
 		//switch types[i].ScanType() {
 		//case reflect.TypeOf(sql.NullBool{}):
@@ -270,10 +280,12 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
 		//	v = sql.NullString{}
 		//}
 
-		builder.AddField(name, v, tag)
+		scanBuilder.AddField(name, scanField, tag)
+		recordBuilder.AddField(name, recordField, tag)
 	}
 
-	dynamicStruct := builder.Build()
+	scanStruct := scanBuilder.Build()
+	recordStruct := recordBuilder.Build()
 	buf := bytes.Buffer{}
 
 	for query.Next() {
@@ -283,26 +295,77 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
 		}
 
 		values := make([]string, len(raws))
+		isNull := make([]bool, len(raws))
 
 		for i, raw := range raws {
+			isNull[i] = raw == nil
 			if raw != nil {
 				values[i] = string(raw)
 			}
 		}
 
 		rows.Values = append(rows.Values, values)
+		rows.IsNull = append(rows.IsNull, isNull)
 
-		record := dynamicStruct.New()
-		recordPtrs := make([]any, len(columns))
-		recordElem := reflect.ValueOf(record).Elem()
+		scan := scanStruct.New()
+		scanPtrs := make([]any, len(columns))
+		scanElem := reflect.ValueOf(scan).Elem()
 
-		for i := 0; i < recordElem.NumField(); i++ {
-			recordPtrs[i] = recordElem.Field(i).Addr().Interface()
+		for i := 0; i < scanElem.NumField(); i++ {
+			scanPtrs[i] = scanElem.Field(i).Addr().Interface()
 		}
 
-		err = query.Scan(recordPtrs...)
+		err = query.Scan(scanPtrs...)
 		if Error(err) {
 			return nil, err
+		}
+
+		record := recordStruct.New()
+		recordElem := reflect.ValueOf(record).Elem()
+
+		for i := 0; i < scanElem.NumField(); i++ {
+			switch types[i].ScanType() {
+			case reflect.TypeOf(sql.NullBool{}):
+				s, ok := scanPtrs[i].(*sql.NullBool)
+				if ok && s.Valid {
+					recordElem.Field(i).Set(reflect.ValueOf(s.Bool))
+				}
+			case reflect.TypeOf(sql.NullByte{}):
+				s, ok := scanPtrs[i].(*sql.NullByte)
+				if ok && s.Valid {
+					recordElem.Field(i).Set(reflect.ValueOf(int(s.Byte)))
+				}
+			case reflect.TypeOf(sql.NullFloat64{}):
+				s, ok := scanPtrs[i].(*sql.NullFloat64)
+				if ok && s.Valid {
+					recordElem.Field(i).Set(reflect.ValueOf(float64(s.Float64)))
+				}
+			case reflect.TypeOf(sql.NullInt16{}):
+				s, ok := scanPtrs[i].(*sql.NullInt16)
+				if ok && s.Valid {
+					recordElem.Field(i).Set(reflect.ValueOf(int(s.Int16)))
+				}
+			case reflect.TypeOf(sql.NullInt32{}):
+				s, ok := scanPtrs[i].(*sql.NullInt32)
+				if ok && s.Valid {
+					recordElem.Field(i).Set(reflect.ValueOf(int(s.Int32)))
+				}
+			case reflect.TypeOf(sql.NullInt64{}):
+				s, ok := scanPtrs[i].(*sql.NullInt64)
+				if ok && s.Valid {
+					recordElem.Field(i).Set(reflect.ValueOf(int(s.Int64)))
+				}
+			case reflect.TypeOf(sql.NullTime{}):
+				s, ok := scanPtrs[i].(*sql.NullTime)
+				if ok && s.Valid {
+					recordElem.Field(i).Set(reflect.ValueOf(s.Time))
+				}
+			case reflect.TypeOf(sql.NullString{}):
+				s, ok := scanPtrs[i].(*sql.NullString)
+				if ok && s.Valid {
+					recordElem.Field(i).Set(reflect.ValueOf(s.String))
+				}
+			}
 		}
 
 		ba, err := json.MarshalIndent(record, "", "    ")
@@ -323,7 +386,7 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
 		buf.WriteString("]")
 	}
 
-	rows.Fields = dynamicStruct.NewSliceOfStructs()
+	rows.Fields = recordStruct.NewSliceOfStructs()
 
 	err = json.Unmarshal(buf.Bytes(), &rows.Fields)
 	if Error(err) {
