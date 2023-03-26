@@ -25,7 +25,7 @@ func (c *console) warn(msgs ...string) {
 }
 
 func (c *console) log(msgs ...string) {
-	Debug(strings.Join(msgs, " "))
+	Info(strings.Join(msgs, " "))
 }
 
 func registerConsole(vm *goja.Runtime) error {

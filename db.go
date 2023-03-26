@@ -1,9 +1,15 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	dynamicstruct "github.com/ompluscator/dynamic-struct"
+	"reflect"
+	"strings"
 	"time"
 )
 
@@ -174,7 +180,14 @@ func (database *Database) Execute(sqlcmd string, args ...any) (int64, error) {
 	return rowsAffected, nil
 }
 
-func (database *Database) Query(sqlcmd string, args ...any) ([]string, [][]string, error) {
+type Rows struct {
+	Columns []string
+	Values  [][]string
+	IsNull  [][]bool
+	Fields  interface{}
+}
+
+func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
 	ctx := context.Background()
 	if database.Timeout != 0 {
 		var cancel context.CancelFunc
@@ -185,7 +198,7 @@ func (database *Database) Query(sqlcmd string, args ...any) ([]string, [][]strin
 
 	query, err := database.currentDb().QueryContext(ctx, sqlcmd, args...)
 	if Error(err) {
-		return nil, nil, err
+		return nil, err
 	}
 	defer func() {
 		Error(query.Close())
@@ -193,36 +206,129 @@ func (database *Database) Query(sqlcmd string, args ...any) ([]string, [][]strin
 
 	columns, err := query.Columns()
 	if Error(err) {
-		return nil, nil, err
+		return nil, err
 	}
 
-	rawResult := make([][]byte, len(columns))
-
-	dest := make([]interface{}, len(columns))
-	for i := range rawResult {
-		dest[i] = &rawResult[i]
+	types, err := query.ColumnTypes()
+	if Error(err) {
+		return nil, err
 	}
 
-	rows := make([][]string, 0)
+	raws := make([][]byte, len(columns))
+
+	ptrRaws := make([]interface{}, len(columns))
+	for i := range raws {
+		ptrRaws[i] = &raws[i]
+	}
+
+	rows := &Rows{
+		Columns: columns,
+	}
+
+	builder := dynamicstruct.NewStruct()
+
+	for i := 0; i < len(columns); i++ {
+		name := strings.ToUpper(columns[i])
+		tag := fmt.Sprintf("`json:\"%s\"`", name)
+
+		var v interface{}
+
+		switch types[i].ScanType() {
+		case reflect.TypeOf(sql.NullBool{}):
+			v = true
+		case reflect.TypeOf(sql.NullByte{}):
+			v = byte(0)
+		case reflect.TypeOf(sql.NullFloat64{}):
+			v = float64(0)
+		case reflect.TypeOf(sql.NullInt16{}):
+			v = 0
+		case reflect.TypeOf(sql.NullInt32{}):
+			v = 0
+		case reflect.TypeOf(sql.NullInt64{}):
+			v = 0
+		case reflect.TypeOf(sql.NullTime{}):
+			v = time.Time{}
+		default:
+			v = ""
+		}
+		//switch types[i].ScanType() {
+		//case reflect.TypeOf(sql.NullBool{}):
+		//	v = sql.NullBool{}
+		//case reflect.TypeOf(sql.NullByte{}):
+		//	v = sql.NullByte{}
+		//case reflect.TypeOf(sql.NullFloat64{}):
+		//	v = sql.NullFloat64{}
+		//case reflect.TypeOf(sql.NullInt16{}):
+		//	v = sql.NullInt16{}
+		//case reflect.TypeOf(sql.NullInt32{}):
+		//	v = sql.NullInt32{}
+		//case reflect.TypeOf(sql.NullInt64{}):
+		//	v = sql.NullInt64{}
+		//case reflect.TypeOf(sql.NullTime{}):
+		//	v = sql.NullTime{}
+		//default:
+		//	v = sql.NullString{}
+		//}
+
+		builder.AddField(name, v, tag)
+	}
+
+	dynamicStruct := builder.Build()
+	buf := bytes.Buffer{}
 
 	for query.Next() {
-		err = query.Scan(dest...)
+		err = query.Scan(ptrRaws...)
 		if Error(err) {
-			return nil, nil, err
+			return nil, err
 		}
 
-		strResult := make([]string, len(columns))
+		values := make([]string, len(raws))
 
-		for i, raw := range rawResult {
-			if raw == nil {
-				strResult[i] = "<null>"
-			} else {
-				strResult[i] = string(raw)
+		for i, raw := range raws {
+			if raw != nil {
+				values[i] = string(raw)
 			}
 		}
 
-		rows = append(rows, strResult)
+		rows.Values = append(rows.Values, values)
+
+		record := dynamicStruct.New()
+		recordPtrs := make([]any, len(columns))
+		recordElem := reflect.ValueOf(record).Elem()
+
+		for i := 0; i < recordElem.NumField(); i++ {
+			recordPtrs[i] = recordElem.Field(i).Addr().Interface()
+		}
+
+		err = query.Scan(recordPtrs...)
+		if Error(err) {
+			return nil, err
+		}
+
+		ba, err := json.MarshalIndent(record, "", "    ")
+		if Error(err) {
+			return nil, err
+		}
+
+		if buf.Len() == 0 {
+			buf.WriteString("[")
+		} else {
+			buf.WriteString(",")
+		}
+
+		buf.Write(ba)
 	}
 
-	return columns, rows, nil
+	if buf.Len() > 0 {
+		buf.WriteString("]")
+	}
+
+	rows.Fields = dynamicStruct.NewSliceOfStructs()
+
+	err = json.Unmarshal(buf.Bytes(), &rows.Fields)
+	if Error(err) {
+		return nil, err
+	}
+
+	return rows, nil
 }

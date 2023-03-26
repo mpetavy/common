@@ -21,6 +21,7 @@ require (
 	github.com/labstack/echo-contrib v0.11.0
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/mattn/go-sqlite3 v1.14.16
+	github.com/ompluscator/dynamic-struct v1.4.0
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
 	github.com/stretchr/testify v1.8.1

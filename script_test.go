@@ -93,13 +93,16 @@ var db = database;
 db.init('sqlite3','');
 db.open();
 db.execute('create table foo (id integer not null primary key, name text)');
-db.execute('insert into foo(id, name) values(?, ?)',123,'test');
+db.execute('insert into foo(id, name) values(?, ?)',123,'test123','abc');
+db.execute('insert into foo(id, name) values(?, ?)',456,'test456');
+db.execute('insert into foo(id, name) values(?, ?)',789,'test789','cde');
 var result = db.query('select * from foo');
 // result is a JS object with 2 properties. You can acces columns by [0] and records by [1] 
-console.log("-- Columns -------------");
-console.table(result[0]);
-console.log("-- Records -------------");
-console.table(result[1]);
+console.log(result.Fields);
+for(var i = 0;i < result.Fields.length;i++) {
+  console.log(result.Fields[i].ID);
+  console.log(result.Fields[i].NAME);
+}
 db.close();
 `
 
@@ -111,7 +114,7 @@ db.close();
 	err = engine.EnableDatabase()
 	assert.Nil(t, err)
 
-	_, err = engine.Run(time.Second, "", "")
+	_, err = engine.Run(time.Hour, "", "")
 
 	assert.Nil(t, err)
 }

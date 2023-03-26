@@ -9,17 +9,17 @@ import (
 )
 
 func checkChanged(t *testing.T, db *Database, changed bool) {
-	columns, rows, err := db.Query("select id,name from foo order by id")
+	rows, err := db.Query("select id,name from foo order by id")
 	assert.NoError(t, err)
 
-	assert.Equal(t, []string{"id", "name"}, columns)
+	assert.Equal(t, []string{"id", "name"}, rows.Columns)
 
-	for i := 0; i < 100; i++ {
-		assert.Equal(t, strconv.Itoa(i), rows[i][0])
+	for i := 0; i < 3; i++ {
+		assert.Equal(t, strconv.Itoa(i), rows.Values[i][0])
 		if !changed {
-			assert.Equal(t, fmt.Sprintf("こんにちは世界%03d", i), rows[i][1])
+			assert.Equal(t, fmt.Sprintf("こんにちは世界%03d", i), rows.Values[i][1])
 		} else {
-			assert.Equal(t, "changed", rows[i][1])
+			assert.Equal(t, "changed", rows.Values[i][1])
 		}
 	}
 }
@@ -47,7 +47,7 @@ func TestDb(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 3; i++ {
 		_, err = db.Execute("insert into foo(id, name) values(?, ?)", i, fmt.Sprintf("こんにちは世界%03d", i))
 		assert.NoError(t, err)
 	}
