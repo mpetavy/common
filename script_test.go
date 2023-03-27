@@ -103,7 +103,7 @@ for(var i = 0;i < result.Fields.length;i++) {
   console.log(result.Fields[i].ID);
   console.log(result.Fields[i].NAME);
   console.log(result.Fields[i].EMPTY);
-  console.log(result.IsNull[i][2]);
+  console.log(result.IsNull[i].EMPTY);
 }
 db.close();
 `
