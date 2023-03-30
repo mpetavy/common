@@ -9,17 +9,22 @@ import (
 )
 
 func checkChanged(t *testing.T, db *Database, changed bool) {
-	rows, err := db.Query("select id,name from foo order by id")
+	resultset, err := db.Query("select id,name from foo order by id")
 	assert.NoError(t, err)
 
-	assert.Equal(t, []string{"id", "name"}, rows.Columns)
+	assert.Equal(t, []string{"ID", "NAME"}, resultset.ColumnNames)
 
-	for i := 0; i < 3; i++ {
-		assert.Equal(t, strconv.Itoa(i), rows.Values[i][0])
+	for i := 0; i < resultset.RowCount; i++ {
+		id, err := resultset.Get(i, "ID")
+		assert.NoError(t, err)
+		name, err := resultset.Get(i, "NAME")
+		assert.NoError(t, err)
+
+		assert.Equal(t, strconv.Itoa(i), id.String())
 		if !changed {
-			assert.Equal(t, fmt.Sprintf("こんにちは世界%03d", i), rows.Values[i][1])
+			assert.Equal(t, fmt.Sprintf("こんにちは世界%03d", i), name.String())
 		} else {
-			assert.Equal(t, "changed", rows.Values[i][1])
+			assert.Equal(t, "changed", name.String())
 		}
 	}
 }
@@ -47,7 +52,7 @@ func TestDb(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 10000; i++ {
 		_, err = db.Execute("insert into foo(id, name) values(?, ?)", i, fmt.Sprintf("こんにちは世界%03d", i))
 		assert.NoError(t, err)
 	}

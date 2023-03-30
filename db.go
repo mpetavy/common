@@ -180,14 +180,34 @@ func (database *Database) Execute(sqlcmd string, args ...any) (int64, error) {
 	return rowsAffected, nil
 }
 
-type Rows struct {
-	Columns []string
-	Values  [][]string
-	IsNull  any
-	Fields  any
+type Field struct {
+	Value  any  `json:"value"`
+	IsNull bool `json:"isnull"`
 }
 
-func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
+func (f *Field) String() string {
+	if f.IsNull {
+		return ""
+	}
+
+	return fmt.Sprintf("%v", f.Value)
+}
+
+type Resultset struct {
+	ColumnNames []string
+	RowCount    int
+	Rows        any
+}
+
+func (rs *Resultset) Get(row int, fieldName string) (Field, error) {
+	resultsetValue := reflect.ValueOf(rs.Rows)
+	rowValue := resultsetValue.Elem().Index(row)
+	colValue := rowValue.FieldByName(fieldName)
+
+	return colValue.Interface().(Field), nil
+}
+
+func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) {
 	ctx := context.Background()
 	if database.Timeout != 0 {
 		var cancel context.CancelFunc
@@ -204,39 +224,34 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
 		Error(query.Close())
 	}()
 
-	columns, err := query.Columns()
+	columnNames, err := query.Columns()
+	if Error(err) {
+		return nil, err
+	}
+	for i := 0; i < len(columnNames); i++ {
+		columnNames[i] = strings.ToUpper(columnNames[i])
+	}
+
+	columnTypes, err := query.ColumnTypes()
 	if Error(err) {
 		return nil, err
 	}
 
-	types, err := query.ColumnTypes()
-	if Error(err) {
-		return nil, err
-	}
-
-	raws := make([][]byte, len(columns))
-
-	ptrRaws := make([]interface{}, len(columns))
-	for i := range raws {
-		ptrRaws[i] = &raws[i]
-	}
-
-	rows := &Rows{
-		Columns: columns,
+	rows := &Resultset{
+		ColumnNames: columnNames,
 	}
 
 	scanBuilder := dynamicstruct.NewStruct()
 	recordBuilder := dynamicstruct.NewStruct()
-	nullBuilder := dynamicstruct.NewStruct()
 
-	for i := 0; i < len(columns); i++ {
-		name := strings.ToUpper(columns[i])
+	for i := 0; i < len(columnNames); i++ {
+		name := columnNames[i]
 		tag := fmt.Sprintf("`json:\"%s\"`", name)
 
 		var scanField interface{}
 		var recordField interface{}
 
-		switch types[i].ScanType() {
+		switch columnTypes[i].ScanType() {
 		case reflect.TypeOf(sql.NullBool{}):
 			scanField = sql.NullBool{}
 			recordField = true
@@ -263,36 +278,23 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
 			recordField = ""
 		}
 
+		field := Field{
+			Value:  recordField,
+			IsNull: false,
+		}
+
 		scanBuilder.AddField(name, scanField, tag)
-		recordBuilder.AddField(name, recordField, tag)
-		nullBuilder.AddField(name, false, tag)
+		recordBuilder.AddField(name, field, tag)
 	}
 
 	scanStruct := scanBuilder.Build()
 	recordStruct := recordBuilder.Build()
-	nullStruct := nullBuilder.Build()
 
 	recordBuf := bytes.Buffer{}
-	nullBuf := bytes.Buffer{}
 
 	for query.Next() {
-		err = query.Scan(ptrRaws...)
-		if Error(err) {
-			return nil, err
-		}
-
-		values := make([]string, len(raws))
-
-		for i, raw := range raws {
-			if raw != nil {
-				values[i] = string(raw)
-			}
-		}
-
-		rows.Values = append(rows.Values, values)
-
 		scan := scanStruct.New()
-		scanPtrs := make([]any, len(columns))
+		scanPtrs := make([]any, len(columnNames))
 		scanElem := reflect.ValueOf(scan).Elem()
 
 		for i := 0; i < scanElem.NumField(); i++ {
@@ -306,59 +308,77 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
 
 		record := recordStruct.New()
 		recordElem := reflect.ValueOf(record).Elem()
-		null := nullStruct.New()
-		nullElem := reflect.ValueOf(null).Elem()
 
 		for i := 0; i < scanElem.NumField(); i++ {
-			switch types[i].ScanType() {
+			recordField := recordElem.FieldByName(columnNames[i])
+			recordFieldIsNull := recordField.FieldByName("IsNull")
+			recordFieldValue := recordField.FieldByName("Value")
+
+			switch columnTypes[i].ScanType() {
 			case reflect.TypeOf(sql.NullBool{}):
 				s, ok := scanPtrs[i].(*sql.NullBool)
+				isNull := !(ok && s.Valid)
+				recordFieldIsNull.Set(reflect.ValueOf(isNull))
+				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
 				if ok && s.Valid {
-					recordElem.Field(i).Set(reflect.ValueOf(s.Bool))
+					recordFieldValue.Set(reflect.ValueOf(s.Bool))
 				}
-				nullElem.Field(i).Set(reflect.ValueOf(!(ok && s.Valid)))
 			case reflect.TypeOf(sql.NullByte{}):
 				s, ok := scanPtrs[i].(*sql.NullByte)
+				isNull := !(ok && s.Valid)
+				recordFieldIsNull.Set(reflect.ValueOf(isNull))
+				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
 				if ok && s.Valid {
-					recordElem.Field(i).Set(reflect.ValueOf(int(s.Byte)))
+					recordFieldValue.Set(reflect.ValueOf(s.Byte))
 				}
-				nullElem.Field(i).Set(reflect.ValueOf(!(ok && s.Valid)))
 			case reflect.TypeOf(sql.NullFloat64{}):
 				s, ok := scanPtrs[i].(*sql.NullFloat64)
+				isNull := !(ok && s.Valid)
+				recordFieldIsNull.Set(reflect.ValueOf(isNull))
+				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
 				if ok && s.Valid {
-					recordElem.Field(i).Set(reflect.ValueOf(float64(s.Float64)))
+					recordFieldValue.Set(reflect.ValueOf(s.Float64))
 				}
-				nullElem.Field(i).Set(reflect.ValueOf(!(ok && s.Valid)))
 			case reflect.TypeOf(sql.NullInt16{}):
 				s, ok := scanPtrs[i].(*sql.NullInt16)
+				isNull := !(ok && s.Valid)
+				recordFieldIsNull.Set(reflect.ValueOf(isNull))
+				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
 				if ok && s.Valid {
-					recordElem.Field(i).Set(reflect.ValueOf(int(s.Int16)))
+					recordFieldValue.Set(reflect.ValueOf(s.Int16))
 				}
-				nullElem.Field(i).Set(reflect.ValueOf(!(ok && s.Valid)))
 			case reflect.TypeOf(sql.NullInt32{}):
 				s, ok := scanPtrs[i].(*sql.NullInt32)
+				isNull := !(ok && s.Valid)
+				recordFieldIsNull.Set(reflect.ValueOf(isNull))
+				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
 				if ok && s.Valid {
-					recordElem.Field(i).Set(reflect.ValueOf(int(s.Int32)))
+					recordFieldValue.Set(reflect.ValueOf(s.Int32))
 				}
-				nullElem.Field(i).Set(reflect.ValueOf(!(ok && s.Valid)))
 			case reflect.TypeOf(sql.NullInt64{}):
 				s, ok := scanPtrs[i].(*sql.NullInt64)
+				isNull := !(ok && s.Valid)
+				recordFieldIsNull.Set(reflect.ValueOf(isNull))
+				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
 				if ok && s.Valid {
-					recordElem.Field(i).Set(reflect.ValueOf(int(s.Int64)))
+					recordFieldValue.Set(reflect.ValueOf(s.Int64))
 				}
-				nullElem.Field(i).Set(reflect.ValueOf(!(ok && s.Valid)))
 			case reflect.TypeOf(sql.NullTime{}):
 				s, ok := scanPtrs[i].(*sql.NullTime)
+				isNull := !(ok && s.Valid)
+				recordFieldIsNull.Set(reflect.ValueOf(isNull))
+				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
 				if ok && s.Valid {
-					recordElem.Field(i).Set(reflect.ValueOf(s.Time))
+					recordFieldValue.Set(reflect.ValueOf(s.Time))
 				}
-				nullElem.Field(i).Set(reflect.ValueOf(!(ok && s.Valid)))
 			case reflect.TypeOf(sql.NullString{}):
 				s, ok := scanPtrs[i].(*sql.NullString)
+				isNull := !(ok && s.Valid)
+				recordFieldIsNull.Set(reflect.ValueOf(isNull))
+				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
 				if ok && s.Valid {
-					recordElem.Field(i).Set(reflect.ValueOf(s.String))
+					recordFieldValue.Set(reflect.ValueOf(s.String))
 				}
-				nullElem.Field(i).Set(reflect.ValueOf(!(ok && s.Valid)))
 			}
 		}
 
@@ -374,38 +394,15 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Rows, error) {
 		}
 
 		recordBuf.Write(ba)
-
-		ba, err = json.MarshalIndent(null, "", "    ")
-		if Error(err) {
-			return nil, err
-		}
-
-		if nullBuf.Len() == 0 {
-			nullBuf.WriteString("[")
-		} else {
-			nullBuf.WriteString(",")
-		}
-
-		nullBuf.Write(ba)
 	}
 
 	if recordBuf.Len() > 0 {
 		recordBuf.WriteString("]")
 	}
 
-	if nullBuf.Len() > 0 {
-		nullBuf.WriteString("]")
-	}
+	rows.Rows = recordStruct.NewSliceOfStructs()
 
-	rows.Fields = recordStruct.NewSliceOfStructs()
-	rows.IsNull = nullStruct.NewSliceOfStructs()
-
-	err = json.Unmarshal(recordBuf.Bytes(), &rows.Fields)
-	if Error(err) {
-		return nil, err
-	}
-
-	err = json.Unmarshal(nullBuf.Bytes(), &rows.IsNull)
+	err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
 	if Error(err) {
 		return nil, err
 	}

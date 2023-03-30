@@ -97,13 +97,14 @@ db.execute('insert into foo (id, name, empty) values (?, ?, ?)',123,'test123','a
 db.execute('insert into foo (id, name, empty) values (?, ?, ?)',456,'test456',null);
 db.execute('insert into foo (id, name, empty) values (?, ?, ?)',789,'test789','cde');
 var result = db.query('select * from foo');
-// result is a JS object with 2 properties. You can acces columns by [0] and records by [1] 
-console.log(result.Fields);
-for(var i = 0;i < result.Fields.length;i++) {
-  console.log(result.Fields[i].ID);
-  console.log(result.Fields[i].NAME);
-  console.log(result.Fields[i].EMPTY);
-  console.log(result.IsNull[i].EMPTY);
+console.log('The query returns ' + result.Rows.length + ' rows');
+console.log('The query returns the following colums: ' + result.ColumnNames);
+for(var i = 0;i < result.Rows.length;i++) {
+  console.log('------- Row #' + i + '-----');
+  console.log(result.Rows[i].ID.Value);
+  console.log(result.Rows[i].NAME.Value);
+  console.log(result.Rows[i].EMPTY.Value);
+  console.log(result.Rows[i].EMPTY.IsNull);
 }
 db.close();
 `
