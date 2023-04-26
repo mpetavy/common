@@ -162,7 +162,7 @@ func Contains(slice interface{}, search interface{}) bool {
 
 func IndexOf(slice interface{}, search interface{}) int {
 	if reflect.TypeOf(slice).Kind() != reflect.Slice {
-		panic(fmt.Errorf("not a slice: %v", slice))
+		Panic(fmt.Errorf("not a slice: %v", slice))
 	}
 
 	sl := reflect.ValueOf(slice)

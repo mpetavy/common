@@ -27,22 +27,23 @@ const (
 )
 
 var (
-	FlagLogVerbose  *bool
-	FlagLogIO       *bool
-	FlagLogFileName *string
-	FlagLogFileSize *int
-	FlagLogJson     *bool
-	FlagLogSys      *bool
-	FlagLogCount    *int
-	FlagLogBreak    *bool
-	logger          logWriter
-	mu              sync.Mutex
-	lastErr         string
-	syslogLoggerCh  chan<- error
-	syslogLogger    service.Logger
-	gotest          goTesting
-	logCh           = NewChannel[logEntry](1000)
-	wgLogCh         sync.WaitGroup
+	FlagLogFileName = flag.String(FlagNameLogFileName, "", "filename to log file")
+	FlagLogFileSize = flag.Int(FlagNameLogFileSize, 5*1024*1024, "max log file size")
+	FlagLogVerbose  = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
+	FlagLogIO       = flag.Bool(FlagNameLogIO, false, "trace logging")
+	FlagLogJson     = flag.Bool(FlagNameLogJson, false, "JSON output")
+	FlagLogSys      = flag.Bool(FlagNameLogSys, false, "Use OS system logger")
+	FlagLogCount    = flag.Int(FlagNameLogCount, 1000, "log count")
+	FlagLogBreak    = flag.Bool(FlagNameLogBreak, false, "break on error")
+
+	logger         logWriter
+	mu             sync.Mutex
+	lastErr        string
+	syslogLoggerCh chan<- error
+	syslogLogger   service.Logger
+	gotest         goTesting
+	logCh          = NewChannel[logEntry](1000)
+	wgLogCh        sync.WaitGroup
 
 	ColorDefault color.Color = 0
 	ColorDebug   color.Color = ColorDefault
@@ -64,15 +65,6 @@ const (
 )
 
 func init() {
-	FlagLogFileName = flag.String(FlagNameLogFileName, "", "filename to log file")
-	FlagLogFileSize = flag.Int(FlagNameLogFileSize, 5*1024*1024, "max log file size")
-	FlagLogVerbose = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
-	FlagLogIO = flag.Bool(FlagNameLogIO, false, "trace logging")
-	FlagLogJson = flag.Bool(FlagNameLogJson, false, "JSON output")
-	FlagLogSys = flag.Bool(FlagNameLogSys, false, "Use OS system logger")
-	FlagLogCount = flag.Int(FlagNameLogCount, 1000, "log count")
-	FlagLogBreak = flag.Bool(FlagNameLogBreak, false, "break on error")
-
 	Events.AddListener(EventShutdown{}, func(event Event) {
 		Error(closeLog())
 	})
@@ -504,7 +496,7 @@ func getRuntimePos(t string) (int, string) {
 
 // Debug prints out the information
 func Debug(t string, arg ...interface{}) {
-	if FlagLogVerbose == nil || !*FlagLogVerbose {
+	if !*FlagLogVerbose {
 		return
 	}
 
@@ -529,7 +521,7 @@ func loggingError(err error) bool {
 
 // DebugError prints out the error
 func DebugError(err error) bool {
-	if FlagLogVerbose == nil || !*FlagLogVerbose {
+	if !*FlagLogVerbose {
 		return err != nil
 	}
 
@@ -544,10 +536,6 @@ func DebugError(err error) bool {
 
 // Info prints out the information
 func Info(t string, arg ...interface{}) {
-	if FlagLogVerbose == nil {
-		return
-	}
-
 	if len(arg) > 0 {
 		t = fmt.Sprintf(t, arg...)
 	}
@@ -558,10 +546,6 @@ func Info(t string, arg ...interface{}) {
 }
 
 func Warn(t string, arg ...interface{}) {
-	if FlagLogVerbose == nil || !*FlagLogVerbose {
-		return
-	}
-
 	if len(arg) > 0 {
 		t = fmt.Sprintf(t, arg...)
 	}
@@ -572,10 +556,6 @@ func Warn(t string, arg ...interface{}) {
 }
 
 func WarnError(err error) bool {
-	if FlagLogVerbose == nil {
-		return err != nil
-	}
-
 	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
@@ -595,7 +575,7 @@ func errorString(level int, ri RuntimeInfo, err error) string {
 
 // DebugFunc prints out the current executon func
 func DebugFunc(arg ...interface{}) {
-	if FlagLogVerbose == nil || !*FlagLogVerbose {
+	if !*FlagLogVerbose {
 		return
 	}
 
@@ -634,10 +614,6 @@ func Panic(err error) {
 }
 
 func Error(err error) bool {
-	if FlagLogVerbose == nil {
-		return err != nil
-	}
-
 	if err != nil && !IsErrExit(err) && !IsSuppressedError(err) {
 		ri := GetRuntimeInfo(1)
 
@@ -697,7 +673,7 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 		return
 	}
 
-	if level != LEVEL_PANIC && (FlagLogVerbose == nil || !*FlagLogVerbose) {
+	if level != LEVEL_PANIC && !*FlagLogVerbose {
 		Error(logCh.Put(entry))
 	} else {
 		logOutput(entry)

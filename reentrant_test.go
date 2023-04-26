@@ -1,123 +1,87 @@
 package common
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"sync"
-	"sync/atomic"
-
 	"testing"
 	"time"
 )
 
 func TestSimple(t *testing.T) {
-	remutex := NewRentrantMutex()
-	pass := remutex.NewPass()
+	rm := NewRentrantMutex()
 
-	pass.Lock()
+	rm.Lock()
+	rm.Lock()
+	rm.Lock()
 
-	select {
-	case <-time.After(time.Millisecond * 100):
-		t.Fatal("test did not finish in time")
-	default:
-		pass.Lock()
-		pass.Lock()
-		pass.Unlock()
+	assert.Equal(t, rm.count, 3)
 
-		assert.Equal(t, 2, pass.c)
+	rm.Unlock()
 
-		remutex.UnlockNow()
+	assert.Equal(t, rm.count, 2)
 
-		assert.Equal(t, 2, pass.c)
-	}
+	rm.UnlockNow()
+
+	assert.Equal(t, rm.count, 0)
+	assert.Equal(t, rm.current, uint64(0))
 }
 
 func TestBlocking(t *testing.T) {
-	remutex := NewRentrantMutex()
-	pass0 := remutex.NewPass()
-	pass1 := remutex.NewPass()
-
-	pass0.Lock()
+	rm := NewRentrantMutex()
 
 	start := time.Now()
-	d := time.Millisecond * 100
+	wg := sync.WaitGroup{}
 
+	rm.Lock()
+
+	wg.Add(1)
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine(1))
+		defer wg.Done()
 
-		Sleep(d)
-		pass0.Unlock()
+		rm.Lock()
 	}()
 
-	pass1.Lock()
+	time.Sleep(time.Millisecond * 100)
 
-	assert.True(t, time.Now().Sub(start) >= d)
+	rm.Unlock()
+
+	wg.Wait()
+
+	assert.LessOrEqual(t, int64(100), time.Since(start).Milliseconds())
 }
 
-func TestLock(t *testing.T) {
-	countGoroutines := 10
-	countLoop := 10
+func TestBlockingBlock(t *testing.T) {
+	rm := NewRentrantMutex()
+	list := []int{}
+	wg := sync.WaitGroup{}
 
-	var c uint64 = 0
+	for id := 0; id < 100; id++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
 
-	list := make([]string, 0)
-	mu := sync.Mutex{}
+			rm.Lock()
+			defer rm.Unlock()
 
-	f := func() {
-		rl := NewRentrantMutex()
-		wg := sync.WaitGroup{}
+			for i := 0; i < 10; i++ {
+				list = append(list, id)
+			}
+		}(id)
+	}
 
-		for goroutine := 0; goroutine < countGoroutines; goroutine++ {
+	wg.Wait()
 
-			wg.Add(1)
-			go func(goroutine int) {
-				defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
-				defer func() {
-					wg.Done()
-				}()
-
-				pass := rl.NewPass()
-
-				for i := 0; i < countLoop; i++ {
-					n := fmt.Sprintf("GO routine #%d", goroutine)
-
-					pass.Lock()
-
-					// just check that we can reentrant ...
-					pass.Lock()
-
-					atomic.AddUint64(&c, 1)
-
-					mu.Lock()
-					list = append(list, n)
-					mu.Unlock()
-
-					pass.Unlock()
-
-					pass.Unlock()
+	last := -1
+	c := 0
+	for i := 0; i < len(list); i++ {
+		if last != -1 {
+			if last == list[i] {
+				c++
+			} else {
+				if i > 0 {
+					assert.Equal(t, 10, c)
 				}
-			}(goroutine)
+			}
 		}
-
-		wg.Wait()
-	}
-
-	select {
-	case <-time.After(time.Second):
-		t.Fatal("test did not finish in time")
-	default:
-		f()
-	}
-
-	//for i, e := range list {
-	//	t.Logf("#%4d %s\n", i, e)
-	//}
-	//
-	//t.Logf("%d\n", len(list))
-
-	//if c != uint64(countGoroutines * countLoop) {
-	if len(list) != countGoroutines*countLoop {
-		t.Fatal("unexpected len of generated list entries")
 	}
 }

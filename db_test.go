@@ -1,3 +1,5 @@
+//go:build unix
+
 package common
 
 import (
@@ -84,4 +86,41 @@ func TestDb(t *testing.T) {
 	assert.NoError(t, err)
 
 	checkChanged(t, db, true)
+}
+
+func TestScriptEngineDatabase(t *testing.T) {
+	InitTesting(t)
+
+	src := `
+var db = database;
+db.init('sqlite3','');
+db.open();
+db.execute('create table foo (id integer not null primary key, name text,empty text)');
+db.execute('insert into foo (id, name, empty) values (?, ?, ?)',123,'test123','abc');
+db.execute('insert into foo (id, name, empty) values (?, ?, ?)',456,'test456',null);
+db.execute('insert into foo (id, name, empty) values (?, ?, ?)',789,'test789','cde');
+var result = db.query('select * from foo');
+console.log('The query returns ' + result.Rows.length + ' rows');
+console.log('The query returns the following colums: ' + result.ColumnNames);
+for(var i = 0;i < result.Rows.length;i++) {
+  console.log('------- Row #' + i + '-----');
+  console.log(result.Rows[i].ID.Value);
+  console.log(result.Rows[i].NAME.Value);
+  console.log(result.Rows[i].EMPTY.Value);
+  console.log(result.Rows[i].EMPTY.IsNull);
+}
+db.close();
+`
+
+	engine, err := NewScriptEngine(src, "")
+	if Error(err) {
+		return
+	}
+
+	err = engine.EnableDatabase()
+	assert.Nil(t, err)
+
+	_, err = engine.Run(time.Hour, "", "")
+
+	assert.Nil(t, err)
 }

@@ -612,7 +612,9 @@ func IsRunningAsExecutable() bool {
 			path = os.Args[0]
 		}
 
-		runningAsExecutable = !strings.HasPrefix(path, os.TempDir())
+		path = strings.ToLower(path)
+
+		runningAsExecutable = !strings.Contains(path, "temp") && !strings.Contains(path, "tmp")
 	})
 
 	DebugFunc(runningAsExecutable)

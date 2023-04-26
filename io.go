@@ -97,11 +97,13 @@ func init() {
 	var err error
 
 	tempDir, err = os.MkdirTemp("", Title())
-	Panic(err)
-
-	Events.AddListener(EventShutdown{}, func(event Event) {
-		Error(deleteTempDir())
-	})
+	if Error(err) {
+		tempDir = os.TempDir()
+	} else {
+		Events.AddListener(EventShutdown{}, func(event Event) {
+			Error(deleteTempDir())
+		})
+	}
 
 	FlagIoFileBackups = flag.Int(FlagNameIoFileBackups, 3, "amount of file backups")
 }

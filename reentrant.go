@@ -1,111 +1,77 @@
 package common
 
 import (
-	"fmt"
 	"sync"
 )
 
-type pass struct {
-	remux *reentrantmutex
-	c     int
-}
+type ReentrantMutex struct {
+	sync.Locker
 
-type reentrantmutex struct {
 	mu      sync.Mutex
-	current *pass
+	current uint64
+	count   int
 }
 
-func NewRentrantMutex() reentrantmutex {
-	return reentrantmutex{
-		mu:      sync.Mutex{},
-		current: nil,
-	}
-}
-
-func (this *reentrantmutex) NewPass() *pass {
-	return &pass{
-		remux: this,
-		c:     0,
+func NewRentrantMutex() ReentrantMutex {
+	return ReentrantMutex{
+		mu: sync.Mutex{},
 	}
 }
 
-func (this *pass) Lock() {
-	this.remux.mu.Lock()
-
-	if this.remux.current == nil {
-		this.c++
-
-		this.remux.current = this
-
-		this.remux.mu.Unlock()
-
-		return
-	}
-
-	if this.remux.current == this {
-		this.c++
-
-		this.remux.mu.Unlock()
-
-		return
-	}
-
-	this.remux.mu.Unlock()
+func (rm *ReentrantMutex) Lock() {
+	id := GoRoutineId()
 
 	for {
-		this.remux.mu.Lock()
+		rm.mu.Lock()
 
-		if this.remux.current == nil {
-			this.c++
+		if rm.current != 0 && rm.current != id {
+			rm.mu.Unlock()
 
-			this.remux.current = this
-
-			this.remux.mu.Unlock()
-
-			return
-		} else {
-			this.remux.mu.Unlock()
+			continue
 		}
+
+		if rm.current == 0 {
+			rm.current = id
+		}
+
+		rm.count++
+
+		rm.mu.Unlock()
+
+		break
 	}
 }
 
-func (this *reentrantmutex) UnlockNow() {
-	this.mu.Lock()
-	defer this.mu.Unlock()
+func (rm *ReentrantMutex) UnlockNow() {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
 
-	this.current = nil
+	rm.current = 0
+	rm.count = 0
 }
 
-func (this *pass) Unlock() {
+func (rm *ReentrantMutex) Unlock() {
+	id := GoRoutineId()
+
 	for {
-		this.remux.mu.Lock()
+		rm.mu.Lock()
 
-		switch {
-		case this.remux.current == nil:
-			this.remux.current = nil
+		if rm.current != id {
+			rm.mu.Unlock()
 
-			this.remux.mu.Unlock()
-
-			return
-		case this.remux.current == this:
-			this.remux.current.c--
-
-			if this.remux.current.c == 0 {
-				this.remux.current = nil
-			}
-
-			this.remux.mu.Unlock()
-
-			return
-		default:
-			panic(fmt.Errorf("invalid pass"))
+			continue
 		}
+
+		if rm.count > 0 {
+			rm.count--
+		}
+
+		if rm.count == 0 {
+			rm.current = 0
+		}
+
+		rm.mu.Unlock()
+
+		break
 	}
-}
-
-func (this *reentrantmutex) HasLock() bool {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	return this.current != nil
 }
