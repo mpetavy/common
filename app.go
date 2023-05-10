@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -121,6 +122,18 @@ var (
 func Init(title string, version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	FlagAppProduct = flag.String(FlagNameAppProduct, Title(), "app product")
 	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
+
+	if git == "" {
+		if info, ok := debug.ReadBuildInfo(); ok {
+			for _, setting := range info.Settings {
+				if setting.Key == "vcs.revision" {
+					git = setting.Value
+
+					break
+				}
+			}
+		}
+	}
 
 	app = &application{
 		Title:       title,

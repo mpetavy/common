@@ -37,7 +37,7 @@ var (
 	FlagLogBreak    = flag.Bool(FlagNameLogBreak, false, "break on error")
 
 	logger         logWriter
-	mu             sync.Mutex
+	mu             ReentrantMutex
 	lastErr        string
 	syslogLoggerCh chan<- error
 	syslogLogger   service.Logger
