@@ -37,6 +37,8 @@ type application struct {
 	Version string
 	// Git label development
 	Git string
+	// Time label development
+	Time time.Time
 	// Build label development
 	Build string
 	// Date of development
@@ -123,13 +125,22 @@ func Init(title string, version string, git string, build string, date string, d
 	FlagAppProduct = flag.String(FlagNameAppProduct, Title(), "app product")
 	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
 
+	var ti time.Time
+
 	if git == "" {
 		if info, ok := debug.ReadBuildInfo(); ok {
 			for _, setting := range info.Settings {
-				if setting.Key == "vcs.revision" {
+				switch setting.Key {
+				case "vcs.revision":
 					git = setting.Value
+				case "vcs.time":
+					if version != "" {
+						continue
+					}
+					ti, _ = time.Parse(time.RFC3339, setting.Value)
+					d := ti.Sub(time.Date(ti.Year(), 1, 1, 0, 0, 0, 0, time.UTC))
 
-					break
+					version = fmt.Sprintf("%d.%d", (ti.Year()-22)%100, int(d.Abs().Hours())/24)
 				}
 			}
 		}
@@ -139,6 +150,7 @@ func Init(title string, version string, git string, build string, date string, d
 		Title:       title,
 		Version:     version,
 		Git:         git,
+		Time:        ti,
 		Build:       build,
 		Date:        date,
 		Description: description,
@@ -408,7 +420,7 @@ func showBanner() {
 			}
 
 			fmt.Printf("\n")
-			fmt.Printf("%s %s %s\n", strings.ToUpper(app.Title), app.Version, app.Description)
+			fmt.Printf("%s %s - %s\n", strings.ToUpper(app.Title), app.Version, app.Description)
 			fmt.Printf("\n")
 			fmt.Printf("Copyright: © %s %s\n", date, app.Developer)
 			fmt.Printf("Homepage:  %s\n", app.Homepage)
@@ -418,6 +430,9 @@ func showBanner() {
 			}
 			if app.Git != "" {
 				fmt.Printf("Git:       %s\n", app.Git)
+			}
+			if !app.Time.IsZero() {
+				fmt.Printf("Time:      %s\n", app.Time.Format(time.RFC822))
 			}
 			fmt.Printf("\n")
 		}
