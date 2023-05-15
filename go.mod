@@ -1,6 +1,6 @@
 module github.com/mpetavy/common
 
-go 1.19
+go 1.20
 
 require (
 	cloud.google.com/go/translate v1.7.1
