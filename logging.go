@@ -69,6 +69,14 @@ func init() {
 		Error(closeLog())
 	})
 
+	Events.AddListener(EventFlagsParsed{}, func(event Event) {
+		if *FlagLogSys && IsLinuxOS() && !IsRunningInteractive() {
+			// with SYSTEMD everything which is printed to console is automatically printed to journalctl
+
+			*FlagLogSys = false
+		}
+	})
+
 	wgLogCh.Add(1)
 
 	go func() {
@@ -418,17 +426,23 @@ func logOutput(entry logEntry) {
 	}
 
 	if syslogLogger != nil {
+		msg := entry.Msg
+
+		for i := 0; i < 2; i++ {
+			msg = msg[strings.Index(msg, " ")+1:]
+		}
+
 		switch entry.levelInt {
 		case LEVEL_WARN:
-			Error(syslogLogger.Warning(entry.Msg))
+			Error(syslogLogger.Warning(msg))
 		case LEVEL_ERROR:
-			Error(syslogLogger.Error(entry.Msg))
+			Error(syslogLogger.Error(msg))
 		case LEVEL_PANIC:
-			Error(syslogLogger.Error(entry.Msg))
+			Error(syslogLogger.Error(msg))
 		case LEVEL_DEBUG:
 			fallthrough
 		case LEVEL_INFO:
-			Error(syslogLogger.Info(entry.Msg))
+			Error(syslogLogger.Info(msg))
 		}
 	}
 

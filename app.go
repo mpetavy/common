@@ -382,6 +382,8 @@ func Run(mandatoryFlags []string) {
 			if Error(err) {
 				return err
 			}
+
+			return nil
 		}
 
 		// simple app or simulated service
