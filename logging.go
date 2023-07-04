@@ -42,8 +42,9 @@ var (
 	syslogLoggerCh chan<- error
 	syslogLogger   service.Logger
 	gotest         goTesting
-	logCh          = NewChannel[logEntry](1000)
+	logCh          = make(chan logEntry)
 	wgLogCh        sync.WaitGroup
+	isLogClosed    bool
 
 	ColorDefault color.Color = 0
 	ColorDebug   color.Color = ColorDefault
@@ -84,7 +85,7 @@ func init() {
 		defer wgLogCh.Done()
 
 		for {
-			entry, ok := logCh.Get()
+			entry, ok := <-logCh
 			if !ok {
 				return
 			}
@@ -465,18 +466,20 @@ func logOutput(entry logEntry) {
 }
 
 func closeLog() error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	isLogClosed = true
+
+	close(logCh)
+
+	wgLogCh.Wait()
+
 	prolog(fmt.Sprintf("<<< End - %s %s %s", strings.ToUpper(app.Title), app.Version, strings.Repeat("-", 100)))
 
 	if logger != nil {
 		logger.close()
 	}
-
-	err := logCh.Close()
-	if Error(err) {
-		return err
-	}
-
-	wgLogCh.Wait()
 
 	return nil
 }
@@ -660,6 +663,10 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 	mu.Lock()
 	defer mu.Unlock()
 
+	if isLogClosed {
+		return
+	}
+
 	if level >= LEVEL_ERROR {
 		if err.Error() == lastErr {
 			return
@@ -688,7 +695,7 @@ func appendLog(level int, color color.Color, ri RuntimeInfo, msg string, err err
 	}
 
 	if level != LEVEL_PANIC && !*FlagLogVerbose {
-		Error(logCh.Put(entry))
+		logCh <- entry
 	} else {
 		logOutput(entry)
 	}
