@@ -674,6 +674,10 @@ func NewTimeoutReader(reader io.Reader, initialTimeout bool, timeout time.Durati
 		timeout:        timeout,
 	}
 
+	if timeoutReader.timeout == 0 {
+		return timeoutReader
+	}
+
 	if !timeoutReader.canSet && initialTimeout {
 		timeoutReader.ctx, timeoutReader.cancel = context.WithTimeout(context.Background(), timeout)
 	}
@@ -682,6 +686,10 @@ func NewTimeoutReader(reader io.Reader, initialTimeout bool, timeout time.Durati
 }
 
 func (timeoutReader *TimeoutReader) Read(p []byte) (int, error) {
+	if timeoutReader.timeout == 0 {
+		return timeoutReader.reader.Read(p)
+	}
+
 	if !timeoutReader.initialTimeout && timeoutReader.FirstRead.IsZero() {
 		n, err := timeoutReader.reader.Read(p[0:1])
 
@@ -737,6 +745,10 @@ func NewTimeoutWriter(writer io.Writer, initialTimeout bool, timeout time.Durati
 		timeout:        timeout,
 	}
 
+	if timeoutWriter.timeout == 0 {
+		return timeoutWriter
+	}
+
 	if !timeoutWriter.canSet && initialTimeout {
 		timeoutWriter.ctx, timeoutWriter.cancel = context.WithTimeout(context.Background(), timeout)
 	}
@@ -745,6 +757,10 @@ func NewTimeoutWriter(writer io.Writer, initialTimeout bool, timeout time.Durati
 }
 
 func (timeoutWriter *TimeoutWriter) Write(p []byte) (int, error) {
+	if timeoutWriter.timeout == 0 {
+		return timeoutWriter.writer.Write(p)
+	}
+
 	if !timeoutWriter.initialTimeout && timeoutWriter.FirstWrite.IsZero() {
 		n, err := timeoutWriter.writer.Write(p[0:1])
 
