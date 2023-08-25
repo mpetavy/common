@@ -27,7 +27,7 @@ func TestNewThrottledWriter(t *testing.T) {
 
 	assert.Equal(t, data, buf.Bytes())
 
-	expected := math.Ceil(float64(Max(0, len(data)-bytesPerSecond)) / float64(bytesPerSecond))
+	expected := math.Ceil(float64(max(0, len(data)-bytesPerSecond)) / float64(bytesPerSecond))
 
 	assert.GreaterOrEqual(t, needed, expected)
 }

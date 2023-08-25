@@ -1,6 +1,7 @@
 package common
 
 import (
+	"golang.org/x/exp/slices"
 	"reflect"
 	"sync"
 )
@@ -65,26 +66,30 @@ func (this *EventManager) RemoveListener(eventFunc *EventFunc) {
 	}
 }
 
-func (this *EventManager) Emit(event interface{}, reverse bool) bool {
+func (this *EventManager) Emit(event interface{}, reverse bool) {
 	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	b := false
 
 	eventType := reflect.TypeOf(event)
 
 	DebugFunc(eventType)
 
-	if funcs, ok := this.listeners[eventType]; ok {
-		if reverse {
-			funcs = ReverseSlice(funcs)
-		}
+	funcs, ok := this.listeners[eventType]
 
-		for _, receiver := range funcs {
-			(*receiver)(event)
-			b = true
-		}
+	if !ok {
+		this.mu.Unlock()
+
+		return
 	}
 
-	return b
+	funcs = slices.Clone(funcs)
+
+	this.mu.Unlock()
+
+	if reverse {
+		funcs = ReverseSlice(funcs)
+	}
+
+	for _, receiver := range funcs {
+		(*receiver)(event)
+	}
 }

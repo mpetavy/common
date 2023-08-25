@@ -32,14 +32,6 @@ var (
 	FlagIoReadwriteTimeout = flag.Int(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
 )
 
-func DeadlineByMsec(msec int) time.Time {
-	if msec > 0 {
-		return time.Now().Add(time.Duration(msec) * time.Millisecond)
-	} else {
-		return time.Time{}
-	}
-}
-
 func DeadlineByDuration(duration time.Duration) time.Time {
 	if duration > 0 {
 		return time.Now().Add(duration)
@@ -79,7 +71,7 @@ func GetHostInfos() (string, net.IP, []HostInfo, error) {
 
 		for _, addr := range addrs {
 			ipNet, ok := addr.(*net.IPNet)
-			if !ok || !IsIPV4(ipNet.IP) || ipNet.IP.IsLinkLocalUnicast() || ipNet.IP.IsLinkLocalMulticast() {
+			if !ok || !IsIPv4(ipNet.IP) || ipNet.IP.IsLinkLocalUnicast() || ipNet.IP.IsLinkLocalMulticast() {
 				continue
 			}
 
@@ -169,7 +161,7 @@ func FindFreePort(network string, startPort int, excludedPorts []int) (int, erro
 	return -1, fmt.Errorf("cannot find free port")
 }
 
-func IsIPV4(ip net.IP) bool {
+func IsIPv4(ip net.IP) bool {
 	if ip == nil {
 		return false
 	}
@@ -260,7 +252,7 @@ func FormatIP(ip net.IP) string {
 func IsLinkUp(nic string) (bool, error) {
 	// https://linuxconfig.org/how-to-detect-whether-a-physical-cable-is-connected-to-network-card-slot-on-linux
 
-	if IsWindowsOS() {
+	if IsWindows() {
 		return true, fmt.Errorf("not supported on Windows")
 	}
 
@@ -277,7 +269,7 @@ func IsLinkUp(nic string) (bool, error) {
 func IsLinkConnected(nic string) (bool, error) {
 	// https://linuxconfig.org/how-to-detect-whether-a-physical-cable-is-connected-to-network-card-slot-on-linux
 
-	if IsWindowsOS() {
+	if IsWindows() {
 		return true, fmt.Errorf("not supported on Windows")
 	}
 

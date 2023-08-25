@@ -3,89 +3,24 @@ package common
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"golang.org/x/exp/constraints"
 	"os"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 )
 
-const (
-	MaxUint = ^uint(0)
-	MaxInt  = int(MaxUint >> 1)
-)
-
-type ErrUndefinedFlag struct {
-	Flagname string
-}
-
-func (e *ErrUndefinedFlag) Error() string {
-	return fmt.Sprintf("Undefined flag: %s", e.Flagname)
-}
-
-type MultiValueFlag []string
-
-func (this *MultiValueFlag) String() string {
-	if this == nil {
-		return ""
-	}
-
-	return strings.Join(*this, ",")
-}
-
-func (this *MultiValueFlag) Set(value string) error {
-	splits := strings.Split(value, ",")
-	*this = append(*this, splits...)
-
-	return nil
-}
-
-type ChannelError struct {
-	m sync.Mutex
-	l []error
-}
-
-func (c *ChannelError) Add(err error) {
-	c.m.Lock()
-	c.l = append(c.l, err)
-	c.m.Unlock()
-}
-
-func (c *ChannelError) Get() error {
-	c.m.Lock()
-	defer c.m.Unlock()
-
-	if len(c.l) > 0 {
-		return c.l[0]
-	} else {
-		return nil
-	}
-}
-
-func (c *ChannelError) GetAll() []error {
-	return c.l
-}
-
-func (c *ChannelError) Exists() bool {
-	c.m.Lock()
-	defer c.m.Unlock()
-
-	return len(c.l) > 0
-}
-
 // IsWindowsOS reports true if underlying OS is MS Windows
-func IsWindowsOS() bool {
+func IsWindows() bool {
 	return runtime.GOOS == "windows"
 }
 
 // IsLinuxOS reports true if underlying OS is Linux
-func IsLinuxOS() bool {
+func IsLinux() bool {
 	return runtime.GOOS == "linux"
 }
 
 // IsMacOS reports true if underlying OS is MacOS
-func IsMacOS() bool {
+func IsMac() bool {
 	return runtime.GOOS == "darwin"
 }
 
@@ -116,36 +51,6 @@ func Eval(b bool, trueFunc interface{}, falseFunc interface{}) interface{} {
 	}
 }
 
-func Min[T constraints.Ordered](v ...T) T {
-	var r T
-	for i, vi := range v {
-		if i == 0 {
-			r = vi
-		} else {
-			if vi < r {
-				r = vi
-			}
-		}
-	}
-
-	return r
-}
-
-func Max[T constraints.Ordered](v ...T) T {
-	var r T
-	for i, vi := range v {
-		if i == 0 {
-			r = vi
-		} else {
-			if vi > r {
-				r = vi
-			}
-		}
-	}
-
-	return r
-}
-
 func Sleep(d time.Duration) {
 	if !*FlagLogVerbose {
 		time.Sleep(d)
@@ -155,11 +60,11 @@ func Sleep(d time.Duration) {
 
 	id := uuid.New().String()
 
-	Debug("2~Sleep [%s] %v... ", id, d)
+	Debug("Sleep [%s] %v... ", id, d)
 
 	time.Sleep(d)
 
-	Debug("2~Sleep [%s] %v continue", id, d)
+	Debug("Sleep [%s] %v continue", id, d)
 }
 
 func Catch(fn func()) (err error) {
@@ -179,10 +84,6 @@ func Catch(fn func()) (err error) {
 	fn()
 
 	return nil
-}
-
-func ToSlice[T any](slice ...T) []T {
-	return slice
 }
 
 func Exit(code int) {

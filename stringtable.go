@@ -85,7 +85,7 @@ func (st *StringTable) String() string {
 		}
 
 		for x := 0; x < len(st.cols[y]); x++ {
-			colLengths[x] = Max(colLengths[x], len(fmt.Sprintf("%v", st.cols[y][x])))
+			colLengths[x] = max(colLengths[x], len(fmt.Sprintf("%v", st.cols[y][x])))
 		}
 	}
 

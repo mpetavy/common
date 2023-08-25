@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/stretchr/testify/assert"
 	"io"
+	"os"
 	"testing"
 	"time"
 )
@@ -84,4 +85,24 @@ func TestReadFully(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, data, buf)
+}
+
+func TestFileMode(t *testing.T) {
+	f, err := CreateTempFile()
+	assert.NoError(t, err)
+
+	err = os.Remove(f.Name())
+	assert.NoError(t, err)
+
+	f, err = os.OpenFile(f.Name(), os.O_CREATE|os.O_TRUNC|os.O_RDWR, ReadOnlyFileMode)
+	assert.NoError(t, err)
+
+	err = f.Close()
+	assert.NoError(t, err)
+
+	err = os.Chmod(f.Name(), DefaultFileMode)
+	assert.NoError(t, err)
+
+	err = os.Remove(f.Name())
+	assert.NoError(t, err)
 }

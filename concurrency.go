@@ -114,80 +114,10 @@ func GoRoutineName() string {
 	return string(bytes.TrimSuffix(buf, []byte("[running]")))
 }
 
-type Channel[K any] struct {
-	mu   sync.RWMutex
-	ch   chan K
-	open bool
-}
-
-func NewChannel[T any](len int) *Channel[T] {
-	return &Channel[T]{
-		ch:   make(chan T, len),
-		open: true,
-	}
-}
-
-func (ch *Channel[T]) isOpen() error {
-	if !ch.open {
-		return fmt.Errorf("channel closed")
-	}
-
-	return nil
-}
-
-func (ch *Channel[T]) IsOpen() error {
-	ch.mu.RLock()
-	defer ch.mu.RUnlock()
-
-	return ch.isOpen()
-}
-
-func (ch *Channel[T]) Put(value T) error {
-	ch.mu.Lock()
-	defer ch.mu.Unlock()
-
-	err := ch.isOpen()
-
-	if Error(err) {
-		return err
-	}
-
-	ch.ch <- value
-
-	return nil
-}
-
-func (ch *Channel[T]) Get() (T, bool) {
-	err := ch.IsOpen()
-
-	if err != nil {
-		return *new(T), false
-	}
-
-	value, ok := <-ch.ch
-
-	return value, ok
-}
-
-func (ch *Channel[T]) Close() error {
-	ch.mu.Lock()
-	defer ch.mu.Unlock()
-
-	err := ch.isOpen()
-
-	if Error(err) {
-		return err
-	}
-
-	close(ch.ch)
-
-	return nil
-}
-
 type TimeoutRegister[T comparable] struct {
 	mutex    sync.Mutex
 	timeout  time.Duration
-	quit     chan struct{}
+	closeCh  chan struct{}
 	register map[T]time.Time
 	ticker   *time.Ticker
 }
@@ -196,7 +126,7 @@ func NewTimeoutRegister[T comparable](timeout time.Duration) *TimeoutRegister[T]
 	tr := &TimeoutRegister[T]{
 		mutex:    sync.Mutex{},
 		timeout:  timeout,
-		quit:     make(chan struct{}),
+		closeCh:  make(chan struct{}),
 		register: make(map[T]time.Time),
 		ticker:   time.NewTicker(time.Second),
 	}
@@ -208,7 +138,7 @@ func NewTimeoutRegister[T comparable](timeout time.Duration) *TimeoutRegister[T]
 			select {
 			case <-tr.ticker.C:
 				tr.clean()
-			case <-tr.quit:
+			case <-tr.closeCh:
 				tr.ticker.Stop()
 				break loop
 			}
@@ -260,8 +190,8 @@ func (tr *TimeoutRegister[T]) Register(item T) {
 	tr.register[item] = time.Now()
 }
 
-func (tr *TimeoutRegister[T]) Quit() {
+func (tr *TimeoutRegister[T]) Close() {
 	DebugFunc()
 
-	tr.quit <- struct{}{}
+	tr.closeCh <- struct{}{}
 }

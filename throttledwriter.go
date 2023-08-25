@@ -18,7 +18,7 @@ func (w *throttledWriter) Write(p []byte) (int, error) {
 	index := 0
 
 	for {
-		amount := Min(w.bytesPerSeconds, len(p)-index)
+		amount := min(w.bytesPerSeconds, len(p)-index)
 
 		timestamp := time.Now()
 		n, err := WriteFully(w.writer, p[index:index+amount])

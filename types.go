@@ -66,7 +66,7 @@ func Trim4Path(path string) string {
 
 	path = string(spath)
 
-	if IsWindowsOS() {
+	if IsWindows() {
 		reservedOnWindows := []string{"CON", "PRN", "AUX", "NUL", " COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
 
 		for _, reserved := range reservedOnWindows {
@@ -118,7 +118,7 @@ func SurroundWith(str []string, prefixSuffix string) []string {
 }
 
 func DefaultEncoding() string {
-	if IsWindowsOS() {
+	if IsWindows() {
 		return ISO_8859_1
 	} else {
 		return UTF_8
@@ -126,7 +126,7 @@ func DefaultEncoding() string {
 }
 
 func DefaultConsoleEncoding() string {
-	if IsWindowsOS() {
+	if IsWindows() {
 		return IBM850
 	} else {
 		return UTF_8
@@ -232,41 +232,6 @@ func EqualWildcards(s, mask string) (bool, error) {
 	}
 
 	return b, err
-}
-
-func ReflectStructField(Iface interface{}, FieldName string) (*reflect.Value, error) {
-	valueIface := reflect.ValueOf(Iface)
-
-	// Check if the passed interface is a pointer
-	if valueIface.Type().Kind() != reflect.Ptr {
-		// Create a new type of Iface's Type, so we have a pointer to work with
-		valueIface = reflect.New(reflect.TypeOf(Iface))
-	}
-
-	// 'dereference' with Elem() and get the field by name
-	field := valueIface.Elem().FieldByName(FieldName)
-	if !field.IsValid() {
-		return nil, fmt.Errorf("Interface `%s` does not have the field `%s`", valueIface.Type(), FieldName)
-	}
-
-	return &field, nil
-}
-
-func ReflectStructMethod(Iface interface{}, MethodName string) (*reflect.Value, error) {
-	valueIface := reflect.ValueOf(Iface)
-
-	// Check if the passed interface is a pointer
-	if valueIface.Type().Kind() != reflect.Ptr {
-		// Create a new type of Iface, so we have a pointer to work with
-		valueIface = reflect.New(reflect.TypeOf(Iface))
-	}
-
-	// Get the method by name
-	method := valueIface.MethodByName(MethodName)
-	if !method.IsValid() {
-		return nil, fmt.Errorf("Couldn't find method `%s` in interface `%s`, is it Exported?", MethodName, valueIface.Type())
-	}
-	return &method, nil
 }
 
 func IterateStruct(data interface{}, fieldFunc func(path string, fieldType reflect.StructField, fieldValue reflect.Value) error) error {
@@ -408,7 +373,7 @@ func FormatMemory(bytes int64) string {
 		r = r * -1
 	}
 
-	return fmt.Sprintf("%.2f %s", r, MEMORY_UNITS[Max(i, 0)])
+	return fmt.Sprintf("%.2f %s", r, MEMORY_UNITS[max(i, 0)])
 }
 
 func ExtractNumber(txt string) (float64, error) {

@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	ReadOnlyFileMode = FileMode(true, true, false)
+	ReadOnlyFileMode = FileMode(true, false, false)
 	DefaultFileMode  = FileMode(true, true, false)
 	DefaultDirMode   = FileMode(true, true, true)
 
@@ -384,7 +384,7 @@ func FileNameExt(filename string) string {
 func CleanPath(path string) string {
 	result := path
 
-	if IsWindowsOS() {
+	if IsWindows() {
 		result = strings.Replace(result, "/", string(filepath.Separator), -1)
 	} else {
 		result = strings.Replace(result, "\\", string(filepath.Separator), -1)

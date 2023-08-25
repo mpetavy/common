@@ -161,7 +161,9 @@ func ResetConfiguration() error {
 
 	buf := &bytes.Buffer{}
 
-	if Events.Emit(EventConfigurationReset{buf}, false) && buf.Len() > 0 {
+	Events.Emit(EventConfigurationReset{buf}, false)
+
+	if buf.Len() > 0 {
 		err := SaveConfigurationFile(buf.Bytes())
 		if Error(err) {
 			return err

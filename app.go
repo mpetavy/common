@@ -167,8 +167,8 @@ func Init(title string, version string, git string, build string, date string, d
 	Panic(err)
 
 	app.ServiceConfig = &service.Config{
-		Name:             Eval(IsWindowsOS(), Capitalize(app.Title), app.Title).(string),
-		DisplayName:      Eval(IsWindowsOS(), Capitalize(app.Title), app.Title).(string),
+		Name:             Eval(IsWindows(), Capitalize(app.Title), app.Title).(string),
+		DisplayName:      Eval(IsWindows(), Capitalize(app.Title), app.Title).(string),
 		Description:      Capitalize(app.Description),
 		WorkingDirectory: filepath.Dir(executable),
 	}

@@ -69,7 +69,7 @@ func (this *Runner) execute(wg *sync.WaitGroup) error {
 }
 
 func MultiRunner(runners []Runner) error {
-	chErr := ChannelError{}
+	chErr := Sync[error]{}
 
 	wg := sync.WaitGroup{}
 
@@ -79,7 +79,7 @@ func MultiRunner(runners []Runner) error {
 
 			err := r.execute(&wg)
 			if err != nil {
-				chErr.Add(err)
+				chErr.Set(err)
 			}
 		}(&runners[i])
 	}
@@ -162,7 +162,7 @@ func readStringTable(txt string, separator string) []string {
 			break
 		}
 		lines[i] = line
-		length = Max(length, len(lines[i]))
+		length = max(length, len(lines[i]))
 	}
 
 	start := 0
@@ -192,7 +192,7 @@ func GetSystemInfo() (*SystemInfo, error) {
 
 	si := &SystemInfo{}
 
-	if IsWindowsOS() {
+	if IsWindows() {
 		r := NewRunner(exec.Command("wmic", "os"), time.Second*5)
 
 		err := r.execute(nil)

@@ -71,7 +71,7 @@ func init() {
 	})
 
 	Events.AddListener(EventFlagsParsed{}, func(event Event) {
-		if *FlagLogSys && IsLinuxOS() && !IsRunningInteractive() {
+		if *FlagLogSys && IsLinux() && !IsRunningInteractive() {
 			// with SYSTEMD everything which is printed to console is automatically printed to journalctl
 
 			*FlagLogSys = false
