@@ -289,7 +289,7 @@ func TraceError(err error) error {
 
 func DebugError(err error) bool {
 	if isDisabled || err == nil || IsErrExit(err) {
-		return false
+		return err != nil
 	}
 
 	mu.Lock()
@@ -304,7 +304,7 @@ func DebugError(err error) bool {
 
 func WarnError(err error) bool {
 	if isDisabled || err == nil || IsErrExit(err) {
-		return false
+		return err != nil
 	}
 
 	mu.Lock()
@@ -319,7 +319,7 @@ func WarnError(err error) bool {
 
 func Error(err error) bool {
 	if isDisabled || err == nil || IsErrExit(err) {
-		return false
+		return err != nil
 	}
 
 	mu.Lock()
