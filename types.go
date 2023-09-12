@@ -10,6 +10,7 @@ import (
 	"golang.org/x/exp/constraints"
 	"io"
 	"math"
+	"os/exec"
 	"reflect"
 	"regexp"
 	"sort"
@@ -546,4 +547,10 @@ func PrintBytes(ba []byte, breakOnLineEndings bool) string {
 	}
 
 	return str
+}
+
+func CmdToString(cmd *exec.Cmd) string {
+	s := SurroundWith(cmd.Args, "\"")
+
+	return strings.Join(s, " ")
 }

@@ -4,7 +4,7 @@ import "sync"
 
 type Sync[T any] struct {
 	mu    sync.RWMutex
-	ok    bool
+	isSet bool
 	value T
 }
 
@@ -12,7 +12,7 @@ func (cv *Sync[T]) IsSet() bool {
 	cv.mu.RLock()
 	defer cv.mu.RUnlock()
 
-	return cv.ok
+	return cv.isSet
 }
 
 func (cv *Sync[T]) Get() T {
@@ -26,7 +26,7 @@ func (cv *Sync[T]) Set(value T) {
 	cv.mu.Lock()
 	defer cv.mu.Unlock()
 
-	cv.ok = true
+	cv.isSet = true
 	cv.value = value
 }
 

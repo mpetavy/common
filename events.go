@@ -33,7 +33,7 @@ func (this *EventManager) AddListener(event interface{}, eventFunc EventFunc) *E
 
 	eventType := reflect.TypeOf(event)
 
-	DebugFunc()
+	DebugFunc("%T", event)
 
 	if _, ok := this.listeners[eventType]; ok {
 		this.listeners[eventType] = append(this.listeners[eventType], &eventFunc)

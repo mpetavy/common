@@ -303,7 +303,7 @@ func FileBackup(filename string) error {
 
 		if FileExists_(src) {
 			if FileExists_(dst) {
-				err := FileDelete(dst)
+				err := os.Remove(dst)
 				if Error(err) {
 					return err
 				}
