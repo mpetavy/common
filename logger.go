@@ -176,6 +176,7 @@ func closeLog() error {
 type entry struct {
 	Timestamp  string `json:"timestamp"`
 	Level      string `json:"level"`
+	Source     string `json:"source"`
 	Message    string `json:"message"`
 	Stacktrace string `json:"stacktrace"`
 }
@@ -185,10 +186,13 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 
 	ri := GetRuntimeInfo(index)
 
+	source := fmt.Sprintf("%s/%s:%d/%s", ri.Pack, ri.File, ri.Line, ri.Fn)
+
 	if *FlagLogJson {
 		e := entry{
 			Timestamp:  time.Now().Format(time.RFC3339),
 			Level:      level,
+			Source:     source,
 			Message:    msg,
 			Stacktrace: "",
 		}
@@ -203,14 +207,12 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 	}
 
 	if isVerboseEnabled() {
-		prefix := fmt.Sprintf("%s/%s:%d/%s", ri.Pack, ri.File, ri.Line, ri.Fn)
-
 		max := 40
-		if len(prefix) > max {
-			prefix = prefix[len(prefix)-max:]
+		if len(source) > max {
+			source = source[len(source)-max:]
 		}
 
-		msg = fmt.Sprintf("%-"+strconv.Itoa(max)+"s %s", prefix, msg)
+		msg = fmt.Sprintf("%-"+strconv.Itoa(max)+"s %s", source, msg)
 	}
 
 	if addStacktrace {
