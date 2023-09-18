@@ -148,7 +148,7 @@ func initConfiguration() error {
 		return err
 	}
 
-	err = ActivateConfigurationFile(ba)
+	err = SetFlags(ba)
 	if Error(err) {
 		return err
 	}
@@ -303,7 +303,7 @@ func getValue(m map[string]string, key string) (string, bool) {
 	return v, ok
 }
 
-func ActivateConfigurationFile(ba []byte) error {
+func SetFlags(ba []byte) error {
 	DebugFunc()
 
 	mapFlag, err := registerArgsFlags()
