@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 )
 
@@ -53,6 +54,7 @@ var (
 	lastErr    string
 	onceInit   sync.Once
 	isDisabled bool
+	testT      testingT
 )
 
 func isVerboseEnabled() bool {
@@ -146,15 +148,15 @@ func initLog() error { //FIXME
 		for _, m := range msgs {
 			switch {
 			case strings.HasPrefix(m, PrefixDebug):
-				LogDebug.Print(m[len(PrefixDebug):])
+				logDebugPrint(m[len(PrefixDebug):])
 			case strings.HasPrefix(m, PrefixInfo):
-				LogInfo.Print(m[len(PrefixInfo):])
+				logInfoPrint(m[len(PrefixInfo):])
 			case strings.HasPrefix(m, PrefixWarn):
-				LogInfo.Print(m[len(PrefixWarn):])
+				logWarnPrint(m[len(PrefixWarn):])
 			case strings.HasPrefix(m, PrefixError):
-				LogInfo.Print(m[len(PrefixError):])
+				logErrorPrint(m[len(PrefixError):])
 			case strings.HasPrefix(m, PrefixFatal):
-				LogInfo.Print(m[len(PrefixFatal):])
+				logFatalPrint(m[len(PrefixFatal):])
 			}
 		}
 	})
@@ -171,6 +173,15 @@ func closeLog() error {
 	}
 
 	return nil
+}
+
+func InitTesting(t *testing.T) {
+	testT = t
+}
+
+type testingT interface {
+	Logf(format string, args ...interface{})
+	Fatalf(format string, args ...interface{})
 }
 
 type entry struct {
@@ -222,6 +233,56 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 	return msg
 }
 
+func logDebugPrint(s string) {
+	if testT != nil {
+		testT.Logf(s)
+
+		return
+	}
+
+	logDebugPrint(s)
+}
+
+func logInfoPrint(s string) {
+	if testT != nil {
+		testT.Logf(s)
+
+		return
+	}
+
+	logInfoPrint(s)
+}
+
+func logWarnPrint(s string) {
+	if testT != nil {
+		testT.Logf(s)
+
+		return
+	}
+
+	logWarnPrint(s)
+}
+
+func logErrorPrint(s string) {
+	if testT != nil {
+		testT.Fatalf(s)
+
+		return
+	}
+
+	logErrorPrint(s)
+}
+
+func logFatalPrint(s string) {
+	if testT != nil {
+		testT.Fatalf(s)
+
+		return
+	}
+
+	logDebugPrint(s)
+}
+
 func Debug(format string, args ...any) {
 	if isDisabled || !isVerboseEnabled() {
 		return
@@ -231,7 +292,7 @@ func Debug(format string, args ...any) {
 		format = fmt.Sprintf(format, args...)
 	}
 
-	LogDebug.Printf(formatLog(PrefixDebug, 2, strings.TrimSpace(format), false))
+	logDebugPrint(formatLog(PrefixDebug, 2, strings.TrimSpace(format), false))
 }
 
 func DebugFunc(args ...any) {
@@ -252,7 +313,7 @@ func DebugFunc(args ...any) {
 		str = strings.TrimSpace(fmt.Sprintf(ri.Fn+"(): "+fmt.Sprintf("%v", args[0]), args[1:]...))
 	}
 
-	LogDebug.Printf(formatLog(PrefixDebug, 2, str, false))
+	logDebugPrint(formatLog(PrefixDebug, 2, str, false))
 }
 
 func Info(format string, args ...any) {
@@ -264,7 +325,7 @@ func Info(format string, args ...any) {
 		format = fmt.Sprintf(format, args...)
 	}
 
-	LogInfo.Printf(formatLog(PrefixInfo, 2, strings.TrimSpace(format), false))
+	logInfoPrint(formatLog(PrefixInfo, 2, strings.TrimSpace(format), false))
 }
 
 func Warn(format string, args ...any) {
@@ -276,7 +337,7 @@ func Warn(format string, args ...any) {
 		format = fmt.Sprintf(format, args...)
 	}
 
-	LogWarn.Printf(formatLog(PrefixWarn, 2, strings.TrimSpace(format), false))
+	logWarnPrint(formatLog(PrefixWarn, 2, strings.TrimSpace(format), false))
 }
 
 func TraceError(err error) error {
@@ -298,7 +359,7 @@ func DebugError(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		LogDebug.Printf(formatLog(PrefixDebug, 2, strings.TrimSpace(err.Error()), true))
+		logDebugPrint(formatLog(PrefixDebug, 2, strings.TrimSpace(err.Error()), true))
 	}
 
 	return true
@@ -313,7 +374,7 @@ func WarnError(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		LogWarn.Printf(formatLog(PrefixWarn, 2, strings.TrimSpace(err.Error()), true))
+		logWarnPrint(formatLog(PrefixWarn, 2, strings.TrimSpace(err.Error()), true))
 	}
 
 	return true
@@ -328,7 +389,7 @@ func Error(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		LogError.Printf(formatLog(PrefixError, 2, strings.TrimSpace(err.Error()), true))
+		logErrorPrint(formatLog(PrefixError, 2, strings.TrimSpace(err.Error()), true))
 	}
 
 	lastErr = err.Error()
@@ -345,16 +406,14 @@ func Panic(err error) {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		LogFatal.Printf(formatLog(PrefixFatal, 2, strings.TrimSpace(err.Error()), true))
+		logFatalPrint(formatLog(PrefixFatal, 2, strings.TrimSpace(err.Error()), true))
 	}
 
 	Exit(1)
 }
 
-func ClearLogs() error {
+func ClearLogs() {
 	rw.Clear()
-
-	return nil
 }
 
 func GetLogs(w io.Writer) error {

@@ -36,8 +36,6 @@ func (mw *memoryWriter) Copy(w io.Writer) error {
 	return nil
 }
 
-func (mw *memoryWriter) Clear() error {
+func (mw *memoryWriter) Clear() {
 	mw.msgs = nil
-
-	return nil
 }
