@@ -240,7 +240,7 @@ func logDebugPrint(s string) {
 		return
 	}
 
-	logDebugPrint(s)
+	LogDebug.Print(s)
 }
 
 func logInfoPrint(s string) {
@@ -250,7 +250,7 @@ func logInfoPrint(s string) {
 		return
 	}
 
-	logInfoPrint(s)
+	LogInfo.Print(s)
 }
 
 func logWarnPrint(s string) {
@@ -260,7 +260,7 @@ func logWarnPrint(s string) {
 		return
 	}
 
-	logWarnPrint(s)
+	LogWarn.Print(s)
 }
 
 func logErrorPrint(s string) {
@@ -270,7 +270,7 @@ func logErrorPrint(s string) {
 		return
 	}
 
-	logErrorPrint(s)
+	LogError.Print(s)
 }
 
 func logFatalPrint(s string) {
