@@ -359,7 +359,7 @@ func DebugError(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logDebugPrint(formatLog(PrefixDebug, 2, strings.TrimSpace(err.Error()), true))
+		logDebugPrint(formatLog(PrefixDebug, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
 	}
 
 	return true
@@ -374,7 +374,7 @@ func WarnError(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logWarnPrint(formatLog(PrefixWarn, 2, strings.TrimSpace(err.Error()), true))
+		logWarnPrint(formatLog(PrefixWarn, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
 	}
 
 	return true
@@ -389,7 +389,7 @@ func Error(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logErrorPrint(formatLog(PrefixError, 2, strings.TrimSpace(err.Error()), true))
+		logErrorPrint(formatLog(PrefixError, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
 	}
 
 	lastErr = err.Error()
@@ -406,7 +406,7 @@ func Panic(err error) {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logFatalPrint(formatLog(PrefixFatal, 2, strings.TrimSpace(err.Error()), true))
+		logFatalPrint(formatLog(PrefixFatal, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
 	}
 
 	Exit(1)
