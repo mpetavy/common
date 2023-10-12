@@ -147,7 +147,7 @@ func (networkClient *NetworkClient) Connect() (*NetworkConnection, error) {
 	if networkClient.tlsConfig != nil {
 		Debug("Dial TLS connection: %s...", networkClient.address)
 
-		socket, err := tls.DialWithDialer(&net.Dialer{Deadline: time.Now().Add(MillisecondToDuration(*FlagIoConnectTimeout))}, "tcp", networkClient.address, networkClient.tlsConfig)
+		socket, err := tls.DialWithDialer(&net.Dialer{Deadline: CalcDeadline(time.Now(), MillisecondToDuration(*FlagIoConnectTimeout))}, "tcp", networkClient.address, networkClient.tlsConfig)
 		if Error(err) {
 			return nil, err
 		}

@@ -267,7 +267,7 @@ func DisableCookie(context echo.Context) error {
 
 func SetCookie(context echo.Context, cookie *sessions.Session, timeout time.Duration) error {
 	cookie.Options.MaxAge = 0
-	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", time.Now().Add(timeout).Format(DateTimeMask))
+	cookie.Values[COOKIE_EXPIRE] = fmt.Sprintf("%s", CalcDeadline(time.Now(), timeout).Format(DateTimeMask))
 
 	err := SessionStore.Save(context.Request(), context.Response(), cookie)
 	if Error(err) {
@@ -1140,7 +1140,6 @@ func (this *Webpage) HTML() (string, error) {
 		CanonicalEndTags: true,
 		CanonicalText:    true,
 		CanonicalAttrVal: false,
-		UseCRLF:          false,
 	}
 
 	html, err := this.doc.WriteToString()

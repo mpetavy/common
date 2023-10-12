@@ -176,3 +176,11 @@ func MillisecondToDuration(msec int) time.Duration {
 func DurationToMillisecond(d time.Duration) int {
 	return int(d.Milliseconds())
 }
+func CalcDeadline(t time.Time, d time.Duration) time.Time {
+	if d == 0 {
+		return time.Time{}
+
+	}
+
+	return t.Add(d)
+}

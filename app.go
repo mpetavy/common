@@ -122,8 +122,6 @@ var (
 )
 
 func Init(title string, version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
-	Debug("PID: %d", os.Getpid())
-
 	FlagAppProduct = flag.String(FlagNameAppProduct, Title(), "app product")
 	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
 
@@ -438,6 +436,8 @@ func showBanner() {
 			if !app.Time.IsZero() {
 				fmt.Printf("Time:      %s\n", app.Time.Format(time.RFC822))
 			}
+			fmt.Printf("PID:       %d\n", os.Getpid())
+
 			fmt.Printf("\n")
 		}
 	})
@@ -461,7 +461,7 @@ func nextTicker() *time.Ticker {
 		newTicker.Stop()
 	} else {
 		if !isFirstTicker {
-			Debug("next tick: %s sleep: %v\n", time.Now().Add(tickerSleep).Truncate(MillisecondToDuration(*FlagAppTicker)).Format(DateTimeMilliMask), tickerSleep)
+			Debug("next tick: %s sleep: %v\n", CalcDeadline(time.Now(), tickerSleep).Truncate(MillisecondToDuration(*FlagAppTicker)).Format(DateTimeMilliMask), tickerSleep)
 		}
 	}
 

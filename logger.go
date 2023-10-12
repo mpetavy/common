@@ -50,7 +50,7 @@ var (
 	LogInfo    *log.Logger = log.New(rw, prefix(PrefixInfo), 0)
 	LogWarn    *log.Logger = log.New(rw, prefix(PrefixWarn), 0)
 	LogError   *log.Logger = log.New(rw, prefix(PrefixError), 0)
-	LogFatal   *log.Logger = log.New(rw, prefix(PrefixFatal), 0)
+	LogFatal   *log.Logger = log.New(os.Stderr, prefix(PrefixFatal), 0)
 	lastErr    string
 	onceInit   sync.Once
 	isDisabled bool
@@ -93,7 +93,7 @@ func prefix(p string) string {
 	return ""
 }
 
-func initLog() error { //FIXME
+func initLog() error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -218,12 +218,12 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 	}
 
 	if isVerboseEnabled() {
-		max := 40
-		if len(source) > max {
-			source = source[len(source)-max:]
+		maxLen := 40
+		if len(source) > maxLen {
+			source = source[len(source)-maxLen:]
 		}
 
-		msg = fmt.Sprintf("%-"+strconv.Itoa(max)+"s %s", source, msg)
+		msg = fmt.Sprintf("%-"+strconv.Itoa(maxLen)+"s %s", source, msg)
 	}
 
 	if addStacktrace {
@@ -280,7 +280,7 @@ func logFatalPrint(s string) {
 		return
 	}
 
-	logDebugPrint(s)
+	LogFatal.Print(s)
 }
 
 func Debug(format string, args ...any) {
@@ -293,6 +293,18 @@ func Debug(format string, args ...any) {
 	}
 
 	logDebugPrint(formatLog(PrefixDebug, 2, strings.TrimSpace(format), false))
+}
+
+func DebugIndex(index int, format string, args ...any) {
+	if isDisabled || !isVerboseEnabled() {
+		return
+	}
+
+	if len(args) > 0 {
+		format = fmt.Sprintf(format, args...)
+	}
+
+	logDebugPrint(formatLog(PrefixDebug, 2+index, strings.TrimSpace(format), false))
 }
 
 func DebugFunc(args ...any) {
@@ -351,7 +363,7 @@ func TraceError(err error) error {
 }
 
 func DebugError(err error) bool {
-	if isDisabled || err == nil || IsErrExit(err) {
+	if isDisabled || !isVerboseEnabled() || err == nil || IsErrExit(err) {
 		return err != nil
 	}
 
@@ -360,6 +372,21 @@ func DebugError(err error) bool {
 
 	if err.Error() != lastErr {
 		logDebugPrint(formatLog(PrefixDebug, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
+	}
+
+	return true
+}
+
+func DebugErrorIndex(index int, err error) bool {
+	if isDisabled || !isVerboseEnabled() || err == nil || IsErrExit(err) {
+		return err != nil
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if err.Error() != lastErr {
+		logDebugPrint(formatLog(PrefixDebug, 2+index, strings.TrimSpace(err.Error()), isVerboseEnabled()))
 	}
 
 	return true
@@ -385,6 +412,10 @@ func Error(err error) bool {
 		return err != nil
 	}
 
+	if IsSuppressedError(err) {
+		return DebugErrorIndex(1, err)
+	}
+
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -405,9 +436,7 @@ func Panic(err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if err.Error() != lastErr {
-		logFatalPrint(formatLog(PrefixFatal, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
-	}
+	logFatalPrint(formatLog(PrefixFatal, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
 
 	Exit(1)
 }

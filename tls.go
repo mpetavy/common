@@ -371,12 +371,11 @@ func TlsConfigFromBuffer(ba []byte, password string) (*tls.Config, error) {
 	}
 
 	return &tls.Config{
-		Rand:                     rand.Reader,
-		PreferServerCipherSuites: true,
-		Certificates:             []tls.Certificate{*certificate},
-		RootCAs:                  rootCertPool,
-		MinVersion:               TlsVersionToId(*FlagTlsMinVersion),
-		MaxVersion:               TlsVersionToId(*FlagTlsMaxVersion),
+		Rand:         rand.Reader,
+		Certificates: []tls.Certificate{*certificate},
+		RootCAs:      rootCertPool,
+		MinVersion:   TlsVersionToId(*FlagTlsMinVersion),
+		MaxVersion:   TlsVersionToId(*FlagTlsMaxVersion),
 		CurvePreferences: []tls.CurveID{
 			tls.CurveP521,
 			tls.CurveP384,
@@ -489,8 +488,8 @@ func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
 		Subject: pkix.Name{
 			CommonName:   hostname,
 			Organization: []string{TitleVersion(true, true, true)}},
-		NotBefore:             time.Now().Add(time.Duration(24) * time.Hour * -1),
-		NotAfter:              time.Now().Add(time.Duration(10) * 365 * 24 * time.Hour),
+		NotBefore:             CalcDeadline(time.Now(), time.Duration(24)*time.Hour*-1),
+		NotAfter:              CalcDeadline(time.Now(), time.Duration(10)*365*24*time.Hour),
 		DNSNames:              []string{hostname, "localhost"},
 		BasicConstraintsValid: true,
 	}

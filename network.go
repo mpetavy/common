@@ -32,14 +32,6 @@ var (
 	FlagIoReadwriteTimeout = flag.Int(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
 )
 
-func DeadlineByDuration(duration time.Duration) time.Time {
-	if duration > 0 {
-		return time.Now().Add(duration)
-	} else {
-		return time.Time{}
-	}
-}
-
 type HostInfo struct {
 	Intf  net.Interface
 	IPNet *net.IPNet
@@ -53,7 +45,6 @@ func GetHostInfos() (string, net.IP, []HostInfo, error) {
 	if Error(err) {
 		return "", nil, nil, err
 	}
-
 	intfs, err := net.Interfaces()
 	if Error(err) {
 		return "", nil, nil, err
@@ -204,8 +195,6 @@ func WaitUntilNetworkIsAvailable(lookupIp net.IP) error {
 		if DebugError(err) {
 			return err
 		}
-
-		//FIXME test on link
 
 		if lookupIp != nil {
 			for _, ip := range hostInfos {

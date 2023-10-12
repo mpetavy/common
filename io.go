@@ -557,15 +557,6 @@ func WriteJsonFile(filename string, v interface{}, fileMode os.FileMode) error {
 	return os.WriteFile(filename, ba, fileMode)
 }
 
-func ReadJsonFile(filename string, v interface{}) error {
-	ba, err := os.ReadFile(filename)
-	if Error(err) {
-		return err
-	}
-
-	return json.Unmarshal(ba, v)
-}
-
 type ZeroReader struct {
 }
 
@@ -781,7 +772,7 @@ func CanSetWriteTimeout(writer io.Writer) bool {
 func SetReadTimeout(reader io.Reader, timeout time.Duration) error {
 	deadliner, ok := reader.(hasReadDeadline)
 	if ok {
-		err := deadliner.SetReadDeadline(time.Now().Add(timeout))
+		err := deadliner.SetReadDeadline(CalcDeadline(time.Now(), timeout))
 		if Error(err) {
 			return err
 		}
@@ -807,7 +798,7 @@ func SetReadTimeout(reader io.Reader, timeout time.Duration) error {
 func SetWriteTimeout(writer io.Writer, timeout time.Duration) error {
 	deadliner, ok := writer.(hasWriteDeadline)
 	if ok {
-		err := deadliner.SetWriteDeadline(time.Now().Add(timeout))
+		err := deadliner.SetWriteDeadline(CalcDeadline(time.Now(), timeout))
 		if Error(err) {
 			return err
 		}

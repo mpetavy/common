@@ -60,11 +60,11 @@ func Sleep(d time.Duration) {
 
 	id := uuid.New().String()
 
-	Debug("Sleep [%s] %v... ", id, d)
+	DebugIndex(1, "Sleep [%s] %v... ", id, d)
 
 	time.Sleep(d)
 
-	Debug("Sleep [%s] %v continue", id, d)
+	DebugIndex(1, "Sleep [%s] %v continue", id, d)
 }
 
 func Catch(fn func()) (err error) {
