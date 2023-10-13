@@ -359,7 +359,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 			if i+1 == len(i18ns) {
 				i18ns = i18ns[0 : len(i18ns)-1]
 			} else {
-				i18ns = append(i18ns[:i], i18ns[i+1:]...)
+				i18ns = SliceDelete(i18ns, i)
 				i--
 			}
 		}

@@ -120,7 +120,7 @@ func initTls() {
 		if supported {
 			i++
 		} else {
-			defaultCiphers = append(defaultCiphers[:i], defaultCiphers[i+1:]...)
+			defaultCiphers = SliceDelete(defaultCiphers, i)
 		}
 	}
 

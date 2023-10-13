@@ -53,7 +53,7 @@ func (this *EventManager) RemoveListener(eventFunc *EventFunc) {
 	for eventType, funcs := range this.listeners {
 		for i := range funcs {
 			if funcs[i] == eventFunc {
-				funcs = append(funcs[:i], funcs[i+1:]...)
+				funcs = SliceDelete(funcs, i)
 				break
 			}
 		}

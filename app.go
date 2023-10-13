@@ -267,12 +267,12 @@ func installService() error {
 	for _, item := range []string{FlagNameService, FlagNameServiceUsername, FlagNameServicePassword} {
 		for i := range args {
 			if args[i] == "-"+item {
-				args = append(args[:i], args[i+2:]...)
+				args = SliceDeleteLen(args, i, 2)
 				break
 			}
 
 			if strings.HasPrefix(args[i], "-"+item) {
-				args = append(args[:i], args[i+1:]...)
+				args = SliceDelete(args, i)
 				break
 			}
 		}
@@ -400,7 +400,7 @@ func Run(mandatoryFlags []string) {
 
 	err := run()
 	if err != nil && !IsErrExit(err) {
-		Error(err)
+		Panic(err)
 	}
 }
 

@@ -259,7 +259,7 @@ func (networkServer *NetworkServer) Connect() (*NetworkConnection, error) {
 
 		for i := 0; i < len(networkServer.connections); i++ {
 			if networkServer.connections[i] == networkConnection {
-				networkServer.connections = append(networkServer.connections[:i], networkServer.connections[i+1:]...)
+				networkServer.connections = SliceDelete(networkServer.connections, i)
 
 				break
 			}

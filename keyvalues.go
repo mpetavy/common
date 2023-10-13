@@ -124,7 +124,7 @@ func (kvs *KeyValues) Remove(key string) (string, error) {
 
 	item := (*kvs)[index].Value()
 
-	*kvs = append((*kvs)[:index], (*kvs)[index+1:]...)
+	*kvs = SliceDelete(*kvs, index)
 
 	return item, nil
 }
