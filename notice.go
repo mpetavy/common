@@ -1,7 +1,6 @@
 package common
 
 import (
-	"golang.org/x/exp/slices"
 	"sync"
 )
 
@@ -33,9 +32,9 @@ func (this *Notice) RemoveChannel(ch chan struct{}) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
-	p := slices.Index(this.chs, ch)
+	p := SliceIndex(this.chs, ch)
 	if p != -1 {
-		this.chs = slices.Delete(this.chs, p, p+1)
+		this.chs = SliceDelete(this.chs, p)
 	}
 }
 

@@ -3,7 +3,6 @@ package common
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slices"
 	"os"
 	"path/filepath"
 	"sort"
@@ -177,7 +176,7 @@ func TestFilewalker(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.wantFiles), len(founds))
 			for _, item := range tt.wantFiles {
-				assert.True(t, slices.Contains(founds, item))
+				assert.True(t, SliceContains(founds, item))
 			}
 		})
 	}

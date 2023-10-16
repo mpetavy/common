@@ -5,12 +5,44 @@ import (
 	"testing"
 )
 
+func TestSliceClone(t *testing.T) {
+	assert.Equal(t, SliceClone([]string{}), []string{})
+	assert.Equal(t, SliceClone([]string{"a"}), []string{"a"})
+	assert.Equal(t, SliceClone([]string{"a", "b", "c"}), []string{"a", "b", "c"})
+
+	a := []string{"a"}
+	b := SliceClone(a)
+
+	a[0] = "x"
+
+	assert.Equal(t, a, []string{"x"})
+	assert.Equal(t, b, []string{"a"})
+}
+
 func TestSliceIndex(t *testing.T) {
 	assert.Equal(t, SliceIndex([]string{}, "a"), -1)
 	assert.Equal(t, SliceIndex([]string{"a"}, "a"), 0)
 	assert.Equal(t, SliceIndex([]string{"a", "b"}, "a"), 0)
 	assert.Equal(t, SliceIndex([]string{"a", "b"}, "b"), 1)
 	assert.Equal(t, SliceIndex([]string{"a", "b"}, "x"), -1)
+}
+
+func TestSliceIndexFunc(t *testing.T) {
+	assert.Equal(t, SliceIndexFunc([]string{}, func(e string) bool {
+		return false
+	}), -1)
+	assert.Equal(t, SliceIndexFunc([]string{"x"}, func(e string) bool {
+		return e == "x"
+	}), 0)
+	assert.Equal(t, SliceIndexFunc([]string{"a", "x", "b"}, func(e string) bool {
+		return e == "x"
+	}), 1)
+	assert.Equal(t, SliceIndexFunc([]string{"a", "b", "x"}, func(e string) bool {
+		return e == "x"
+	}), 2)
+	assert.Equal(t, SliceIndexFunc([]string{"a", "b", "c"}, func(e string) bool {
+		return e == "x"
+	}), -1)
 }
 
 func TestSliceAppend(t *testing.T) {
@@ -50,12 +82,13 @@ func TestSliceDelete(t *testing.T) {
 	assert.Equal(t, SliceDelete([]string{"a", "b", "c"}, 0), []string{"b", "c"})
 }
 
-func TestSliceDeleteLen(t *testing.T) {
-	assert.Equal(t, SliceDeleteLen([]string{"a", "b"}, 0, 2), []string{})
-	assert.Equal(t, SliceDeleteLen([]string{"a", "b"}, 0, 1), []string{"b"})
-	assert.Equal(t, SliceDeleteLen([]string{"a", "b"}, 1, 1), []string{"a"})
-	assert.Equal(t, SliceDeleteLen([]string{"a", "b", "c"}, 0, 2), []string{"c"})
-	assert.Equal(t, SliceDeleteLen([]string{"a", "b", "c"}, 1, 2), []string{"a"})
-	assert.Equal(t, SliceDeleteLen([]string{"a", "b", "c"}, 2, 1), []string{"a", "b"})
-	assert.Equal(t, SliceDeleteLen([]string{"a", "b", "c"}, 1, 1), []string{"a", "c"})
+func TestSliceDeleteRange(t *testing.T) {
+	assert.Equal(t, SliceDeleteRange([]string{"a", "b"}, 0, 2), []string{})
+	assert.Equal(t, SliceDeleteRange([]string{"a", "b"}, 0, 1), []string{"b"})
+	assert.Equal(t, SliceDeleteRange([]string{"a", "b"}, 1, 1), []string{"a", "b"})
+	assert.Equal(t, SliceDeleteRange([]string{"a", "b"}, 1, 2), []string{"a"})
+	assert.Equal(t, SliceDeleteRange([]string{"a", "b", "c"}, 0, 2), []string{"c"})
+	assert.Equal(t, SliceDeleteRange([]string{"a", "b", "c"}, 1, 2), []string{"a", "c"})
+	assert.Equal(t, SliceDeleteRange([]string{"a", "b", "c"}, 2, 3), []string{"a", "b"})
+	assert.Equal(t, SliceDeleteRange([]string{"a", "b", "c"}, 0, 3), []string{})
 }

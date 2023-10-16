@@ -1,7 +1,6 @@
 package common
 
 import (
-	"golang.org/x/exp/slices"
 	"reflect"
 	"sync"
 )
@@ -81,7 +80,7 @@ func (this *EventManager) Emit(event interface{}, reverse bool) {
 		return
 	}
 
-	funcs = slices.Clone(funcs)
+	funcs = SliceClone(funcs)
 
 	this.mu.Unlock()
 

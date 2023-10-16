@@ -1,8 +1,30 @@
 package common
 
+func SliceClone[S ~[]E, E any](s S) S {
+	n := make([]E, len(s))
+
+	copy(n, s)
+
+	return n
+}
+
+func SliceContains[S ~[]E, E comparable](s S, e E) bool {
+	return SliceIndex(s, e) != -1
+}
+
 func SliceIndex[S ~[]E, E comparable](s S, e E) int {
 	for i, t := range s {
 		if t == e {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func SliceIndexFunc[S ~[]E, E any](s S, fn func(E) bool) int {
+	for i, t := range s {
+		if fn(t) {
 			return i
 		}
 	}
@@ -29,7 +51,7 @@ func SliceRemove[S ~[]E, E comparable](s S, e E) S {
 	return n
 }
 
-func SliceInsert[S ~[]E, E comparable](s S, index int, e ...E) S {
+func SliceInsert[S ~[]E, E any](s S, index int, e ...E) S {
 	n := make([]E, len(s)+len(e))
 
 	copy(n, s[:index])
@@ -39,15 +61,15 @@ func SliceInsert[S ~[]E, E comparable](s S, index int, e ...E) S {
 	return n
 }
 
-func SliceDeleteLen[S ~[]E, E any](s S, index int, length int) S {
-	n := make([]E, len(s)-length)
+func SliceDeleteRange[S ~[]E, E any](s S, index0 int, index1 int) S {
+	n := make([]E, len(s)-(index1-index0))
 
-	copy(n, s[:index])
-	copy(n[index:], s[index+length:])
+	copy(n, s[:index0])
+	copy(n[index0:], s[index1:])
 
 	return n
 }
 
 func SliceDelete[S ~[]E, E any](s S, index int) S {
-	return SliceDeleteLen(s, index, 1)
+	return SliceDeleteRange(s, index, index+1)
 }

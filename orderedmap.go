@@ -1,9 +1,5 @@
 package common
 
-import (
-	"golang.org/x/exp/slices"
-)
-
 type item[K comparable, V any] struct {
 	key   K
 	value V
@@ -40,7 +36,7 @@ func (om *OrderedMap[K, V]) GetByIndex(index int) (K, V) {
 func (om *OrderedMap[K, V]) RemoveByIndex(index int) (K, V) {
 	item := om.items[index]
 
-	om.items = slices.Delete(om.items, index, index+1)
+	om.items = SliceDelete(om.items, index)
 
 	return item.key, item.value
 }
@@ -68,7 +64,7 @@ func (om *OrderedMap[K, V]) Remove(key K) V {
 	index := om.index(key)
 	item := om.items[index]
 
-	om.items = slices.Delete(om.items, index, index+1)
+	om.items = SliceDelete(om.items, index)
 
 	return item.value
 }

@@ -267,7 +267,7 @@ func installService() error {
 	for _, item := range []string{FlagNameService, FlagNameServiceUsername, FlagNameServicePassword} {
 		for i := range args {
 			if args[i] == "-"+item {
-				args = SliceDeleteLen(args, i, 2)
+				args = SliceDeleteRange(args, i, i+2)
 				break
 			}
 
