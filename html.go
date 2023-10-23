@@ -7,10 +7,11 @@ import (
 )
 
 type Element struct {
-	Name     string
-	Text     string
-	Attrs    *OrderedMap[string, string]
-	Elements []*Element
+	Name      string
+	Text      string
+	PlainText bool
+	Attrs     *OrderedMap[string, string]
+	Elements  []*Element
 }
 
 func NewElement(name string) *Element {
@@ -25,19 +26,17 @@ func (e *Element) String() string {
 
 	if e.IsTextOnly() {
 		if e.Text != "" {
-			sb.WriteString(html.EscapeString(e.Text))
+			if e.PlainText {
+				sb.WriteString(e.Text)
+			} else {
+				sb.WriteString(html.EscapeString(e.Text))
+			}
 		}
 
 		return sb.String()
 	}
 
 	sb.WriteString(fmt.Sprintf("<%s", e.Name))
-
-	if e.Text == "" && e.Attrs.Len() == 0 {
-		sb.WriteString("/>")
-
-		return sb.String()
-	}
 
 	e.Attrs.Range(func(k string, v string) {
 		if sb.Len() > 0 {
@@ -58,7 +57,11 @@ func (e *Element) String() string {
 	}
 
 	if e.Text != "" {
-		sb.WriteString(html.EscapeString(e.Text))
+		if e.PlainText {
+			sb.WriteString(e.Text)
+		} else {
+			sb.WriteString(html.EscapeString(e.Text))
+		}
 	}
 
 	sb.WriteString(fmt.Sprintf("</%s>", e.Name))
@@ -72,6 +75,14 @@ func (e *Element) IsTextOnly() bool {
 
 func (e *Element) AddElement(element *Element) *Element {
 	e.Elements = append(e.Elements, element)
+
+	return element
+}
+
+func (e *Element) AddElementName(name string) *Element {
+	element := NewElement(name)
+
+	e.AddElement(element)
 
 	return element
 }
