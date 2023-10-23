@@ -43,7 +43,7 @@ func (server *DiscoverServer) Start() error {
 	server.mu.Lock()
 	defer server.mu.Unlock()
 
-	DebugFunc(*server)
+	DebugFunc(server)
 
 	b := make([]byte, maxInfoLength)
 
@@ -147,7 +147,7 @@ func (server *DiscoverServer) Stop() error {
 	server.mu.Lock()
 	defer server.mu.Unlock()
 
-	DebugFunc(*server)
+	DebugFunc(server)
 
 	if server.lifecycle != nil {
 		server.lifecycle.Unset()
@@ -179,7 +179,7 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 	}
 
 	var wg sync.WaitGroup
-	var errs Sync[error]
+	errs := NewSync(new(error))
 
 	c, err := net.ListenPacket("udp4", ":0")
 	if Error(err) {
@@ -220,13 +220,13 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 
 			dst, err := net.ResolveUDPAddr("udp4", broadcast.String()+":"+discoverPort)
 			if err != nil {
-				errs.Set(err)
+				errs.Set(&err)
 
 				return
 			}
 
 			if _, err := c.WriteTo([]byte(uid), dst); err != nil {
-				errs.Set(err)
+				errs.Set(&err)
 
 				return
 			}
@@ -236,7 +236,7 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 	wg.Wait()
 
 	if errs.Get() != nil {
-		return nil, errs.Get()
+		return nil, *errs.Get()
 	}
 
 	Debug("reading answers ...")

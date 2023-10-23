@@ -69,7 +69,7 @@ func (this *Runner) execute(wg *sync.WaitGroup) error {
 }
 
 func MultiRunner(runners []Runner) error {
-	chErr := Sync[error]{}
+	chErr := NewSync(new(error))
 
 	wg := sync.WaitGroup{}
 
@@ -79,14 +79,14 @@ func MultiRunner(runners []Runner) error {
 
 			err := r.execute(&wg)
 			if err != nil {
-				chErr.Set(err)
+				chErr.Set(&err)
 			}
 		}(&runners[i])
 	}
 
 	wg.Wait()
 
-	return chErr.Get()
+	return *chErr.Get()
 }
 
 func (r RuntimeInfo) toString(asFilename bool) string {

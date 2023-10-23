@@ -5,34 +5,40 @@ import "sync"
 type Sync[T any] struct {
 	mu    sync.RWMutex
 	isSet bool
-	value T
+	ref   *T
 }
 
-func (cv *Sync[T]) IsSet() bool {
-	cv.mu.RLock()
-	defer cv.mu.RUnlock()
-
-	return cv.isSet
+func NewSync[T any](t *T) *Sync[T] {
+	return &Sync[T]{
+		ref: t,
+	}
 }
 
-func (cv *Sync[T]) Get() T {
-	cv.mu.RLock()
-	defer cv.mu.RUnlock()
+func (sync *Sync[T]) IsSet() bool {
+	sync.mu.RLock()
+	defer sync.mu.RUnlock()
 
-	return cv.value
+	return sync.isSet
 }
 
-func (cv *Sync[T]) Set(value T) {
-	cv.mu.Lock()
-	defer cv.mu.Unlock()
+func (sync *Sync[T]) Get() *T {
+	sync.mu.RLock()
+	defer sync.mu.RUnlock()
 
-	cv.isSet = true
-	cv.value = value
+	return sync.ref
 }
 
-func (cv *Sync[T]) Run(fn func(T)) {
-	cv.mu.Lock()
-	defer cv.mu.Unlock()
+func (sync *Sync[T]) Set(value *T) {
+	sync.mu.Lock()
+	defer sync.mu.Unlock()
 
-	fn(cv.value)
+	sync.isSet = true
+	sync.ref = value
+}
+
+func (sync *Sync[T]) Run(fn func(*T)) {
+	sync.mu.Lock()
+	defer sync.mu.Unlock()
+
+	fn(sync.ref)
 }
