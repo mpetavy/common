@@ -528,6 +528,8 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 			} else {
 				fieldValue.SetBool(false)
 			}
+		case reflect.Int64:
+			fallthrough
 		case reflect.Int:
 			if ok {
 				formValue := context.Request().FormValue(fieldPath)
@@ -907,7 +909,7 @@ func newFieldset(parent *etree.Element, caption string, data interface{}, dataDe
 			}
 			htmlInput.CreateAttr("onclick", "this.select();")
 
-			if field.Type.Kind() == reflect.Int {
+			if field.Type.Kind() == reflect.Int || field.Type.Kind() == reflect.Int64 {
 				htmlInput.CreateAttr("type", "number")
 				htmlInput.CreateAttr("value", fmt.Sprintf("%d", fieldValue.Int()))
 
