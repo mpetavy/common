@@ -179,7 +179,7 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 	}
 
 	var wg sync.WaitGroup
-	errs := NewSync(new(error))
+	errs := NewSync[error]()
 
 	c, err := net.ListenPacket("udp4", ":0")
 	if Error(err) {
@@ -220,13 +220,13 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 
 			dst, err := net.ResolveUDPAddr("udp4", broadcast.String()+":"+discoverPort)
 			if err != nil {
-				errs.Set(&err)
+				errs.Set(err)
 
 				return
 			}
 
 			if _, err := c.WriteTo([]byte(uid), dst); err != nil {
-				errs.Set(&err)
+				errs.Set(err)
 
 				return
 			}
@@ -235,8 +235,8 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 
 	wg.Wait()
 
-	if errs.Get() != nil {
-		return nil, *errs.Get()
+	if Error(errs.Get()) {
+		return nil, errs.Get()
 	}
 
 	Debug("reading answers ...")

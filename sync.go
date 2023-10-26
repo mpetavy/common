@@ -5,10 +5,14 @@ import "sync"
 type Sync[T any] struct {
 	mu    sync.RWMutex
 	isSet bool
-	ref   *T
+	ref   T
 }
 
-func NewSync[T any](t *T) *Sync[T] {
+func NewSync[T any]() *Sync[T] {
+	return &Sync[T]{}
+}
+
+func NewSyncOf[T any](t T) *Sync[T] {
 	return &Sync[T]{
 		ref: t,
 	}
@@ -21,14 +25,14 @@ func (sync *Sync[T]) IsSet() bool {
 	return sync.isSet
 }
 
-func (sync *Sync[T]) Get() *T {
+func (sync *Sync[T]) Get() T {
 	sync.mu.RLock()
 	defer sync.mu.RUnlock()
 
 	return sync.ref
 }
 
-func (sync *Sync[T]) Set(value *T) {
+func (sync *Sync[T]) Set(value T) {
 	sync.mu.Lock()
 	defer sync.mu.Unlock()
 
@@ -36,7 +40,7 @@ func (sync *Sync[T]) Set(value *T) {
 	sync.ref = value
 }
 
-func (sync *Sync[T]) Run(fn func(*T)) {
+func (sync *Sync[T]) Run(fn func(T)) {
 	sync.mu.Lock()
 	defer sync.mu.Unlock()
 

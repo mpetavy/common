@@ -38,6 +38,12 @@ func (e *Element) String() string {
 
 	sb.WriteString(fmt.Sprintf("<%s", e.Name))
 
+	if e.Attrs.Len() == 0 && e.Text == "" {
+		sb.WriteString("/>")
+
+		return sb.String()
+	}
+
 	e.Attrs.Range(func(k string, v string) {
 		if sb.Len() > 0 {
 			sb.WriteString(" ")

@@ -3,11 +3,13 @@ package common
 import (
 	"io"
 	"os"
+	"sync"
 )
 
 type fileWriter struct {
 	io.Writer
 
+	mu       sync.Mutex
 	file     *os.File
 	filesize int
 }
@@ -38,6 +40,9 @@ func newFileWriter() (*fileWriter, error) {
 }
 
 func (fw *fileWriter) Write(msg []byte) (int, error) {
+	fw.mu.Lock()
+	defer fw.mu.Unlock()
+
 	if fw.filesize+len(msg) > *FlagLogFileSize {
 		err := fw.createFile()
 		if err != nil {

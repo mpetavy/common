@@ -68,27 +68,6 @@ func (this *Runner) execute(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func MultiRunner(runners []Runner) error {
-	chErr := NewSync(new(error))
-
-	wg := sync.WaitGroup{}
-
-	for i := range runners {
-		go func(r *Runner) {
-			defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
-			err := r.execute(&wg)
-			if err != nil {
-				chErr.Set(&err)
-			}
-		}(&runners[i])
-	}
-
-	wg.Wait()
-
-	return *chErr.Get()
-}
-
 func (r RuntimeInfo) toString(asFilename bool) string {
 	if asFilename {
 		return fmt.Sprintf("%s-%s-%d-%s", r.Pack, r.File, r.Line, r.Fn)
