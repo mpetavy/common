@@ -1,8 +1,10 @@
 package common
 
 import (
+	"crypto/rand"
 	"fmt"
 	"github.com/google/uuid"
+	"math/big"
 	"os"
 	"runtime"
 	"strings"
@@ -90,4 +92,11 @@ func Exit(code int) {
 	done()
 
 	os.Exit(code)
+}
+
+func Rnd(max int) int {
+	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	Panic(err)
+
+	return int(nBig.Int64())
 }

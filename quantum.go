@@ -160,9 +160,9 @@ func (q *Quantum) Remove(v int) {
 				return
 			}
 
-			r.to = v - 1
+			q.insertRange(index+1, &rang{v + 1, r.to})
 
-			q.insertRange(index, &rang{v + 1, r.to})
+			r.to = v - 1
 
 			return
 		}

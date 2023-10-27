@@ -258,13 +258,6 @@ func TlsDebugConnection(typ string, tlsConn *tls.Conn) {
 	}
 }
 
-func Rnd(max int) int {
-	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
-	Panic(err)
-
-	return int(nBig.Int64())
-}
-
 func RndBytes(n int) ([]byte, error) {
 	DebugFunc()
 

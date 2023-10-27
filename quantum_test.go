@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,4 +68,36 @@ func TestQuantum(t *testing.T) {
 		t.Error(err)
 	}
 	check(t, q, []int{3, 5, 6, 7, 27, 123})
+}
+
+func TestQuantumLoop(t *testing.T) {
+	count := 10000
+	sl := []int{}
+	q := NewQuantum()
+
+	q.AddRange(0, count-1)
+
+	for i := 0; i < count; i++ {
+		index := 0
+		if q.Len() > 1 {
+			index = Rnd(q.Len() - 1)
+		}
+
+		value, err := q.Get(index)
+		if err != nil {
+			t.Error(err)
+		}
+
+		q.Remove(value)
+
+		sl = append(sl, value)
+	}
+
+	assert.Equal(t, 0, q.Len())
+
+	for i := 0; i < count; i++ {
+		if sort.SearchInts(sl, i) == -1 {
+			t.Fatalf("not found: %d", i)
+		}
+	}
 }
