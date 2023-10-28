@@ -69,7 +69,7 @@ func Sleep(d time.Duration) {
 	DebugIndex(1, "Sleep [%s] %v continue", id, d)
 }
 
-func Catch(fn func()) (err error) {
+func Catch(fn func() error) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch x := r.(type) {
@@ -83,9 +83,7 @@ func Catch(fn func()) (err error) {
 		}
 	}()
 
-	fn()
-
-	return nil
+	return fn()
 }
 
 func Exit(code int) {

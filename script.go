@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -76,30 +75,13 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 
 			Debug("load module: %s", path)
 
-			ba, _, err := ReadResource(filepath.Base(path))
+			ba, _, _ := ReadResource(filepath.Base(path))
 
-			if ba == nil && modulesPath != "" {
-				if filepath.Dir(path) == modulesPath {
-					ba, err = os.ReadFile(path)
-					if Error(err) {
-						return nil, err
-					}
-				} else {
-					return nil, TraceError(require.IllegalModuleNameError)
-				}
+			if ba != nil {
+				return ba, nil
 			}
 
-			if ba == nil {
-				return nil, TraceError(require.ModuleFileDoesNotExistError)
-			}
-
-			str := fmt.Sprintf(`(function(__filename,__dirname){%s})(%q,%q)`,
-				ba,
-				path,
-				filepath.Dir(path),
-			)
-
-			return []byte(str), nil
+			return require.DefaultSourceLoader(path)
 		}),
 	)
 
@@ -129,31 +111,29 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, input st
 
 	go func() {
 		var value goja.Value
-		var err error
 
-		value, err = engine.VM.RunProgram(engine.program)
+		err := Catch(func() error {
+			var err error
 
-		if funcName != "" {
-			fn := func() (goja.Value, error) {
-				var jsFunc func(goja.Value) goja.Value
-
-				err := engine.VM.ExportTo(engine.VM.GlobalObject().Get(funcName), &jsFunc)
-				if Error(err) {
-					return goja.Undefined(), err
+			if funcName != "" {
+				fn, ok := goja.AssertFunction(engine.VM.Get(funcName))
+				if !ok {
+					return fmt.Errorf("undefined function %s", funcName)
 				}
 
-				err = Catch(func() {
-					value = jsFunc(engine.VM.ToValue(input))
-				})
+				value, err = fn(goja.Undefined(), engine.VM.ToValue(input))
 				if Error(err) {
-					return goja.Undefined(), err
+					return err
 				}
-
-				return value, nil
+			} else {
+				value, err = engine.VM.RunProgram(engine.program)
+				if Error(err) {
+					return err
+				}
 			}
 
-			value, err = fn()
-		}
+			return nil
+		})
 
 		if err != nil {
 			ch <- result{

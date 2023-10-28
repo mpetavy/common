@@ -54,7 +54,8 @@ var (
 	lastErr    string
 	onceInit   sync.Once
 	isDisabled bool
-	testT      testingT
+	tt         testingT
+	testT      = NewSyncOf(tt)
 )
 
 func isVerboseEnabled() bool {
@@ -97,7 +98,7 @@ func initLog() error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	closeLog()
+	Error(closeLog())
 
 	writers := []io.Writer{rw}
 
@@ -176,7 +177,7 @@ func closeLog() error {
 }
 
 func InitTesting(t *testing.T) {
-	testT = t
+	tt = t
 }
 
 type testingT interface {
@@ -199,10 +200,11 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 
 	source := fmt.Sprintf("%s/%s:%d/%s", ri.Pack, ri.File, ri.Line, ri.Fn)
 
-	if *FlagLogJson {
+	switch {
+	case *FlagLogJson:
 		e := entry{
 			Timestamp:  time.Now().Format(time.RFC3339),
-			Level:      level,
+			Level:      strings.TrimSpace(level),
 			Source:     source,
 			Message:    msg,
 			Stacktrace: "",
@@ -212,18 +214,21 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 			e.Stacktrace = ri.Stack
 		}
 
-		ba, _ := json.Marshal(e)
+		ba, _ := json.MarshalIndent(e, "", "  ")
 
 		return string(ba)
-	}
 
-	if isVerboseEnabled() {
+	case isVerboseEnabled():
 		maxLen := 40
 		if len(source) > maxLen {
 			source = source[len(source)-maxLen:]
 		}
 
 		msg = fmt.Sprintf("%-"+strconv.Itoa(maxLen)+"s %s", source, msg)
+	default:
+		if level != PrefixDebug && level != PrefixInfo {
+			msg = fmt.Sprintf("%s: %s", strings.TrimSpace(level), msg)
+		}
 	}
 
 	if addStacktrace {
@@ -234,8 +239,8 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 }
 
 func logDebugPrint(s string) {
-	if testT != nil {
-		testT.Logf(s)
+	if testT.IsSet() {
+		testT.Get().Logf(s)
 
 		return
 	}
@@ -244,8 +249,8 @@ func logDebugPrint(s string) {
 }
 
 func logInfoPrint(s string) {
-	if testT != nil {
-		testT.Logf(s)
+	if testT.IsSet() {
+		testT.Get().Logf(s)
 
 		return
 	}
@@ -254,8 +259,8 @@ func logInfoPrint(s string) {
 }
 
 func logWarnPrint(s string) {
-	if testT != nil {
-		testT.Logf(s)
+	if testT.IsSet() {
+		testT.Get().Logf(s)
 
 		return
 	}
@@ -264,8 +269,8 @@ func logWarnPrint(s string) {
 }
 
 func logErrorPrint(s string) {
-	if testT != nil {
-		testT.Fatalf(s)
+	if testT.IsSet() {
+		testT.Get().Fatalf(s)
 
 		return
 	}
@@ -274,8 +279,8 @@ func logErrorPrint(s string) {
 }
 
 func logFatalPrint(s string) {
-	if testT != nil {
-		testT.Fatalf(s)
+	if testT.IsSet() {
+		testT.Get().Fatalf(s)
 
 		return
 	}
@@ -436,7 +441,9 @@ func Panic(err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	logFatalPrint(formatLog(PrefixFatal, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
+	if err.Error() != lastErr {
+		logFatalPrint(formatLog(PrefixFatal, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
+	}
 
 	Exit(1)
 }

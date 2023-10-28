@@ -17,12 +17,12 @@ func TestScriptEngine(t *testing.T) {
 
 	for _, file := range files {
 		modulePath := filepath.Join(os.TempDir(), file)
-		src := `
+		src := fmt.Sprintf(`
 function test() {
-	return 'filename:' + __filename + ';dirname:' + __dirname; 
+	return '%s'; 
 }
 exports.test = test;
-`
+`, file)
 
 		err := os.WriteFile(modulePath, []byte(src), DefaultFileMode)
 		if Error(err) {

@@ -6,7 +6,7 @@ import (
 )
 
 func TestCatch(t *testing.T) {
-	err := Catch(func() {
+	err := Catch(func() error {
 		panic("panic")
 	})
 
