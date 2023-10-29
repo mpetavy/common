@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/paulrosania/go-charset/charset"
 	_ "github.com/paulrosania/go-charset/data"
@@ -553,4 +555,77 @@ func CmdToString(cmd *exec.Cmd) string {
 	s := SurroundWith(cmd.Args, "\"")
 
 	return strings.Join(s, " ")
+}
+
+func validateJson(p any, m map[string]any, ignoreUnknownFields bool) error {
+	v, ok := p.(reflect.Value)
+	if !ok {
+		v = reflect.Indirect(reflect.ValueOf(p))
+	}
+	t := v.Type()
+
+	var missing []string
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if field.Anonymous || !field.IsExported() {
+			continue
+		}
+
+		propertyName := field.Tag.Get("json")
+		if propertyName == "" {
+			propertyName = field.Name
+		}
+
+		if propertyName == "-" {
+			continue
+		}
+
+		mp, ok := m[propertyName]
+		delete(m, propertyName)
+		if !ok {
+			missing = append(missing, propertyName)
+			continue
+		}
+
+		if field.Type.Kind() == reflect.Struct {
+			props, ok := mp.(map[string]any)
+			if !ok {
+				return fmt.Errorf("properties map[string]any expected: %s", propertyName)
+			}
+
+			err := validateJson(v.FieldByName(field.Name), props, ignoreUnknownFields)
+			if Error(err) {
+				return err
+			}
+		}
+	}
+
+	if len(missing) > 0 {
+		return errors.New("missing fields: " + strings.Join(missing, ", "))
+	}
+
+	if len(m) > 0 && !ignoreUnknownFields {
+		extra := make([]string, 0, len(m))
+		for field := range m {
+			extra = append(extra, field)
+		}
+
+		return errors.New("unknown fields: " + strings.Join(extra, ", "))
+	}
+
+	return nil
+}
+
+func ValidateJson(p any, ba []byte, ignoreUnknownFields bool) error {
+	if !json.Valid(ba) {
+		return errors.New("invalid JSON data")
+	}
+
+	var m map[string]interface{}
+	err := json.Unmarshal(ba, &m)
+	if Error(err) {
+		return err
+	}
+
+	return validateJson(p, m, ignoreUnknownFields)
 }
