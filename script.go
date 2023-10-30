@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
-	"path/filepath"
+	"os"
+	"os/exec"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,6 +16,37 @@ type ScriptEngine struct {
 	Registry *require.Registry
 	VM       *goja.Runtime
 	program  *goja.Program
+}
+
+const (
+	RESOURCE_PREFIX = "@"
+)
+
+var (
+	globalModulesPath string
+)
+
+func init() {
+	globalModulesPath = os.Getenv("NODE_PATH")
+	if globalModulesPath == "" {
+		path := CleanPath("./node_modules")
+
+		fi, err := os.Stat(path)
+		if err == nil && fi.IsDir() {
+			globalModulesPath = path
+
+			return
+		}
+
+		cmd := exec.Command("npm", "root", "-g")
+		output, err := cmd.CombinedOutput()
+
+		if err == nil {
+			globalModulesPath = strings.TrimSpace(string(output))
+		}
+	}
+
+	Debug("Script global module path: %s", globalModulesPath)
 }
 
 func (c *console) table(data interface{}) {
@@ -66,19 +99,28 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 		return nil, err
 	}
 
-	modulesPath = CleanPath(modulesPath)
+	if modulesPath != "" {
+		modulesPath = CleanPath(modulesPath)
+	} else {
+		modulesPath = globalModulesPath
+	}
 
 	registry := require.NewRegistry(
 		require.WithGlobalFolders(modulesPath),
 		require.WithLoader(func(path string) ([]byte, error) {
 			path = CleanPath(path)
 
-			Debug("load module: %s", path)
+			p := strings.Index(path, RESOURCE_PREFIX)
+			if p != -1 {
+				resPath := path[p+len(RESOURCE_PREFIX):]
 
-			ba, _, _ := ReadResource(filepath.Base(path))
+				Debug("load module as resource : %s", resPath)
 
-			if ba != nil {
-				return ba, nil
+				ba, _, _ := ReadResource(resPath)
+
+				if ba != nil {
+					return ba, nil
+				}
 			}
 
 			return require.DefaultSourceLoader(path)
@@ -115,6 +157,12 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, input st
 		err := Catch(func() error {
 			var err error
 
+			// script must be run once to initialize all functions (also the "main" function)
+			value, err = engine.VM.RunProgram(engine.program)
+			if Error(err) {
+				return err
+			}
+
 			if funcName != "" {
 				fn, ok := goja.AssertFunction(engine.VM.Get(funcName))
 				if !ok {
@@ -122,11 +170,6 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, input st
 				}
 
 				value, err = fn(goja.Undefined(), engine.VM.ToValue(input))
-				if Error(err) {
-					return err
-				}
-			} else {
-				value, err = engine.VM.RunProgram(engine.program)
 				if Error(err) {
 					return err
 				}
