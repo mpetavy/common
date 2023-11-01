@@ -30,7 +30,11 @@ type EndpointConnection interface {
 type EndpointConnector func() (EndpointConnection, error)
 
 func IsTTYDevice(device string) bool {
-	return len(device) > 0 && (strings.Contains(device, ",") || !strings.Contains(device, ":"))
+	if IsWindows() {
+		return strings.HasPrefix(strings.ToUpper(device), "COM")
+	} else {
+		return strings.HasPrefix(strings.ToUpper(device), "/DEV/TTY")
+	}
 }
 
 func NewEndpoint(device string, isClient bool, tlsConfig *tls.Config) (Endpoint, EndpointConnector, error) {

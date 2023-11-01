@@ -129,7 +129,7 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 
 	registry.Enable(vm)
 
-	program, err := goja.Compile("", src, true)
+	program, err := goja.Compile("", src, false)
 	if Error(err) {
 		return nil, err
 	}
@@ -143,19 +143,23 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	return engine, nil
 }
 
-func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, input string) (string, error) {
+func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any) (goja.Value, error) {
 	type result struct {
-		value string
+		value goja.Value
 		err   error
 	}
 
 	ch := make(chan result)
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
+
 		var value goja.Value
 
 		err := Catch(func() error {
 			var err error
+
+			engine.VM.ClearInterrupt()
 
 			// script must be run once to initialize all functions (also the "main" function)
 			value, err = engine.VM.RunProgram(engine.program)
@@ -169,7 +173,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, input st
 					return fmt.Errorf("undefined function %s", funcName)
 				}
 
-				value, err = fn(goja.Undefined(), engine.VM.ToValue(input))
+				value, err = fn(goja.Undefined(), engine.VM.ToValue(args))
 				if Error(err) {
 					return err
 				}
@@ -180,7 +184,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, input st
 
 		if err != nil {
 			ch <- result{
-				value: "",
+				value: nil,
 				err:   err,
 			}
 
@@ -188,7 +192,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, input st
 		}
 
 		ch <- result{
-			value: value.String(),
+			value: value,
 			err:   nil,
 		}
 	}()
@@ -196,7 +200,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, input st
 	select {
 	case <-time.After(timeout):
 		engine.VM.Interrupt(nil)
-		return "", &ErrTimeout{
+		return nil, &ErrTimeout{
 			Duration: timeout,
 			Err:      nil,
 		}

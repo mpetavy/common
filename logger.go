@@ -23,14 +23,15 @@ const (
 	FlagNameLogSys      = "log.sys"
 	FlagNameLogCount    = "log.count"
 	FlagNameLogBreak    = "log.break"
+	FlagNameLogGap      = "log.gap"
 )
 
 const (
-	PrefixDebug = "DEBUG "
-	PrefixInfo  = "INFO  "
-	PrefixWarn  = "WARN  "
-	PrefixError = "ERROR "
-	PrefixFatal = "FATAL "
+	LevelDebug = "DEBUG"
+	LevelInfo  = "INFO"
+	LevelWarn  = "WARN"
+	LevelError = "ERROR"
+	LevelFatal = "FATAL"
 )
 
 var (
@@ -42,23 +43,25 @@ var (
 	FlagLogSys      = flag.Bool(FlagNameLogSys, false, "Use OS system logger")
 	FlagLogCount    = flag.Int(FlagNameLogCount, 1000, "log count")
 	FlagLogBreak    = flag.Bool(FlagNameLogBreak, false, "break on error")
+	FlagLogGap      = flag.Int(FlagNameLogGap, 100, "time gap after show a separator")
 
-	mu         sync.Mutex
-	fw         *fileWriter
-	rw                     = newMemoryWriter()
-	LogDebug   *log.Logger = log.New(rw, prefix(PrefixDebug), 0)
-	LogInfo    *log.Logger = log.New(rw, prefix(PrefixInfo), 0)
-	LogWarn    *log.Logger = log.New(rw, prefix(PrefixWarn), 0)
-	LogError   *log.Logger = log.New(rw, prefix(PrefixError), 0)
-	LogFatal   *log.Logger = log.New(os.Stderr, prefix(PrefixFatal), 0)
-	lastErr    string
-	onceInit   sync.Once
-	isDisabled bool
-	tt         testingT
-	testT      = NewSyncOf(tt)
+	mu           sync.Mutex
+	fw           *fileWriter
+	rw                       = newMemoryWriter()
+	LogDebug     *log.Logger = log.New(rw, prefix(LevelDebug), 0)
+	LogInfo      *log.Logger = log.New(rw, prefix(LevelInfo), 0)
+	LogWarn      *log.Logger = log.New(rw, prefix(LevelWarn), 0)
+	LogError     *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
+	LogFatal     *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
+	lastErr      string
+	lastLog      time.Time
+	onceInit     sync.Once
+	onceInitDone bool
+	tt           testingT
+	testT        = NewSyncOf(tt)
 )
 
-func isVerboseEnabled() bool {
+func IsVerboseEnabled() bool {
 	if *FlagLogVerbose {
 		return true
 	}
@@ -72,7 +75,7 @@ func isVerboseEnabled() bool {
 	return false
 }
 
-func isJsonEnabled() bool {
+func IsJsonEnabled() bool {
 	if *FlagLogJson {
 		return true
 	}
@@ -87,8 +90,8 @@ func isJsonEnabled() bool {
 }
 
 func prefix(p string) string {
-	if isVerboseEnabled() && !isJsonEnabled() {
-		return p
+	if IsVerboseEnabled() && !IsJsonEnabled() {
+		return fmt.Sprintf("%-6s", p)
 	}
 
 	return ""
@@ -114,22 +117,25 @@ func initLog() error {
 	}
 
 	f := 0
-	if !*FlagLogJson {
+	if !IsJsonEnabled() {
 		f = log.Lmsgprefix
-		if isVerboseEnabled() {
+
+		if IsVerboseEnabled() {
 			f = f | log.LstdFlags | log.LUTC | log.Lmicroseconds
 		}
 	}
 
-	LogDebug = log.New(io.MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(PrefixDebug), f)
-	LogInfo = log.New(io.MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(PrefixInfo), f)
-	LogWarn = log.New(io.MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(PrefixWarn), f)
-	LogError = log.New(io.MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(PrefixError), f)
-	LogFatal = log.New(io.MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(PrefixFatal), f)
+	LogDebug = log.New(io.MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelDebug), f)
+	LogInfo = log.New(io.MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelInfo), f)
+	LogWarn = log.New(io.MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelWarn), f)
+	LogError = log.New(io.MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelError), f)
+	LogFatal = log.New(io.MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelFatal), f)
 
 	log.SetFlags(f)
 
 	onceInit.Do(func() {
+		onceInitDone = true
+
 		Events.AddListener(EventShutdown{}, func(event Event) {
 			Error(closeLog())
 		})
@@ -148,16 +154,16 @@ func initLog() error {
 
 		for _, m := range msgs {
 			switch {
-			case strings.HasPrefix(m, PrefixDebug):
-				logDebugPrint(m[len(PrefixDebug):])
-			case strings.HasPrefix(m, PrefixInfo):
-				logInfoPrint(m[len(PrefixInfo):])
-			case strings.HasPrefix(m, PrefixWarn):
-				logWarnPrint(m[len(PrefixWarn):])
-			case strings.HasPrefix(m, PrefixError):
-				logErrorPrint(m[len(PrefixError):])
-			case strings.HasPrefix(m, PrefixFatal):
-				logFatalPrint(m[len(PrefixFatal):])
+			case strings.HasPrefix(m, LevelDebug):
+				logDebugPrint(m[len(LevelDebug):])
+			case strings.HasPrefix(m, LevelInfo):
+				logInfoPrint(m[len(LevelInfo):])
+			case strings.HasPrefix(m, LevelWarn):
+				logWarnPrint(m[len(LevelWarn):])
+			case strings.HasPrefix(m, LevelError):
+				logErrorPrint(m[len(LevelError):])
+			case strings.HasPrefix(m, LevelFatal):
+				logFatalPrint(m[len(LevelFatal):])
 			}
 		}
 	})
@@ -178,6 +184,8 @@ func closeLog() error {
 
 func InitTesting(t *testing.T) {
 	tt = t
+
+	initLog()
 }
 
 type testingT interface {
@@ -194,17 +202,19 @@ type entry struct {
 }
 
 func formatLog(level string, index int, msg string, addStacktrace bool) string {
-	//msg = Capitalize(msg)
+	if !onceInitDone {
+		return msg
+	}
 
 	ri := GetRuntimeInfo(index)
 
 	source := fmt.Sprintf("%s/%s:%d/%s", ri.Pack, ri.File, ri.Line, ri.Fn)
 
 	switch {
-	case *FlagLogJson:
+	case IsJsonEnabled():
 		e := entry{
 			Timestamp:  time.Now().Format(time.RFC3339),
-			Level:      strings.TrimSpace(level),
+			Level:      level,
 			Source:     source,
 			Message:    msg,
 			Stacktrace: "",
@@ -218,17 +228,13 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 
 		return string(ba)
 
-	case isVerboseEnabled():
+	case IsVerboseEnabled():
 		maxLen := 40
 		if len(source) > maxLen {
 			source = source[len(source)-maxLen:]
 		}
 
 		msg = fmt.Sprintf("%-"+strconv.Itoa(maxLen)+"s %s", source, msg)
-	default:
-		if level != PrefixDebug && level != PrefixInfo {
-			msg = fmt.Sprintf("%s: %s", strings.TrimSpace(level), msg)
-		}
 	}
 
 	if addStacktrace {
@@ -244,6 +250,15 @@ func logDebugPrint(s string) {
 
 		return
 	}
+
+	if time.Since(lastLog) > MillisecondToDuration(*FlagLogGap) {
+		msg := fmt.Sprintf("[%v]", time.Since(lastLog).Truncate(time.Millisecond))
+		msg = fmt.Sprintf("%s%s %s -", strings.Repeat(" ", 6-len(LevelDebug)), strings.Repeat("-", 120-len(msg)-6-3), msg)
+
+		LogDebug.Print(msg)
+	}
+
+	lastLog = time.Now()
 
 	LogDebug.Print(s)
 }
@@ -289,7 +304,7 @@ func logFatalPrint(s string) {
 }
 
 func Debug(format string, args ...any) {
-	if isDisabled || !isVerboseEnabled() {
+	if !IsVerboseEnabled() {
 		return
 	}
 
@@ -297,11 +312,11 @@ func Debug(format string, args ...any) {
 		format = fmt.Sprintf(format, args...)
 	}
 
-	logDebugPrint(formatLog(PrefixDebug, 2, strings.TrimSpace(format), false))
+	logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(format), false))
 }
 
 func DebugIndex(index int, format string, args ...any) {
-	if isDisabled || !isVerboseEnabled() {
+	if !IsVerboseEnabled() {
 		return
 	}
 
@@ -309,11 +324,11 @@ func DebugIndex(index int, format string, args ...any) {
 		format = fmt.Sprintf(format, args...)
 	}
 
-	logDebugPrint(formatLog(PrefixDebug, 2+index, strings.TrimSpace(format), false))
+	logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(format), false))
 }
 
 func DebugFunc(args ...any) {
-	if isDisabled || !isVerboseEnabled() {
+	if !IsVerboseEnabled() {
 		return
 	}
 
@@ -330,45 +345,33 @@ func DebugFunc(args ...any) {
 		str = strings.TrimSpace(fmt.Sprintf(ri.Fn+"(): "+fmt.Sprintf("%v", args[0]), args[1:]...))
 	}
 
-	logDebugPrint(formatLog(PrefixDebug, 2, str, false))
+	logDebugPrint(formatLog(LevelDebug, 2, str, false))
 }
 
 func Info(format string, args ...any) {
-	if isDisabled {
-		return
-	}
-
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
 	}
 
-	logInfoPrint(formatLog(PrefixInfo, 2, strings.TrimSpace(format), false))
+	logInfoPrint(formatLog(LevelInfo, 2, strings.TrimSpace(format), false))
 }
 
 func Warn(format string, args ...any) {
-	if isDisabled {
-		return
-	}
-
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
 	}
 
-	logWarnPrint(formatLog(PrefixWarn, 2, strings.TrimSpace(format), false))
+	logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(format), false))
 }
 
 func TraceError(err error) error {
-	if isDisabled {
-		return err
-	}
-
 	Error(err)
 
 	return err
 }
 
 func DebugError(err error) bool {
-	if isDisabled || !isVerboseEnabled() || err == nil || IsErrExit(err) {
+	if !IsVerboseEnabled() || err == nil || IsErrExit(err) {
 		return err != nil
 	}
 
@@ -376,14 +379,14 @@ func DebugError(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logDebugPrint(formatLog(PrefixDebug, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
+		logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
 	}
 
 	return true
 }
 
 func DebugErrorIndex(index int, err error) bool {
-	if isDisabled || !isVerboseEnabled() || err == nil || IsErrExit(err) {
+	if !IsVerboseEnabled() || err == nil || IsErrExit(err) {
 		return err != nil
 	}
 
@@ -391,14 +394,14 @@ func DebugErrorIndex(index int, err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logDebugPrint(formatLog(PrefixDebug, 2+index, strings.TrimSpace(err.Error()), isVerboseEnabled()))
+		logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
 	}
 
 	return true
 }
 
 func WarnError(err error) bool {
-	if isDisabled || err == nil || IsErrExit(err) {
+	if err == nil || IsErrExit(err) {
 		return err != nil
 	}
 
@@ -406,14 +409,14 @@ func WarnError(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logWarnPrint(formatLog(PrefixWarn, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
+		logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
 	}
 
 	return true
 }
 
 func Error(err error) bool {
-	if isDisabled || err == nil || IsErrExit(err) {
+	if err == nil || IsErrExit(err) {
 		return err != nil
 	}
 
@@ -425,7 +428,7 @@ func Error(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logErrorPrint(formatLog(PrefixError, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
+		logErrorPrint(formatLog(LevelError, 2, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
 	}
 
 	lastErr = err.Error()
@@ -442,7 +445,13 @@ func Panic(err error) {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logFatalPrint(formatLog(PrefixFatal, 2, strings.TrimSpace(err.Error()), isVerboseEnabled()))
+		if onceInitDone {
+			if err.Error() != lastErr {
+				logFatalPrint(formatLog(LevelFatal, 2, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
+			}
+		} else {
+			logFatalPrint(Capitalize(strings.TrimSpace(err.Error())))
+		}
 	}
 
 	Exit(1)
