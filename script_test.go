@@ -109,3 +109,21 @@ args.output = "hello " + input;
 	assert.NotNil(t, args["output"])
 	assert.Equal(t, "hello world", args["output"])
 }
+
+func TestScriptFormatJavascript(t *testing.T) {
+	InitTesting(t)
+
+	src := `
+function main(args) {
+let input = args.input;
+args.output = "hello " + input;
+}
+`
+
+	_, err := FormatJavascriptCode(src)
+	if Error(err) {
+		return
+	}
+
+	assert.Nil(t, err)
+}

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"embed"
 	"fmt"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
@@ -23,6 +24,9 @@ const (
 )
 
 var (
+	//go:embed beautify.js
+	embedFs embed.FS
+
 	globalModulesPath string
 )
 
@@ -205,4 +209,27 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 	case result := <-ch:
 		return result.value, result.err
 	}
+}
+
+func FormatJavascriptCode(src string) (string, error) {
+	beautifyCode, err := embedFs.ReadFile("beautify.js")
+	if Error(err) {
+		return "", err
+	}
+
+	se, err := NewScriptEngine(string(beautifyCode), "")
+	if Error(err) {
+		return "", err
+	}
+
+	v, err := se.Run(time.Second, "js_beautify", src)
+	if Error(err) {
+		return "", err
+	}
+
+	code := v.String()
+	code = strings.Replace(code, "= >", "=>", -1)
+	code = strings.Replace(code, "\r\n", "\n", -1)
+
+	return code, nil
 }

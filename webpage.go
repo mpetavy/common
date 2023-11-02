@@ -835,6 +835,8 @@ func newFieldset(parent *etree.Element, caption string, data interface{}, dataDe
 					}
 				}
 
+				htmlInput.CreateAttr("onKeyDown", "keydownTab(this,event);")
+
 				break
 			}
 
