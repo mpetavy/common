@@ -38,6 +38,7 @@ const (
 	OPTION_NO_LABEL         = "nolabel"
 	OPTION_EXPERTVIEW       = "expertview"
 	OPTION_NO_DEFAULTBUTTON = "no_defaultbutton"
+	OPTION_CODE             = "code"
 
 	INPUT_WIDTH_NORMAL = "pure-input-1-4"
 	INPUT_WIDTH_WIDE   = "pure-input-1-2"
@@ -55,6 +56,7 @@ const (
 	CSS_CHECKBOX           = "css-checkbox"
 	CSS_BUTTON_GROUP       = "css-button-group"
 	CSS_BORDER             = "css-border"
+	CSS_CODE               = "css-code"
 
 	CSS_COLOR_OFF = "#CFCFCF"
 	CSS_COLOR_ON  = "MediumSeaGreen"
@@ -804,7 +806,13 @@ func newFieldset(parent *etree.Element, caption string, data interface{}, dataDe
 		default:
 			if IndexOf(tagHtml.Options, OPTION_MULTILINE) != -1 || IndexOf(tagHtml.Options, OPTION_MEGALINE) != -1 {
 				htmlInput = htmlDiv.CreateElement("textarea")
-				htmlInput.CreateAttr("class", INPUT_WIDTH_WIDE)
+
+				classes := []string{INPUT_WIDTH_WIDE}
+				if IndexOf(tagHtml.Options, OPTION_CODE) != -1 {
+					classes = append(classes, CSS_CODE)
+				}
+
+				htmlInput.CreateAttr("class", strings.Join(classes, " "))
 				htmlInput.CreateAttr("maxlength", MAX_INPUT_LENGTH)
 				htmlInput.CreateAttr("cols", "65")
 

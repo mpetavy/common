@@ -108,8 +108,6 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	registry := require.NewRegistry(
 		require.WithGlobalFolders(modulesPath),
 		require.WithLoader(func(path string) ([]byte, error) {
-			path = CleanPath(path)
-
 			p := strings.Index(path, RESOURCE_PREFIX)
 			if p != -1 {
 				resPath := path[p+len(RESOURCE_PREFIX):]
