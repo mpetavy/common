@@ -205,7 +205,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 }
 
 func FormatJavascriptCode(src string) (string, error) {
-	beautifyCode, _, err := ReadResource("js/beautify.js")
+	beautifyCode, err := embedfs.ReadFile("embed/js/beautify.js")
 	if WarnError(err) {
 		return src, nil
 	}

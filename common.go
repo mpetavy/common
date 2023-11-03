@@ -2,6 +2,7 @@ package common
 
 import (
 	"crypto/rand"
+	"embed"
 	"fmt"
 	"github.com/google/uuid"
 	"math/big"
@@ -10,6 +11,9 @@ import (
 	"strings"
 	"time"
 )
+
+//go:embed embed/*
+var embedfs embed.FS
 
 // IsWindowsOS reports true if underlying OS is MS Windows
 func IsWindows() bool {
