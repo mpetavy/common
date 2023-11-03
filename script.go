@@ -1,7 +1,6 @@
 package common
 
 import (
-	"embed"
 	"fmt"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
@@ -19,14 +18,7 @@ type ScriptEngine struct {
 	program  *goja.Program
 }
 
-const (
-	RESOURCE_PREFIX = "@"
-)
-
 var (
-	//go:embed beautify.js
-	embedFs embed.FS
-
 	globalModulesPath string
 )
 
@@ -112,17 +104,18 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	registry := require.NewRegistry(
 		require.WithGlobalFolders(modulesPath),
 		require.WithLoader(func(path string) ([]byte, error) {
-			p := strings.Index(path, RESOURCE_PREFIX)
+			resPath := path
+			p := strings.Index(resPath, "node_modules")
 			if p != -1 {
-				resPath := path[p+len(RESOURCE_PREFIX):]
+				resPath = resPath[p:]
+			}
+			resPath = fmt.Sprintf("js/%s", resPath)
+			ba, _, _ := ReadResource(resPath)
 
+			if ba != nil {
 				Debug("load module as resource : %s", resPath)
 
-				ba, _, _ := ReadResource(resPath)
-
-				if ba != nil {
-					return ba, nil
-				}
+				return ba, nil
 			}
 
 			return require.DefaultSourceLoader(path)
@@ -212,9 +205,9 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 }
 
 func FormatJavascriptCode(src string) (string, error) {
-	beautifyCode, err := embedFs.ReadFile("beautify.js")
-	if Error(err) {
-		return "", err
+	beautifyCode, _, err := ReadResource("js/beautify.js")
+	if WarnError(err) {
+		return src, nil
 	}
 
 	se, err := NewScriptEngine(string(beautifyCode), "")
