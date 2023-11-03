@@ -54,7 +54,7 @@ var (
 	LogError     *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
 	LogFatal     *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
 	lastErr      string
-	lastLog      time.Time
+	lastLog      = time.Now()
 	onceInit     sync.Once
 	onceInitDone bool
 	tt           testingT
@@ -185,7 +185,7 @@ func closeLog() error {
 func InitTesting(t *testing.T) {
 	tt = t
 
-	initLog()
+	Panic(initLog())
 }
 
 type testingT interface {
@@ -252,8 +252,8 @@ func logDebugPrint(s string) {
 	}
 
 	if time.Since(lastLog) > MillisecondToDuration(*FlagLogGap) {
-		msg := fmt.Sprintf("[%v]", time.Since(lastLog).Truncate(time.Millisecond))
-		msg = fmt.Sprintf("%s%s %s -", strings.Repeat(" ", 6-len(LevelDebug)), strings.Repeat("-", 120-len(msg)-6-3), msg)
+		msg := fmt.Sprintf("time gap [%v]", time.Since(lastLog).Truncate(time.Millisecond))
+		msg = fmt.Sprintf("%s %s -", strings.Repeat("-", 120-len(msg)-6-3), msg)
 
 		LogDebug.Print(msg)
 	}
@@ -312,6 +312,9 @@ func Debug(format string, args ...any) {
 		format = fmt.Sprintf(format, args...)
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
+
 	logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(format), false))
 }
 
@@ -323,6 +326,9 @@ func DebugIndex(index int, format string, args ...any) {
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
 	}
+
+	mu.Lock()
+	defer mu.Unlock()
 
 	logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(format), false))
 }

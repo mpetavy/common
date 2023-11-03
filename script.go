@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
-	"os"
-	"os/exec"
 	"reflect"
 	"strconv"
 	"strings"
@@ -16,33 +14,6 @@ type ScriptEngine struct {
 	Registry *require.Registry
 	VM       *goja.Runtime
 	program  *goja.Program
-}
-
-var (
-	globalModulesPath string
-)
-
-func init() {
-	globalModulesPath = os.Getenv("NODE_PATH")
-	if globalModulesPath == "" {
-		path := CleanPath("./node_modules")
-
-		fi, err := os.Stat(path)
-		if err == nil && fi.IsDir() {
-			globalModulesPath = path
-
-			return
-		}
-
-		cmd := exec.Command("npm", "root", "-g")
-		output, err := cmd.CombinedOutput()
-
-		if err == nil {
-			globalModulesPath = strings.TrimSpace(string(output))
-		}
-	}
-
-	Debug("Script global module path: %s", globalModulesPath)
 }
 
 func (c *console) table(data interface{}) {
@@ -95,33 +66,32 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 		return nil, err
 	}
 
+	options := []require.Option{}
+
 	if modulesPath != "" {
-		modulesPath = CleanPath(modulesPath)
-	} else {
-		modulesPath = globalModulesPath
+		options = append(options, require.WithGlobalFolders(modulesPath))
 	}
 
-	registry := require.NewRegistry(
-		require.WithGlobalFolders(modulesPath),
-		require.WithLoader(func(path string) ([]byte, error) {
-			resPath := path
-			p := strings.Index(resPath, "node_modules")
-			if p != -1 {
-				resPath = resPath[p:]
-			}
-			resPath = fmt.Sprintf("js/%s", resPath)
-			ba, _, _ := ReadResource(resPath)
+	options = append(options, require.WithLoader(func(path string) ([]byte, error) {
+		resPath := path
+		p := strings.Index(resPath, "node_modules")
+		if p != -1 {
+			resPath = resPath[p:]
+		}
+		resPath = fmt.Sprintf("js/%s", resPath)
+		ba, _, _ := ReadResource(resPath)
 
-			if ba != nil {
-				Debug("load module as resource : %s", resPath)
+		if ba != nil {
+			Debug("load module as resource : %s", resPath)
 
-				return ba, nil
-			}
+			return ba, nil
+		}
 
-			return require.DefaultSourceLoader(path)
-		}),
+		return require.DefaultSourceLoader(path)
+	}),
 	)
 
+	registry := require.NewRegistry(options...)
 	registry.Enable(vm)
 
 	program, err := goja.Compile("", src, false)
