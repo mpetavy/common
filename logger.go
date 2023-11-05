@@ -376,6 +376,10 @@ func TraceError(err error) error {
 	return err
 }
 
+func IgnoreError(err error) bool {
+	return err != nil
+}
+
 func DebugError(err error) bool {
 	if !IsVerboseEnabled() || err == nil || IsErrExit(err) {
 		return err != nil

@@ -236,6 +236,11 @@ func FileSize(filename string) (int64, error) {
 
 // FileCopy does ... guess what :-)
 func FileCopy(src string, dst string) error {
+	fi, err := os.Stat(src)
+	if Error(err) {
+		return err
+	}
+
 	srcFile, err := os.Open(src)
 	if Error(err) {
 		return err
@@ -250,6 +255,7 @@ func FileCopy(src string, dst string) error {
 	}
 	defer func() {
 		Error(destFile.Close())
+		Error(os.Chtimes(dst, fi.ModTime(), fi.ModTime()))
 	}()
 
 	_, err = io.Copy(destFile, srcFile)
