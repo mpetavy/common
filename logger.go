@@ -137,7 +137,7 @@ func initLog() error {
 		onceInitDone = true
 
 		Events.AddListener(EventShutdown{}, func(event Event) {
-			Error(closeLog())
+			//Error(closeLog())
 		})
 
 		Events.AddListener(EventFlagsParsed{}, func(event Event) {
@@ -450,9 +450,6 @@ func Panic(err error) {
 	if err == nil || IsErrExit(err) {
 		return
 	}
-
-	mu.Lock()
-	defer mu.Unlock()
 
 	if err.Error() != lastErr {
 		if onceInitDone {
