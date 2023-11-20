@@ -7,7 +7,7 @@ import (
 )
 
 type StringTable struct {
-	cols     [][]interface{}
+	cells    [][]interface{}
 	NoHeader bool
 	Markdown bool
 }
@@ -17,16 +17,20 @@ func NewStringTable() *StringTable {
 }
 
 func (st *StringTable) Clear() {
-	st.cols = nil
+	st.cells = nil
+}
+
+func (st *StringTable) Rows() int {
+	return len(st.cells)
 }
 
 func (st *StringTable) AddRow() {
-	st.cols = append(st.cols, make([]interface{}, 0))
+	st.cells = append(st.cells, make([]interface{}, 0))
 }
 
 func (st *StringTable) AddCol(txt interface{}) {
-	y := len(st.cols) - 1
-	st.cols[y] = append(st.cols[y], fmt.Sprintf("%v", txt))
+	y := len(st.cells) - 1
+	st.cells[y] = append(st.cells[y], fmt.Sprintf("%v", txt))
 }
 
 func (st *StringTable) AddCols(txts ...interface{}) {
@@ -79,23 +83,23 @@ func (st *StringTable) rower(cols []interface{}, colLengths []int, cross bool) s
 func (st *StringTable) String() string {
 	colLengths := make([]int, 0)
 
-	for y := 0; y < len(st.cols); y++ {
-		for len(colLengths) < len(st.cols[y]) {
+	for y := 0; y < len(st.cells); y++ {
+		for len(colLengths) < len(st.cells[y]) {
 			colLengths = append(colLengths, 0)
 		}
 
-		for x := 0; x < len(st.cols[y]); x++ {
-			colLengths[x] = max(colLengths[x], len(fmt.Sprintf("%v", st.cols[y][x])))
+		for x := 0; x < len(st.cells[y]); x++ {
+			colLengths[x] = max(colLengths[x], len(fmt.Sprintf("%v", st.cells[y][x])))
 		}
 	}
 
 	sb := strings.Builder{}
 
-	for y := 0; y < len(st.cols); y++ {
-		sb.WriteString(st.rower(st.cols[y], colLengths, false))
+	for y := 0; y < len(st.cells); y++ {
+		sb.WriteString(st.rower(st.cells[y], colLengths, false))
 
 		if y == 0 && !st.NoHeader {
-			sep := make([]interface{}, len(st.cols[0]))
+			sep := make([]interface{}, len(st.cells[0]))
 			for x := 0; x < len(sep); x++ {
 				sep[x] = strings.Repeat("-", colLengths[x])
 			}
