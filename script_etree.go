@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"github.com/beevik/etree"
 	"github.com/dop251/goja"
 	"reflect"
@@ -21,7 +20,6 @@ func registerEtree(vm *goja.Runtime) error {
 		if Error(err) {
 			return err
 		}
-		fmt.Println(Lowerlize(m.Name))
 	}
 
 	err := vm.Set("etree", obj)
