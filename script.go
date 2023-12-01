@@ -16,7 +16,7 @@ type ScriptEngine struct {
 	program  *goja.Program
 }
 
-func (c *console) table(data interface{}) {
+func (c *gojaConsole) table(data interface{}) {
 	val, ok := data.(reflect.Value)
 	if !ok {
 		val = reflect.Indirect(reflect.ValueOf(data))
@@ -62,6 +62,11 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	vm := goja.New()
 
 	err := registerConsole(vm)
+	if Error(err) {
+		return nil, err
+	}
+
+	err = registerHttp(vm)
 	if Error(err) {
 		return nil, err
 	}

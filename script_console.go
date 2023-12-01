@@ -6,34 +6,47 @@ import (
 	"strings"
 )
 
-type console struct{}
+type gojaConsole struct{}
 
-func (c *console) error(msgs ...string) {
+func (c *gojaConsole) printf(format string, args ...any) {
+	if len(args) == 0 {
+		fmt.Printf(format)
+	} else {
+		fmt.Printf(format, args...)
+	}
+}
+
+func (c *gojaConsole) error(msgs ...string) {
 	Error(fmt.Errorf("%s", strings.Join(msgs, " ")))
 }
 
-func (c *console) info(msgs ...string) {
+func (c *gojaConsole) info(msgs ...string) {
 	Info(strings.Join(msgs, " "))
 }
 
-func (c *console) debug(msgs ...string) {
+func (c *gojaConsole) debug(msgs ...string) {
 	Debug(strings.Join(msgs, " "))
 }
 
-func (c *console) warn(msgs ...string) {
+func (c *gojaConsole) warn(msgs ...string) {
 	Warn(strings.Join(msgs, " "))
 }
 
-func (c *console) log(msgs ...string) {
+func (c *gojaConsole) log(msgs ...string) {
 	Info(strings.Join(msgs, " "))
 }
 
 func registerConsole(vm *goja.Runtime) error {
-	c := &console{}
+	c := &gojaConsole{}
 
 	obj := vm.NewObject()
 
-	err := obj.Set("error", c.error)
+	err := obj.Set("printf", c.printf)
+	if Error(err) {
+		return err
+	}
+
+	err = obj.Set("error", c.error)
 	if Error(err) {
 		return err
 	}
