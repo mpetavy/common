@@ -71,6 +71,11 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 		return nil, err
 	}
 
+	err = registerEtree(vm)
+	if Error(err) {
+		return nil, err
+	}
+
 	options := []require.Option{}
 
 	if modulesPath != "" {
