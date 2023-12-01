@@ -108,6 +108,30 @@ func Capitalize(txt string) string {
 	}
 }
 
+// Capitalize the first letter
+func Lowerlize(txt string) string {
+	if len(txt) == 0 {
+		return txt
+	}
+
+	runes := []rune(txt)
+
+	allLower := true
+	for _, r := range runes {
+		allLower = unicode.IsLower(r)
+
+		if !allLower {
+			break
+		}
+	}
+
+	if allLower {
+		return txt
+	} else {
+		return fmt.Sprintf("%s%s", string(unicode.ToLower(runes[0])), string(runes[1:]))
+	}
+}
+
 func SurroundWith(str []string, prefixSuffix string) []string {
 	var result []string
 

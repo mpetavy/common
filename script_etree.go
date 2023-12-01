@@ -13,13 +13,15 @@ func registerEtree(vm *goja.Runtime) error {
 	obj := vm.NewObject()
 
 	t := reflect.TypeOf(d)
+	v := reflect.ValueOf(d)
 	for i := 0; i < t.NumMethod(); i++ {
 		m := t.Method(i)
-		err := obj.Set(m.Name, m.Func)
+
+		err := obj.Set(m.Name, v.MethodByName(m.Name).Interface())
 		if Error(err) {
 			return err
 		}
-		fmt.Println(m.Name)
+		fmt.Println(Lowerlize(m.Name))
 	}
 
 	err := vm.Set("etree", obj)

@@ -132,18 +132,23 @@ func TestHttp(t *testing.T) {
 	InitTesting(t)
 
 	src := `
-function main(args) {
-m = new Map();
-m.set('Content-Type',['application/xml']);
+d = Object.create(etree);
+r = d.CreateElement('root');
+r.CreateAttr('name','Marcel');
 
-let get = http.execute('GET','https://192.168.1.35:8090/api/v1/czmxml?locale=en&type=KER','hadern','hadern',null,null);
-let getbody = http.body(get); 
-console.printf(String.fromCharCode(...getbody));
-let post = http.execute('POST','https://192.168.1.35:8090/api/v1/czmxml?locale=en&type=KER','hadern','hadern',m,getbody);
-let postbody = http.body(post); 
-console.printf(String.fromCharCode(...postbody));
-}
+console.printf('%s\n',d.WriteToString());
 `
+	//	src := `
+	//m = new Map();
+	//m.set('Content-Type',['application/xml']);
+	//
+	//let get = http.execute('GET','https://192.168.1.35:8090/api/v1/czmxml?locale=en&type=KER','hadern','hadern',null,null);
+	//let getbody = http.body(get);
+	//console.printf(String.fromCharCode(...getbody));
+	//let post = http.execute('POST','https://192.168.1.35:8090/api/v1/czmxml?locale=en&type=KER','hadern','hadern',m,getbody);
+	//let postbody = http.body(post);
+	//console.printf(String.fromCharCode(...postbody));
+	//`
 	//src := fmt.Sprintf("c2 = Object.create(console);c2.printf('Hello world!');")
 	//src := fmt.Sprintf("msg = http.execute('https://www.google.de');console.printf('+++\\n%%s\\n---\\n',msg);")
 	//src := fmt.Sprintf("console.info('https://www.google.de');")
@@ -153,7 +158,7 @@ console.printf(String.fromCharCode(...postbody));
 		return
 	}
 
-	_, err = engine.Run(time.Hour, "main", nil)
+	_, err = engine.Run(time.Hour, "", nil)
 
 	assert.Nil(t, err)
 }
