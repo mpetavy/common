@@ -516,6 +516,10 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 	}
 
 	err = IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
+		if fieldPath == "Outputs_Destinations" {
+			fmt.Printf("stop\n")
+		}
+
 		_, ok := context.Request().Form[fieldPath]
 		if !ok {
 			_, ok = context.Request().MultipartForm.File[fieldPath]
@@ -546,13 +550,16 @@ func BindForm(context echo.Context, data interface{}, bodyLimit int) error {
 				fieldValue.SetInt(int64(i))
 			}
 		case reflect.String:
+			formValue := ""
 			if ok {
 				values := context.Request().Form[fieldPath]
 
 				if len(values) > 0 {
-					fieldValue.SetString(strings.Join(values, ";"))
+					formValue = strings.Join(values, ";")
 				}
 			}
+
+			fieldValue.SetString(formValue)
 		case reflect.Slice:
 			if ok {
 				switch reflect.TypeOf(fieldValue.Interface()).Elem().Kind() {
