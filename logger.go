@@ -204,10 +204,6 @@ type entry struct {
 }
 
 func formatLog(level string, index int, msg string, addStacktrace bool) string {
-	if !onceInitDone {
-		return msg
-	}
-
 	ri := GetRuntimeInfo(index)
 
 	source := fmt.Sprintf("%s/%s:%d/%s", ri.Pack, ri.File, ri.Line, ri.Fn)
