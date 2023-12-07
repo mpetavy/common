@@ -153,17 +153,19 @@ func initLog() error {
 		rw.Clear()
 
 		for _, m := range msgs {
+			justMsg := m[strings.Index(m, " ")+1:]
+
 			switch {
 			case strings.HasPrefix(m, LevelDebug):
-				logDebugPrint(m[len(LevelDebug):])
+				logDebugPrint(justMsg)
 			case strings.HasPrefix(m, LevelInfo):
-				logInfoPrint(m[len(LevelInfo):])
+				logInfoPrint(justMsg)
 			case strings.HasPrefix(m, LevelWarn):
-				logWarnPrint(m[len(LevelWarn):])
+				logWarnPrint(justMsg)
 			case strings.HasPrefix(m, LevelError):
-				logErrorPrint(m[len(LevelError):])
+				logErrorPrint(justMsg)
 			case strings.HasPrefix(m, LevelFatal):
-				logFatalPrint(m[len(LevelFatal):])
+				logFatalPrint(justMsg)
 			}
 		}
 	})
