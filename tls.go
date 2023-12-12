@@ -74,16 +74,18 @@ const (
 )
 
 func init() {
-	FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
-	FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS certificates and server name")
-	FlagTlsServername = flag.String(FlagNameTlsServername, "", "TLS expected servername")
-	FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, TlsVersion12, "TLS min version")
-	FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, TlsVersion12, "TLS max version")
-	FlagTlsCiphers = flag.String(FlagNameTlsCiphers, "", "TLS ciphers zo use")
-	FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
-	FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
-	FlagTlsMutual = flag.String(FlagNameTlsMutual, "", "Mutual TLS PKCS12 certificates & privkey container file or buffer")
-	FlagTlsKeyLen = flag.Int(FlagNameTlsKeylen, 256, "Key length")
+	Events.AddListener(EventInit{}, func(ev Event) {
+		FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
+		FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS certificates and server name")
+		FlagTlsServername = flag.String(FlagNameTlsServername, "", "TLS expected servername")
+		FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, TlsVersion12, "TLS min version")
+		FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, TlsVersion12, "TLS max version")
+		FlagTlsCiphers = flag.String(FlagNameTlsCiphers, "", "TLS ciphers zo use")
+		FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
+		FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
+		FlagTlsMutual = flag.String(FlagNameTlsMutual, "", "Mutual TLS PKCS12 certificates & privkey container file or buffer")
+		FlagTlsKeyLen = flag.Int(FlagNameTlsKeylen, 256, "Key length")
+	})
 
 	Events.AddListener(EventFlagsSet{}, func(ev Event) {
 		initTls()

@@ -34,7 +34,9 @@ const (
 )
 
 func init() {
-	FlagLanguage = flag.String(FlagNameAppLanguage, DEFAULT_LANGUAGE, "language for messages")
+	Events.AddListener(EventInit{}, func(ev Event) {
+		FlagLanguage = flag.String(FlagNameAppLanguage, DEFAULT_LANGUAGE, "language for messages")
+	})
 
 	Events.AddListener(EventFlagsSet{}, func(ev Event) {
 		initLanguage()

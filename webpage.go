@@ -107,14 +107,16 @@ type ActionItem struct {
 }
 
 func init() {
-	storeSecret, err := RndBytes(32)
-	Panic(err)
+	Events.AddListener(EventInit{}, func(ev Event) {
+		storeSecret, err := RndBytes(32)
+		Panic(err)
 
-	SessionStore = memstore.NewMemStore(storeSecret)
-	SessionStore.Options.Secure = true
-	SessionStore.Options.SameSite = http.SameSiteStrictMode
-	SessionStore.Options.HttpOnly = true
-	SessionStore.Options.MaxAge = 0
+		SessionStore = memstore.NewMemStore(storeSecret)
+		SessionStore.Options.Secure = true
+		SessionStore.Options.SameSite = http.SameSiteStrictMode
+		SessionStore.Options.HttpOnly = true
+		SessionStore.Options.MaxAge = 0
+	})
 }
 
 func NewPage(context echo.Context, contentStyle string, title string) (*Webpage, error) {

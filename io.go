@@ -94,18 +94,20 @@ func (this *debugWriter) Write(p []byte) (n int, err error) {
 var tempDir string
 
 func init() {
-	var err error
+	Events.AddListener(EventInit{}, func(ev Event) {
+		var err error
 
-	tempDir, err = os.MkdirTemp("", Title())
-	if Error(err) {
-		tempDir = os.TempDir()
-	} else {
-		Events.AddListener(EventShutdown{}, func(event Event) {
-			Error(deleteTempDir())
-		})
-	}
+		tempDir, err = os.MkdirTemp("", Title())
+		if Error(err) {
+			tempDir = os.TempDir()
+		} else {
+			Events.AddListener(EventShutdown{}, func(event Event) {
+				Error(deleteTempDir())
+			})
+		}
 
-	FlagIoFileBackups = flag.Int(FlagNameIoFileBackups, 3, "amount of file backups")
+		FlagIoFileBackups = flag.Int(FlagNameIoFileBackups, 3, "amount of file backups")
+	})
 }
 
 // AppCleanup cleans up all remaining objects

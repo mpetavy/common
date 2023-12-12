@@ -14,7 +14,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"unicode"
 )
 
 const (
@@ -65,6 +64,9 @@ type application struct {
 	ServiceConfig *service.Config
 }
 
+type EventInit struct {
+}
+
 type EventShutdown struct {
 }
 
@@ -110,8 +112,6 @@ var (
 	onceRunningAsExecutable sync.Once
 	onceRunningInteractive  sync.Once
 	onceShutdownHooks       sync.Once
-	onceTitle               sync.Once
-	title                   string
 	runningAsService        bool
 	runningAsExecutable     bool
 	runningInteractive      bool
@@ -122,7 +122,7 @@ var (
 )
 
 func Init(title string, version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
-	FlagAppProduct = flag.String(FlagNameAppProduct, Title(), "app product")
+	FlagAppProduct = flag.String(FlagNameAppProduct, title, "app product")
 	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
 
 	var ti time.Time
@@ -335,6 +335,8 @@ func installService() error {
 }
 
 func Run(mandatoryFlags []string) {
+	Events.Emit(EventInit{}, false)
+
 	defer done()
 
 	run := func() error {
@@ -686,32 +688,9 @@ func AppFilename(newExt string) string {
 }
 
 func Title() string {
-	onceTitle.Do(func() {
-		path, err := os.Executable()
-		if err != nil {
-			path = os.Args[0]
-		}
+	DebugFunc(app.Title)
 
-		path = filepath.Base(path)
-		path = path[0:(len(path) - len(filepath.Ext(path)))]
-
-		title = ""
-
-		runes := []rune(path)
-		for i := 0; i < len(runes); i++ {
-			if string(runes[i]) == "-" {
-				break
-			}
-
-			if unicode.IsLetter(runes[i]) {
-				title = title + string(runes[i])
-			}
-		}
-
-		DebugFunc(title)
-	})
-
-	return title
+	return app.Title
 }
 
 func Version(major bool, minor bool, patch bool) string {

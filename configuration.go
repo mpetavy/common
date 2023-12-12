@@ -41,9 +41,11 @@ const (
 )
 
 func init() {
-	FlagCfgFile = flag.String(FlagNameCfgFile, "", "Configuration file")
-	FlagCfgReset = flag.Bool(FlagNameCfgReset, false, "Reset configuration file")
-	FlagCfgCreate = flag.Bool(FlagNameCfgCreate, false, "Reset configuration file and exit")
+	Events.AddListener(EventInit{}, func(ev Event) {
+		FlagCfgFile = flag.String(FlagNameCfgFile, "", "Configuration file")
+		FlagCfgReset = flag.Bool(FlagNameCfgReset, false, "Reset configuration file")
+		FlagCfgCreate = flag.Bool(FlagNameCfgCreate, false, "Reset configuration file and exit")
+	})
 
 	Events.AddListener(EventFlagsParsed{}, func(event Event) {
 		if *FlagCfgFile == "" {
