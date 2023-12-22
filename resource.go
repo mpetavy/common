@@ -14,11 +14,17 @@ var (
 
 func ResourcesDirectory() string {
 	if resourcesDirectory == "" {
-		de, _ := app.Resources.ReadDir(".")
+		entries, _ := app.Resources.ReadDir(".")
 
-		if len(de) == 1 {
-			resourcesDirectory = de[0].Name()
+		for _, entry := range entries {
+			if entry.IsDir() {
+				resourcesDirectory = entry.Name()
+
+				return resourcesDirectory
+			}
 		}
+
+		Panic(fmt.Errorf("cannot find resource directory"))
 	}
 
 	return resourcesDirectory
