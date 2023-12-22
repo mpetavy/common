@@ -23,8 +23,6 @@ func ResourcesDirectory() string {
 				return resourcesDirectory
 			}
 		}
-
-		Panic(fmt.Errorf("cannot find resource directory"))
 	}
 
 	return resourcesDirectory
