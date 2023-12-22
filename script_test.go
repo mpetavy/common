@@ -136,7 +136,7 @@ d = Object.create(etree);
 r = d.CreateElement('root');
 r.CreateAttr('name','Marcel');
 
-console.printf('%s\n',d.WriteToString());
+console.print('%s\n',d.WriteToString());
 `
 	//	src := `
 	//m = new Map();

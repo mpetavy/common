@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -18,7 +17,6 @@ import (
 
 const (
 	APACHE string = "https://www.apache.org/licenses/LICENSE-2.0.html"
-	GPL2   string = "https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html"
 
 	SERVICE_SIMULATE  = "simulate"
 	SERVICE_START     = "start"
@@ -37,11 +35,9 @@ type application struct {
 	// Git label development
 	Git string
 	// Time label development
-	Time time.Time
+	Date time.Time
 	// Build label development
 	Build string
-	// Date of development
-	Date string
 	// Description of the application
 	Description string
 	// Developer of the application
@@ -62,6 +58,8 @@ type application struct {
 	Service service.Service
 	//ServiceConfig
 	ServiceConfig *service.Config
+	//Modfile
+	Modfile *Modfile
 }
 
 type EventInit struct {
@@ -94,13 +92,13 @@ const (
 )
 
 var (
-	FlagService             = flag.String(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
-	FlagServiceUser         = flag.String(FlagNameServiceUsername, "", "Service user")
-	FlagServicePassword     = flag.String(FlagNameServicePassword, "", "Service password")
-	FlagServiceStartTimeout = flag.Int(FlagNameServiceTimeout, 1000, "Service timeout")
-	FlagUsage               = flag.Bool(FlagNameUsage, false, "show flags description and usage")
-	FlagUsageMd             = flag.Bool(FlagNameUsageMd, false, "show flags description and usage in markdown format")
-	FlagNoBanner            = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
+	FlagService         = flag.String(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
+	FlagServiceUser     = flag.String(FlagNameServiceUsername, "", "Service user")
+	FlagServicePassword = flag.String(FlagNameServicePassword, "", "Service password")
+	FlagServiceTimeout  = flag.Int(FlagNameServiceTimeout, 1000, "Service timeout")
+	FlagUsage           = flag.Bool(FlagNameUsage, false, "show flags description and usage")
+	FlagUsageMd         = flag.Bool(FlagNameUsageMd, false, "show flags description and usage in markdown format")
+	FlagNoBanner        = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
 
 	app                     *application
 	FlagAppProduct          *string
@@ -121,46 +119,73 @@ var (
 	isFirstTicker           = true
 )
 
-func Init(title string, version string, git string, build string, date string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
-	FlagAppProduct = flag.String(FlagNameAppProduct, title, "app product")
-	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
+func Init(title string, version string, git string, build string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+	ba, err := resources.ReadFile("go.mod")
+	Panic(err)
 
-	var ti time.Time
+	modfile, err := ReadModfile(ba)
+	Panic(err)
+
+	if title == "" {
+		title = modfile.Title()
+	}
+
+	if developer == "" {
+		developer = "mpetavy"
+	}
+
+	if homepage == "" {
+		homepage = fmt.Sprintf("https://github.com/mpetavy/%s", title)
+	}
+
+	if license == "" {
+		license = APACHE
+	}
+
+	date := time.Now()
 
 	if git == "" {
 		if info, ok := debug.ReadBuildInfo(); ok {
 			for _, setting := range info.Settings {
 				switch setting.Key {
 				case "vcs.revision":
-					git = setting.Value
+					if git != "" {
+						continue
+					}
 				case "vcs.time":
 					if version != "" {
 						continue
 					}
-					ti, _ = time.Parse(time.RFC3339, setting.Value)
-					d := ti.Sub(time.Date(ti.Year(), 1, 1, 0, 0, 0, 0, time.UTC))
 
-					version = fmt.Sprintf("%d.%d", (ti.Year()-22)%100, int(d.Abs().Hours())/24)
+					date, _ = time.Parse(time.RFC3339, setting.Value)
+					d := date.Sub(time.Date(date.Year(), 1, 1, 0, 0, 0, 0, time.UTC))
+
+					version = fmt.Sprintf("%d.%d", (date.Year()-22)%100, int(d.Abs().Hours())/24)
 				}
 			}
 		}
 	}
 
+	FlagAppProduct = flag.String(FlagNameAppProduct, title, "app product")
+	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
+
 	app = &application{
-		Title:       title,
-		Version:     version,
-		Git:         git,
-		Time:        ti,
-		Build:       build,
-		Date:        date,
-		Description: description,
-		Developer:   developer,
-		License:     license,
-		Homepage:    homepage,
-		Resources:   resources,
-		StartFunc:   startFunc,
-		StopFunc:    stopFunc,
-		RunFunc:     runFunc,
+		Title:         title,
+		Version:       version,
+		Git:           git,
+		Date:          date,
+		Build:         build,
+		Description:   description,
+		Developer:     developer,
+		License:       license,
+		Homepage:      homepage,
+		Resources:     resources,
+		StartFunc:     startFunc,
+		StopFunc:      stopFunc,
+		RunFunc:       runFunc,
+		Service:       nil,
+		ServiceConfig: nil,
+		Modfile:       modfile,
 	}
 
 	executable, err := os.Executable()
@@ -417,16 +442,10 @@ func ExitOrError(err error) error {
 func showBanner() {
 	onceBanner.Do(func() {
 		if app != nil {
-			date := strconv.Itoa(time.Now().Year())
-
-			if app.Date != date {
-				date = app.Date + "-" + date
-			}
-
 			fmt.Printf("\n")
 			fmt.Printf("%s %s - %s\n", strings.ToUpper(app.Title), app.Version, app.Description)
 			fmt.Printf("\n")
-			fmt.Printf("Copyright: © %s %s\n", date, app.Developer)
+			fmt.Printf("Copyright: © %d %s\n", app.Date.Year(), app.Developer)
 			fmt.Printf("Homepage:  %s\n", app.Homepage)
 			fmt.Printf("License:   %s\n", app.License)
 			if app.Build != "" {
@@ -435,8 +454,8 @@ func showBanner() {
 			if app.Git != "" {
 				fmt.Printf("Git:       %s\n", app.Git)
 			}
-			if !app.Time.IsZero() {
-				fmt.Printf("Time:      %s\n", app.Time.Format(time.RFC822))
+			if !app.Date.IsZero() {
+				fmt.Printf("Time:      %s\n", app.Date.Format(time.RFC822))
 			}
 			fmt.Printf("PID:       %d\n", os.Getpid())
 
