@@ -2,7 +2,6 @@ package common
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 )
 
@@ -33,14 +32,13 @@ func ReadResource(filename string) ([]byte, string, error) {
 		return nil, "", fmt.Errorf("resources are not initialized")
 	}
 
-	path := filename
-	if !strings.HasPrefix(path, ResourcesDirectory()) {
-		path = strings.Join([]string{ResourcesDirectory(), filename}, "/")
-	}
-
-	ba, err := app.Resources.ReadFile(path)
+	ba, err := app.Resources.ReadFile(filename)
 	if err != nil {
-		return nil, "", err
+		ba, err = app.Resources.ReadFile(fmt.Sprintf("%s/%s", ResourcesDirectory(), filename))
+
+		if Error(err) {
+			return nil, "", err
+		}
 	}
 
 	resourcesLock.Lock()

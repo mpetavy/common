@@ -1,9 +1,8 @@
 package common
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
+	"golang.org/x/mod/modfile"
 	"os"
 	"path/filepath"
 	"sort"
@@ -41,83 +40,91 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 	}
 
 	filename := "go.mod"
-
-	ba, err := os.ReadFile(filename)
+	ba, _, err := ReadResource(filename)
 	if Error(err) {
 		return nil, err
 	}
 
+	mf, err := modfile.Parse(filename, ba, nil)
+
 	moduleInfo := ModuleInfo{}
-	moduleInfo.Requires = make([]ModuleRequire, 0)
+	moduleInfo.Software = mf.Module.Mod.String()
+	moduleInfo.Version = Version(true, true, true)
 
-	scanner := bufio.NewScanner(bytes.NewReader(ba))
-	inRequire := false
+	for _, require := range mf.Require {
+		req := ModuleRequire{}
+		req.Name = require.Mod.Path
+		req.Version = require.Mod.Version
 
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+		if require.Indirect {
+			req.Comment = "// indirect"
+		}
 
-		if inRequire {
-			inRequire = line != ")"
+		paths := []string{gopath, "pkg", "mod"}
+		paths = append(paths, Split(req.Name, "/")...)
+		paths[len(paths)-1] = filepath.Join(fmt.Sprintf("%s@%s", paths[len(paths)-1], req.Version), "LICENSE")
 
-			if inRequire {
-				req := ModuleRequire{}
+		req.LicenseName = "Custom"
+		req.LicenseUrl = ""
+		req.LicenseText = ""
 
-				p := strings.Index(line, " ")
-				if p != -1 {
-					req.Name = strings.TrimSpace(line[:p])
-					line = line[p:]
+		if strings.Index(req.Comment, "indirect") != -1 {
+			continue
+		}
+
+		licenseFile := filepath.Join(paths...)
+
+		if FileExists(licenseFile) {
+			ba, err := os.ReadFile(licenseFile)
+			if Error(err) {
+				return nil, err
+			}
+
+			req.LicenseText = string(ba)
+		}
+
+		if strings.Index(req.LicenseText, "Copyright (c) 2009 The Go Authors. All rights reserved.") != -1 {
+			req.LicenseName = "Google GO License"
+			req.LicenseUrl = "https://golang.org/LICENSE?m=text"
+		} else {
+			if strings.HasPrefix(req.Name, "github.com/") {
+				url := req.Name
+				if strings.HasPrefix(url, "github.com/") {
+					url = url[11:]
 				}
 
-				p = strings.Index(line, "//")
-				if p != -1 {
-					req.Version = strings.TrimSpace(line[:p])
-					line = line[p:]
+				splits := strings.Split(url, "/") // remove trailing .../v4
 
-					req.Comment = strings.TrimSpace(line)
-				} else {
-					req.Version = strings.TrimSpace(line)
+				if len(splits) > 1 {
+					url = splits[0] + "/" + splits[1]
 				}
 
-				paths := []string{gopath, "pkg", "mod"}
-				paths = append(paths, filepath.SplitList(req.Name)...)
-				paths[len(paths)-1] = filepath.Join(fmt.Sprintf("%s@%s", paths[len(paths)-1], req.Version), "LICENSE")
-
-				req.LicenseName = "Custom"
-				req.LicenseUrl = ""
-				req.LicenseText = ""
-
-				if strings.Index(req.Comment, "indirect") != -1 {
-					continue
+				ba, err := URLGet(fmt.Sprintf("https://%s:%s@api.github.com/repos/%s", username, pat, url))
+				if Error(err) {
+					return nil, err
 				}
 
-				licenseFile := filepath.Join(paths...)
+				j, err := NewJason(string(ba))
+				if Error(err) {
+					return nil, err
+				}
 
-				if FileExists(licenseFile) {
-					ba, err := os.ReadFile(licenseFile)
+				e, _ := j.Element("license")
+				if e != nil {
+					url, err = e.String("url")
 					if Error(err) {
 						return nil, err
 					}
 
-					req.LicenseText = string(ba)
-				}
+					if url != "" {
+						req.LicenseUrl = url
 
-				if strings.Index(req.LicenseText, "Copyright (c) 2009 The Go Authors. All rights reserved.") != -1 {
-					req.LicenseName = "Google GO License"
-					req.LicenseUrl = "https://golang.org/LICENSE?m=text"
-				} else {
-					if strings.HasPrefix(req.Name, "github.com/") {
-						url := req.Name
-						if strings.HasPrefix(url, "github.com/") {
-							url = url[11:]
+						i := strings.Index(url, "//")
+						if i != -1 {
+							url = fmt.Sprintf("%s%s:%s@%s", url[:i+2], username, pat, url[i+2:])
 						}
 
-						splits := strings.Split(url, "/") // remove trailing .../v4
-
-						if len(splits) > 1 {
-							url = splits[0] + "/" + splits[1]
-						}
-
-						ba, err := URLGet(fmt.Sprintf("https://%s:%s@api.github.com/repos/%s", username, pat, url))
+						ba, err := URLGet(url)
 						if Error(err) {
 							return nil, err
 						}
@@ -127,81 +134,32 @@ func CreateModuleInfo() (*ModuleInfo, error) {
 							return nil, err
 						}
 
-						e, _ := j.Element("license")
-						if e != nil {
-							url, err = e.String("url")
-							if Error(err) {
-								return nil, err
-							}
+						body, err := j.String("body")
+						if Error(err) {
+							return nil, err
+						}
 
-							if url != "" {
-								req.LicenseUrl = url
+						req.LicenseText = body
 
-								i := strings.Index(url, "//")
-								if i != -1 {
-									url = fmt.Sprintf("%s%s:%s@%s", url[:i+2], username, pat, url[i+2:])
-								}
+						url, err = j.String("html_url")
+						if Error(err) {
+							return nil, err
+						}
 
-								ba, err := URLGet(url)
-								if Error(err) {
-									return nil, err
-								}
-
-								j, err := NewJason(string(ba))
-								if Error(err) {
-									return nil, err
-								}
-
-								body, err := j.String("body")
-								if Error(err) {
-									return nil, err
-								}
-
-								req.LicenseText = body
-
-								url, err = j.String("html_url")
-								if Error(err) {
-									return nil, err
-								}
-
-								if url != "" {
-									req.LicenseUrl = url
-								}
-							}
-
-							name, _ := e.String("name")
-							if name != "" && strings.ToLower(name) != "other" {
-								req.LicenseName = name
-							}
+						if url != "" {
+							req.LicenseUrl = url
 						}
 					}
+
+					name, _ := e.String("name")
+					if name != "" && strings.ToLower(name) != "other" {
+						req.LicenseName = name
+					}
 				}
-
-				moduleInfo.Requires = append(moduleInfo.Requires, req)
-
-				continue
-			} else {
-				break
 			}
 		}
 
-		if strings.HasPrefix(line, "module") {
-			moduleInfo.Software = strings.TrimSpace(line[len("module"):])
-
-			continue
-		}
-
-		if strings.HasPrefix(line, "go ") {
-			moduleInfo.Version = Version(true, true, true)
-
-			continue
-		}
-
-		if strings.HasPrefix(line, "require") {
-			inRequire = true
-
-			continue
-		}
+		moduleInfo.Requires = append(moduleInfo.Requires, req)
 	}
 
 	sort.SliceStable(moduleInfo.Requires, func(i, j int) bool {
