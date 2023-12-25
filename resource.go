@@ -36,7 +36,7 @@ func ReadResource(filename string) ([]byte, string, error) {
 	if err != nil {
 		ba, err = app.Resources.ReadFile(fmt.Sprintf("%s/%s", ResourcesDirectory(), filename))
 
-		if Error(err) {
+		if err != nil {
 			return nil, "", err
 		}
 	}

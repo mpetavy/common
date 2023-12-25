@@ -127,6 +127,11 @@ func Init(title string, version string, git string, build string, description st
 
 	if title == "" {
 		title = mf.Module.Mod.String()
+
+		p := strings.LastIndex(title, "/")
+		if p != -1 {
+			title = title[p+1:]
+		}
 	}
 
 	if developer == "" {
