@@ -1,4 +1,4 @@
-module common
+module github.com/mpetavy/common
 
 go 1.21
 
