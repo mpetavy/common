@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/kardianos/service"
+	"golang.org/x/mod/modfile"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -58,8 +59,6 @@ type application struct {
 	Service service.Service
 	//ServiceConfig
 	ServiceConfig *service.Config
-	//Modfile
-	Modfile *Modfile
 }
 
 type EventInit struct {
@@ -123,11 +122,11 @@ func Init(title string, version string, git string, build string, description st
 	ba, err := resources.ReadFile("go.mod")
 	Panic(err)
 
-	modfile, err := ReadModfile(ba)
+	mf, err := modfile.Parse("go.mod", ba, nil)
 	Panic(err)
 
 	if title == "" {
-		title = modfile.Title()
+		title = mf.Module.Mod.String()
 	}
 
 	if developer == "" {
@@ -140,6 +139,10 @@ func Init(title string, version string, git string, build string, description st
 
 	if license == "" {
 		license = APACHE
+	}
+
+	if description == "" {
+		description = title
 	}
 
 	date := time.Now()
@@ -185,7 +188,6 @@ func Init(title string, version string, git string, build string, description st
 		RunFunc:       runFunc,
 		Service:       nil,
 		ServiceConfig: nil,
-		Modfile:       modfile,
 	}
 
 	executable, err := os.Executable()
@@ -209,8 +211,10 @@ func usage() error {
 			return err
 		}
 
-		fmt.Printf("Parameter | Default value | Only CmdLine | Description\n")
-		fmt.Printf("------------ | ------------- | ------------- | -------------\n")
+		st := NewStringTable()
+		st.Markdown = true
+
+		st.AddCols("Parameter", "Default value", "Only CmdLine", "Description")
 
 		flag.VisitAll(func(fl *flag.Flag) {
 			defValue := fl.DefValue
@@ -222,9 +226,10 @@ func usage() error {
 			if IsCmdlineOnlyFlag(fl.Name) {
 				onlyCmdLine = "*"
 			}
-
-			fmt.Printf("%s | %s | %s | %s\n", fl.Name, defValue, onlyCmdLine, fl.Usage)
+			st.AddCols(fl.Name, defValue, onlyCmdLine, fl.Usage)
 		})
+
+		fmt.Printf("%s\n", st.String())
 
 		return &ErrExit{}
 	}
