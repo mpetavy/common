@@ -1,10 +1,11 @@
 //go:build unix
 
-package common
+package db
 
 import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/mpetavy/common"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
@@ -33,7 +34,7 @@ func checkChanged(t *testing.T, db *Database, changed bool) {
 }
 
 func TestDb(t *testing.T) {
-	InitTesting(t)
+	common.InitTesting(t)
 
 	db, err := NewDatabase("sqlite3", "")
 	assert.NoError(t, err)
@@ -90,7 +91,7 @@ func TestDb(t *testing.T) {
 }
 
 func TestScriptEngineDatabase(t *testing.T) {
-	InitTesting(t)
+	common.InitTesting(t)
 
 	src := `
 var db = database;
@@ -113,12 +114,12 @@ for(var i = 0;i < result.Rows.length;i++) {
 db.close();
 `
 
-	engine, err := NewScriptEngine(src, "")
-	if Error(err) {
+	engine, err := common.NewScriptEngine(src, "")
+	if common.Error(err) {
 		return
 	}
 
-	err = engine.EnableDatabase()
+	err = EnableDatabase(engine)
 	assert.Nil(t, err)
 
 	_, err = engine.Run(time.Hour, "", "")

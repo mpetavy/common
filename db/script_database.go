@@ -1,57 +1,59 @@
-package common
+package db
 
-func (engine *ScriptEngine) EnableDatabase() error {
+import "github.com/mpetavy/common"
+
+func EnableDatabase(engine *common.ScriptEngine) error {
 	db := &Database{}
 
 	obj := engine.VM.NewObject()
 
 	err := obj.Set("drivers", DatabaseDrivers())
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = obj.Set("init", db.Init)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = obj.Set("begin", db.Begin)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = obj.Set("close", db.Close)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = obj.Set("commit", db.Commit)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = obj.Set("execute", db.Execute)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = obj.Set("open", db.Open)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = obj.Set("query", db.Query)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = obj.Set("rollback", db.Rollback)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = engine.VM.Set("database", obj)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 

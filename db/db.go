@@ -1,4 +1,4 @@
-package common
+package db
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/mpetavy/common"
 	dynamicstruct "github.com/ompluscator/dynamic-struct"
 	"reflect"
 	"strings"
@@ -38,7 +39,7 @@ func NewDatabase(driver, dsn string) (*Database, error) {
 	db := &Database{}
 
 	err := db.Init(driver, dsn)
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 
@@ -64,7 +65,7 @@ func (database *Database) Init(driver, dsn string) error {
 
 func (database *Database) Open() error {
 	db, err := sql.Open(database.Driver, database.DSN)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
@@ -77,7 +78,7 @@ func (database *Database) Open() error {
 	}
 
 	err = db.PingContext(ctx)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
@@ -88,7 +89,7 @@ func (database *Database) Open() error {
 
 func (database *Database) Close() error {
 	err := database.db.Close()
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
@@ -109,7 +110,7 @@ func (database *Database) Begin() error {
 	var err error
 
 	database.tx, err = database.db.BeginTx(database.txCtx, &sql.TxOptions{Isolation: database.Isolation})
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
@@ -124,7 +125,7 @@ func (database *Database) Rollback() error {
 	}
 
 	err := database.tx.Rollback()
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
@@ -145,7 +146,7 @@ func (database *Database) Commit() error {
 	}
 
 	err := database.tx.Commit()
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
@@ -168,12 +169,12 @@ func (database *Database) Execute(sqlcmd string, args ...any) (int64, error) {
 	}
 
 	result, err := database.currentDb().ExecContext(ctx, sqlcmd, args...)
-	if Error(err) {
+	if common.Error(err) {
 		return 0, err
 	}
 
 	rowsAffected, err := result.RowsAffected()
-	if Error(err) {
+	if common.Error(err) {
 		return 0, err
 	}
 
@@ -217,15 +218,15 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 	}
 
 	query, err := database.currentDb().QueryContext(ctx, sqlcmd, args...)
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 	defer func() {
-		Error(query.Close())
+		common.Error(query.Close())
 	}()
 
 	columnNames, err := query.Columns()
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 	for i := 0; i < len(columnNames); i++ {
@@ -233,7 +234,7 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 	}
 
 	columnTypes, err := query.ColumnTypes()
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 
@@ -302,7 +303,7 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 		}
 
 		err = query.Scan(scanPtrs...)
-		if Error(err) {
+		if common.Error(err) {
 			return nil, err
 		}
 
@@ -383,7 +384,7 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 		}
 
 		ba, err := json.MarshalIndent(record, "", "    ")
-		if Error(err) {
+		if common.Error(err) {
 			return nil, err
 		}
 
@@ -403,7 +404,7 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 	rows.Rows = recordStruct.NewSliceOfStructs()
 
 	err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 
