@@ -6,10 +6,17 @@ import (
 	"strings"
 )
 
+const (
+	LEFT = iota
+	CENTER
+	RIGHT
+)
+
 type StringTable struct {
-	cells    [][]interface{}
+	Cells    [][]interface{}
 	NoHeader bool
 	Markdown bool
+	Aligment []int
 }
 
 func NewStringTable() *StringTable {
@@ -17,20 +24,20 @@ func NewStringTable() *StringTable {
 }
 
 func (st *StringTable) Clear() {
-	st.cells = nil
+	st.Cells = nil
 }
 
 func (st *StringTable) Rows() int {
-	return len(st.cells)
+	return len(st.Cells)
 }
 
 func (st *StringTable) AddRow() {
-	st.cells = append(st.cells, make([]interface{}, 0))
+	st.Cells = append(st.Cells, make([]interface{}, 0))
 }
 
 func (st *StringTable) AddCol(txt interface{}) {
-	y := len(st.cells) - 1
-	st.cells[y] = append(st.cells[y], fmt.Sprintf("%v", txt))
+	y := len(st.Cells) - 1
+	st.Cells[y] = append(st.Cells[y], fmt.Sprintf("%v", txt))
 }
 
 func (st *StringTable) AddCols(txts ...interface{}) {
@@ -83,25 +90,41 @@ func (st *StringTable) rower(cols []interface{}, colLengths []int, cross bool) s
 func (st *StringTable) String() string {
 	colLengths := make([]int, 0)
 
-	for y := 0; y < len(st.cells); y++ {
-		for len(colLengths) < len(st.cells[y]) {
+	for y := 0; y < len(st.Cells); y++ {
+		for len(colLengths) < len(st.Cells[y]) {
 			colLengths = append(colLengths, 0)
 		}
 
-		for x := 0; x < len(st.cells[y]); x++ {
-			colLengths[x] = max(colLengths[x], len(fmt.Sprintf("%v", st.cells[y][x])))
+		for x := 0; x < len(st.Cells[y]); x++ {
+			colLengths[x] = max(colLengths[x], len(fmt.Sprintf("%v", st.Cells[y][x])))
 		}
 	}
 
 	sb := strings.Builder{}
 
-	for y := 0; y < len(st.cells); y++ {
-		sb.WriteString(st.rower(st.cells[y], colLengths, false))
+	for y := 0; y < len(st.Cells); y++ {
+		sb.WriteString(st.rower(st.Cells[y], colLengths, false))
 
 		if y == 0 && !st.NoHeader {
-			sep := make([]interface{}, len(st.cells[0]))
+			sep := make([]interface{}, len(st.Cells[0]))
 			for x := 0; x < len(sep); x++ {
-				sep[x] = strings.Repeat("-", colLengths[x])
+				align := 0
+				if x < len(st.Aligment) {
+					align = st.Aligment[x]
+				}
+
+				s := ""
+
+				switch align {
+				case LEFT:
+					s = fmt.Sprintf(":%s", strings.Repeat("-", colLengths[x]-1))
+				case CENTER:
+					s = fmt.Sprintf(":%s:", strings.Repeat("-", colLengths[x]-2))
+				case RIGHT:
+					s = fmt.Sprintf("%s:", strings.Repeat("-", colLengths[x]-1))
+				}
+
+				sep[x] = s
 			}
 			sb.WriteString(st.rower(sep, colLengths, true))
 		}
