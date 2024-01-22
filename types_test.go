@@ -438,3 +438,29 @@ func TestTrim4Path(t *testing.T) {
 		})
 	}
 }
+
+func TestSplitCmdline(t *testing.T) {
+	tests := []struct {
+		name    string
+		cmdline string
+		want    []string
+		count   int
+	}{
+		{name: "0", cmdline: "", want: nil, count: 0},
+		{name: "1", cmdline: "a", want: []string{"a"}, count: 1},
+		{name: "2", cmdline: "a b", want: []string{"a", "b"}, count: 2},
+		{name: "3", cmdline: "a b c", want: []string{"a", "b", "c"}, count: 3},
+		{name: "4", cmdline: "\"a b\" c", want: []string{"a b", "c"}, count: 2},
+		{name: "5", cmdline: "\"a b\" \"c d\"", want: []string{"a b", "c d"}, count: 2},
+		{name: "6", cmdline: "'a b' \"c d\"", want: []string{"a b", "c d"}, count: 2},
+		{name: "7", cmdline: "0 'a b' 1 \"c d\" 2", want: []string{"0", "a b", "1", "c d", "2"}, count: 5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmds := SplitCmdline(tt.cmdline)
+			assert.Equal(t, tt.count, len(cmds))
+			assert.Equal(t, tt.want, cmds, tt.cmdline)
+		})
+	}
+}

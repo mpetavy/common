@@ -538,6 +538,50 @@ func Split(s string, sep string) []string {
 	return strings.Split(s, sep)
 }
 
+func SplitCmdline(cmdline string) []string {
+	var cmds []string
+
+	var inCmd rune
+	var cmd []rune
+
+	addCmd := func() {
+		if cmd != nil {
+			cmds = append(cmds, string(cmd))
+			cmd = nil
+		}
+	}
+
+	scanCmd := func(ch rune) {
+		switch inCmd {
+		case 0:
+			inCmd = ch
+		case ch:
+			inCmd = 0
+		}
+	}
+
+	for _, ch := range cmdline {
+		switch ch {
+		case '"':
+			scanCmd(ch)
+		case '\'':
+			scanCmd(ch)
+		case ' ':
+			if inCmd != 0 {
+				cmd = append(cmd, ch)
+			} else {
+				addCmd()
+			}
+		default:
+			cmd = append(cmd, ch)
+		}
+	}
+
+	addCmd()
+
+	return cmds
+}
+
 func PrintBytes(ba []byte, breakOnLineEndings bool) string {
 	if ba == nil {
 		return ""
