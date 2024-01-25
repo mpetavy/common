@@ -248,6 +248,19 @@ func usage() error {
 	return nil
 }
 
+func IsFlagProvided(flagname string) bool {
+	flagname0 := "-" + flagname
+	flagname1 := "-" + flagname + "="
+
+	for _, arg := range os.Args {
+		if arg == flagname0 || strings.HasPrefix(arg, flagname1) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func checkMandatoryFlags(flags []string) error {
 	if *FlagService == SERVICE_UNINSTALL {
 		return nil
@@ -272,7 +285,7 @@ func checkMandatoryFlags(flags []string) error {
 					return fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
 				}
 
-				if fl.Value.String() != "" {
+				if IsFlagProvided(flagName) {
 					defined++
 				}
 			}
