@@ -390,6 +390,11 @@ func Run(mandatoryFlags []string) {
 	run := func() error {
 		flag.Parse()
 
+		err := LoadFlagsFile()
+		if Error(err) {
+			return err
+		}
+
 		Events.Emit(EventFlagsParsed{}, false)
 
 		if !*FlagNoBanner && !*FlagUsageMd {
@@ -400,7 +405,7 @@ func Run(mandatoryFlags []string) {
 			return TraceError(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
 		}
 
-		err := usage()
+		err = usage()
 		if Error(err) {
 			return err
 		}

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -211,7 +212,55 @@ func SaveConfiguration(cfg interface{}) error {
 	return nil
 }
 
+func LoadFlagsFile() error {
+	DebugFunc()
+
+	f := CleanPath(AppFilename(".ini"))
+	if !FileExists(f) {
+		return nil
+	}
+
+	ba, err := os.ReadFile(f)
+	if Error(err) {
+		return err
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(ba))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		splits := Split(line, "=")
+
+		if len(splits) < 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(splits[0])
+		value := strings.TrimSpace(splits[1])
+
+		fl := flag.Lookup(key)
+		if fl == nil {
+			Warn("unknown flag: %s", key)
+		}
+
+		DebugFunc("%s:%s", key, value)
+
+		err := fl.Value.Set(value)
+		if Error(err) {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func LoadConfigurationFile() ([]byte, error) {
+	DebugFunc()
+
 	if !FileExists(*FlagCfgFile) {
 		exe, err := os.Executable()
 		if Error(err) {
