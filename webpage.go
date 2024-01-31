@@ -35,7 +35,7 @@ const (
 	OPTION_MULTILINE        = "multiline"
 	OPTION_WIDE             = "wide"
 	OPTION_MEGALINE         = "megaline"
-	OPTION_NO_LABEL         = "nolabel"
+	OPTION_NO_LABEL         = "no_label"
 	OPTION_EXPERTVIEW       = "expertview"
 	OPTION_NO_DEFAULTBUTTON = "no_defaultbutton"
 	OPTION_CODE             = "code"
@@ -498,10 +498,6 @@ func NewForm(parent *etree.Element, caption string, data interface{}, defaultDat
 		htmlLabel.CreateAttr("for", "expert_view")
 		htmlLabel.SetText(Translate("Expert view"))
 
-	} else {
-		if len(actions) < 2 {
-			htmlForm.RemoveChild(htmlGroup)
-		}
 	}
 
 	return htmlForm, htmlGroup, nil
