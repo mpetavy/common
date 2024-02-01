@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	LEFT = iota
+	NONE = iota
+	LEFT
 	CENTER
 	RIGHT
 )
@@ -116,6 +117,8 @@ func (st *StringTable) String() string {
 				s := ""
 
 				switch align {
+				case NONE:
+					s = fmt.Sprintf("%s", strings.Repeat("-", colLengths[x]))
 				case LEFT:
 					s = fmt.Sprintf(":%s", strings.Repeat("-", colLengths[x]-1))
 				case CENTER:
