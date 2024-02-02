@@ -152,24 +152,24 @@ func Init(title string, version string, git string, build string, description st
 
 	date := time.Now()
 
-	if git == "" {
-		if info, ok := debug.ReadBuildInfo(); ok {
-			for _, setting := range info.Settings {
-				switch setting.Key {
-				case "vcs.revision":
-					if git != "" {
-						continue
-					}
-				case "vcs.time":
-					if version != "" {
-						continue
-					}
-
-					date, _ = time.Parse(time.RFC3339, setting.Value)
-					d := date.Sub(time.Date(date.Year(), 1, 1, 0, 0, 0, 0, time.UTC))
-
-					version = fmt.Sprintf("%d.%d", (date.Year()-22)%100, int(d.Abs().Hours())/24)
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				if git != "" {
+					continue
 				}
+
+				git = setting.Value
+			case "vcs.time":
+				if version != "" {
+					continue
+				}
+
+				date, _ = time.Parse(time.RFC3339, setting.Value)
+				d := date.Sub(time.Date(date.Year(), 1, 1, 0, 0, 0, 0, time.UTC))
+
+				version = fmt.Sprintf("%d.%d", (date.Year()-22)%100, int(d.Abs().Hours())/24)
 			}
 		}
 	}
@@ -390,7 +390,7 @@ func Run(mandatoryFlags []string) {
 	run := func() error {
 		flag.Parse()
 
-		err := LoadFlagsFile()
+		err := LoadIniFlagsFile()
 		if Error(err) {
 			return err
 		}

@@ -697,3 +697,26 @@ func ValidateJson(p any, ba []byte, ignoreUnknownFields bool) error {
 
 	return validateJson(p, m, ignoreUnknownFields)
 }
+
+func IndexNth(str string, substr string, count int) int {
+	if count < 1 {
+		return -1
+	}
+
+	i := 0
+	for {
+		if i+len(substr) > len(str) {
+			return -1
+		}
+
+		if strings.HasPrefix(str[i:], substr) {
+			count--
+
+			if count == 0 {
+				return i
+			}
+		}
+
+		i++
+	}
+}

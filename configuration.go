@@ -212,7 +212,7 @@ func SaveConfiguration(cfg interface{}) error {
 	return nil
 }
 
-func LoadFlagsFile() error {
+func LoadIniFlagsFile() error {
 	DebugFunc()
 
 	f := CleanPath(AppFilename(".ini"))
@@ -225,7 +225,13 @@ func LoadFlagsFile() error {
 		return err
 	}
 
+	withCrlf, err := NewSeparatorSplitFunc(nil, []byte("\n"), false)
+	if Error(err) {
+		return err
+	}
+
 	scanner := bufio.NewScanner(bytes.NewReader(ba))
+	scanner.Split(withCrlf)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
@@ -242,9 +248,35 @@ func LoadFlagsFile() error {
 		key := strings.TrimSpace(splits[0])
 		value := strings.TrimSpace(splits[1])
 
+		if value == "`" {
+			sb := strings.Builder{}
+
+			for scanner.Scan() {
+				line = scanner.Text()
+				if strings.HasPrefix(line, "`") {
+					break
+				}
+
+				sb.WriteString(line)
+			}
+
+			value = sb.String()
+		}
+
+		if strings.HasPrefix(value, "@") {
+			ba, err := os.ReadFile(value[1:])
+			if Error(err) {
+				return err
+			}
+
+			value = string(ba)
+		}
+
 		fl := flag.Lookup(key)
 		if fl == nil {
 			Warn("unknown flag: %s", key)
+
+			continue
 		}
 
 		DebugFunc("%s:%s", key, value)

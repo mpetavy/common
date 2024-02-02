@@ -464,3 +464,76 @@ func TestSplitCmdline(t *testing.T) {
 		})
 	}
 }
+
+func TestIndexNth(t *testing.T) {
+	type args struct {
+		str    string
+		substr string
+		count  int
+	}
+	var tests = []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "0",
+			args: args{
+				str:    "",
+				substr: "",
+				count:  -1,
+			},
+			want: -1,
+		},
+		{
+			name: "1",
+			args: args{
+				str:    "",
+				substr: "",
+				count:  10,
+			},
+			want: -1,
+		},
+		{
+			name: "2",
+			args: args{
+				str:    "x",
+				substr: "x",
+				count:  2,
+			},
+			want: -1,
+		},
+		{
+			name: "3",
+			args: args{
+				str:    "x",
+				substr: "x",
+				count:  1,
+			},
+			want: 0,
+		},
+		{
+			name: "4",
+			args: args{
+				str:    "xx",
+				substr: "x",
+				count:  1,
+			},
+			want: 0,
+		},
+		{
+			name: "5",
+			args: args{
+				str:    "xx",
+				substr: "x",
+				count:  2,
+			},
+			want: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, IndexNth(tt.args.str, tt.args.substr, tt.args.count), "NthIndex(%v, %v, %v)", tt.args.str, tt.args.count, tt.args.substr)
+		})
+	}
+}

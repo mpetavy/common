@@ -45,7 +45,7 @@ var (
 	FlagLogBreak    = flag.Bool(FlagNameLogBreak, false, "break on error")
 	FlagLogGap      = flag.Int(FlagNameLogGap, 100, "time gap after show a separator")
 
-	mu           sync.Mutex
+	mu           ReentrantMutex
 	fw           *fileWriter
 	rw                       = newMemoryWriter()
 	LogDebug     *log.Logger = log.New(rw, prefix(LevelDebug), 0)
@@ -148,26 +148,7 @@ func initLog() error {
 			}
 		})
 
-		msgs := append([]string{}, rw.msgs...)
-
 		rw.Clear()
-
-		for _, m := range msgs {
-			justMsg := m[strings.Index(m, " ")+1:]
-
-			switch {
-			case strings.HasPrefix(m, LevelDebug):
-				logDebugPrint(justMsg)
-			case strings.HasPrefix(m, LevelInfo):
-				logInfoPrint(justMsg)
-			case strings.HasPrefix(m, LevelWarn):
-				logWarnPrint(justMsg)
-			case strings.HasPrefix(m, LevelError):
-				logErrorPrint(justMsg)
-			case strings.HasPrefix(m, LevelFatal):
-				logFatalPrint(justMsg)
-			}
-		}
 	})
 
 	return nil
