@@ -906,3 +906,29 @@ func ReadFully(r io.Reader, p []byte) (int, error) {
 		p = p[n:]
 	}
 }
+
+type multiwriter struct {
+	writers []io.Writer
+}
+
+func (mw *multiwriter) Write(p []byte) (n int, err error) {
+	for _, w := range mw.writers {
+		// Ignore all errors
+
+		w.Write(p)
+	}
+
+	return len(p), nil
+}
+
+func MultiWriter(writers ...io.Writer) io.Writer {
+	allWriters := make([]io.Writer, 0, len(writers))
+	for _, w := range writers {
+		if mw, ok := w.(*multiwriter); ok {
+			allWriters = append(allWriters, mw.writers...)
+		} else {
+			allWriters = append(allWriters, w)
+		}
+	}
+	return &multiwriter{allWriters}
+}

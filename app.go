@@ -119,6 +119,8 @@ var (
 )
 
 func Init(title string, version string, git string, build string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
+	Panic(initWorkingPath())
+
 	ba, err := resources.ReadFile("go.mod")
 	Panic(err)
 
@@ -207,6 +209,35 @@ func Init(title string, version string, git string, build string, description st
 
 	app.Service, err = service.New(app, app.ServiceConfig)
 	Panic(err)
+}
+
+func initWorkingPath() error {
+	if !IsRunningAsService() || !IsWindows() {
+		return nil
+	}
+
+	exe, err := os.Executable()
+	if Error(err) {
+		return err
+	}
+
+	exeDir := filepath.Dir(exe)
+
+	wd, err := os.Getwd()
+	if Error(err) {
+		return err
+	}
+
+	if wd != exeDir {
+		Warn("change OS working path: %s", exeDir)
+
+		err := os.Chdir(exeDir)
+		if Error(err) {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func usage() error {

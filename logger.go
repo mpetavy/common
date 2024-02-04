@@ -125,11 +125,11 @@ func initLog() error {
 		}
 	}
 
-	LogDebug = log.New(io.MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelDebug), f)
-	LogInfo = log.New(io.MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelInfo), f)
-	LogWarn = log.New(io.MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelWarn), f)
-	LogError = log.New(io.MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelError), f)
-	LogFatal = log.New(io.MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelFatal), f)
+	LogDebug = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelDebug), f)
+	LogInfo = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelInfo), f)
+	LogWarn = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelWarn), f)
+	LogError = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelError), f)
+	LogFatal = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelFatal), f)
 
 	log.SetFlags(f)
 
