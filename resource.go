@@ -46,7 +46,11 @@ func ReadResource(filename string) ([]byte, string, error) {
 
 	mimeType, ok := resourcesMimeTypes[filename]
 	if !ok {
-		mt := DetectMimeType(filename, ba)
+		mt, err := DetectMimeType(filename, ba)
+		if err != nil {
+			return nil, "", err
+		}
+
 		mimeType = mt.MimeType
 
 		resourcesMimeTypes[filename] = mimeType

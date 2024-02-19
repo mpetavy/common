@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/h2non/filetype"
 	"os"
@@ -103,7 +104,7 @@ func registerMimeType(mimeType, ext string) MimetypeExtension {
 	return mt
 }
 
-func DetectMimeType(filename string, buf []byte) MimetypeExtension {
+func DetectMimeType(filename string, buf []byte) (MimetypeExtension, error) {
 	if filename != "" {
 		ext := filepath.Ext(filename)
 		if ext != "" {
@@ -115,7 +116,16 @@ func DetectMimeType(filename string, buf []byte) MimetypeExtension {
 
 			for _, mt := range Mimetypes {
 				if mt.Ext == ext {
-					return mt
+					return mt, nil
+				}
+			}
+
+			if buf == nil {
+				var err error
+
+				buf, err = os.ReadFile(filename)
+				if Error(err) {
+					return MimetypeApplicationOctetStream, err
 				}
 			}
 		}
@@ -123,16 +133,16 @@ func DetectMimeType(filename string, buf []byte) MimetypeExtension {
 
 	t, err := filetype.Match(buf)
 	if t.MIME.Value != "" && err == nil {
-		return MimetypeExtension{t.MIME.Value, t.Extension}
+		return MimetypeExtension{t.MIME.Value, t.Extension}, nil
 	}
 
 	mime := mimetype.Detect(buf)
 
 	if mime != nil {
-		return MimetypeExtension{mime.String(), mime.Extension()}
+		return MimetypeExtension{mime.String(), mime.Extension()}, nil
 	}
 
-	return MimetypeApplicationOctetStream
+	return MimetypeApplicationOctetStream, fmt.Errorf("cannot detect mime type")
 }
 
 func ReadHeader(path string) ([]byte, error) {
