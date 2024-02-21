@@ -17,7 +17,7 @@ type MimetypeExtension struct {
 	MimeType, Ext string
 }
 
-var Mimetypes []MimetypeExtension
+var Mimetypes = make(map[string]MimetypeExtension)
 
 var (
 	MimetypeApplicationDicom                                                     = registerMimeType("application/dicom", "dcm")
@@ -30,7 +30,7 @@ var (
 	MimetypeApplicationJavascript                                                = registerMimeType("application/javascript", "js")
 	MimetypeApplicationJson                                                      = registerMimeType("application/json", "json")
 	MimetypeApplicationMsword                                                    = registerMimeType("application/msword", "doc")
-	MimetypeApplicationOctetStream                                               = registerMimeType("application/octet-stream", "")
+	MimetypeApplicationOctetStream                                               = registerMimeType("application/octet-stream", "bin")
 	MimetypeApplicationOgg                                                       = registerMimeType("application/ogg", "ogg")
 	MimetypeApplicationPdf                                                       = registerMimeType("application/pdf", "pdf")
 	MimetypeApplicationPostscript                                                = registerMimeType("application/postscript", "ps")
@@ -99,7 +99,7 @@ func registerMimeType(mimeType, ext string) MimetypeExtension {
 		Ext:      ext,
 	}
 
-	Mimetypes = append(Mimetypes, mt)
+	Mimetypes[mimeType] = mt
 
 	return mt
 }
@@ -139,7 +139,7 @@ func DetectMimeType(filename string, buf []byte) (MimetypeExtension, error) {
 	mime := mimetype.Detect(buf)
 
 	if mime != nil {
-		return MimetypeExtension{mime.String(), mime.Extension()}, nil
+		return Mimetypes[mime.String()], nil
 	}
 
 	return MimetypeApplicationOctetStream, fmt.Errorf("cannot detect mime type")
