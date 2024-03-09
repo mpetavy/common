@@ -379,10 +379,10 @@ func getValue(m map[string]string, key string) (string, bool) {
 func SetFlags(ba []byte) error {
 	DebugFunc()
 
-	mapFile, err := registerFileFlags(ba)
+	mapCfgFile, err := registerFileFlags(ba)
+	mapIniFile, err := registerIniFileFlags()
 	mapFlag, err := registerArgsFlags()
 	mapEnv, err := registerEnvFlags()
-	mapIni, err := registerIniFileFlags()
 
 	flag.VisitAll(func(f *flag.Flag) {
 		if IsCmdlineOnlyFlag(f.Name) {
@@ -391,28 +391,30 @@ func SetFlags(ba []byte) error {
 
 		vFlag, bFlag := getValue(mapFlag, f.Name)
 		vEnv, bEnv := getValue(mapEnv, f.Name)
-		vFile, bFile := getValue(mapFile, f.Name)
-		vIni, bIni := getValue(mapIni, f.Name)
+		vCfgFile, bCfgFile := getValue(mapCfgFile, f.Name)
+		vIniFile, bIniFile := getValue(mapIniFile, f.Name)
 
 		value := ""
 		origin := ""
-
-		if bFile {
-			value = vFile
-			origin = "file"
-		}
 
 		if bEnv {
 			value = vEnv
 			origin = "env"
 		}
+
+		if bCfgFile {
+			value = vCfgFile
+			origin = "cfg file"
+		}
+
+		if bIniFile {
+			value = vIniFile
+			origin = "ini file"
+		}
+
 		if bFlag {
 			value = vFlag
 			origin = "flag"
-		}
-		if bIni {
-			value = vIni
-			origin = "ini"
 		}
 
 		if value != "" && value != f.Value.String() {
