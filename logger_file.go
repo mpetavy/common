@@ -3,6 +3,7 @@ package common
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -74,6 +75,14 @@ func (fw *fileWriter) createFile() error {
 	err = FileBackup(*FlagLogFileName)
 	if err != nil {
 		return err
+	}
+
+	dir := filepath.Dir(*FlagLogFileName)
+	if !FileExists(dir) {
+		err := os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			return err
+		}
 	}
 
 	fw.file, err = os.OpenFile(*FlagLogFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
