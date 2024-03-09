@@ -212,22 +212,24 @@ func SaveConfiguration(cfg interface{}) error {
 	return nil
 }
 
-func LoadIniFlagsFile() error {
+func registerIniFileFlags() (map[string]string, error) {
 	DebugFunc()
+
+	m := make(map[string]string)
 
 	f := CleanPath(AppFilename(".ini"))
 	if !FileExists(f) {
-		return nil
+		return m, nil
 	}
 
 	ba, err := os.ReadFile(f)
 	if Error(err) {
-		return err
+		return m, err
 	}
 
 	withCrlf, err := NewSeparatorSplitFunc(nil, []byte("\n"), false)
 	if Error(err) {
-		return err
+		return m, err
 	}
 
 	scanner := bufio.NewScanner(bytes.NewReader(ba))
@@ -266,28 +268,16 @@ func LoadIniFlagsFile() error {
 		if strings.HasPrefix(value, "@") {
 			ba, err := os.ReadFile(value[1:])
 			if Error(err) {
-				return err
+				return m, err
 			}
 
 			value = string(ba)
 		}
 
-		fl := flag.Lookup(key)
-		if fl == nil {
-			Warn("unknown flag: %s", key)
-
-			continue
-		}
-
-		DebugFunc("%s:%s", key, value)
-
-		err := fl.Value.Set(value)
-		if Error(err) {
-			return err
-		}
+		m[key] = value
 	}
 
-	return nil
+	return m, nil
 }
 
 func LoadConfigurationFile() ([]byte, error) {
@@ -389,9 +379,10 @@ func getValue(m map[string]string, key string) (string, bool) {
 func SetFlags(ba []byte) error {
 	DebugFunc()
 
+	mapFile, err := registerFileFlags(ba)
 	mapFlag, err := registerArgsFlags()
 	mapEnv, err := registerEnvFlags()
-	mapFile, err := registerFileFlags(ba)
+	mapIni, err := registerIniFileFlags()
 
 	flag.VisitAll(func(f *flag.Flag) {
 		if IsCmdlineOnlyFlag(f.Name) {
@@ -401,6 +392,7 @@ func SetFlags(ba []byte) error {
 		vFlag, bFlag := getValue(mapFlag, f.Name)
 		vEnv, bEnv := getValue(mapEnv, f.Name)
 		vFile, bFile := getValue(mapFile, f.Name)
+		vIni, bIni := getValue(mapIni, f.Name)
 
 		value := ""
 		origin := ""
@@ -417,6 +409,10 @@ func SetFlags(ba []byte) error {
 		if bFlag {
 			value = vFlag
 			origin = "flag"
+		}
+		if bIni {
+			value = vIni
+			origin = "ini"
 		}
 
 		if value != "" && value != f.Value.String() {

@@ -67,10 +67,10 @@ type EventInit struct {
 type EventShutdown struct {
 }
 
-type EventFlagsSet struct {
+type EventFlagsParsed struct {
 }
 
-type EventFlagsParsed struct {
+type EventFlagsSet struct {
 }
 
 type ErrExit struct {
@@ -421,11 +421,6 @@ func Run(mandatoryFlags []string) {
 	run := func() error {
 		flag.Parse()
 
-		err := LoadIniFlagsFile()
-		if Error(err) {
-			return err
-		}
-
 		Events.Emit(EventFlagsParsed{}, false)
 
 		if !*FlagNoBanner && !*FlagUsageMd {
@@ -436,7 +431,7 @@ func Run(mandatoryFlags []string) {
 			return TraceError(fmt.Errorf("superfluous flags provided: %s", strings.Join(os.Args[1:], " ")))
 		}
 
-		err = usage()
+		err := usage()
 		if Error(err) {
 			return err
 		}
