@@ -209,6 +209,8 @@ func Init(title string, version string, git string, build string, description st
 
 	app.Service, err = service.New(app, app.ServiceConfig)
 	Panic(err)
+
+	Events.Emit(EventInit{}, false)
 }
 
 func initWorkingPath() error {
@@ -414,8 +416,6 @@ func installService() error {
 }
 
 func Run(mandatoryFlags []string) {
-	Events.Emit(EventInit{}, false)
-
 	defer done()
 
 	run := func() error {
