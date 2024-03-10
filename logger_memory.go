@@ -29,22 +29,14 @@ func (mw *memoryWriter) Write(msg []byte) (int, error) {
 	return len(msg), nil
 }
 
-func (mw *memoryWriter) Copy(w io.Writer) error {
+func (mw *memoryWriter) GetLogs() []string {
 	mw.mu.Lock()
 	defer mw.mu.Unlock()
 
-	for _, msg := range mw.msgs {
-		_, err := w.Write([]byte(msg))
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return mw.msgs
 }
 
-func (mw *memoryWriter) Clear() {
+func (mw *memoryWriter) Clearlogs() {
 	mw.mu.Lock()
 	defer mw.mu.Unlock()
 

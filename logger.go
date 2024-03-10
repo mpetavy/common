@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
@@ -45,25 +44,34 @@ var (
 	FlagLogBreak    = flag.Bool(FlagNameLogBreak, false, "break on error")
 	FlagLogGap      = flag.Int(FlagNameLogGap, 100, "time gap after show a separator")
 
-	mu           ReentrantMutex
-	fw           *fileWriter
-	rw                       = newMemoryWriter()
-	LogDebug     *log.Logger = log.New(rw, prefix(LevelDebug), 0)
-	LogInfo      *log.Logger = log.New(rw, prefix(LevelInfo), 0)
-	LogWarn      *log.Logger = log.New(rw, prefix(LevelWarn), 0)
-	LogError     *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
-	LogFatal     *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
-	lastErr      string
-	lastLog      = time.Now()
-	onceInit     sync.Once
-	onceInitDone bool
-	tt           testingT
-	testT        = NewSyncOf(tt)
+	mu        ReentrantMutex
+	fw        *fileWriter
+	rw                    = newMemoryWriter()
+	LogDebug  *log.Logger = log.New(rw, prefix(LevelDebug), 0)
+	LogInfo   *log.Logger = log.New(rw, prefix(LevelInfo), 0)
+	LogWarn   *log.Logger = log.New(rw, prefix(LevelWarn), 0)
+	LogError  *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
+	LogFatal  *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
+	lastErr   string
+	lastLog   = time.Now()
+	isLogInit bool
+	tt        testingT
+	testT     = NewSyncOf(tt)
 )
 
-func IsVerboseEnabled() bool {
-	if *FlagLogVerbose {
-		return true
+func init() {
+	Events.AddListener(EventFlagsParsed{}, func(event Event) {
+		if *FlagLogSys && IsLinux() && !IsRunningInteractive() {
+			// with SYSTEMD everything which is printed to console is automatically printed to journalctl
+
+			*FlagLogSys = false
+		}
+	})
+}
+
+func IsLogVerboseEnabled() bool {
+	if FlagLogVerbose != nil {
+		return *FlagLogVerbose
 	}
 
 	for _, arg := range os.Args {
@@ -75,9 +83,13 @@ func IsVerboseEnabled() bool {
 	return false
 }
 
-func IsJsonEnabled() bool {
-	if *FlagLogJson {
-		return true
+func IsLogInit() bool {
+	return isLogInit
+}
+
+func IsLogJsonEnabled() bool {
+	if FlagLogJson != nil {
+		return *FlagLogJson
 	}
 
 	for _, arg := range os.Args {
@@ -89,8 +101,22 @@ func IsJsonEnabled() bool {
 	return false
 }
 
+func IsLogFileEnabled() bool {
+	if FlagLogFileName != nil {
+		return *FlagLogFileName != ""
+	}
+
+	for _, arg := range os.Args {
+		if arg == "-"+FlagNameLogFileName || strings.HasPrefix(arg, FlagNameLogFileName+"=") {
+			return true
+		}
+	}
+
+	return false
+}
+
 func prefix(p string) string {
-	if IsVerboseEnabled() && !IsJsonEnabled() {
+	if IsLogVerboseEnabled() && !IsLogJsonEnabled() {
 		return fmt.Sprintf("%-6s", p)
 	}
 
@@ -105,7 +131,7 @@ func initLog() error {
 
 	writers := []io.Writer{rw}
 
-	if FlagLogFileName != nil && *FlagLogFileName != "" {
+	if IsLogFileEnabled() {
 		var err error
 
 		fw, err = newFileWriter()
@@ -116,40 +142,26 @@ func initLog() error {
 		writers = append(writers, fw)
 	}
 
-	f := 0
-	if !IsJsonEnabled() {
-		f = log.Lmsgprefix
+	flags := 0
+	if !IsLogJsonEnabled() {
+		flags = log.Lmsgprefix
 
-		if IsVerboseEnabled() {
-			f = f | log.LstdFlags | log.LUTC | log.Lmicroseconds
+		if IsLogVerboseEnabled() {
+			flags = flags | log.LstdFlags | log.Lmicroseconds
 		}
 	}
 
-	LogDebug = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelDebug), f)
-	LogInfo = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelInfo), f)
-	LogWarn = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelWarn), f)
-	LogError = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelError), f)
-	LogFatal = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelFatal), f)
+	LogDebug = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelDebug), flags)
+	LogInfo = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelInfo), flags)
+	LogWarn = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelWarn), flags)
+	LogError = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelError), flags)
+	LogFatal = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelFatal), flags)
 
-	log.SetFlags(f)
+	log.SetFlags(flags)
 
-	onceInit.Do(func() {
-		onceInitDone = true
+	ClearLogs()
 
-		Events.AddListener(EventShutdown{}, func(event Event) {
-			//Error(closeLog())
-		})
-
-		Events.AddListener(EventFlagsParsed{}, func(event Event) {
-			if *FlagLogSys && IsLinux() && !IsRunningInteractive() {
-				// with SYSTEMD everything which is printed to console is automatically printed to journalctl
-
-				*FlagLogSys = false
-			}
-		})
-
-		rw.Clear()
-	})
+	isLogInit = true
 
 	return nil
 }
@@ -190,7 +202,7 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 	source := fmt.Sprintf("%s/%s:%d/%s", ri.Pack, ri.File, ri.Line, ri.Fn)
 
 	switch {
-	case IsJsonEnabled():
+	case IsLogJsonEnabled():
 		e := entry{
 			Timestamp:  time.Now().Format(time.RFC3339),
 			Level:      level,
@@ -207,7 +219,7 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 
 		return string(ba)
 
-	case IsVerboseEnabled():
+	case IsLogVerboseEnabled():
 		maxLen := 40
 		if len(source) > maxLen {
 			source = source[len(source)-maxLen:]
@@ -283,7 +295,7 @@ func logFatalPrint(s string) {
 }
 
 func Debug(format string, args ...any) {
-	if !IsVerboseEnabled() {
+	if !IsLogVerboseEnabled() {
 		return
 	}
 
@@ -298,7 +310,7 @@ func Debug(format string, args ...any) {
 }
 
 func DebugIndex(index int, format string, args ...any) {
-	if !IsVerboseEnabled() {
+	if !IsLogVerboseEnabled() {
 		return
 	}
 
@@ -313,7 +325,7 @@ func DebugIndex(index int, format string, args ...any) {
 }
 
 func DebugFunc(args ...any) {
-	if !IsVerboseEnabled() {
+	if !IsLogVerboseEnabled() {
 		return
 	}
 
@@ -360,7 +372,7 @@ func IgnoreError(err error) bool {
 }
 
 func DebugError(err error) bool {
-	if !IsVerboseEnabled() || err == nil || IsErrExit(err) {
+	if !IsLogVerboseEnabled() || err == nil || IsErrExit(err) {
 		return err != nil
 	}
 
@@ -368,14 +380,14 @@ func DebugError(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
+		logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
 	}
 
 	return true
 }
 
 func DebugErrorIndex(index int, err error) bool {
-	if !IsVerboseEnabled() || err == nil || IsErrExit(err) {
+	if !IsLogVerboseEnabled() || err == nil || IsErrExit(err) {
 		return err != nil
 	}
 
@@ -383,7 +395,7 @@ func DebugErrorIndex(index int, err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
+		logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
 	}
 
 	return true
@@ -398,7 +410,7 @@ func WarnError(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
+		logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
 	}
 
 	return true
@@ -417,10 +429,14 @@ func Error(err error) bool {
 	defer mu.Unlock()
 
 	if err.Error() != lastErr {
-		logErrorPrint(formatLog(LevelError, 2, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
+		logErrorPrint(formatLog(LevelError, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
 	}
 
 	lastErr = err.Error()
+
+	if *FlagLogBreak {
+		Exit(1)
+	}
 
 	return true
 }
@@ -431,9 +447,9 @@ func Panic(err error) {
 	}
 
 	if err.Error() != lastErr {
-		if onceInitDone {
+		if isLogInit {
 			if err.Error() != lastErr {
-				logFatalPrint(formatLog(LevelFatal, 2, strings.TrimSpace(err.Error()), IsVerboseEnabled()))
+				logFatalPrint(formatLog(LevelFatal, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
 			}
 		} else {
 			logFatalPrint(Capitalize(strings.TrimSpace(err.Error())))
@@ -444,9 +460,9 @@ func Panic(err error) {
 }
 
 func ClearLogs() {
-	rw.Clear()
+	rw.Clearlogs()
 }
 
-func GetLogs(w io.Writer) error {
-	return rw.Copy(w)
+func GetLogs() []string {
+	return rw.GetLogs()
 }

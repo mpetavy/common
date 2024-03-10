@@ -41,6 +41,15 @@ const (
 	FlagNameCfgCreate = "cfg.create"
 )
 
+type ErrUnknownFlag struct {
+	Origin string
+	Name   string
+}
+
+func (e *ErrUnknownFlag) Error() string {
+	return fmt.Sprintf("unknown flag in %s: %s", e.Origin, e.Name)
+}
+
 func init() {
 	Events.AddListener(EventInit{}, func(ev Event) {
 		FlagCfgFile = flag.String(FlagNameCfgFile, "", "Configuration file")
@@ -70,7 +79,10 @@ func (this *Configuration) SetFlag(flagName string, flagValue string) error {
 	}
 
 	if flag.Lookup(flagName) == nil {
-		return fmt.Errorf("unknown flag: %s", flagName)
+		return &ErrUnknownFlag{
+			Origin: "configuration",
+			Name:   flagName,
+		}
 	}
 
 	err := this.Flags.Put(flagName, flagValue)
@@ -83,7 +95,11 @@ func (this *Configuration) SetFlag(flagName string, flagValue string) error {
 
 func (this *Configuration) GetFlag(flagName string) (string, error) {
 	if flag.Lookup(flagName) == nil {
-		return "", fmt.Errorf("unknown flag: %s", flagName)
+		return "", &ErrUnknownFlag{
+			Origin: "configuration",
+			Name:   flagName,
+		}
+
 	}
 
 	flagValue, _ := this.Flags.Get(flagName)
@@ -146,12 +162,7 @@ func initConfiguration() error {
 		}
 	}
 
-	ba, err := LoadConfigurationFile()
-	if Error(err) {
-		return err
-	}
-
-	err = SetFlags(ba)
+	err := setFlags()
 	if Error(err) {
 		return err
 	}
@@ -179,16 +190,16 @@ func ResetConfiguration() error {
 func LoadConfiguration() (*Configuration, error) {
 	DebugFunc()
 
+	cfg := NewConfiguration()
+
 	ba, err := LoadConfigurationFile()
 	if Error(err) {
 		return nil, err
 	}
 
 	if ba == nil {
-		return nil, nil
+		return cfg, nil
 	}
-
-	cfg := NewConfiguration()
 
 	err = json.Unmarshal(ba, cfg)
 	if Error(err) {
@@ -272,6 +283,13 @@ func registerIniFileFlags() (map[string]string, error) {
 			}
 
 			value = string(ba)
+		}
+
+		if flag.Lookup(key) == nil {
+			return m, &ErrUnknownFlag{
+				Origin: filepath.Base(f),
+				Name:   key,
+			}
 		}
 
 		m[key] = value
@@ -366,55 +384,65 @@ func SaveConfigurationFile(ba []byte) error {
 	return nil
 }
 
-func getValue(m map[string]string, key string) (string, bool) {
-	if m == nil {
-		return "", false
-	}
-
-	v, ok := m[key]
-
-	return v, ok
-}
-
-func SetFlags(ba []byte) error {
+func setFlags() error {
 	DebugFunc()
 
-	mapCfgFile, err := registerFileFlags(ba)
+	mapCfgFile, err := registerCfgFileFlags()
+	if Error(err) {
+		return err
+	}
 	mapIniFile, err := registerIniFileFlags()
-	mapFlag, err := registerArgsFlags()
+	if Error(err) {
+		return err
+	}
+	mapArgs, err := registerArgsFlags()
+	if Error(err) {
+		return err
+	}
 	mapEnv, err := registerEnvFlags()
+	if Error(err) {
+		return err
+	}
+
+	maps := []struct {
+		origin string
+		m      map[string]string
+	}{
+		{
+			origin: "env",
+			m:      mapEnv,
+		},
+		{
+			origin: "cfg file",
+			m:      mapCfgFile,
+		},
+		{
+			origin: "ini file",
+			m:      mapIniFile,
+		},
+		{
+			origin: "args",
+			m:      mapArgs,
+		},
+	}
 
 	flag.VisitAll(func(f *flag.Flag) {
 		if IsCmdlineOnlyFlag(f.Name) {
 			return
 		}
 
-		vFlag, bFlag := getValue(mapFlag, f.Name)
-		vEnv, bEnv := getValue(mapEnv, f.Name)
-		vCfgFile, bCfgFile := getValue(mapCfgFile, f.Name)
-		vIniFile, bIniFile := getValue(mapIniFile, f.Name)
+		var origin string
+		var value string
 
-		value := ""
-		origin := ""
+		for _, m := range maps {
+			v, ok := m.m[f.Name]
 
-		if bEnv {
-			value = vEnv
-			origin = "env"
-		}
+			if !ok || v == "" {
+				continue
+			}
 
-		if bCfgFile {
-			value = vCfgFile
-			origin = "cfg file"
-		}
-
-		if bIniFile {
-			value = vIniFile
-			origin = "ini file"
-		}
-
-		if bFlag {
-			value = vFlag
-			origin = "flag"
+			origin = m.origin
+			value = v
 		}
 
 		if value != "" && value != f.Value.String() {
@@ -426,7 +454,7 @@ func SetFlags(ba []byte) error {
 
 	flag.VisitAll(func(fl *flag.Flag) {
 		v := fmt.Sprintf("%+v", fl.Value)
-		if strings.Contains(strings.ToLower(fl.Name), "password") {
+		if strings.Contains(strings.ToLower(fl.Name), "password") || strings.Contains(strings.ToLower(fl.Name), "pwd") {
 			v = strings.Repeat("X", len(v))
 		}
 
@@ -438,28 +466,13 @@ func SetFlags(ba []byte) error {
 	return err
 }
 
-// IsFlagSetOnArgs reports back all really set flags on the command line.
-// Go's flag.Visit() gives back also the flags which have been set before by "flag.Set(..."
-func IsFlagSetOnArgs(fn string) bool {
-	fnSingle := "-" + fn
-	fnEqual := "-" + fn + "="
-
-	for _, f := range os.Args {
-		if f == fnSingle || strings.HasPrefix(f, fnEqual) {
-			return true
-		}
-	}
-
-	return false
-}
-
 func registerArgsFlags() (map[string]string, error) {
 	DebugFunc()
 
 	m := make(map[string]string)
 
 	flag.Visit(func(f *flag.Flag) {
-		if IsFlagSetOnArgs(f.Name) {
+		if IsFlagProvided(f.Name) {
 			m[f.Name] = f.Value.String()
 		}
 	})
@@ -487,10 +500,15 @@ func registerEnvFlags() (map[string]string, error) {
 	return m, nil
 }
 
-func registerFileFlags(ba []byte) (map[string]string, error) {
+func registerCfgFileFlags() (map[string]string, error) {
 	DebugFunc(*FlagCfgFile)
 
 	m := make(map[string]string)
+
+	ba, err := LoadConfigurationFile()
+	if Error(err) {
+		return m, err
+	}
 
 	if ba == nil {
 		return m, nil
@@ -498,7 +516,7 @@ func registerFileFlags(ba []byte) (map[string]string, error) {
 
 	cfg := Configuration{}
 
-	err := json.Unmarshal(ba, &cfg)
+	err = json.Unmarshal(ba, &cfg)
 	if Error(err) {
 		return m, err
 	}
@@ -506,6 +524,13 @@ func registerFileFlags(ba []byte) (map[string]string, error) {
 	if cfg.Flags != nil {
 		for _, key := range cfg.Flags.Keys() {
 			value, _ := cfg.Flags.Get(key)
+
+			if flag.Lookup(key) == nil {
+				return m, &ErrUnknownFlag{
+					Origin: *FlagCfgFile,
+					Name:   key,
+				}
+			}
 
 			m[key] = value
 		}

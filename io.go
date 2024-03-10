@@ -912,10 +912,14 @@ type multiwriter struct {
 }
 
 func (mw *multiwriter) Write(p []byte) (n int, err error) {
-	for _, w := range mw.writers {
-		// Ignore all errors
+	if mw != nil {
+		for _, w := range mw.writers {
+			if w != nil {
+				// Ignore all errors
 
-		w.Write(p)
+				w.Write(p)
+			}
+		}
 	}
 
 	return len(p), nil
