@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"embed"
 	"flag"
 	"fmt"
@@ -116,6 +117,7 @@ var (
 	restartCh               = make(chan struct{})
 	ctrlC                   = make(chan os.Signal, 1)
 	isFirstTicker           = true
+	banner                  = bytes.Buffer{}
 )
 
 func Init(title string, version string, git string, build string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
@@ -496,24 +498,24 @@ func ExitOrError(err error) error {
 func showBanner() {
 	onceBanner.Do(func() {
 		if app != nil {
-			fmt.Printf("\n")
-			fmt.Printf("%s %s - %s\n", strings.ToUpper(app.Title), app.Version, app.Description)
-			fmt.Printf("\n")
-			fmt.Printf("Copyright: © %d %s\n", app.Date.Year(), app.Developer)
-			fmt.Printf("Homepage:  %s\n", app.Homepage)
-			fmt.Printf("License:   %s\n", app.License)
+			banner.WriteString(fmt.Sprintf("\n"))
+			banner.WriteString(fmt.Sprintf("%s %s - %s\n", strings.ToUpper(app.Title), app.Version, app.Description))
+			banner.WriteString(fmt.Sprintf("\n"))
+			banner.WriteString(fmt.Sprintf("Copyright: © %d %s\n", app.Date.Year(), app.Developer))
+			banner.WriteString(fmt.Sprintf("Homepage:  %s\n", app.Homepage))
+			banner.WriteString(fmt.Sprintf("License:   %s\n", app.License))
 			if app.Build != "" {
-				fmt.Printf("Build:     %s\n", app.Build)
+				banner.WriteString(fmt.Sprintf("Build:     %s\n", app.Build))
 			}
 			if app.Git != "" {
-				fmt.Printf("Git:       %s\n", app.Git)
+				banner.WriteString(fmt.Sprintf("Git:       %s\n", app.Git))
 			}
 			if !app.Date.IsZero() {
-				fmt.Printf("Time:      %s\n", app.Date.Format(time.RFC822))
+				banner.WriteString(fmt.Sprintf("Time:      %s\n", app.Date.Format(time.RFC822)))
 			}
-			fmt.Printf("PID:       %d\n", os.Getpid())
+			banner.WriteString(fmt.Sprintf("PID:       %d\n", os.Getpid()))
 
-			fmt.Printf("\n")
+			banner.WriteString(fmt.Sprintf("\n"))
 		}
 	})
 }
@@ -588,7 +590,7 @@ func (app *application) applicationRun() error {
 			restart = true
 			return nil
 		case <-ctrlC:
-			Info("")
+			fmt.Println()
 			Info("Terminate: CTRL-C pressed")
 			return nil
 		case <-ticker.C:

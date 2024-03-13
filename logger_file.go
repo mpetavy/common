@@ -1,9 +1,11 @@
 package common
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -35,6 +37,11 @@ func newFileWriter() (*fileWriter, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	_, err := fw.Write([]byte(fmt.Sprintf("\n%s\n%s", strings.Repeat("#", 154), banner.String())))
+	if err != nil {
+		return nil, err
 	}
 
 	return fw, nil
