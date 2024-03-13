@@ -516,6 +516,8 @@ func showBanner() {
 			banner.WriteString(fmt.Sprintf("PID:       %d\n", os.Getpid()))
 
 			banner.WriteString(fmt.Sprintf("\n"))
+
+			fmt.Printf("%s", banner.String())
 		}
 	})
 }
