@@ -27,6 +27,10 @@ var (
 	FlagCfgFile   *string
 
 	CmdlineOnlyFlags = []string{
+		FlagNameService,
+		FlagNameServiceUsername,
+		FlagNameServicePassword,
+		FlagNameServiceTimeout,
 		FlagNameCfgFile,
 		FlagNameCfgReset,
 		FlagNameCfgCreate,
