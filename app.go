@@ -294,6 +294,34 @@ func IsFlagProvided(flagname string) bool {
 	return false
 }
 
+func FlagValue(flagname string) string {
+	flagname0 := "-" + flagname
+	flagname1 := "-" + flagname + "="
+
+	for i := 0; i < len(os.Args); i++ {
+		arg := os.Args[i]
+		if arg == flagname0 {
+			value := ""
+			if i+1 < len(os.Args) {
+				if !strings.HasPrefix(os.Args[i+1], "-") {
+					value = os.Args[i+1]
+				}
+			}
+
+			return value
+		}
+		if strings.HasPrefix(arg, flagname1) {
+			splits := Split(arg, "=")
+
+			if len(splits) > 1 {
+				return splits[1]
+			}
+		}
+	}
+
+	return ""
+}
+
 func checkMandatoryFlags(flags []string) error {
 	if *FlagService == SERVICE_UNINSTALL {
 		return nil
