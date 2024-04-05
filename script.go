@@ -98,7 +98,7 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 			resPath = resPath[p:]
 		}
 
-		resPath = filepath.Join("node", resPath)
+		resPath = strings.ReplaceAll(filepath.Join("node", resPath), "\\", "/")
 
 		ba, _, err = ReadResource(resPath)
 		if ba != nil {
