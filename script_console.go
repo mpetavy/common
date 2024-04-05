@@ -8,11 +8,6 @@ import (
 
 type gojaConsole struct{}
 
-func (c *gojaConsole) print(args ...any) {
-	fmt.Print(args...)
-	fmt.Println()
-}
-
 func (c *gojaConsole) error(args ...string) {
 	Error(fmt.Errorf("%s", strings.Join(args, " ")))
 }
@@ -30,7 +25,7 @@ func (c *gojaConsole) warn(args ...string) {
 }
 
 func (c *gojaConsole) log(args ...string) {
-	Info(strings.Join(args, " "))
+	Debug(strings.Join(args, " "))
 }
 
 func registerConsole(vm *goja.Runtime) error {
@@ -38,12 +33,7 @@ func registerConsole(vm *goja.Runtime) error {
 
 	obj := vm.NewObject()
 
-	err := obj.Set("print", c.print)
-	if Error(err) {
-		return err
-	}
-
-	err = obj.Set("error", c.error)
+	err := obj.Set("error", c.error)
 	if Error(err) {
 		return err
 	}

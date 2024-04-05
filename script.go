@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -83,21 +85,29 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	}
 
 	options = append(options, require.WithLoader(func(path string) ([]byte, error) {
+		ba, err := require.DefaultSourceLoader(path)
+		if err == nil {
+			Debug("load Javascript module as file: %s", path)
+
+			return ba, err
+		}
+
 		resPath := path
 		p := strings.Index(resPath, "node_modules")
 		if p != -1 {
 			resPath = resPath[p:]
 		}
-		resPath = fmt.Sprintf("js/%s", resPath)
-		ba, _, _ := ReadResource(resPath)
 
+		resPath = filepath.Join("node", resPath)
+
+		ba, _, err = ReadResource(resPath)
 		if ba != nil {
-			Debug("load module as resource : %s", resPath)
+			Debug("load Javascript module as embedded resource: %s -> %s", path, resPath)
 
 			return ba, nil
 		}
 
-		return require.DefaultSourceLoader(path)
+		return nil, require.ModuleFileDoesNotExistError
 	}),
 	)
 
@@ -124,6 +134,8 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 		err   error
 	}
 
+	var isTimeout atomic.Bool
+
 	ch := make(chan result)
 
 	go func() {
@@ -138,7 +150,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 
 			// script must be run once to initialize all functions (also the "main" function)
 			value, err = engine.VM.RunProgram(engine.program)
-			if Error(err) {
+			if isTimeout.Load() || Error(err) {
 				return err
 			}
 
@@ -174,7 +186,10 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 
 	select {
 	case <-time.After(timeout):
+		isTimeout.Store(true)
+
 		engine.VM.Interrupt(nil)
+
 		return nil, &ErrTimeout{
 			Duration: timeout,
 			Err:      nil,
