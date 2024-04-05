@@ -41,7 +41,7 @@ a.test() + ';' + b.test();
 		return
 	}
 
-	v, err := engine.Run(time.Second, "", nil)
+	v, err := engine.Run(time.Second*3, "", nil)
 	if Error(err) {
 		return
 	}
@@ -110,7 +110,7 @@ args.output = "hello " + input;
 	assert.Equal(t, "hello world", args["output"])
 }
 
-func TestScriptFormatJavascript(t *testing.T) {
+func TestScriptEngineFormatJavascript(t *testing.T) {
 	InitTesting(t)
 
 	src := `
@@ -128,7 +128,7 @@ args.output = "hello " + input;
 	assert.Nil(t, err)
 }
 
-func TestEtree(t *testing.T) {
+func TestScriptEngineEtree(t *testing.T) {
 	InitTesting(t)
 
 	src := `
@@ -146,4 +146,54 @@ console.log(d.WriteToString());
 	_, err = engine.Run(time.Hour, "", nil)
 
 	assert.Nil(t, err)
+}
+
+func TestScriptEngineHL7(t *testing.T) {
+	InitTesting(t)
+
+	tests := []struct {
+		file     string
+		expected string
+	}{
+		{
+			file:     "./testdata/script/test-hl7-standard.js",
+			expected: "MSH|^~\\&|Example|123456|||20240405||ADT^A08||T|2.3|",
+		},
+		{
+			file: "./testdata/script/test-hl7-standard-2.js",
+			expected: fmt.Sprintf("%s\r\n%s\r\n%s\r\n%s", "MSH|^~\\&|EPIC|EPICADT|SMS|SMSADT|199912271408|CHARRIS|ADT^A04|1817457|D|2.5||",
+				"PID||0493575^^^2^ID 1|454721||DOE^JOHN^^^^|DOE^JOHN^^^^|19480203|M||B|254 MYSTREET AVE^^MYTOWN^OH^44123^USA||(216)123-4567|||M|NON|400003403~1129086||",
+				"NK1||ROE^MARIE^^^^|SPO||(216)123-4567||EC||||||||||||||||||||||||||||",
+				"PV1||O|168 ~219~C~PMA^^^^^^^^^||||277^ALLEN MYLASTNAME^BONNIE^^^^|||||||||| ||2688684|||||||||||||||||||||||||199912271408||||||002376853|"),
+		},
+		{
+			file:     "./testdata/script/test-json-stringify.js",
+			expected: "{\"Interests\":[\"football\",\"hiking\",\"gym\"],\"Address\":{\"Name\":\"ransom\",\"Street\":\"Mystreet 17\",\"City\":\"Mytown\",\"Birthday\":\"Fri Apr 05 2024 13:45:14 GMT+0200 (CEST)\"}}",
+		},
+	}
+
+	for _, test := range tests {
+		if !t.Run(test.file, func(t *testing.T) {
+			src, err := os.ReadFile(test.file)
+			if Error(err) {
+				return
+			}
+
+			se, err := NewScriptEngine(string(src), "./testdata/node/node_modules")
+			if Error(err) {
+				return
+			}
+
+			output, err := se.Run(time.Second*3, "", "")
+			if Error(err) {
+				return
+			}
+
+			if test.expected != "" {
+				assert.Equal(t, test.expected, output.String())
+			}
+		}) {
+			return
+		}
+	}
 }
