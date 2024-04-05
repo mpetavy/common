@@ -226,6 +226,10 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 		}
 
 		msg = fmt.Sprintf("%-"+strconv.Itoa(maxLen)+"s %s", source, msg)
+	default:
+		if level != LevelDebug && level != LevelInfo {
+			msg = fmt.Sprintf("%s: %s", Capitalize(strings.ToLower(level)), msg)
+		}
 	}
 
 	if addStacktrace {
