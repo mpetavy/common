@@ -150,7 +150,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 
 			// script must be run once to initialize all functions (also the "main" function)
 			value, err = engine.VM.RunProgram(engine.program)
-			if isTimeout.Load() || Error(err) {
+			if isTimeout.Load() || DebugError(err) {
 				return err
 			}
 
@@ -161,7 +161,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 				}
 
 				value, err = fn(goja.Undefined(), engine.VM.ToValue(args))
-				if Error(err) {
+				if DebugError(err) {
 					return err
 				}
 			}

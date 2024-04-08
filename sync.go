@@ -14,7 +14,8 @@ func NewSync[T any]() *Sync[T] {
 
 func NewSyncOf[T any](t T) *Sync[T] {
 	return &Sync[T]{
-		ref: t,
+		ref:   t,
+		isSet: true,
 	}
 }
 

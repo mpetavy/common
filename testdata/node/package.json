@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "fast-xml-parser": "^4.3.6",
     "hl7-standard": "^1.0.4",
     "moment": "^2.29.4"
   }

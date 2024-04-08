@@ -55,8 +55,7 @@ var (
 	lastErr   string
 	lastLog   = time.Now()
 	isLogInit bool
-	tt        testingT
-	testT     = NewSyncOf(tt)
+	testT     = NewSync[*testing.T]()
 )
 
 func init() {
@@ -178,14 +177,9 @@ func closeLog() error {
 }
 
 func InitTesting(t *testing.T) {
-	tt = t
+	testT.Set(t)
 
 	Panic(initLog())
-}
-
-type testingT interface {
-	Logf(format string, args ...interface{})
-	Fatalf(format string, args ...interface{})
 }
 
 type entry struct {
