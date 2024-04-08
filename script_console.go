@@ -8,24 +8,34 @@ import (
 
 type gojaConsole struct{}
 
-func (c *gojaConsole) error(args ...string) {
-	Error(fmt.Errorf("%s", strings.Join(args, " ")))
+func format(args ...any) string {
+	list := []string{}
+
+	for _, arg := range args {
+		list = append(list, fmt.Sprintf("%+v", arg))
+	}
+
+	return strings.Join(list, " ")
 }
 
-func (c *gojaConsole) info(args ...string) {
-	Info(strings.Join(args, " "))
+func (c *gojaConsole) error(args ...any) {
+	Error(fmt.Errorf("%s", format(args...)))
 }
 
-func (c *gojaConsole) debug(args ...string) {
-	Debug(strings.Join(args, " "))
+func (c *gojaConsole) info(args ...any) {
+	Info(format(args...))
 }
 
-func (c *gojaConsole) warn(args ...string) {
-	Warn(strings.Join(args, " "))
+func (c *gojaConsole) debug(args ...any) {
+	Debug(format(args...))
 }
 
-func (c *gojaConsole) log(args ...string) {
-	Debug(strings.Join(args, " "))
+func (c *gojaConsole) warn(args ...any) {
+	Warn(format(args...))
+}
+
+func (c *gojaConsole) log(args ...any) {
+	Debug(format(args...))
 }
 
 func registerConsole(vm *goja.Runtime) error {

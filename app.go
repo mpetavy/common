@@ -110,6 +110,7 @@ var (
 	onceRunningAsExecutable sync.Once
 	onceRunningInteractive  sync.Once
 	onceShutdownHooks       sync.Once
+	onceTitle               sync.Once
 	runningAsService        bool
 	runningAsExecutable     bool
 	runningInteractive      bool
@@ -793,7 +794,9 @@ func AppFilename(newExt string) string {
 }
 
 func Title() string {
-	DebugFunc(app.Title)
+	onceTitle.Do(func() {
+		DebugFunc(app.Title)
+	})
 
 	return app.Title
 }

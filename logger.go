@@ -193,7 +193,7 @@ type entry struct {
 func formatLog(level string, index int, msg string, addStacktrace bool) string {
 	ri := GetRuntimeInfo(index)
 
-	source := fmt.Sprintf("%s/%s:%d/%s", ri.Pack, ri.File, ri.Line, ri.Fn)
+	source := fmt.Sprintf("%s/%s/%s:%d", ri.Pack, ri.File, ri.Fn, ri.Line)
 
 	switch {
 	case IsLogJsonEnabled():
@@ -305,6 +305,8 @@ func Debug(format string, args ...any) {
 	defer mu.Unlock()
 
 	logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(format), false))
+
+	lastErr = ""
 }
 
 func DebugIndex(index int, format string, args ...any) {
@@ -320,6 +322,8 @@ func DebugIndex(index int, format string, args ...any) {
 	defer mu.Unlock()
 
 	logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(format), false))
+
+	lastErr = ""
 }
 
 func DebugFunc(args ...any) {
@@ -341,6 +345,8 @@ func DebugFunc(args ...any) {
 	}
 
 	logDebugPrint(formatLog(LevelDebug, 2, str, false))
+
+	lastErr = ""
 }
 
 func Info(format string, args ...any) {
@@ -349,6 +355,8 @@ func Info(format string, args ...any) {
 	}
 
 	logInfoPrint(formatLog(LevelInfo, 2, strings.TrimSpace(format), false))
+
+	lastErr = ""
 }
 
 func Warn(format string, args ...any) {
@@ -357,6 +365,8 @@ func Warn(format string, args ...any) {
 	}
 
 	logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(format), false))
+
+	lastErr = ""
 }
 
 func TraceError(err error) error {
@@ -379,6 +389,8 @@ func DebugError(err error) bool {
 
 	if err.Error() != lastErr {
 		logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
+
+		lastErr = err.Error()
 	}
 
 	return true
@@ -394,6 +406,8 @@ func DebugErrorIndex(index int, err error) bool {
 
 	if err.Error() != lastErr {
 		logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
+
+		lastErr = err.Error()
 	}
 
 	return true
@@ -409,6 +423,8 @@ func WarnError(err error) bool {
 
 	if err.Error() != lastErr {
 		logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
+
+		lastErr = err.Error()
 	}
 
 	return true
@@ -428,9 +444,9 @@ func Error(err error) bool {
 
 	if err.Error() != lastErr {
 		logErrorPrint(formatLog(LevelError, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
-	}
 
-	lastErr = err.Error()
+		lastErr = err.Error()
+	}
 
 	if *FlagLogBreak {
 		Exit(1)
