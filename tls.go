@@ -286,21 +286,6 @@ func RndString(l int) (string, error) {
 	return sb.String(), nil
 }
 
-// the priority on entities inside p12 must be honored
-// 1st	  private key
-// 2nd	  computer certificate
-// 3d..n  CA certificates (will be ignored by app)
-func TlsConfigFromFile(filename string, password string) (*tls.Config, error) {
-	DebugFunc("filename: %s", filename)
-
-	ba, err := os.ReadFile(filename)
-	if Error(err) {
-		return nil, err
-	}
-
-	return TlsConfigFromBuffer(ba, password)
-}
-
 func PrivateKeyAsPEM(privateKey *ecdsa.PrivateKey) ([]byte, error) {
 	ba, err := x509.MarshalECPrivateKey(privateKey)
 	if Error(err) {
@@ -339,7 +324,12 @@ func TlsToX509Certificate(certificate []byte) (*x509.Certificate, error) {
 	return x509.ParseCertificate(certificate)
 }
 
-func TlsConfigFromBuffer(ba []byte, password string) (*tls.Config, error) {
+func TlsConfigFromP12(ba []byte, password string) (*tls.Config, error) {
+	// the priority on entities inside p12 must be honored
+	// 1st	  private key
+	// 2nd	  computer certificate
+	// 3d..n  CA certificates (will be ignored by app)
+
 	DebugFunc()
 
 	p12PrivateKey, p12Cert, p12RootCerts, err := VerifyP12(ba, password)
@@ -440,7 +430,7 @@ func TlsConfigFromPEM(certPEM []byte, keyPEM []byte, password string) (*tls.Conf
 		return nil, err
 	}
 
-	return TlsConfigFromBuffer(p12, password)
+	return TlsConfigFromP12(p12, password)
 }
 
 func CreateTlsConfig(keylen int, password string) (*tls.Config, error) {
@@ -543,9 +533,14 @@ func NewTlsConfigFromFlags() (*tls.Config, error) {
 	return tlsConfigFromFlags, nil
 }
 
-func readP12Flag(fileOrBuffer string, password string) (*tls.Config, error) {
+func readP12FromFileOrBuffer(fileOrBuffer string, password string) (*tls.Config, error) {
 	if FileExists_(fileOrBuffer) {
-		tlsConfig, err := TlsConfigFromFile(fileOrBuffer, password)
+		ba, err := os.ReadFile(fileOrBuffer)
+		if Error(err) {
+			return nil, err
+		}
+
+		tlsConfig, err := TlsConfigFromP12(ba, password)
 		if Error(err) {
 			return nil, err
 		}
@@ -553,7 +548,7 @@ func readP12Flag(fileOrBuffer string, password string) (*tls.Config, error) {
 		return tlsConfig, nil
 	}
 
-	tlsConfig, err := TlsConfigFromBuffer([]byte(fileOrBuffer), password)
+	tlsConfig, err := TlsConfigFromP12([]byte(fileOrBuffer), password)
 	if Error(err) {
 		return nil, err
 	}
@@ -577,7 +572,7 @@ func NewTlsConfig(
 	var err error
 
 	if certificate != "" {
-		tlsConfig, err = readP12Flag(certificate, password)
+		tlsConfig, err = readP12FromFileOrBuffer(certificate, password)
 		if Error(err) {
 			return nil, err
 		}
@@ -599,7 +594,7 @@ func NewTlsConfig(
 	}
 
 	if mutual != "" {
-		packageMutual, err := readP12Flag(mutual, password)
+		packageMutual, err := readP12FromFileOrBuffer(mutual, password)
 		if Error(err) {
 			return nil, err
 		}

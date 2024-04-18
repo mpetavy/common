@@ -802,35 +802,26 @@ func Title() string {
 }
 
 func Version(major bool, minor bool, patch bool) string {
-	if strings.Count(app.Version, ".") == 2 {
-		s := strings.Split(app.Version, ".")
+	s := Split(app.Version, ".")
+	dos := []bool{major, minor, patch}
 
-		sb := strings.Builder{}
+	sb := strings.Builder{}
 
-		if major {
-			sb.WriteString(s[0])
-		}
-
-		if minor {
+	for i := 0; i < 3; i++ {
+		if dos[i] {
 			if sb.Len() > 0 {
 				sb.WriteString(".")
 			}
 
-			sb.WriteString(s[1])
-		}
-
-		if patch {
-			if sb.Len() > 0 {
-				sb.WriteString(".")
+			if i < len(s) {
+				sb.WriteString(s[i])
+			} else {
+				sb.WriteString("0")
 			}
-
-			sb.WriteString(s[2])
 		}
-
-		return sb.String()
 	}
 
-	return ""
+	return sb.String()
 }
 
 func TitleVersion(major bool, minor bool, patch bool) string {
