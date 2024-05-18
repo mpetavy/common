@@ -260,32 +260,6 @@ func TlsDebugConnection(typ string, tlsConn *tls.Conn) {
 	}
 }
 
-func RndBytes(n int) ([]byte, error) {
-	DebugFunc()
-
-	b := make([]byte, n)
-	_, err := rand.Read(b)
-	if Error(err) {
-		return nil, err
-	}
-
-	return b, nil
-}
-
-func RndString(l int) (string, error) {
-	DebugFunc()
-
-	var letters = []rune("012345678abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	var lenLetter = len(letters)
-
-	sb := strings.Builder{}
-	for i := 0; i < l; i++ {
-		sb.WriteRune(letters[Rnd(lenLetter)])
-	}
-
-	return sb.String(), nil
-}
-
 func PrivateKeyAsPEM(privateKey *ecdsa.PrivateKey) ([]byte, error) {
 	ba, err := x509.MarshalECPrivateKey(privateKey)
 	if Error(err) {

@@ -1,7 +1,8 @@
-package common
+package scripting
 
 import (
 	"fmt"
+	"github.com/mpetavy/common"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestScriptEngine(t *testing.T) {
-	InitTesting(t)
+	common.InitTesting(t)
 
 	files := []string{"a.js", "b.js"}
 
@@ -24,8 +25,8 @@ function test() {
 exports.test = test;
 `, file)
 
-		err := os.WriteFile(modulePath, []byte(src), DefaultFileMode)
-		if Error(err) {
+		err := os.WriteFile(modulePath, []byte(src), common.DefaultFileMode)
+		if common.Error(err) {
 			return
 		}
 	}
@@ -37,12 +38,12 @@ a.test() + ';' + b.test();
 `
 
 	engine, err := NewScriptEngine(src, os.TempDir())
-	if Error(err) {
+	if common.Error(err) {
 		return
 	}
 
 	v, err := engine.Run(time.Second*3, "", nil)
-	if Error(err) {
+	if common.Error(err) {
 		return
 	}
 
@@ -52,30 +53,30 @@ a.test() + ';' + b.test();
 }
 
 func TestScriptEngineTimeout(t *testing.T) {
-	InitTesting(t)
+	common.InitTesting(t)
 
 	src := "while(true) {}"
 
 	engine, err := NewScriptEngine(src, "")
-	if Error(err) {
+	if common.Error(err) {
 		return
 	}
 
 	_, err = engine.Run(time.Second, "", nil)
 
 	assert.NotNil(t, err)
-	assert.True(t, IsErrTimeout(err))
+	assert.True(t, common.IsErrTimeout(err))
 }
 
 func TestScriptEngineException(t *testing.T) {
-	InitTesting(t)
+	common.InitTesting(t)
 
 	msg := "EXCEPTION!"
 
 	src := fmt.Sprintf("throw new Error('%s');", msg)
 
 	engine, err := NewScriptEngine(src, "")
-	if Error(err) {
+	if common.Error(err) {
 		return
 	}
 
@@ -86,7 +87,7 @@ func TestScriptEngineException(t *testing.T) {
 }
 
 func TestScriptEngineArgs(t *testing.T) {
-	InitTesting(t)
+	common.InitTesting(t)
 
 	src := `
 function main(args) {
@@ -96,7 +97,7 @@ args.output = "hello " + input;
 `
 
 	engine, err := NewScriptEngine(src, "")
-	if Error(err) {
+	if common.Error(err) {
 		return
 	}
 
@@ -111,7 +112,7 @@ args.output = "hello " + input;
 }
 
 func TestScriptEngineFormatJavascript(t *testing.T) {
-	InitTesting(t)
+	common.InitTesting(t)
 
 	src := `
 function main(args) {
@@ -121,7 +122,7 @@ args.output = "hello " + input;
 `
 
 	_, err := FormatJavascriptCode(src)
-	if Error(err) {
+	if common.Error(err) {
 		return
 	}
 
@@ -129,7 +130,7 @@ args.output = "hello " + input;
 }
 
 func TestScriptEngineEtree(t *testing.T) {
-	InitTesting(t)
+	common.InitTesting(t)
 
 	src := `
 d = Object.create(etree);
@@ -139,7 +140,7 @@ r.CreateAttr('name','foo');
 console.log(d.WriteToString());
 `
 	engine, err := NewScriptEngine(src, "")
-	if Error(err) {
+	if common.Error(err) {
 		return
 	}
 
@@ -149,7 +150,7 @@ console.log(d.WriteToString());
 }
 
 func TestScriptEngineHL7(t *testing.T) {
-	InitTesting(t)
+	common.InitTesting(t)
 
 	tests := []struct {
 		file     string
@@ -157,7 +158,7 @@ func TestScriptEngineHL7(t *testing.T) {
 	}{
 		{
 			file:     "./testdata/node/test-hl7-standard.js",
-			expected: fmt.Sprintf("MSH|^~\\&|Example|123456|||%s||ADT^A08||T|2.3|", time.Now().Format(Year+Month+Day)),
+			expected: fmt.Sprintf("MSH|^~\\&|Example|123456|||%s||ADT^A08||T|2.3|", time.Now().Format(common.Year+common.Month+common.Day)),
 		},
 		{
 			file: "./testdata/node/test-hl7-standard-2.js",
@@ -178,20 +179,20 @@ func TestScriptEngineHL7(t *testing.T) {
 
 	for _, test := range tests {
 		if !t.Run(test.file, func(t *testing.T) {
-			InitTesting(t)
+			common.InitTesting(t)
 
 			src, err := os.ReadFile(test.file)
-			if Error(err) {
+			if common.Error(err) {
 				return
 			}
 
 			se, err := NewScriptEngine(string(src), "./testdata/node/node_modules")
-			if Error(err) {
+			if common.Error(err) {
 				return
 			}
 
 			output, err := se.Run(time.Second*3, "", "")
-			if Error(err) {
+			if common.Error(err) {
 				return
 			}
 

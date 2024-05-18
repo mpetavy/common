@@ -6,6 +6,7 @@ import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mpetavy/common"
+	"github.com/mpetavy/common/scripting"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
@@ -119,7 +120,7 @@ db.close();
 		return
 	}
 
-	err = EnableDatabase(engine)
+	err = scripting.EnableDatabase(engine)
 	assert.Nil(t, err)
 
 	_, err = engine.Run(time.Hour, "", "")

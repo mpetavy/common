@@ -1,4 +1,4 @@
-package common
+package translate
 
 import (
 	"bufio"
@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/fatih/structtag"
 	"github.com/go-ini/ini"
+	"github.com/mpetavy/common"
 	googlelanguage "golang.org/x/text/language"
 	"google.golang.org/api/option"
 	"html"
@@ -24,7 +25,7 @@ import (
 var (
 	FlagLanguage   *string
 	systemLanguage string
-	i18nFile       *ini.File
+	I18nFile       *ini.File
 )
 
 const (
@@ -34,24 +35,26 @@ const (
 )
 
 func init() {
-	Events.AddListener(EventInit{}, func(ev Event) {
+	common.Translate = Translate
+
+	common.Events.AddListener(common.EventInit{}, func(ev common.Event) {
 		FlagLanguage = flag.String(FlagNameAppLanguage, DEFAULT_LANGUAGE, "language for messages")
 	})
 
-	Events.AddListener(EventFlagsSet{}, func(ev Event) {
+	common.Events.AddListener(common.EventFlagsSet{}, func(ev common.Event) {
 		initLanguage()
 	})
 }
 
 // GetSystemLanguage return BCP 47 standard language name
 func GetSystemLanguage() (string, error) {
-	DebugFunc()
+	common.DebugFunc()
 
-	if IsWindows() {
+	if common.IsWindows() {
 		cmd := exec.Command("powershell", "Get-WinSystemLocale")
 
-		ba, err := NewWatchdogCmd(cmd, time.Second*3)
-		if Error(err) {
+		ba, err := common.NewWatchdogCmd(cmd, time.Second*3)
+		if common.Error(err) {
 			return "", err
 		}
 
@@ -79,7 +82,7 @@ func GetSystemLanguage() (string, error) {
 					systemLanguage = systemLanguage[:p]
 				}
 
-				DebugFunc(systemLanguage)
+				common.DebugFunc(systemLanguage)
 
 				return systemLanguage, nil
 			} else {
@@ -94,8 +97,8 @@ func GetSystemLanguage() (string, error) {
 
 		cmd := exec.Command("locale")
 
-		ba, err := NewWatchdogCmd(cmd, time.Second)
-		if Error(err) {
+		ba, err := common.NewWatchdogCmd(cmd, time.Second)
+		if common.Error(err) {
 			return "", err
 		}
 
@@ -117,7 +120,7 @@ func GetSystemLanguage() (string, error) {
 					systemLanguage = systemLanguage[:p]
 				}
 
-				DebugFunc(systemLanguage)
+				common.DebugFunc(systemLanguage)
 
 				return systemLanguage, nil
 			}
@@ -128,13 +131,13 @@ func GetSystemLanguage() (string, error) {
 }
 
 func initLanguage() {
-	ba, _, _ := ReadResource(AppFilename(".i18n"))
+	ba, _, _ := common.ReadResource(common.AppFilename(".i18n"))
 
 	if ba != nil {
 		var err error
 
-		i18nFile, err = ini.Load(ba)
-		if DebugError(err) {
+		I18nFile, err = ini.Load(ba)
+		if common.DebugError(err) {
 			return
 		}
 
@@ -144,15 +147,15 @@ func initLanguage() {
 		}
 
 		if lang != "" {
-			Error(SetLanguage(lang))
+			common.Error(SetLanguage(lang))
 		}
 	}
 }
 
 func scanStruct(i18ns *[]string, data interface{}) error {
-	return IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
+	return common.IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
 		fieldTags, err := structtag.Parse(string(fieldType.Tag))
-		if Error(err) {
+		if common.Error(err) {
 			return err
 		}
 
@@ -175,13 +178,13 @@ func scanStruct(i18ns *[]string, data interface{}) error {
 
 // SetLanguage sets the language file to translation
 func SetLanguage(lang string) error {
-	DebugFunc(lang)
+	common.DebugFunc(lang)
 
-	if i18nFile == nil {
+	if I18nFile == nil {
 		return fmt.Errorf("no language file available")
 	}
 
-	sec, _ := i18nFile.GetSection(lang)
+	sec, _ := I18nFile.GetSection(lang)
 	if sec == nil {
 		return fmt.Errorf("language %s is not available", lang)
 	}
@@ -195,8 +198,8 @@ func SetLanguage(lang string) error {
 func GetLanguages() ([]string, error) {
 	list := make([]string, 0)
 
-	if i18nFile != nil {
-		for _, sec := range i18nFile.Sections() {
+	if I18nFile != nil {
+		for _, sec := range I18nFile.Sections() {
 			if sec.Name() != ini.DefaultSection {
 				list = append(list, sec.Name())
 			}
@@ -205,14 +208,14 @@ func GetLanguages() ([]string, error) {
 		list = append(list, DEFAULT_LANGUAGE)
 	}
 
-	SortStringsCaseInsensitive(list)
+	common.SortStringsCaseInsensitive(list)
 
 	return list, nil
 }
 
 func TranslateFor(language, msg string) string {
-	if i18nFile != nil && language != "" {
-		sec, _ := i18nFile.GetSection(language)
+	if I18nFile != nil && language != "" {
+		sec, _ := I18nFile.GetSection(language)
 		if sec != nil {
 			m, err := sec.GetKey(msg)
 
@@ -233,28 +236,28 @@ func Translate(msg string, args ...interface{}) string {
 
 	t := TranslateFor(*FlagLanguage, msg)
 
-	return Capitalize(fmt.Sprintf(t, args...))
+	return common.Capitalize(fmt.Sprintf(t, args...))
 }
 
 func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (string, error) {
-	DebugFunc("%s -> %s ...", text, foreignLanguage)
+	common.DebugFunc("%s -> %s ...", text, foreignLanguage)
 
 	ctx := context.Background()
 
 	// Creates a client.
 	client, err := translate.NewClient(ctx, option.WithAPIKey(googleApiKey))
-	if Error(err) {
+	if common.Error(err) {
 		return "", err
 	}
 
 	source, err := googlelanguage.Parse("en")
-	if Error(err) {
+	if common.Error(err) {
 		return "", err
 	}
 
 	// Sets the target language.
 	target, err := googlelanguage.Parse(foreignLanguage)
-	if Error(err) {
+	if common.Error(err) {
 		return "", err
 	}
 
@@ -264,7 +267,7 @@ func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (
 		Format: "",
 		Model:  "",
 	})
-	if Error(err) {
+	if common.Error(err) {
 		return "", err
 	}
 
@@ -275,18 +278,22 @@ func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (
 	}
 	term = strings.ReplaceAll(term, " / ", "/")
 
-	DebugFunc("%s -> %s: %s", text, foreignLanguage, term)
+	common.DebugFunc("%s -> %s: %s", text, foreignLanguage, term)
 
 	return term, nil
 }
 
 func CreateI18nFile(path string, objs ...interface{}) error {
+	if path == "" {
+		return nil
+	}
+
 	googleApiKey, ok := os.LookupEnv("GOOGLE_API_KEY")
 	if !ok {
 		return fmt.Errorf("Failed to get Google API key from env: GOOGLE_API_KEY")
 	}
 
-	filename := filepath.Join(path, AppFilename(".i18n"))
+	filename := filepath.Join(path, common.AppFilename(".i18n"))
 
 	i18ns := make([]string, 0)
 
@@ -298,15 +305,15 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	paths := []string{"*.go", "../common/*.go"}
 
 	for _, path := range paths {
-		err := WalkFiles(path, true, false, func(path string, f os.FileInfo) error {
+		err := common.WalkFiles(path, true, false, func(path string, f os.FileInfo) error {
 			if f.IsDir() {
 				return nil
 			}
 
-			Debug("extract i18n from source file: %s", path)
+			common.Debug("extract i18n from source file: %s", path)
 
 			ba, err := os.ReadFile(path)
-			if Error(err) {
+			if common.Error(err) {
 				return err
 			}
 
@@ -331,24 +338,24 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 
 			return nil
 		})
-		if Error(err) {
+		if common.Error(err) {
 			return err
 		}
 	}
 
 	for _, obj := range objs {
 		err := scanStruct(&i18ns, obj)
-		if Error(err) {
+		if common.Error(err) {
 			return err
 		}
 	}
 
-	SortStringsCaseInsensitive(i18ns)
+	common.SortStringsCaseInsensitive(i18ns)
 
 	// remove duplicates
 
 	r, err := regexp.Compile("\\%[^v%]")
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
@@ -361,21 +368,21 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 			if i+1 == len(i18ns) {
 				i18ns = i18ns[0 : len(i18ns)-1]
 			} else {
-				i18ns = SliceDelete(i18ns, i)
+				i18ns = common.SliceDelete(i18ns, i)
 				i--
 			}
 		}
 	}
 
-	SortStringsCaseInsensitive(i18ns)
+	common.SortStringsCaseInsensitive(i18ns)
 
-	if i18nFile == nil {
-		i18nFile = ini.Empty()
+	if I18nFile == nil {
+		I18nFile = ini.Empty()
 	}
 
 	// remove non existing i18ns from list
 
-	for _, sec := range i18nFile.Sections() {
+	for _, sec := range I18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
 			keys := sec.KeyStrings()
 
@@ -399,9 +406,9 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 	// update all languages with found i18ns
 
 	secNames := []string{DEFAULT_LANGUAGE, "nl", "it", "el", "es", "ar", "zh", "fr", "th", "de"}
-	for _, sec := range i18nFile.Sections() {
+	for _, sec := range I18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
-			if IndexOf(secNames, sec) == -1 {
+			if common.IndexOf(secNames, sec) == -1 {
 				secNames = append(secNames, sec.Name())
 			}
 		}
@@ -415,9 +422,9 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 				foreignLanguage = foreignLanguage[:p]
 			}
 
-			sec, _ := i18nFile.GetSection(secName)
+			sec, _ := I18nFile.GetSection(secName)
 			if sec == nil {
-				sec, _ = i18nFile.NewSection(secName)
+				sec, _ = I18nFile.NewSection(secName)
 			}
 
 			key, _ := sec.GetKey(i18n)
@@ -434,7 +441,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 					var err error
 
 					value, err = GoogleTranslate(googleApiKey, strings.ReplaceAll(i18n, "%v", "XXX"), foreignLanguage)
-					if Error(err) {
+					if common.Error(err) {
 						value = ""
 					} else {
 						value = strings.ReplaceAll(value, "XXX", "%v")
@@ -443,49 +450,49 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 			}
 
 			if key == nil {
-				_, err := i18nFile.Section(sec.Name()).NewKey(i18n, value)
-				if Error(err) {
+				_, err := I18nFile.Section(sec.Name()).NewKey(i18n, value)
+				if common.Error(err) {
 					return err
 				}
 			} else {
-				i18nFile.Section(sec.Name()).Key(i18n).SetValue(value)
+				I18nFile.Section(sec.Name()).Key(i18n).SetValue(value)
 			}
 		}
 	}
 
 	sortedFile := ini.Empty()
 
-	for _, sec := range i18nFile.Sections() {
+	for _, sec := range I18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
 			keys := sec.KeyStrings()
 
-			SortStringsCaseInsensitive(keys)
+			common.SortStringsCaseInsensitive(keys)
 
 			newSec, err := sortedFile.NewSection(sec.Name())
-			if Error(err) {
+			if common.Error(err) {
 				return err
 			}
 
 			for _, key := range keys {
 				k, err := sec.GetKey(key)
-				if Error(err) {
+				if common.Error(err) {
 					return err
 				}
 
 				_, err = newSec.NewKey(key, k.String())
-				if Error(err) {
+				if common.Error(err) {
 					return err
 				}
 			}
 		}
 	}
 
-	i18nFile = sortedFile
+	I18nFile = sortedFile
 
-	Debug("update i18n file: %s", filename)
+	common.Debug("update i18n file: %s", filename)
 
-	err = i18nFile.SaveTo(filename)
-	if Error(err) {
+	err = I18nFile.SaveTo(filename)
+	if common.Error(err) {
 		return err
 	}
 

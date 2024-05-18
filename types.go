@@ -50,6 +50,18 @@ const (
 
 var (
 	MEMORY_UNITS = []string{"Bytes", "KB", "MB", "GB", "TB"}
+
+	Translate = func(msg string, args ...interface{}) string {
+		if msg == "" {
+			return ""
+		}
+
+		if args != nil {
+			return fmt.Sprintf(msg, args)
+		} else {
+			return msg
+		}
+	}
 )
 
 // Trim4Path trims given path to be usefull as filename
@@ -105,30 +117,6 @@ func Capitalize(txt string) string {
 		return txt
 	} else {
 		return fmt.Sprintf("%s%s", string(unicode.ToUpper(runes[0])), string(runes[1:]))
-	}
-}
-
-// Capitalize the first letter
-func Lowerlize(txt string) string {
-	if len(txt) == 0 {
-		return txt
-	}
-
-	runes := []rune(txt)
-
-	allLower := true
-	for _, r := range runes {
-		allLower = unicode.IsLower(r)
-
-		if !allLower {
-			break
-		}
-	}
-
-	if allLower {
-		return txt
-	} else {
-		return fmt.Sprintf("%s%s", string(unicode.ToLower(runes[0])), string(runes[1:]))
 	}
 }
 

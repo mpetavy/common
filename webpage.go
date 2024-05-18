@@ -124,11 +124,12 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 
 	p.HtmlRoot = p.doc.CreateElement("html")
 
-	lang := *FlagLanguage
-	if lang == "" {
-		lang = DEFAULT_LANGUAGE
-	}
-	p.HtmlRoot.CreateAttr("lang", lang)
+	//FIXME
+	//lang := *FlagLanguage
+	//if lang == "" {
+	//	lang = DEFAULT_LANGUAGE
+	//}
+	//p.HtmlRoot.CreateAttr("lang", lang)
 
 	p.HtmlHead = p.HtmlRoot.CreateElement("head")
 	p.HtmlTitle = p.HtmlHead.CreateElement("title")

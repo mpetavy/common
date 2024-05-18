@@ -2,7 +2,6 @@ package common
 
 import (
 	"crypto/rand"
-	"embed"
 	"fmt"
 	"github.com/google/uuid"
 	"math/big"
@@ -11,9 +10,6 @@ import (
 	"strings"
 	"time"
 )
-
-//go:embed embed/*
-var embedfs embed.FS
 
 // IsWindowsOS reports true if underlying OS is MS Windows
 func IsWindows() bool {
@@ -101,4 +97,30 @@ func Rnd(max int) int {
 	Panic(err)
 
 	return int(nBig.Int64())
+}
+
+func RndBytes(n int) ([]byte, error) {
+	DebugFunc()
+
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if Error(err) {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func RndString(l int) (string, error) {
+	DebugFunc()
+
+	var letters = []rune("012345678abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	var lenLetter = len(letters)
+
+	sb := strings.Builder{}
+	for i := 0; i < l; i++ {
+		sb.WriteRune(letters[Rnd(lenLetter)])
+	}
+
+	return sb.String(), nil
 }

@@ -1,9 +1,10 @@
-package common
+package scripting
 
 import (
 	"bytes"
 	"crypto/tls"
 	"github.com/dop251/goja"
+	"github.com/mpetavy/common"
 	"io"
 	"net/http"
 )
@@ -24,7 +25,7 @@ func (c *gojaHttp) execute(method string, url string, username string, password 
 	req.SetBasicAuth(username, password)
 
 	resp, err := client.Do(req)
-	if Error(err) {
+	if common.Error(err) {
 		return resp, err
 	}
 
@@ -35,10 +36,10 @@ func (c *gojaHttp) body(resp *http.Response) ([]byte, error) {
 	ba, err := io.ReadAll(resp.Body)
 
 	defer func() {
-		Error(resp.Body.Close())
+		common.Error(resp.Body.Close())
 	}()
 
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 
@@ -51,17 +52,17 @@ func registerHttp(vm *goja.Runtime) error {
 	obj := vm.NewObject()
 
 	err := obj.Set("execute", h.execute)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = obj.Set("body", h.body)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 
 	err = vm.Set("http", obj)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 

@@ -1,9 +1,11 @@
-package common
+package scripting
 
 import (
+	"embed"
 	"fmt"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
+	"github.com/mpetavy/common"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -11,6 +13,9 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+//go:embed embed/*
+var embedfs embed.FS
 
 type ScriptEngine struct {
 	Registry *require.Registry
@@ -24,7 +29,7 @@ func (c *gojaConsole) table(data interface{}) {
 		val = reflect.Indirect(reflect.ValueOf(data))
 	}
 
-	st := NewStringTable()
+	st := common.NewStringTable()
 	st.AddCols("field", "value")
 
 	switch val.Type().Kind() {
@@ -37,12 +42,12 @@ func (c *gojaConsole) table(data interface{}) {
 			st.AddCols(k, fmt.Sprintf("%+v", v.Elem()))
 		}
 	case reflect.Struct:
-		err := IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
+		err := common.IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
 			st.AddCols(fieldPath, fmt.Sprintf("%+v", fieldValue.Elem()))
 
 			return nil
 		})
-		if Error(err) {
+		if common.Error(err) {
 			return
 		}
 	case reflect.Array:
@@ -54,27 +59,27 @@ func (c *gojaConsole) table(data interface{}) {
 			st.AddCols(strconv.Itoa(i), val.Slice(i, i+1))
 		}
 	default:
-		Error(TraceError(fmt.Errorf("unsupported type")))
+		common.Error(common.TraceError(fmt.Errorf("unsupported type")))
 	}
 
-	Debug(st.String())
+	common.Debug(st.String())
 }
 
 func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	vm := goja.New()
 
 	err := registerConsole(vm)
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 
 	err = registerHttp(vm)
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 
 	err = registerEtree(vm)
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 
@@ -87,7 +92,7 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	options = append(options, require.WithLoader(func(path string) ([]byte, error) {
 		ba, err := require.DefaultSourceLoader(path)
 		if err == nil {
-			Debug("load Javascript module as file: %s", path)
+			common.Debug("load Javascript module as file: %s", path)
 
 			return ba, err
 		}
@@ -100,9 +105,9 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 
 		resPath = strings.ReplaceAll(filepath.Join("node", resPath), "\\", "/")
 
-		ba, _, err = ReadResource(resPath)
+		ba, _, err = common.ReadResource(resPath)
 		if ba != nil {
-			Debug("load Javascript module as embedded resource: %s -> %s", path, resPath)
+			common.Debug("load Javascript module as embedded resource: %s -> %s", path, resPath)
 
 			return ba, nil
 		}
@@ -115,7 +120,7 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	registry.Enable(vm)
 
 	program, err := goja.Compile("", src, false)
-	if Error(err) {
+	if common.Error(err) {
 		return nil, err
 	}
 
@@ -139,18 +144,18 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 	ch := make(chan result)
 
 	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine(1))
+		defer common.UnregisterGoRoutine(common.RegisterGoRoutine(1))
 
 		var value goja.Value
 
-		err := Catch(func() error {
+		err := common.Catch(func() error {
 			var err error
 
 			engine.VM.ClearInterrupt()
 
 			// script must be run once to initialize all functions (also the "main" function)
 			value, err = engine.VM.RunProgram(engine.program)
-			if isTimeout.Load() || DebugError(err) {
+			if isTimeout.Load() || common.DebugError(err) {
 				return err
 			}
 
@@ -161,7 +166,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 				}
 
 				value, err = fn(goja.Undefined(), engine.VM.ToValue(args))
-				if DebugError(err) {
+				if common.DebugError(err) {
 					return err
 				}
 			}
@@ -190,7 +195,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 
 		engine.VM.Interrupt(nil)
 
-		return nil, &ErrTimeout{
+		return nil, &common.ErrTimeout{
 			Duration: timeout,
 			Err:      nil,
 		}
@@ -201,17 +206,17 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 
 func FormatJavascriptCode(src string) (string, error) {
 	beautifyCode, err := embedfs.ReadFile("embed/js/beautify.js")
-	if WarnError(err) {
+	if common.WarnError(err) {
 		return src, nil
 	}
 
 	se, err := NewScriptEngine(string(beautifyCode), "")
-	if Error(err) {
+	if common.Error(err) {
 		return "", err
 	}
 
 	v, err := se.Run(time.Second, "js_beautify", src)
-	if Error(err) {
+	if common.Error(err) {
 		return "", err
 	}
 

@@ -1,8 +1,9 @@
-package common
+package scripting
 
 import (
 	"github.com/beevik/etree"
 	"github.com/dop251/goja"
+	"github.com/mpetavy/common"
 	"reflect"
 )
 
@@ -17,13 +18,13 @@ func registerEtree(vm *goja.Runtime) error {
 		m := t.Method(i)
 
 		err := obj.Set(m.Name, v.MethodByName(m.Name).Interface())
-		if Error(err) {
+		if common.Error(err) {
 			return err
 		}
 	}
 
 	err := vm.Set("etree", obj)
-	if Error(err) {
+	if common.Error(err) {
 		return err
 	}
 

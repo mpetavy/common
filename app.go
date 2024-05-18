@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -377,12 +378,12 @@ func installService() error {
 	for _, item := range []string{FlagNameService, FlagNameServiceUsername, FlagNameServicePassword} {
 		for i := range args {
 			if args[i] == "-"+item {
-				args = SliceDeleteRange(args, i, i+2)
+				args = slices.Delete(args, i, i+2)
 				break
 			}
 
 			if strings.HasPrefix(args[i], "-"+item) {
-				args = SliceDelete(args, i)
+				args = slices.Delete(args, i, i+1)
 				break
 			}
 		}
