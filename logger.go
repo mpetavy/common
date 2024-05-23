@@ -344,6 +344,9 @@ func DebugFunc(args ...any) {
 		str = strings.TrimSpace(fmt.Sprintf(ri.Fn+"(): "+fmt.Sprintf("%v", args[0]), args[1:]...))
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
+
 	logDebugPrint(formatLog(LevelDebug, 2, str, false))
 
 	lastErr = ""
@@ -354,6 +357,9 @@ func Info(format string, args ...any) {
 		format = fmt.Sprintf(format, args...)
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
+
 	logInfoPrint(formatLog(LevelInfo, 2, strings.TrimSpace(format), false))
 
 	lastErr = ""
@@ -363,6 +369,9 @@ func Warn(format string, args ...any) {
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
 	}
+
+	mu.Lock()
+	defer mu.Unlock()
 
 	logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(format), false))
 
@@ -459,6 +468,9 @@ func Panic(err error) {
 	if err == nil || IsErrExit(err) {
 		return
 	}
+
+	mu.Lock()
+	defer mu.Unlock()
 
 	if err.Error() != lastErr {
 		if isLogInit {
