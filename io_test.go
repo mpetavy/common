@@ -2,6 +2,7 @@ package common
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
@@ -105,4 +106,32 @@ func TestFileMode(t *testing.T) {
 
 	err = os.Remove(f.Name())
 	assert.NoError(t, err)
+}
+
+func TestFileBackup(t *testing.T) {
+	InitTesting(t)
+
+	f, err := CreateTempFile()
+	assert.NoError(t, err)
+
+	for i := 0; i < 10; i++ {
+		f, err := os.Create(fmt.Sprintf("%s.%d", f.Name(), i+1))
+		assert.NoError(t, err)
+
+		err = f.Close()
+		assert.NoError(t, err)
+	}
+
+	for i := 0; i < 5; i++ {
+		err := FileBackup(f.Name())
+		assert.NoError(t, err)
+	}
+
+	files, err := ListFiles(f.Name()+"*", false)
+	assert.Equal(t, len(files), *FlagIoFileBackups+1)
+
+	for _, file := range files {
+		err = FileDelete(file)
+		assert.NoError(t, err)
+	}
 }

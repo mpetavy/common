@@ -15,18 +15,12 @@ type filewalker struct {
 }
 
 func (fw *filewalker) walkfunc(path string, f os.FileInfo, err error) error {
-	if err != nil {
-		if fw.IgnoreError {
-			Warn("cannot access: %s", path)
-
-			return filepath.SkipDir
-		}
-
-		return err
-	}
-
 	if f.IsDir() {
 		if path == fw.Path || fw.Recursive {
+			if err != nil {
+				return err
+			}
+
 			return fw.walkFunc(path, f)
 		} else {
 			return fs.SkipDir

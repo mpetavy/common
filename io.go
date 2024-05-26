@@ -26,7 +26,7 @@ var (
 	DefaultFileMode  = FileMode(true, true, false)
 	DefaultDirMode   = FileMode(true, true, true)
 
-	FlagIoFileBackups *int
+	FlagIoFileBackups = flag.Int(FlagNameIoFileBackups, 3, "amount of file backups")
 )
 
 type ErrFileNotFound struct {
@@ -105,8 +105,6 @@ func init() {
 				Error(deleteTempDir())
 			})
 		}
-
-		FlagIoFileBackups = flag.Int(FlagNameIoFileBackups, 3, "amount of file backups")
 	})
 }
 
@@ -258,6 +256,7 @@ func FileCopy(src string, dst string) error {
 	defer func() {
 		Error(destFile.Close())
 		Error(os.Chtimes(dst, fi.ModTime(), fi.ModTime()))
+		Error(os.Chmod(dst, fi.Mode()))
 	}()
 
 	_, err = io.Copy(destFile, srcFile)
@@ -296,6 +295,11 @@ func FileBackup(filename string) error {
 		return nil
 	}
 
+	files, err := ListFiles(filename+".*", false)
+	if Error(err) {
+		return err
+	}
+
 	for i := *FlagIoFileBackups - 1; i >= 0; i-- {
 		src := filename
 		if i > 0 {
@@ -310,17 +314,19 @@ func FileBackup(filename string) error {
 		}
 
 		if FileExists_(src) {
-			if FileExists_(dst) {
-				err := os.Remove(dst)
-				if Error(err) {
-					return err
-				}
-			}
+			files = SliceRemove(files, dst)
 
-			err := os.Rename(src, dst)
+			err := FileCopy(src, dst)
 			if Error(err) {
 				return err
 			}
+		}
+	}
+
+	for _, file := range files {
+		err := FileDelete(file)
+		if Error(err) {
+			return err
 		}
 	}
 
