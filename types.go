@@ -50,18 +50,6 @@ const (
 
 var (
 	MEMORY_UNITS = []string{"Bytes", "KB", "MB", "GB", "TB"}
-
-	Translate = func(msg string, args ...interface{}) string {
-		if msg == "" {
-			return ""
-		}
-
-		if args != nil {
-			return fmt.Sprintf(msg, args)
-		} else {
-			return msg
-		}
-	}
 )
 
 // Trim4Path trims given path to be usefull as filename

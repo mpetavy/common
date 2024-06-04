@@ -123,13 +123,7 @@ func NewPage(context echo.Context, contentStyle string, title string) (*Webpage,
 	p := Webpage{doc: etree.NewDocument()}
 
 	p.HtmlRoot = p.doc.CreateElement("html")
-
-	//FIXME
-	//lang := *FlagLanguage
-	//if lang == "" {
-	//	lang = DEFAULT_LANGUAGE
-	//}
-	//p.HtmlRoot.CreateAttr("lang", lang)
+	p.HtmlRoot.CreateAttr("lang", *FlagAppLanguage)
 
 	p.HtmlHead = p.HtmlRoot.CreateElement("head")
 	p.HtmlTitle = p.HtmlHead.CreateElement("title")

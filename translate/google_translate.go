@@ -1,10 +1,8 @@
 package translate
 
 import (
-	"bufio"
-	"cloud.google.com/go/translate"
+	googleTranslate "cloud.google.com/go/translate"
 	"context"
-	"flag"
 	"fmt"
 	"github.com/fatih/structtag"
 	"github.com/go-ini/ini"
@@ -12,145 +10,12 @@ import (
 	googlelanguage "golang.org/x/text/language"
 	"google.golang.org/api/option"
 	"html"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
-	"time"
 )
-
-var (
-	FlagLanguage   *string
-	systemLanguage string
-	I18nFile       *ini.File
-)
-
-const (
-	DEFAULT_LANGUAGE = "en"
-
-	FlagNameAppLanguage = "app.language"
-)
-
-func init() {
-	common.Translate = Translate
-
-	common.Events.AddListener(common.EventInit{}, func(ev common.Event) {
-		FlagLanguage = flag.String(FlagNameAppLanguage, DEFAULT_LANGUAGE, "language for messages")
-	})
-
-	common.Events.AddListener(common.EventFlagsSet{}, func(ev common.Event) {
-		initLanguage()
-	})
-}
-
-// GetSystemLanguage return BCP 47 standard language name
-func GetSystemLanguage() (string, error) {
-	common.DebugFunc()
-
-	if common.IsWindows() {
-		cmd := exec.Command("powershell", "Get-WinSystemLocale")
-
-		ba, err := common.NewWatchdogCmd(cmd, time.Second*3)
-		if common.Error(err) {
-			return "", err
-		}
-
-		output := string(ba)
-
-		r := bufio.NewReader(strings.NewReader(output))
-
-		b := false
-
-		for {
-			line, err := r.ReadString('\n')
-			if err == io.EOF {
-				break
-			}
-
-			if b {
-				p := strings.Index(line, " ")
-
-				systemLanguage = strings.TrimSpace(line[p:])
-				p = strings.Index(systemLanguage, " ")
-				systemLanguage = strings.TrimSpace(systemLanguage[:p])
-
-				p = strings.Index(systemLanguage, "-")
-				if p != -1 {
-					systemLanguage = systemLanguage[:p]
-				}
-
-				common.DebugFunc(systemLanguage)
-
-				return systemLanguage, nil
-			} else {
-				b = strings.HasPrefix(line, "----")
-			}
-		}
-	} else {
-		_, err := exec.LookPath("locale")
-		if err != nil {
-			return "en", nil
-		}
-
-		cmd := exec.Command("locale")
-
-		ba, err := common.NewWatchdogCmd(cmd, time.Second)
-		if common.Error(err) {
-			return "", err
-		}
-
-		output := strings.TrimSpace(string(ba))
-
-		r := bufio.NewReader(strings.NewReader(output))
-
-		for {
-			line, err := r.ReadString('\n')
-			if err == io.EOF {
-				break
-			}
-
-			if strings.HasPrefix(line, "LANGUAGE=") || strings.HasPrefix(line, "LANG=") {
-				systemLanguage := strings.TrimSpace(line[strings.Index(line, "=")+1:])
-
-				p := strings.Index(systemLanguage, "_")
-				if p != -1 {
-					systemLanguage = systemLanguage[:p]
-				}
-
-				common.DebugFunc(systemLanguage)
-
-				return systemLanguage, nil
-			}
-		}
-	}
-
-	return "", fmt.Errorf("cannot get system language")
-}
-
-func initLanguage() {
-	ba, _, _ := common.ReadResource(common.AppFilename(".i18n"))
-
-	if ba != nil {
-		var err error
-
-		I18nFile, err = ini.Load(ba)
-		if common.DebugError(err) {
-			return
-		}
-
-		lang := *FlagLanguage
-		if lang == "" {
-			lang = DEFAULT_LANGUAGE
-		}
-
-		if lang != "" {
-			common.Error(SetLanguage(lang))
-		}
-	}
-}
 
 func scanStruct(i18ns *[]string, data interface{}) error {
 	return common.IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
@@ -176,76 +41,13 @@ func scanStruct(i18ns *[]string, data interface{}) error {
 	})
 }
 
-// SetLanguage sets the language file to translation
-func SetLanguage(lang string) error {
-	common.DebugFunc(lang)
-
-	if I18nFile == nil {
-		return fmt.Errorf("no language file available")
-	}
-
-	sec, _ := I18nFile.GetSection(lang)
-	if sec == nil {
-		return fmt.Errorf("language %s is not available", lang)
-	}
-
-	*FlagLanguage = lang
-
-	return nil
-}
-
-// GetLanguages lists all available languages
-func GetLanguages() ([]string, error) {
-	list := make([]string, 0)
-
-	if I18nFile != nil {
-		for _, sec := range I18nFile.Sections() {
-			if sec.Name() != ini.DefaultSection {
-				list = append(list, sec.Name())
-			}
-		}
-	} else {
-		list = append(list, DEFAULT_LANGUAGE)
-	}
-
-	common.SortStringsCaseInsensitive(list)
-
-	return list, nil
-}
-
-func TranslateFor(language, msg string) string {
-	if I18nFile != nil && language != "" {
-		sec, _ := I18nFile.GetSection(language)
-		if sec != nil {
-			m, err := sec.GetKey(msg)
-
-			if err == nil && m.Value() != "" {
-				return m.Value()
-			}
-		}
-	}
-
-	return msg
-}
-
-// Translate a message to the current set language
-func Translate(msg string, args ...interface{}) string {
-	if msg == "" {
-		return ""
-	}
-
-	t := TranslateFor(*FlagLanguage, msg)
-
-	return common.Capitalize(fmt.Sprintf(t, args...))
-}
-
 func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (string, error) {
 	common.DebugFunc("%s -> %s ...", text, foreignLanguage)
 
 	ctx := context.Background()
 
 	// Creates a client.
-	client, err := translate.NewClient(ctx, option.WithAPIKey(googleApiKey))
+	client, err := googleTranslate.NewClient(ctx, option.WithAPIKey(googleApiKey))
 	if common.Error(err) {
 		return "", err
 	}
@@ -262,7 +64,7 @@ func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (
 	}
 
 	// Translates the text
-	translations, err := client.Translate(ctx, []string{text}, target, &translate.Options{
+	translations, err := client.Translate(ctx, []string{text}, target, &googleTranslate.Options{
 		Source: source,
 		Format: "",
 		Model:  "",
@@ -283,7 +85,7 @@ func GoogleTranslate(googleApiKey string, text string, foreignLanguage string) (
 	return term, nil
 }
 
-func CreateI18nFile(path string, objs ...interface{}) error {
+func CreateI18nFile(I18nFile *ini.File, path string, objs ...interface{}) error {
 	if path == "" {
 		return nil
 	}
@@ -405,7 +207,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 
 	// update all languages with found i18ns
 
-	secNames := []string{DEFAULT_LANGUAGE, "nl", "it", "el", "es", "ar", "zh", "fr", "th", "de"}
+	secNames := []string{common.GetDefaultLanguage(), "nl", "it", "el", "es", "ar", "zh", "fr", "th", "de"}
 	for _, sec := range I18nFile.Sections() {
 		if sec.Name() != ini.DefaultSection {
 			if common.IndexOf(secNames, sec) == -1 {
@@ -435,7 +237,7 @@ func CreateI18nFile(path string, objs ...interface{}) error {
 			}
 
 			if value == "" {
-				if secName == DEFAULT_LANGUAGE {
+				if secName == common.GetDefaultLanguage() {
 					value = i18n
 				} else {
 					var err error
