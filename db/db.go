@@ -10,6 +10,7 @@ import (
 	"github.com/mpetavy/common"
 	dynamicstruct "github.com/ompluscator/dynamic-struct"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -25,6 +26,10 @@ type Database struct {
 	txCtx       context.Context
 	txCtxCancel context.CancelFunc
 }
+
+var (
+	regexFieldName = regexp.MustCompile("([\\w\\d_]+)")
+)
 
 type dbintf interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
@@ -200,10 +205,14 @@ type Resultset struct {
 	Rows        any
 }
 
+func cleanFieldname(fieldname string) string {
+	return strings.ToUpper(regexFieldName.FindString(fieldname))
+}
+
 func (rs *Resultset) Get(row int, fieldName string) (Field, error) {
 	resultsetValue := reflect.ValueOf(rs.Rows)
 	rowValue := resultsetValue.Elem().Index(row)
-	colValue := rowValue.FieldByName(fieldName)
+	colValue := rowValue.FieldByName(cleanFieldname(fieldName))
 
 	return colValue.Interface().(Field), nil
 }
@@ -230,7 +239,7 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 		return nil, err
 	}
 	for i := 0; i < len(columnNames); i++ {
-		columnNames[i] = strings.ToUpper(columnNames[i])
+		columnNames[i] = cleanFieldname(columnNames[i])
 	}
 
 	columnTypes, err := query.ColumnTypes()
@@ -372,7 +381,7 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 				if ok && s.Valid {
 					recordFieldValue.Set(reflect.ValueOf(s.Time))
 				}
-			case reflect.TypeOf(sql.NullString{}):
+			default:
 				s, ok := scanPtrs[i].(*sql.NullString)
 				isNull := !(ok && s.Valid)
 				recordFieldIsNull.Set(reflect.ValueOf(isNull))
