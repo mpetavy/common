@@ -4,7 +4,7 @@ import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mpetavy/common"
-	"github.com/mpetavy/common/db"
+	"github.com/mpetavy/common/sqldb"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -208,7 +208,7 @@ func TestScriptEngineHL7(t *testing.T) {
 	}
 }
 
-func checkChanged(t *testing.T, db *db.Database, changed bool) {
+func checkChanged(t *testing.T, db *sqldb.Database, changed bool) {
 	resultset, err := db.Query("select id,name from foo order by id")
 	assert.NoError(t, err)
 
@@ -232,7 +232,7 @@ func checkChanged(t *testing.T, db *db.Database, changed bool) {
 func TestDb(t *testing.T) {
 	common.InitTesting(t)
 
-	database, err := db.NewDatabase("sqlite3", "")
+	database, err := sqldb.NewDatabase("sqlite3", "")
 	assert.NoError(t, err)
 
 	err = database.Open()

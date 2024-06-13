@@ -2,15 +2,15 @@ package scripting
 
 import (
 	"github.com/mpetavy/common"
-	"github.com/mpetavy/common/db"
+	"github.com/mpetavy/common/sqldb"
 )
 
 func EnableDatabase(engine *ScriptEngine) error {
-	database := &db.Database{}
+	database := &sqldb.Database{}
 
 	obj := engine.VM.NewObject()
 
-	err := obj.Set("drivers", db.DatabaseDrivers())
+	err := obj.Set("drivers", sqldb.DatabaseDrivers())
 	if common.Error(err) {
 		return err
 	}
