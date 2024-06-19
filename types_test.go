@@ -537,3 +537,27 @@ func TestIndexNth(t *testing.T) {
 		})
 	}
 }
+
+func TestMin(t *testing.T) {
+	assert.Equal(t, 0, Min(2, 1, 0))
+	assert.Equal(t, -1, Min(-1, 0, 1))
+}
+
+func TestMax(t *testing.T) {
+	assert.Equal(t, 2, Max(2, 1, 0))
+	assert.Equal(t, 1, Max(-1, 0, 1))
+}
+
+func TestStructValue(t *testing.T) {
+	type S struct {
+		A int
+	}
+
+	var s S
+
+	assert.NoError(t, SetStructValue(&s, "A", 99))
+
+	v, err := GetStructValue(&s, "A")
+	assert.NoError(t, err)
+	assert.Equal(t, 99, int(v.Int()))
+}

@@ -67,7 +67,7 @@ func test(t *testing.T, address string, tlsConfig *tls.Config, txt string, isCli
 
 		assert.Equal(t, len(txt), n)
 
-		Sleep(time.Second)
+		Sleep(time.Second * 2)
 	}
 
 	return nil

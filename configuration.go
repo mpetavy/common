@@ -256,14 +256,13 @@ func registerIniFileFlags() (map[string]string, error) {
 			continue
 		}
 
-		splits := Split(line, "=")
-
-		if len(splits) < 2 {
+		p := strings.Index(line, "=")
+		if p == -1 {
 			continue
 		}
 
-		key := strings.TrimSpace(splits[0])
-		value := strings.TrimSpace(splits[1])
+		key := strings.TrimSpace(line[:p])
+		value := strings.TrimSpace(line[p+1:])
 
 		if value == "`" {
 			sb := strings.Builder{}

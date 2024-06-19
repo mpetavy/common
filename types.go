@@ -696,3 +696,72 @@ func IndexNth(str string, substr string, count int) int {
 		i++
 	}
 }
+
+func Min[T constraints.Ordered](values ...T) T {
+	var v T
+
+	for _, value := range values {
+		if value < v {
+			v = value
+		}
+	}
+
+	return v
+}
+
+func Max[T constraints.Ordered](values ...T) T {
+	var v T
+
+	for _, value := range values {
+		if value > v {
+			v = value
+		}
+	}
+
+	return v
+}
+
+func GetStructValue(obj any, field string) (reflect.Value, error) {
+	ref := reflect.ValueOf(obj)
+
+	// if its a pointer, resolve its value
+	if ref.Kind() == reflect.Ptr {
+		ref = reflect.Indirect(ref)
+	}
+
+	if ref.Kind() == reflect.Interface {
+		ref = ref.Elem()
+	}
+
+	// should double check we now have a struct (could still be anything)
+	if ref.Kind() != reflect.Struct {
+		return reflect.ValueOf(""), fmt.Errorf("not a struct type: %T", ref.Kind())
+	}
+
+	prop := ref.FieldByName(field)
+
+	return prop, nil
+}
+
+func SetStructValue(obj any, field string, value any) error {
+	ref := reflect.ValueOf(obj)
+
+	// if its a pointer, resolve its value
+	if ref.Kind() == reflect.Ptr {
+		ref = reflect.Indirect(ref)
+	}
+
+	if ref.Kind() == reflect.Interface {
+		ref = ref.Elem()
+	}
+
+	// should double check we now have a struct (could still be anything)
+	if ref.Kind() != reflect.Struct {
+		return fmt.Errorf("not a struct type: %T", ref.Kind())
+	}
+
+	prop := ref.FieldByName(field)
+	prop.Set(reflect.ValueOf(value))
+
+	return nil
+}

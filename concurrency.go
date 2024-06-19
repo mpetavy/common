@@ -195,3 +195,21 @@ func (tr *TimeoutRegister[T]) Close() {
 
 	tr.closeCh <- struct{}{}
 }
+
+func Background(timeout time.Duration, fn func() error) error {
+	errCh := make(chan error, 2)
+
+	go func() {
+		errCh <- fn()
+	}()
+
+	ti := time.AfterFunc(timeout, func() {
+		errCh <- nil
+	})
+
+	err := <-errCh
+
+	ti.Stop()
+
+	return err
+}
