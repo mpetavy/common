@@ -489,7 +489,7 @@ func registerEnvFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		envName := strings.ReplaceAll(fmt.Sprintf("%s.%s", Title(), f.Name), ".", "_")
+		envName := f.Name
 		envValue := strings.ToLower(os.Getenv(envName))
 		if envValue == "" {
 			envValue = strings.ToUpper(os.Getenv(envName))
