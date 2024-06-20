@@ -132,8 +132,8 @@ func Init(title string, version string, git string, build string, description st
 	Panic(initWorkingPath())
 
 	Events.AddListener(EventInit{}, func(ev Event) {
-		FlagScriptStart = flag.String(FlagNameScriptStart, fmt.Sprintf("%s-start%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
-		FlagScriptStop = flag.String(FlagNameScriptStop, fmt.Sprintf("%s-stop%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
+		FlagScriptStart = flag.String(FlagNameScriptStart, fmt.Sprintf("%s%s-start%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
+		FlagScriptStop = flag.String(FlagNameScriptStop, fmt.Sprintf("%s%s-stop%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
 	})
 
 	ba, err := resources.ReadFile("go.mod")
