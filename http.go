@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/tls"
@@ -12,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -231,8 +233,8 @@ func HashBytes(crypto crypto.Hash, r io.Reader) ([]byte, error) {
 
 func HashString(crypto crypto.Hash, s string) (string, error) {
 	p := strings.Index(s, ":")
-	if p != -1 {
-		return strings.ToUpper(s[:p]) + s[p:], nil
+	if p != -1 && crypto.String() == s[:p] {
+		return s, nil
 	}
 
 	hash, err := HashBytes(crypto, strings.NewReader(s))
@@ -278,4 +280,116 @@ func HTTPWriteJson(status int, w http.ResponseWriter, ba []byte) error {
 	}
 
 	return nil
+}
+
+func HTTPRequest(timeout time.Duration, method string, address string, headers map[string]string, username string, password string, body io.Reader, expectedCode int) (*http.Response, []byte, error) {
+	DebugFunc("Method: %s URL: %s Username: %s Password: %s", method, address, username, strings.Repeat("X", len(password)))
+
+	client := &http.Client{}
+
+	if strings.Contains(address, "https") {
+		client.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
+	}
+
+	req, err := http.NewRequest(method, address, body)
+	if Error(err) {
+		return nil, nil, err
+	}
+
+	if username != "" || password != "" {
+		if username == "" {
+			username = "dummy"
+		}
+
+		req.SetBasicAuth(username, password)
+	}
+
+	if headers != nil {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+	}
+
+	var resp *http.Response
+
+	if timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer func() {
+			cancel()
+		}()
+
+		resp, err = client.Do(req.WithContext(ctx))
+		if Error(err) {
+			return nil, nil, err
+		}
+	} else {
+		resp, err = client.Do(req)
+		if Error(err) {
+			return nil, nil, err
+		}
+	}
+
+	if expectedCode > 0 && resp.StatusCode != expectedCode {
+		return nil, nil, fmt.Errorf("unexpected HTTP staus code, expected %d got %d", expectedCode, resp.StatusCode)
+	}
+
+	// Caution: if read the body then respect then take this with  your TIMEOUT parameter into account
+
+	ba, err := ReadBodyFully(resp)
+	if Error(err) {
+		return nil, nil, err
+	}
+
+	return resp, ba, nil
+}
+
+func ReadBodyFully(resp *http.Response) ([]byte, error) {
+	buf := bytes.Buffer{}
+
+	if resp.Body != nil {
+		defer func() {
+			DebugError(resp.Body.Close())
+		}()
+
+		_, err := io.Copy(&buf, resp.Body)
+		if Error(err) {
+			return nil, err
+		}
+	}
+
+	return buf.Bytes(), nil
+}
+
+type RestURL struct {
+	Method   string
+	Resource string
+}
+
+func NewRestURL(method string, resource string) *RestURL {
+	return &RestURL{method, resource}
+}
+
+func (u *RestURL) String() string {
+	return fmt.Sprintf("%s %s", u.Method, u.Resource)
+}
+
+func (u *RestURL) Format(args ...any) string {
+	s := u.Resource
+
+	if strings.Contains(s, "{") {
+		regex := regexp.MustCompile("{.*?\\}")
+
+		s = regex.ReplaceAllString(s, "%v")
+		s = fmt.Sprintf(s, args...)
+	}
+
+	return s
+}
+
+func (u *RestURL) URL(address string, args ...any) string {
+	return fmt.Sprintf("%s%s", address, u.Format(args...))
 }

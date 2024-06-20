@@ -23,7 +23,7 @@ require (
 	github.com/ompluscator/dynamic-struct v1.4.0
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.9.0
 	go.bug.st/serial v1.5.0
 	golang.org/x/crypto v0.23.0
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
