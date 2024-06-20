@@ -87,6 +87,9 @@ const (
 	FlagNameServiceUsername = "service.username"
 	FlagNameServicePassword = "service.password"
 	FlagNameServiceTimeout  = "service.timeout"
+	FlagNameScriptTimeout   = "script.timeout"
+	FlagNameScriptStart     = "script.start"
+	FlagNameScriptStop      = "script.stop"
 	FlagNameUsage           = "h"
 	FlagNameUsageMd         = "hmd"
 	FlagNameNoBanner        = "nb"
@@ -97,6 +100,9 @@ var (
 	FlagServiceUser     = flag.String(FlagNameServiceUsername, "", "Service user")
 	FlagServicePassword = flag.String(FlagNameServicePassword, "", "Service password")
 	FlagServiceTimeout  = flag.Int(FlagNameServiceTimeout, 1000, "Service timeout")
+	FlagScriptTimeout   = flag.Int(FlagNameScriptTimeout, 5000, "Script timeout")
+	FlagScriptStart     *string
+	FlagScriptStop      *string
 	FlagUsage           = flag.Bool(FlagNameUsage, false, "show flags description and usage")
 	FlagUsageMd         = flag.Bool(FlagNameUsageMd, false, "show flags description and usage in markdown format")
 	FlagNoBanner        = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
@@ -124,6 +130,11 @@ var (
 
 func Init(title string, version string, git string, build string, description string, developer string, homepage string, license string, resources *embed.FS, startFunc func() error, stopFunc func() error, runFunc func() error, runTime time.Duration) {
 	Panic(initWorkingPath())
+
+	Events.AddListener(EventInit{}, func(ev Event) {
+		FlagScriptStart = flag.String(FlagNameScriptStart, fmt.Sprintf("%s-start%s", strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
+		FlagScriptStop = flag.String(FlagNameScriptStop, fmt.Sprintf("%s-stop%s", strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
+	})
 
 	ba, err := resources.ReadFile("go.mod")
 	Panic(err)
@@ -450,7 +461,7 @@ func Run(mandatoryFlags []string) {
 
 	defer done()
 
-	run := func() error {
+	err := func() error {
 		flag.Parse()
 
 		Events.Emit(EventFlagsParsed{}, false)
@@ -488,6 +499,20 @@ func Run(mandatoryFlags []string) {
 			return err
 		}
 
+		defer func() {
+			if FileExists_(*FlagScriptStop) {
+				_, err := RunScript(MillisecondToDuration(*FlagScriptTimeout), *FlagScriptStop)
+				Error(err)
+			}
+		}()
+
+		if FileExists_(*FlagScriptStart) {
+			_, err = RunScript(MillisecondToDuration(*FlagScriptTimeout), *FlagScriptStart)
+			if Error(err) {
+				return err
+			}
+		}
+
 		// run as real OS daemon
 
 		if !IsRunningInteractive() {
@@ -509,9 +534,7 @@ func Run(mandatoryFlags []string) {
 		}
 
 		return nil
-	}
-
-	err := run()
+	}()
 	if err != nil && !IsErrExit(err) {
 		Panic(err)
 	}

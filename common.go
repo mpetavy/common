@@ -1,11 +1,13 @@
 package common
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"github.com/google/uuid"
 	"math/big"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"time"
@@ -123,4 +125,47 @@ func RndString(l int) (string, error) {
 	}
 
 	return sb.String(), nil
+}
+
+func ExecuteCmd(cmd *exec.Cmd) ([]byte, error) {
+	Debug("exec: %s", SurroundWith(cmd.Args, "\""))
+
+	ba, err := cmd.CombinedOutput()
+
+	Debug("exec output --- start ---")
+	Debug("\n%s", string(ba))
+	Debug("exec output --- ende ---")
+	Debug("exec exit code: %d", cmd.ProcessState.ExitCode())
+
+	if Error(err) {
+		return nil, fmt.Errorf("%s: %s", err.Error(), string(ba))
+	}
+
+	if !cmd.ProcessState.Success() {
+		return nil, fmt.Errorf("exec exit error: %d", cmd.ProcessState.ExitCode())
+	}
+
+	return ba, nil
+}
+
+func RunScript(timeout time.Duration, filename string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer func() {
+		cancel()
+	}()
+
+	var cmd *exec.Cmd
+
+	if IsWindows() {
+		cmd = exec.CommandContext(ctx, "cmd.exe", "/c", filename)
+	} else {
+		cmd = exec.CommandContext(ctx, "sh", "-c", filename)
+	}
+
+	ba, err := ExecuteCmd(cmd)
+	if Error(err) {
+		return nil, err
+	}
+
+	return ba, nil
 }
