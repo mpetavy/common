@@ -11,12 +11,9 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
-	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -128,15 +125,6 @@ func StartHTTPServer(port int, tlsConfig *tls.Config, mux *http.ServeMux) error 
 	}
 	httpServer.SetKeepAlivesEnabled(false)
 	httpServer.MaxHeaderBytes = int(*FlagHTTPHeaderLimit)
-
-	go func() {
-		ctrlC := make(chan os.Signal, 1)
-		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-
-		<-ctrlC
-
-		Error(StopHTTPServer())
-	}()
 
 	Info(fmt.Sprintf("HTTP server%s started on port: %d", tlsInfo, port))
 
