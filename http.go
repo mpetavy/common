@@ -6,6 +6,7 @@ import (
 	"crypto"
 	"crypto/tls"
 	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -32,7 +33,8 @@ var (
 	ctxServer       context.Context
 	ctxServerCancel context.CancelFunc
 
-	ErrUnauthorized = fmt.Errorf("Unauthorized")
+	ErrUnauthorized  = fmt.Errorf("Unauthorized")
+	ErrNoBodyContent = fmt.Errorf("no HTTP body provided")
 )
 
 const (
@@ -327,7 +329,7 @@ func HTTPRequest(timeout time.Duration, method string, address string, headers m
 
 	// Caution: if read the body then respect then take this with  your TIMEOUT parameter into account
 
-	ba, err := ReadBodyFully(resp)
+	ba, err := ReadBody(resp.Body)
 	if Error(err) {
 		return nil, nil, err
 	}
@@ -335,21 +337,52 @@ func HTTPRequest(timeout time.Duration, method string, address string, headers m
 	return resp, ba, nil
 }
 
-func ReadBodyFully(resp *http.Response) ([]byte, error) {
+func ReadBody(r io.ReadCloser) ([]byte, error) {
+	defer func() {
+		Error(r.Close())
+	}()
+
 	buf := bytes.Buffer{}
 
-	if resp.Body != nil {
-		defer func() {
-			DebugError(resp.Body.Close())
-		}()
-
-		_, err := io.Copy(&buf, resp.Body)
-		if Error(err) {
-			return nil, err
-		}
+	_, err := io.Copy(&buf, io.LimitReader(r, *FlagHTTPBodyLimit))
+	if Error(err) {
+		return nil, err
 	}
 
 	return buf.Bytes(), nil
+}
+
+func ReadBodyJSON[T any](r io.ReadCloser) ([]T, bool, error) {
+	var records []T
+
+	ba, err := ReadBody(r)
+	if Error(err) {
+		return nil, false, err
+	}
+
+	if len(ba) == 0 {
+		return nil, false, ErrNoBodyContent
+	}
+
+	isArray := strings.HasPrefix(string(ba), "[")
+
+	decoder := json.NewDecoder(bytes.NewReader(ba))
+
+	if isArray {
+		err = decoder.Decode(&records)
+		if Error(err) {
+			return nil, false, err
+		}
+	} else {
+		records = make([]T, 1)
+
+		err = decoder.Decode(&records[0])
+		if Error(err) {
+			return nil, false, err
+		}
+	}
+
+	return records, isArray, nil
 }
 
 type RestURL struct {
