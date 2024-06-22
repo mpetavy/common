@@ -39,19 +39,11 @@ func ToBool(s string) bool {
 	return s == "true" || s == "1" || strings.HasPrefix(s, "t") || strings.HasPrefix(s, "y") || strings.HasPrefix(s, "j")
 }
 
-func Eval(b bool, trueFunc interface{}, falseFunc interface{}) interface{} {
+func Eval[T any](b bool, trueFunc T, falseFunc T) T {
 	if b {
-		if f, ok := trueFunc.(func() interface{}); ok {
-			return f()
-		} else {
-			return trueFunc
-		}
+		return trueFunc
 	} else {
-		if f, ok := falseFunc.(func() interface{}); ok {
-			return f()
-		} else {
-			return falseFunc
-		}
+		return falseFunc
 	}
 }
 

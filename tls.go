@@ -75,11 +75,13 @@ const (
 
 func init() {
 	Events.AddListener(EventInit{}, func(ev Event) {
+		tlsMaxVersion := Eval(hasAESGCMHardwareSupport, TlsVersion13, TlsVersion12)
+
 		FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
 		FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS certificates and server name")
 		FlagTlsServername = flag.String(FlagNameTlsServername, "", "TLS expected servername")
 		FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, TlsVersion12, "TLS min version")
-		FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, TlsVersion12, "TLS max version")
+		FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, tlsMaxVersion, "TLS max version")
 		FlagTlsCiphers = flag.String(FlagNameTlsCiphers, "", "TLS ciphers zo use")
 		FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
 		FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
@@ -171,7 +173,7 @@ func TlsCipherDescription(cs *tls.CipherSuite) string {
 		tlsVersion = append(tlsVersion, TlsIdToVersion(v))
 	}
 
-	return fmt.Sprintf("%s [%s]%s", cs.Name, Join(tlsVersion, ","), Eval(cs.Insecure, fmt.Sprintf("[%s]", Translate("Insecure")), "").(string))
+	return fmt.Sprintf("%s [%s]%s", cs.Name, Join(tlsVersion, ","), Eval(cs.Insecure, fmt.Sprintf("[%s]", Translate("Insecure")), ""))
 }
 
 func TlsDescriptionToCipher(name string) *tls.CipherSuite {
