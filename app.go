@@ -489,6 +489,8 @@ func Run(mandatoryFlags []string) {
 			return err
 		}
 
+		debugFlags()
+
 		err = checkMandatoryFlags(mandatoryFlags)
 		if Error(err) {
 			return err

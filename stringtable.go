@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"fmt"
 	"reflect"
 	"strings"
@@ -134,4 +135,12 @@ func (st *StringTable) String() string {
 	}
 
 	return sb.String()
+}
+
+func (st *StringTable) Debug() {
+	scanner := bufio.NewScanner(strings.NewReader(st.String()))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		Debug(line)
+	}
 }

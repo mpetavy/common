@@ -21,6 +21,11 @@ type Configuration struct {
 	Flags              KeyValues `json:"flags"`
 }
 
+type flagInfo struct {
+	Value  string
+	Origin string
+}
+
 var (
 	FlagCfgReset  *bool
 	FlagCfgCreate *bool
@@ -37,6 +42,8 @@ var (
 		FlagNameUsage,
 		FlagNameUsageMd,
 	}
+
+	flagInfos = make(map[string]flagInfo)
 )
 
 const (
@@ -390,83 +397,115 @@ func SaveConfigurationFile(ba []byte) error {
 func setFlags() error {
 	DebugFunc()
 
-	mapCfgFile, err := registerCfgFileFlags()
-	if Error(err) {
-		return err
-	}
-	mapIniFile, err := registerIniFileFlags()
-	if Error(err) {
-		return err
-	}
-	mapArgs, err := registerArgsFlags()
-	if Error(err) {
-		return err
-	}
-	mapEnv, err := registerEnvFlags()
-	if Error(err) {
-		return err
-	}
-
-	maps := []struct {
-		origin string
-		m      map[string]string
-	}{
-		{
-			origin: "env",
-			m:      mapEnv,
-		},
-		{
-			origin: "cfg file",
-			m:      mapCfgFile,
-		},
-		{
-			origin: "ini file",
-			m:      mapIniFile,
-		},
-		{
-			origin: "args",
-			m:      mapArgs,
-		},
-	}
-
-	flag.VisitAll(func(f *flag.Flag) {
-		if IsCmdlineOnlyFlag(f.Name) {
-			return
+	if len(flagInfos) == 0 {
+		mapDefaults, err := registerDefaultFlags()
+		if Error(err) {
+			return err
+		}
+		mapCfgFile, err := registerCfgFileFlags()
+		if Error(err) {
+			return err
+		}
+		mapIniFile, err := registerIniFileFlags()
+		if Error(err) {
+			return err
+		}
+		mapArgs, err := registerArgsFlags()
+		if Error(err) {
+			return err
+		}
+		mapEnv, err := registerEnvFlags()
+		if Error(err) {
+			return err
 		}
 
-		var origin string
-		var value string
+		maps := []struct {
+			origin string
+			m      map[string]string
+		}{
+			{
+				origin: "default",
+				m:      mapDefaults,
+			},
+			{
+				origin: "env",
+				m:      mapEnv,
+			},
+			{
+				origin: "cfg file",
+				m:      mapCfgFile,
+			},
+			{
+				origin: "ini file",
+				m:      mapIniFile,
+			},
+			{
+				origin: "args",
+				m:      mapArgs,
+			},
+		}
 
-		for _, m := range maps {
-			v, ok := m.m[f.Name]
+		flag.VisitAll(func(f *flag.Flag) {
+			var origin string
+			value := f.DefValue
 
-			if !ok || v == "" {
-				continue
+			for _, m := range maps {
+				if IsCmdlineOnlyFlag(f.Name) && m.origin != "default" && m.origin != "args" {
+					continue
+				}
+
+				v, ok := m.m[f.Name]
+
+				if !ok {
+					continue
+				}
+
+				origin = m.origin
+				value = v
 			}
 
-			origin = m.origin
-			value = v
-		}
+			flagInfos[f.Name] = flagInfo{
+				Value:  value,
+				Origin: origin,
+			}
+		})
+	}
 
-		if value != "" && value != f.Value.String() {
-			Debug("Set flag %s : %s [%s]", f.Name, value, origin)
-
-			Error(flag.Set(f.Name, value))
-		}
-	})
-
-	flag.VisitAll(func(fl *flag.Flag) {
-		v := fmt.Sprintf("%+v", fl.Value)
-		if strings.Contains(strings.ToLower(fl.Name), "password") || strings.Contains(strings.ToLower(fl.Name), "pwd") {
-			v = strings.Repeat("X", len(v))
-		}
-
-		Debug("flag %s = %+v", fl.Name, v)
-	})
+	debugFlags()
 
 	Events.Emit(EventFlagsSet{}, false)
 
-	return err
+	return nil
+}
+
+func debugFlags() {
+	st := NewStringTable()
+	st.AddCols("flag", "value", "origin")
+
+	flag.VisitAll(func(f *flag.Flag) {
+		flagValue := flagInfos[f.Name]
+
+		v := flagValue.Value
+		if strings.Contains(strings.ToLower(f.Name), "password") || strings.Contains(strings.ToLower(f.Name), "pwd") {
+			v = strings.Repeat("X", len(v))
+		}
+
+		st.AddCols(f.Name, v, flagValue.Origin)
+	})
+
+	st.Debug()
+}
+
+func registerDefaultFlags() (map[string]string, error) {
+	DebugFunc()
+
+	m := make(map[string]string)
+
+	flag.VisitAll(func(f *flag.Flag) {
+		m[f.Name] = f.DefValue
+	})
+
+	return m, nil
 }
 
 func registerArgsFlags() (map[string]string, error) {
