@@ -20,7 +20,7 @@ import (
 
 const (
 	FlagNameHTTPHeaderLimit = "http.headerlimit"
-	FlagNameHTTPBodyLimit   = "httpio.bodylimit"
+	FlagNameHTTPBodyLimit   = "http.bodylimit"
 )
 
 var (
