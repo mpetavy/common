@@ -480,7 +480,7 @@ func setFlags() error {
 
 func debugFlags() {
 	st := NewStringTable()
-	st.AddCols("flag", "value", "origin")
+	st.AddCols("Flag", "Value", "Only cmdline", "Origin")
 
 	flag.VisitAll(func(f *flag.Flag) {
 		flagValue := flagInfos[f.Name]
@@ -490,7 +490,7 @@ func debugFlags() {
 			v = strings.Repeat("X", len(v))
 		}
 
-		st.AddCols(f.Name, v, flagValue.Origin)
+		st.AddCols(f.Name, v, IsCmdlineOnlyFlag(f.Name), flagValue.Origin)
 	})
 
 	st.Debug()

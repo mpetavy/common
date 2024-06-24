@@ -137,6 +137,43 @@ func (st *StringTable) String() string {
 	return sb.String()
 }
 
+func (st *StringTable) Html() string {
+	sb := strings.Builder{}
+	sb.WriteString("<table>\n")
+
+	for y := 0; y < len(st.Cells); y++ {
+		if y == 0 {
+			if !st.NoHeader {
+				sb.WriteString("\t<thead>\n")
+			} else {
+				sb.WriteString("\t<tbody>\n")
+			}
+		}
+
+		sb.WriteString("\t<tr>\n")
+
+		for x := 0; x < len(st.Cells[y]); x++ {
+			sb.WriteString("\t\t<td>")
+			sb.WriteString(fmt.Sprintf("%v", st.Cells[y][x]))
+			sb.WriteString("</td>\n")
+		}
+
+		sb.WriteString("\t</tr>\n")
+
+		if y == 0 {
+			if !st.NoHeader {
+				sb.WriteString("\t</thead>\n")
+			} else {
+				sb.WriteString("\t</tbody>\n")
+			}
+		}
+	}
+
+	sb.WriteString("</table>\n")
+
+	return sb.String()
+}
+
 func (st *StringTable) Debug() {
 	scanner := bufio.NewScanner(strings.NewReader(st.String()))
 	for scanner.Scan() {

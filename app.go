@@ -265,7 +265,7 @@ func usage() error {
 		st := NewStringTable()
 		st.Markdown = true
 
-		st.AddCols("Parameter", "Default value", "Only CmdLine", "Description")
+		st.AddCols("Flag", "Default value", "Only CmdLine", "Description")
 
 		flag.VisitAll(func(fl *flag.Flag) {
 			defValue := fl.DefValue
