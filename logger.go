@@ -58,6 +58,19 @@ var (
 	testT     = NewSync[*testing.T]()
 )
 
+type EventLog struct {
+	Entry LogEntry
+}
+
+type LogEntry struct {
+	Time       time.Time `json:"-"`
+	Timestamp  string    `json:"timestamp"`
+	Level      string    `json:"level"`
+	Source     string    `json:"source"`
+	Message    string    `json:"message"`
+	Stacktrace string    `json:"stacktrace"`
+}
+
 func init() {
 	Events.AddListener(EventFlagsParsed{}, func(event Event) {
 		if *FlagLogSys && IsLinux() && !IsRunningInteractive() {
@@ -144,10 +157,6 @@ func initLog() error {
 	flags := 0
 	if !IsLogJsonEnabled() {
 		flags = log.Lmsgprefix
-
-		if IsLogVerboseEnabled() {
-			flags = flags | log.LstdFlags | log.Lmicroseconds
-		}
 	}
 
 	LogDebug = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelDebug), flags)
@@ -182,52 +191,46 @@ func InitTesting(t *testing.T) {
 	Panic(initLog())
 }
 
-type entry struct {
-	Timestamp  string `json:"timestamp"`
-	Level      string `json:"level"`
-	Source     string `json:"source"`
-	Message    string `json:"message"`
-	Stacktrace string `json:"stacktrace"`
-}
-
 func formatLog(level string, index int, msg string, addStacktrace bool) string {
 	ri := GetRuntimeInfo(index)
 
 	source := fmt.Sprintf("%s/%s/%s:%d", ri.Pack, ri.File, ri.Fn, ri.Line)
 
+	now := time.Now().UTC()
+
+	if addStacktrace {
+		msg = msg + "\n" + ri.Stack
+	}
+
+	e := LogEntry{
+		Time:      now,
+		Timestamp: now.Format(time.RFC3339),
+		Level:     level,
+		Source:    source,
+		Message:   msg,
+	}
+
+	Events.Emit(EventLog{Entry: e}, false)
+
+	// shorten the "source" position only for console log
+
+	maxLen := 40
+	if len(source) > maxLen {
+		source = source[len(source)-maxLen:]
+	}
+
 	switch {
 	case IsLogJsonEnabled():
-		e := entry{
-			Timestamp:  time.Now().Format(time.RFC3339),
-			Level:      level,
-			Source:     source,
-			Message:    msg,
-			Stacktrace: "",
-		}
-
-		if addStacktrace {
-			e.Stacktrace = ri.Stack
-		}
-
 		ba, _ := json.MarshalIndent(e, "", "  ")
 
 		return string(ba)
 
 	case IsLogVerboseEnabled():
-		maxLen := 40
-		if len(source) > maxLen {
-			source = source[len(source)-maxLen:]
-		}
-
-		msg = fmt.Sprintf("%-"+strconv.Itoa(maxLen)+"s %s", source, msg)
+		msg = fmt.Sprintf("%s %-"+strconv.Itoa(maxLen)+"s %s", now.Format(SortedDateTimeMilliMask), source, msg)
 	default:
 		if level != LevelDebug && level != LevelInfo {
 			msg = fmt.Sprintf("%s: %s", Capitalize(strings.ToLower(level)), msg)
 		}
-	}
-
-	if addStacktrace {
-		msg = msg + "\n" + ri.Stack
 	}
 
 	return msg
@@ -348,6 +351,28 @@ func DebugFunc(args ...any) {
 	defer mu.Unlock()
 
 	logDebugPrint(formatLog(LevelDebug, 2, str, false))
+
+	lastErr = ""
+}
+
+func DebugStack(args ...any) {
+	ri := GetRuntimeInfo(1)
+
+	var str string
+
+	switch len(args) {
+	case 0:
+		str = strings.TrimSpace(ri.Fn + "()")
+	case 1:
+		str = strings.TrimSpace(fmt.Sprintf(ri.Fn+"(): %v", args[0]))
+	default:
+		str = strings.TrimSpace(fmt.Sprintf(ri.Fn+"(): "+fmt.Sprintf("%v", args[0]), args[1:]...))
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	logDebugPrint(formatLog(LevelDebug, 2, str, true))
 
 	lastErr = ""
 }

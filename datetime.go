@@ -46,7 +46,7 @@ var TimeMask = Hour + TimeSeparator + Minute + TimeSeparator + Second
 var DateTimeMask = DateMask + Separator + TimeMask
 var DateTimeMilliMask = DateMask + Separator + TimeMask + Msec
 
-var SortedDateMask = Year + DateSeparator + Month + DateSeparator + Day
+var SortedDateMask = Year + "-" + Month + "-" + Day
 var SortedDateTimeMilliMask = SortedDateMask + Separator + TimeMask + Msec
 
 // ParseDateTime parses only date, but no time

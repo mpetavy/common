@@ -1,36 +1,31 @@
 package common
 
 import (
-	"reflect"
-	"sync"
+	"fmt"
+	"golang.org/x/exp/slices"
 )
 
 type Event interface{}
 
 type EventFunc func(Event)
 
-type EventType reflect.Type
-
 type EventManager struct {
-	mu        sync.Mutex
-	listeners map[EventType][]*EventFunc
+	listeners map[string][]*EventFunc
 }
 
 var (
-	Events = NewEventManager()
+	Events       = NewEventManager()
+	currentEmits []string
 )
 
 func NewEventManager() *EventManager {
 	return &EventManager{
-		listeners: make(map[EventType][]*EventFunc),
+		listeners: make(map[string][]*EventFunc),
 	}
 }
 
 func (this *EventManager) AddListener(event interface{}, eventFunc EventFunc) *EventFunc {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	eventType := reflect.TypeOf(event)
+	eventType := fmt.Sprintf("%T", event)
 
 	DebugFunc("%T", event)
 
@@ -44,9 +39,6 @@ func (this *EventManager) AddListener(event interface{}, eventFunc EventFunc) *E
 }
 
 func (this *EventManager) RemoveListener(eventFunc *EventFunc) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
 	DebugFunc()
 
 	for eventType, funcs := range this.listeners {
@@ -66,23 +58,27 @@ func (this *EventManager) RemoveListener(eventFunc *EventFunc) {
 }
 
 func (this *EventManager) Emit(event interface{}, reverse bool) {
-	this.mu.Lock()
+	eventType := fmt.Sprintf("%T", event)
 
-	eventType := reflect.TypeOf(event)
+	if slices.Contains(currentEmits, eventType) {
+		return
+	}
+
+	currentEmits = append(currentEmits, eventType)
+	defer func() {
+		p := slices.Index(currentEmits, eventType)
+		currentEmits = slices.Delete(currentEmits, p, p+1)
+	}()
 
 	DebugFunc(eventType)
 
 	funcs, ok := this.listeners[eventType]
 
 	if !ok {
-		this.mu.Unlock()
-
 		return
 	}
 
 	funcs = SliceClone(funcs)
-
-	this.mu.Unlock()
 
 	if reverse {
 		funcs = ReverseSlice(funcs)
