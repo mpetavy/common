@@ -106,9 +106,9 @@ func BasicAuthHandler(authFunc BasicAuthFunc, next http.HandlerFunc) http.Handle
 func StartHTTPServer(port int, tlsConfig *tls.Config, mux *http.ServeMux) error {
 	DebugFunc()
 
-	tlsInfo := ""
+	protocolInfo := "HTTP"
 	if tlsConfig != nil {
-		tlsInfo = " [TLS]"
+		protocolInfo = "HTTPS"
 	}
 
 	httpServer = &http.Server{
@@ -128,7 +128,7 @@ func StartHTTPServer(port int, tlsConfig *tls.Config, mux *http.ServeMux) error 
 	httpServer.SetKeepAlivesEnabled(false)
 	httpServer.MaxHeaderBytes = int(*FlagHTTPHeaderLimit)
 
-	Info(fmt.Sprintf("HTTP server%s started on port: %d", tlsInfo, port))
+	Info(fmt.Sprintf("%s server %s start", protocolInfo, httpServer.Addr))
 
 	ctxServer, ctxServerCancel = context.WithCancel(context.Background())
 
@@ -168,12 +168,12 @@ func StopHTTPServer() error {
 		return err
 	}
 
-	tlsInfo := ""
+	protocolInfo := "HTTP"
 	if httpServer.TLSConfig != nil {
-		tlsInfo = " [TLS]"
+		protocolInfo = "HTTPS"
 	}
 
-	Info(fmt.Sprintf("HTTP server%s closed", tlsInfo))
+	Info(fmt.Sprintf("%s server %s stop", protocolInfo, httpServer.Addr))
 
 	httpServer = nil
 

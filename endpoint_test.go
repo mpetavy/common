@@ -74,7 +74,7 @@ func test(t *testing.T, address string, tlsConfig *tls.Config, txt string, isCli
 }
 
 func TestEndpoint(t *testing.T) {
-	InitTesting(t)
+	SetTesting(t)
 
 	txt, err := RndString(100)
 	if Error(err) {

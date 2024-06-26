@@ -70,7 +70,7 @@ func createTestFolders() (string, string, error) {
 }
 
 func TestFilewalker(t *testing.T) {
-	InitTesting(t)
+	SetTesting(t)
 
 	root, sub, err := createTestFolders()
 	if Error(err) {

@@ -55,7 +55,7 @@ var (
 	lastErr   string
 	lastLog   = time.Now()
 	isLogInit bool
-	testT     = NewSync[*testing.T]()
+	testT     *testing.T
 )
 
 type EventLog struct {
@@ -185,8 +185,8 @@ func closeLog() error {
 	return nil
 }
 
-func InitTesting(t *testing.T) {
-	testT.Set(t)
+func SetTesting(t *testing.T) {
+	testT = t
 
 	Panic(initLog())
 }
@@ -237,8 +237,8 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 }
 
 func logDebugPrint(s string) {
-	if testT.IsSet() {
-		testT.Get().Logf(s)
+	if testT != nil {
+		testT.Logf(s)
 
 		return
 	}
@@ -256,8 +256,8 @@ func logDebugPrint(s string) {
 }
 
 func logInfoPrint(s string) {
-	if testT.IsSet() {
-		testT.Get().Logf(s)
+	if testT != nil {
+		testT.Logf(s)
 
 		return
 	}
@@ -266,8 +266,8 @@ func logInfoPrint(s string) {
 }
 
 func logWarnPrint(s string) {
-	if testT.IsSet() {
-		testT.Get().Logf(s)
+	if testT != nil {
+		testT.Logf(s)
 
 		return
 	}
@@ -276,8 +276,8 @@ func logWarnPrint(s string) {
 }
 
 func logErrorPrint(s string) {
-	if testT.IsSet() {
-		testT.Get().Fatalf(s)
+	if testT != nil {
+		testT.Fatalf(s)
 
 		return
 	}
@@ -286,8 +286,8 @@ func logErrorPrint(s string) {
 }
 
 func logFatalPrint(s string) {
-	if testT.IsSet() {
-		testT.Get().Fatalf(s)
+	if testT != nil {
+		testT.Fatalf(s)
 
 		return
 	}

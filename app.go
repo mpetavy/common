@@ -632,6 +632,9 @@ func (app *application) applicationRun() error {
 
 	for {
 		select {
+		//case <-time.After(time.Second * 3):
+		//	Info("CTRL-C simulated shutdown")
+		//	return nil
 		//case <-time.After(time.Second):
 		//	Info("Restart on time %d", runtime.NumGoroutine())
 		//	fmt.Printf("Restart on time %d\n", runtime.NumGoroutine())

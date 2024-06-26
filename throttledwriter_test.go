@@ -9,7 +9,7 @@ import (
 )
 
 func TestNewThrottledWriter(t *testing.T) {
-	InitTesting(t)
+	SetTesting(t)
 
 	data := []byte("123")
 	bytesPerSecond := 1

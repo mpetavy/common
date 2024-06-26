@@ -15,7 +15,7 @@ import (
 )
 
 func TestScriptEngine(t *testing.T) {
-	common.InitTesting(t)
+	common.SetTesting(t)
 
 	files := []string{"a.js", "b.js"}
 
@@ -56,7 +56,7 @@ a.test() + ';' + b.test();
 }
 
 func TestScriptEngineTimeout(t *testing.T) {
-	common.InitTesting(t)
+	common.SetTesting(t)
 
 	src := "while(true) {}"
 
@@ -72,7 +72,7 @@ func TestScriptEngineTimeout(t *testing.T) {
 }
 
 func TestScriptEngineException(t *testing.T) {
-	common.InitTesting(t)
+	common.SetTesting(t)
 
 	msg := "EXCEPTION!"
 
@@ -90,7 +90,7 @@ func TestScriptEngineException(t *testing.T) {
 }
 
 func TestScriptEngineArgs(t *testing.T) {
-	common.InitTesting(t)
+	common.SetTesting(t)
 
 	src := `
 function main(args) {
@@ -115,7 +115,7 @@ args.output = "hello " + input;
 }
 
 func TestScriptEngineFormatJavascript(t *testing.T) {
-	common.InitTesting(t)
+	common.SetTesting(t)
 
 	src := `
 function main(args) {
@@ -133,7 +133,7 @@ args.output = "hello " + input;
 }
 
 func TestScriptEngineEtree(t *testing.T) {
-	common.InitTesting(t)
+	common.SetTesting(t)
 
 	src := `
 d = Object.create(etree);
@@ -153,7 +153,7 @@ console.log(d.WriteToString());
 }
 
 func TestScriptEngineHL7(t *testing.T) {
-	common.InitTesting(t)
+	common.SetTesting(t)
 
 	tests := []struct {
 		file     string
@@ -182,7 +182,7 @@ func TestScriptEngineHL7(t *testing.T) {
 
 	for _, test := range tests {
 		if !t.Run(test.file, func(t *testing.T) {
-			common.InitTesting(t)
+			common.SetTesting(t)
 
 			src, err := os.ReadFile(test.file)
 			if common.Error(err) {
@@ -230,7 +230,7 @@ func checkChanged(t *testing.T, db *sqldb.Database, changed bool) {
 }
 
 func TestDb(t *testing.T) {
-	common.InitTesting(t)
+	common.SetTesting(t)
 
 	database, err := sqldb.NewDatabase("sqlite3", "")
 	assert.NoError(t, err)
@@ -295,7 +295,7 @@ func TestDb(t *testing.T) {
 }
 
 func TestScriptEngineDatabase(t *testing.T) {
-	common.InitTesting(t)
+	common.SetTesting(t)
 
 	src := `
 var db = database;
