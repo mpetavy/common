@@ -482,15 +482,17 @@ func debugFlags() {
 	st := NewStringTable()
 	st.AddCols("Flag", "Value", "Only cmdline", "Origin")
 
-	flag.VisitAll(func(f *flag.Flag) {
-		flagValue := flagInfos[f.Name]
+	NoDebug(func() {
+		flag.VisitAll(func(f *flag.Flag) {
+			flagValue := flagInfos[f.Name]
 
-		v := flagValue.Value
-		if strings.Contains(strings.ToLower(f.Name), "password") || strings.Contains(strings.ToLower(f.Name), "pwd") {
-			v = strings.Repeat("X", len(v))
-		}
+			v := flagValue.Value
+			if strings.Contains(strings.ToLower(f.Name), "password") || strings.Contains(strings.ToLower(f.Name), "pwd") {
+				v = strings.Repeat("X", len(v))
+			}
 
-		st.AddCols(f.Name, v, IsCmdlineOnlyFlag(f.Name), flagValue.Origin)
+			st.AddCols(f.Name, v, IsCmdlineOnlyFlag(f.Name), flagValue.Origin)
+		})
 	})
 
 	st.Debug()

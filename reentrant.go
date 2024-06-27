@@ -12,7 +12,7 @@ type ReentrantMutex struct {
 	count   int
 }
 
-func NewRentrantMutex() ReentrantMutex {
+func NewReentrantMutex() ReentrantMutex {
 	return ReentrantMutex{
 		mu: sync.Mutex{},
 	}

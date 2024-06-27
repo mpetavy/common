@@ -48,18 +48,38 @@ func (jason *Jason) Elements() []string {
 
 func (jason *Jason) Element(key string) (*Jason, error) {
 	o, ok := jason.attributes[key]
-
 	if !ok {
 		return nil, fmt.Errorf("object not found for key: %s", key)
 	}
 
-	m, ok := o.(map[string]interface{})
+	s, ok := o.([]interface{})
+	if ok {
+		m, _ := s[0].(map[string]interface{})
 
+		return &Jason{m}, nil
+	}
+
+	m, ok := o.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("not an object for key: %s", key)
 	}
 
 	return &Jason{m}, nil
+}
+
+func (jason *Jason) ElementByPath(path string) (*Jason, error) {
+	splits := Split(path, "/")
+
+	var err error
+	j := jason
+	for _, split := range splits {
+		j, err = j.Element(split)
+		if err != nil {
+			return j, err
+		}
+	}
+
+	return j, nil
 }
 
 func (jason *Jason) IsString(key string) bool {

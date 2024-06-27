@@ -114,7 +114,12 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 	f := runtime.FuncForPC(pc)
 
 	fn := f.Name()
-	fn = fn[strings.LastIndex(fn, ".")+1:]
+	if strings.Contains(fn, "/") {
+		fn = fn[strings.LastIndex(fn, "/")+1:]
+	}
+	if strings.Contains(fn, ".") {
+		fn = fn[strings.Index(fn, ".")+1:]
+	}
 
 	dir := filepath.Base(filepath.Dir(file))
 

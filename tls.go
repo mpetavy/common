@@ -508,7 +508,7 @@ func NewTlsConfigFromFlags() (*tls.Config, error) {
 }
 
 func readP12FromFileOrBuffer(fileOrBuffer string, password string) (*tls.Config, error) {
-	if FileExists_(fileOrBuffer) {
+	if FileExists(fileOrBuffer) {
 		ba, err := os.ReadFile(fileOrBuffer)
 		if Error(err) {
 			return nil, err

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -212,4 +213,49 @@ func Background(timeout time.Duration, fn func() error) error {
 	ti.Stop()
 
 	return err
+}
+
+type GoRoutinesRegister struct {
+	list []uint64
+	mu   sync.Mutex
+}
+
+func NewGoRoutinesRegister() *GoRoutinesRegister {
+	return &GoRoutinesRegister{}
+}
+
+func (tr *GoRoutinesRegister) Register() {
+	mu.Lock()
+	defer func() {
+		mu.Unlock()
+	}()
+
+	id := GoRoutineId()
+
+	if !slices.Contains(tr.list, id) {
+		tr.list = append(tr.list, id)
+	}
+}
+func (tr *GoRoutinesRegister) IsRegistered() bool {
+	mu.Lock()
+	defer func() {
+		mu.Unlock()
+	}()
+
+	return slices.Contains(tr.list, GoRoutineId())
+}
+
+func (tr *GoRoutinesRegister) Deregister() {
+	mu.Lock()
+	defer func() {
+		mu.Unlock()
+	}()
+
+	id := GoRoutineId()
+
+	p := slices.Index(tr.list, id)
+
+	if p != -1 {
+		tr.list = slices.Delete(tr.list, p, p+1)
+	}
 }

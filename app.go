@@ -502,13 +502,13 @@ func Run(mandatoryFlags []string) {
 		}
 
 		defer func() {
-			if FileExists_(*FlagScriptStop) {
+			if FileExists(*FlagScriptStop) {
 				_, err := RunScript(MillisecondToDuration(*FlagScriptTimeout), *FlagScriptStop)
 				Error(err)
 			}
 		}()
 
-		if FileExists_(*FlagScriptStart) {
+		if FileExists(*FlagScriptStart) {
 			_, err = RunScript(MillisecondToDuration(*FlagScriptTimeout), *FlagScriptStart)
 			if Error(err) {
 				return err

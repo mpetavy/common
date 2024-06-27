@@ -174,19 +174,16 @@ func CreateTempDir() (string, error) {
 	return tempdir, err
 }
 
-func FileExists_(filename string) bool {
+// FileExists does ... guess what :-)
+func FileExists(filename string) bool {
+	var b bool
 	_, err := os.Stat(filename)
 
 	if os.IsNotExist(err) || err != nil {
-		return false
+		b = false
 	} else {
-		return true
+		b = true
 	}
-}
-
-// FileExists does ... guess what :-)
-func FileExists(filename string) bool {
-	b := FileExists_(filename)
 
 	Debug(fmt.Sprintf("FileExists %s: %v", filename, b))
 
@@ -313,7 +310,7 @@ func FileBackup(filename string) error {
 			dst = filename + "." + strconv.Itoa(i+1)
 		}
 
-		if FileExists_(src) {
+		if FileExists(src) {
 			files = SliceRemove(files, dst)
 
 			err := FileCopy(src, dst)

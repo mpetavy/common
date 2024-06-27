@@ -8,7 +8,7 @@ import (
 )
 
 func TestSimple(t *testing.T) {
-	rm := NewRentrantMutex()
+	rm := NewReentrantMutex()
 
 	rm.Lock()
 	rm.Lock()
@@ -27,7 +27,7 @@ func TestSimple(t *testing.T) {
 }
 
 func TestBlocking(t *testing.T) {
-	rm := NewRentrantMutex()
+	rm := NewReentrantMutex()
 
 	start := time.Now()
 	wg := sync.WaitGroup{}
@@ -51,7 +51,7 @@ func TestBlocking(t *testing.T) {
 }
 
 func TestBlockingBlock(t *testing.T) {
-	rm := NewRentrantMutex()
+	rm := NewReentrantMutex()
 	list := []int{}
 	wg := sync.WaitGroup{}
 

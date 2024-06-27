@@ -44,18 +44,19 @@ var (
 	FlagLogBreak    = flag.Bool(FlagNameLogBreak, false, "break on error")
 	FlagLogGap      = flag.Int(FlagNameLogGap, 100, "time gap after show a separator")
 
-	mu        ReentrantMutex
-	fw        *fileWriter
-	rw                    = newMemoryWriter()
-	LogDebug  *log.Logger = log.New(rw, prefix(LevelDebug), 0)
-	LogInfo   *log.Logger = log.New(rw, prefix(LevelInfo), 0)
-	LogWarn   *log.Logger = log.New(rw, prefix(LevelWarn), 0)
-	LogError  *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
-	LogFatal  *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
-	lastErr   string
-	lastLog   = time.Now()
-	isLogInit bool
-	testT     *testing.T
+	mu          ReentrantMutex
+	fw          *fileWriter
+	rw                      = newMemoryWriter()
+	LogDebug    *log.Logger = log.New(rw, prefix(LevelDebug), 0)
+	LogInfo     *log.Logger = log.New(rw, prefix(LevelInfo), 0)
+	LogWarn     *log.Logger = log.New(rw, prefix(LevelWarn), 0)
+	LogError    *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
+	LogFatal    *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
+	lastErr     string
+	lastLog     = time.Now()
+	isLogInit   bool
+	testT       *testing.T
+	listNoDebug = NewGoRoutinesRegister()
 )
 
 type EventLog struct {
@@ -210,7 +211,9 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 		Message:   msg,
 	}
 
-	Events.Emit(EventLog{Entry: e}, false)
+	if level != LevelDebug {
+		Events.Emit(EventLog{Entry: e}, false)
+	}
 
 	// shorten the "source" position only for console log
 
@@ -296,7 +299,7 @@ func logFatalPrint(s string) {
 }
 
 func Debug(format string, args ...any) {
-	if !IsLogVerboseEnabled() {
+	if listNoDebug.IsRegistered() || !IsLogVerboseEnabled() {
 		return
 	}
 
@@ -313,7 +316,7 @@ func Debug(format string, args ...any) {
 }
 
 func DebugIndex(index int, format string, args ...any) {
-	if !IsLogVerboseEnabled() {
+	if listNoDebug.IsRegistered() || !IsLogVerboseEnabled() {
 		return
 	}
 
@@ -330,7 +333,7 @@ func DebugIndex(index int, format string, args ...any) {
 }
 
 func DebugFunc(args ...any) {
-	if !IsLogVerboseEnabled() {
+	if listNoDebug.IsRegistered() || !IsLogVerboseEnabled() {
 		return
 	}
 
@@ -414,7 +417,7 @@ func IgnoreError(err error) bool {
 }
 
 func DebugError(err error) bool {
-	if !IsLogVerboseEnabled() || err == nil || IsErrExit(err) {
+	if err == nil || listNoDebug.IsRegistered() || !IsLogVerboseEnabled() || IsErrExit(err) {
 		return err != nil
 	}
 
@@ -431,7 +434,7 @@ func DebugError(err error) bool {
 }
 
 func DebugErrorIndex(index int, err error) bool {
-	if !IsLogVerboseEnabled() || err == nil || IsErrExit(err) {
+	if err == nil || listNoDebug.IsRegistered() || !IsLogVerboseEnabled() || IsErrExit(err) {
 		return err != nil
 	}
 
@@ -516,4 +519,13 @@ func ClearLogs() {
 
 func GetLogs() []string {
 	return rw.GetLogs()
+}
+
+func NoDebug(fn func()) {
+	listNoDebug.Register()
+	defer func() {
+		listNoDebug.Deregister()
+	}()
+
+	fn()
 }
