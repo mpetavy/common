@@ -201,6 +201,8 @@ func Background(timeout time.Duration, fn func() error) error {
 	errCh := make(chan error, 2)
 
 	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
+
 		errCh <- fn()
 	}()
 
