@@ -34,7 +34,7 @@ func NewDiscoverServer(address string, timeout time.Duration, uid string, info s
 		timeout:   timeout,
 		uid:       uid,
 		info:      info,
-		lifecycle: NewNotice(true),
+		lifecycle: NewNotice(),
 		listener:  nil,
 	}, nil
 }
@@ -57,13 +57,10 @@ func (server *DiscoverServer) Start() error {
 	go func() {
 		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
-		lifecycleCh := server.lifecycle.NewChannel()
-		defer server.lifecycle.RemoveChannel(lifecycleCh)
-
 	loop:
 		for server.lifecycle.IsSet() {
 			select {
-			case <-lifecycleCh:
+			case <-server.lifecycle.Channel():
 				break loop
 			default:
 				err := server.listener.SetReadDeadline(CalcDeadline(time.Now(), server.timeout))

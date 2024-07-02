@@ -8,13 +8,10 @@ import (
 )
 
 func TestNoticeChannel(t *testing.T) {
-	n := NewNotice(true)
+	n := NewNotice()
 	mu := sync.Mutex{}
 	wg := sync.WaitGroup{}
 	c := 0
-
-	ch := n.NewChannel()
-	defer n.RemoveChannel(ch)
 
 	for i := 0; i < 10; i++ {
 		c++
@@ -25,7 +22,7 @@ func TestNoticeChannel(t *testing.T) {
 
 			defer wg.Done()
 
-			<-ch
+			<-n.Channel()
 
 			mu.Lock()
 			defer mu.Unlock()

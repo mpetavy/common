@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 const (
@@ -174,6 +175,16 @@ func CreateTempDir() (string, error) {
 	return tempdir, err
 }
 
+func IsValidFilename(filename string) bool {
+	for _, r := range []rune(filename) {
+		if !unicode.IsGraphic(r) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // FileExists does ... guess what :-)
 func FileExists(filename string) bool {
 	var b bool
@@ -183,6 +194,10 @@ func FileExists(filename string) bool {
 		b = false
 	} else {
 		b = true
+	}
+
+	if !IsValidFilename(filename) {
+		filename = fmt.Sprintf("[invalid filename with %d chars]: %s...", len(filename), filename[:Min(len(filename), 10)])
 	}
 
 	Debug(fmt.Sprintf("FileExists %s: %v", filename, b))
@@ -920,7 +935,8 @@ func (mw *multiwriter) Write(p []byte) (n int, err error) {
 			if w != nil {
 				// Ignore all errors
 
-				w.Write(p)
+				_, err := w.Write(p)
+				IgnoreError(err)
 			}
 		}
 	}

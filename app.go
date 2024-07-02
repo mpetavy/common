@@ -111,7 +111,7 @@ var (
 	FlagAppProduct          *string
 	FlagAppTicker           *int
 	ticker                  *time.Ticker
-	appLifecycle            = NewNotice(true)
+	appLifecycle            = NewNotice()
 	onceBanner              sync.Once
 	onceRunningAsService    sync.Once
 	onceRunningAsExecutable sync.Once
@@ -625,9 +625,6 @@ func (app *application) applicationRun() error {
 		}()
 	}
 
-	lifecycleCh := appLifecycle.NewChannel()
-	defer appLifecycle.RemoveChannel(lifecycleCh)
-
 	restart = false
 
 	for {
@@ -642,7 +639,7 @@ func (app *application) applicationRun() error {
 		//	return nil
 		case err := <-errCh:
 			return err
-		case <-lifecycleCh:
+		case <-appLifecycle.Channel():
 			Info("Stop on request")
 			return nil
 		case <-restartCh:
@@ -668,6 +665,10 @@ func (app *application) applicationRun() error {
 	}
 }
 
+func (app *application) Shutdown() {
+	ctrlC <- os.Interrupt
+}
+
 func (app *application) Start(s service.Service) error {
 	if IsRunningAsService() {
 		Info("Start()")
@@ -691,9 +692,9 @@ func (app *application) Start(s service.Service) error {
 func (app *application) applicationLoop() error {
 	DebugFunc()
 
-	for {
-		appLifecycle.Set()
+	appLifecycle.Set()
 
+	for {
 		if app.StartFunc != nil {
 			err := app.StartFunc()
 			if Error(err) {

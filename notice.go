@@ -2,40 +2,36 @@ package common
 
 import (
 	"sync"
+	"time"
 )
 
 type Notice struct {
 	isSet bool
 	mu    sync.Mutex
-	chs   []chan struct{}
+	ch    chan struct{}
 }
 
-func NewNotice(isSet bool) *Notice {
+func NewNotice() *Notice {
 	return &Notice{
-		isSet: isSet,
-		chs:   make([]chan struct{}, 0),
+		isSet: true,
+		mu:    sync.Mutex{},
+		ch:    make(chan struct{}),
 	}
 }
 
-func (this *Notice) NewChannel() chan struct{} {
+func (this *Notice) Channel() chan struct{} {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 
-	ch := make(chan struct{})
+	if this.ch == nil {
+		this.ch = make(chan struct{})
 
-	this.chs = append(this.chs, ch)
-
-	return ch
-}
-
-func (this *Notice) RemoveChannel(ch chan struct{}) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	p := SliceIndex(this.chs, ch)
-	if p != -1 {
-		this.chs = SliceDelete(this.chs, p)
+		time.AfterFunc(time.Millisecond, func() {
+			close(this.ch)
+		})
 	}
+
+	return this.ch
 }
 
 func (this *Notice) IsSet() bool {
@@ -51,8 +47,7 @@ func (this *Notice) Set() bool {
 
 	if !this.isSet {
 		this.isSet = true
-
-		this.chs = make([]chan struct{}, 0)
+		this.ch = make(chan struct{})
 
 		return true
 	}
@@ -67,11 +62,8 @@ func (this *Notice) Unset() bool {
 	if this.isSet {
 		this.isSet = false
 
-		for len(this.chs) > 0 {
-			close(this.chs[0])
-
-			this.chs = this.chs[1:]
-		}
+		close(this.ch)
+		this.ch = nil
 
 		return true
 	}
