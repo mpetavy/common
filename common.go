@@ -58,9 +58,12 @@ func Sleep(d time.Duration) {
 
 	DebugIndex(1, "Sleep [%s] %v... ", id, d)
 
-	time.Sleep(d)
-
-	DebugIndex(1, "Sleep [%s] %v continue", id, d)
+	select {
+	case <-time.After(d):
+		DebugIndex(1, "Sleep [%s] %v continue", id, d)
+	case <-AppLifecycle().Channel():
+		DebugIndex(1, "Sleep [%s] interrupted because of app lifecyle end", id)
+	}
 }
 
 func Catch(fn func() error) (err error) {
