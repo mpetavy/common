@@ -154,7 +154,7 @@ func RunScript(timeout time.Duration, filename string) ([]byte, error) {
 	if IsWindows() {
 		cmd = exec.CommandContext(ctx, "cmd.exe", "/c", filename)
 	} else {
-		cmd = exec.CommandContext(ctx, "sh", "-c", filename)
+		cmd = exec.CommandContext(ctx, "sh", "-c", "./"+filename)
 	}
 
 	ba, err := ExecuteCmd(cmd)
