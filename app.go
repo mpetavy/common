@@ -792,6 +792,10 @@ func IsRunningAsExecutable() bool {
 	return runningAsExecutable
 }
 
+func IsRunningInTest() bool {
+	return flag.Lookup("test.v") != nil
+}
+
 func IsRunningInteractive() bool {
 	onceRunningInteractive.Do(func() {
 		runningInteractive = service.Interactive()

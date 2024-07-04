@@ -109,8 +109,6 @@ func TestFileMode(t *testing.T) {
 }
 
 func TestFileBackup(t *testing.T) {
-	SetTesting(t)
-
 	f, err := CreateTempFile()
 	assert.NoError(t, err)
 

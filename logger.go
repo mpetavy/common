@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"testing"
 	"time"
 )
 
@@ -55,7 +54,6 @@ var (
 	lastErr     string
 	lastLog     = time.Now()
 	isLogInit   bool
-	testT       *testing.T
 	listNoDebug = NewGoRoutinesRegister()
 )
 
@@ -186,12 +184,6 @@ func closeLog() error {
 	return nil
 }
 
-func SetTesting(t *testing.T) {
-	testT = t
-
-	Panic(initLog())
-}
-
 func formatLog(level string, index int, msg string, addStacktrace bool) string {
 	ri := GetRuntimeInfo(index)
 
@@ -240,12 +232,6 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 }
 
 func logDebugPrint(s string) {
-	if testT != nil {
-		testT.Logf(s)
-
-		return
-	}
-
 	if time.Since(lastLog) > MillisecondToDuration(*FlagLogGap) {
 		msg := fmt.Sprintf("time gap [%v]", time.Since(lastLog).Truncate(time.Millisecond))
 		msg = fmt.Sprintf("%s %s -", strings.Repeat("-", 120-len(msg)-6-3), msg)
@@ -259,42 +245,18 @@ func logDebugPrint(s string) {
 }
 
 func logInfoPrint(s string) {
-	if testT != nil {
-		testT.Logf(s)
-
-		return
-	}
-
 	LogInfo.Print(s)
 }
 
 func logWarnPrint(s string) {
-	if testT != nil {
-		testT.Logf(s)
-
-		return
-	}
-
 	LogWarn.Print(s)
 }
 
 func logErrorPrint(s string) {
-	if testT != nil {
-		testT.Fatalf(s)
-
-		return
-	}
-
 	LogError.Print(s)
 }
 
 func logFatalPrint(s string) {
-	if testT != nil {
-		testT.Fatalf(s)
-
-		return
-	}
-
 	LogFatal.Print(s)
 }
 

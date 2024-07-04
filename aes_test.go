@@ -6,8 +6,6 @@ import (
 )
 
 func TestEncrypt(t *testing.T) {
-	SetTesting(t)
-
 	key, err := RndBytes(16)
 	if err != nil {
 		Error(err)

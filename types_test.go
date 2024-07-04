@@ -104,8 +104,6 @@ func join(bas ...[]byte) []byte {
 }
 
 func TestNewSeparatorSplitFunc(t *testing.T) {
-	SetTesting(t)
-
 	hello := []byte("hello")
 	world := []byte("world")
 	prefix := []byte(">>>")
