@@ -119,6 +119,8 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 }
 
 func IsCmdlineOnlyFlag(flagName string) bool {
+	return false
+
 	r := false
 
 	for _, mask := range CmdlineOnlyFlags {
