@@ -119,8 +119,6 @@ func (this *Configuration) GetFlag(flagName string) (string, error) {
 }
 
 func IsCmdlineOnlyFlag(flagName string) bool {
-	return false
-
 	r := false
 
 	for _, mask := range CmdlineOnlyFlags {
@@ -466,6 +464,8 @@ func setFlags() error {
 				value = v
 			}
 
+			flag.Set(f.Name, value)
+
 			flagInfos[f.Name] = flagInfo{
 				Value:  value,
 				Origin: origin,
@@ -532,11 +532,11 @@ func registerEnvFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		envName := strings.ToUpper(fmt.Sprintf("%s_%s", Title(), strings.ReplaceAll(f.Name, ".", "_")))
+		envName := fmt.Sprintf("%s_%s", Title(), strings.ReplaceAll(f.Name, ".", "_"))
 
-		envValue := strings.ToLower(os.Getenv(envName))
+		envValue := os.Getenv(strings.ToUpper(envName))
 		if envValue == "" {
-			envValue = strings.ToLower(os.Getenv(envName))
+			envValue = os.Getenv(strings.ToLower(envName))
 		}
 
 		if envValue != "" {
