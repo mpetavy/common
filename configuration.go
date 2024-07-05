@@ -446,14 +446,16 @@ func setFlags() error {
 		}
 
 		flag.VisitAll(func(f *flag.Flag) {
+			if IsCmdlineOnlyFlag(f.Name) {
+				delete(mapEnv, f.Name)
+				delete(mapCfgFile, f.Name)
+				delete(mapIniFile, f.Name)
+			}
+
 			var origin string
-			value := f.DefValue
+			var value string
 
 			for _, m := range maps {
-				if IsCmdlineOnlyFlag(f.Name) && m.origin != "default" && m.origin != "args" {
-					continue
-				}
-
 				v, ok := m.m[f.Name]
 
 				if !ok {
@@ -464,7 +466,7 @@ func setFlags() error {
 				value = v
 			}
 
-			flag.Set(f.Name, value)
+			Error(flag.Set(f.Name, value))
 
 			flagInfos[f.Name] = flagInfo{
 				Value:  value,
@@ -506,7 +508,7 @@ func registerDefaultFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		m[f.Name] = f.DefValue
+		m[f.Name] = f.Value.String()
 	})
 
 	return m, nil
