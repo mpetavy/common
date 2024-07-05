@@ -9,12 +9,21 @@ import (
 
 // https://medium.com/@vCabbage/go-timeout-commands-with-os-exec-commandcontext-ba0c861ed738
 
-type ErrWatchdog struct {
-	Msg string
+type ErrTimeout struct {
+	Duration time.Duration
+	Err      error
 }
 
-func (e *ErrWatchdog) Error() string {
-	return e.Msg
+func (e *ErrTimeout) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("Timeout error after %+v: %s", e.Duration, e.Err.Error())
+	} else {
+		return fmt.Sprintf("Timeout error after %+v", e.Duration)
+	}
+}
+
+func (e *ErrTimeout) Timeout() bool {
+	return true
 }
 
 func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
@@ -54,10 +63,16 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 		if cmd.Process != nil {
 			DebugError(cmd.Process.Kill())
 
-			return nil, &ErrWatchdog{Msg: fmt.Sprintf("Watchdog process is killed by timeout! pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start))}
+			return nil, &ErrTimeout{
+				Duration: timeout,
+				Err:      fmt.Errorf("Watchdog process is killed by timeout! pid: %d timeout: %v cmd: %s time: %v", cmd.Process.Pid, timeout, CmdToString(cmd), time.Since(start)),
+			}
 		}
 
-		return nil, &ErrWatchdog{Msg: fmt.Sprintf("Watchdog process is killed by timeout! timeout: %v cmd: %s time: %v", timeout, CmdToString(cmd), time.Since(start))}
+		return nil, &ErrTimeout{
+			Duration: timeout,
+			Err:      fmt.Errorf("Watchdog process is killed by timeout! timeout: %v cmd: %s time: %v", timeout, CmdToString(cmd), time.Since(start)),
+		}
 	case err := <-doneCh:
 		exitcode := 0
 		if err != nil {
@@ -91,7 +106,7 @@ func NewWatchdogCmd(cmd *exec.Cmd, timeout time.Duration) ([]byte, error) {
 	}
 }
 
-func NewWatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
+func NewWatchdog(msg string, fn func() error, timeout time.Duration) error {
 	DebugFunc("%s: %d msec...", msg, timeout.Milliseconds())
 
 	doneCh := make(chan error, 1)
@@ -108,7 +123,10 @@ func NewWatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
 
 	select {
 	case <-time.After(timeout):
-		return &ErrWatchdog{Msg: fmt.Sprintf("Watchdog function is killed by timeout! time: %v", time.Since(start))}
+		return &ErrTimeout{
+			Duration: timeout,
+			Err:      fmt.Errorf("Watchdog function is killed by timeout! time: %v", time.Since(start)),
+		}
 	case err = <-doneCh:
 		exitstate := ""
 		if err != nil {
@@ -119,5 +137,23 @@ func NewWatchdogFunc(msg string, fn func() error, timeout time.Duration) error {
 
 		Debug("Watchdog function %s! time: %s", exitstate, time.Since(start))
 		return err
+	}
+}
+
+func NewWatchdogRetry(checkDuration time.Duration, maxDuration time.Duration, fn func() error) error {
+	start := time.Now()
+
+	for {
+		err := fn()
+
+		if err == nil {
+			return nil
+		}
+
+		if time.Since(start) > maxDuration {
+			return &ErrTimeout{maxDuration, err}
+		}
+
+		Sleep(checkDuration)
 	}
 }

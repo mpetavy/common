@@ -2,7 +2,6 @@ package common
 
 import (
 	"bytes"
-	"fmt"
 	"runtime"
 	"slices"
 	"sort"
@@ -10,50 +9,6 @@ import (
 	"sync"
 	"time"
 )
-
-type ErrTimeout struct {
-	Duration time.Duration
-	Err      error
-}
-
-func (e *ErrTimeout) Error() string {
-	if e.Err != nil {
-		return fmt.Sprintf("Timeout error after: %+v, error: %+v", e.Duration, e.Err)
-	} else {
-		return fmt.Sprintf("Timeout error after: %+v", e.Duration)
-	}
-}
-
-func (e *ErrTimeout) Timeout() bool {
-	return true
-}
-
-func NewTimeoutOperation(checkDuration time.Duration, maxDuration time.Duration, fn func() error) error {
-	start := time.Now()
-
-	err := fn()
-
-	if err == nil {
-		return nil
-	}
-
-	ti := time.NewTicker(checkDuration)
-	defer ti.Stop()
-
-	for {
-		<-ti.C
-
-		err := fn()
-
-		if err == nil {
-			return nil
-		}
-
-		if time.Since(start) > maxDuration {
-			return &ErrTimeout{maxDuration, err}
-		}
-	}
-}
 
 var (
 	routines        = make(map[int]RuntimeInfo)

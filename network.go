@@ -189,7 +189,7 @@ func WaitUntilNetworkIsAvailable(lookupIp net.IP) error {
 		DebugFunc()
 	}
 
-	return NewTimeoutOperation(time.Millisecond*500, MillisecondToDuration(*FlagIoNetworkTimeout), func() error {
+	return NewWatchdogRetry(time.Millisecond*500, MillisecondToDuration(*FlagIoNetworkTimeout), func() error {
 		_, _, hostInfos, err := GetHostInfos()
 
 		if DebugError(err) {

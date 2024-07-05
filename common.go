@@ -48,12 +48,6 @@ func Eval[T any](b bool, trueFunc T, falseFunc T) T {
 }
 
 func Sleep(d time.Duration) {
-	if !*FlagLogVerbose {
-		time.Sleep(d)
-
-		return
-	}
-
 	id := uuid.New().String()
 
 	DebugIndex(1, "Sleep [%s] %v... ", id, d)
