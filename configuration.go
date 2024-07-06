@@ -466,7 +466,10 @@ func setFlags() error {
 				value = v
 			}
 
-			Error(flag.Set(f.Name, value))
+			// ignore GO's test flags
+			if !strings.HasPrefix(f.Name, "test.") {
+				Error(flag.Set(f.Name, value))
+			}
 
 			flagInfos[f.Name] = flagInfo{
 				Value:  value,
