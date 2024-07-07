@@ -105,31 +105,44 @@ func GetHostInfos() (string, net.IP, []HostInfo, error) {
 	return hostName, hostAddress, hostInfos, nil
 }
 
-func IsPortAvailable(network string, port int) (available bool) {
-	switch network {
-	case "tcp":
-		if network == "tcp" {
-			tcpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-			if tcpListener != nil {
-				Error(tcpListener.Close())
+func IsPortAvailable(network string, port int) error {
+	err := func() error {
+		switch network {
+		case "tcp":
+			if network == "tcp" {
+				tcpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+				if Error(err) {
+					return err
+				}
+
+				err = tcpListener.Close()
+				if Error(err) {
+					return err
+				}
+
+				return nil
 			}
+		case "udp":
+			if network == "udp" {
+				udpListener, err := net.ListenPacket("udp4", fmt.Sprintf(":%d", port))
+				if Error(err) {
+					return err
+				}
 
-			available = err == nil
-		}
-	case "udp":
-		if network == "udp" {
-			udpListener, err := net.ListenPacket("udp4", fmt.Sprintf(":%d", port))
-			if udpListener != nil {
-				Error(udpListener.Close())
+				err = udpListener.Close()
+				if Error(err) {
+					return err
+				}
+
+				return nil
 			}
-
-			available = err == nil
 		}
-	}
+		return fmt.Errorf("invalid network type: %s", network)
+	}()
 
-	DebugFunc("%d/%s : %v", port, network, available)
+	DebugFunc("%d/%s : %v", port, network, err == nil)
 
-	return available
+	return err
 }
 
 func FindFreePort(network string, startPort int, excludedPorts []int) (int, error) {
@@ -137,9 +150,7 @@ func FindFreePort(network string, startPort int, excludedPorts []int) (int, erro
 
 	for port := startPort; port < 65536; port++ {
 		if IndexOf(excludedPorts, port) == -1 {
-			b := IsPortAvailable(network, port)
-
-			if !b {
+			if IsPortAvailable(network, port) != nil {
 				continue
 			}
 

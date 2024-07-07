@@ -29,9 +29,7 @@ var (
 )
 
 var (
-	httpServer      *http.Server
-	ctxServer       context.Context
-	ctxServerCancel context.CancelFunc
+	httpServer *http.Server
 
 	ErrUnauthorized  = fmt.Errorf("Unauthorized")
 	ErrNoBodyContent = fmt.Errorf("no HTTP body provided")
@@ -103,8 +101,13 @@ func BasicAuthHandler(authFunc BasicAuthFunc, next http.HandlerFunc) http.Handle
 	}
 }
 
-func StartHTTPServer(port int, tlsConfig *tls.Config, mux *http.ServeMux) error {
+func HTTPServerStart(port int, tlsConfig *tls.Config, mux *http.ServeMux) error {
 	DebugFunc()
+
+	err := IsPortAvailable("tcp", port)
+	if Error(err) {
+		return err
+	}
 
 	protocolInfo := "HTTP"
 	if tlsConfig != nil {
@@ -130,10 +133,6 @@ func StartHTTPServer(port int, tlsConfig *tls.Config, mux *http.ServeMux) error 
 
 	Info(fmt.Sprintf("%s server %s start", protocolInfo, httpServer.Addr))
 
-	ctxServer, ctxServerCancel = context.WithCancel(context.Background())
-
-	var err error
-
 	if tlsConfig != nil {
 		err = httpServer.ListenAndServeTLS("", "")
 	} else {
@@ -141,8 +140,6 @@ func StartHTTPServer(port int, tlsConfig *tls.Config, mux *http.ServeMux) error 
 	}
 
 	if err != nil && err == http.ErrServerClosed {
-		<-ctxServer.Done()
-
 		err = nil
 	}
 
@@ -153,7 +150,7 @@ func StartHTTPServer(port int, tlsConfig *tls.Config, mux *http.ServeMux) error 
 	return nil
 }
 
-func StopHTTPServer() error {
+func HTTPServerStop() error {
 	DebugFunc()
 
 	if httpServer == nil {
@@ -176,8 +173,6 @@ func StopHTTPServer() error {
 	Info(fmt.Sprintf("%s server %s stop", protocolInfo, httpServer.Addr))
 
 	httpServer = nil
-
-	ctxServerCancel()
 
 	return nil
 }
