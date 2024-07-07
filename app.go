@@ -793,7 +793,11 @@ func IsRunningAsExecutable() bool {
 }
 
 func IsRunningInTest() bool {
-	return flag.Lookup("test.v") != nil
+	runningInTest := flag.Lookup("test.v") != nil
+
+	DebugFunc(runningInTest)
+
+	return runningInTest
 }
 
 func IsRunningInteractive() bool {
