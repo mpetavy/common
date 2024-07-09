@@ -249,6 +249,10 @@ func registerIniFileFlags() (map[string]string, error) {
 		return m, err
 	}
 
+	if !bytes.HasSuffix(ba, []byte("\n")) {
+		ba = append(ba, '\n')
+	}
+
 	withCrlf, err := NewSeparatorSplitFunc(nil, []byte("\n"), false)
 	if Error(err) {
 		return m, err
