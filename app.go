@@ -123,6 +123,7 @@ var (
 	runningInteractive      bool
 	restart                 bool
 	restartCh               = make(chan struct{})
+	shutdownCh              = make(chan struct{})
 	ctrlC                   = make(chan os.Signal, 1)
 	isFirstTicker           = true
 	banner                  = bytes.Buffer{}
@@ -646,6 +647,9 @@ func (app *application) applicationRun() error {
 			Info("Restart on request")
 			restart = true
 			return nil
+		case <-shutdownCh:
+			Info("Shutdown on request")
+			return nil
 		case <-ctrlC:
 			fmt.Println()
 			Info("Terminate: CTRL-C pressed")
@@ -663,10 +667,6 @@ func (app *application) applicationRun() error {
 			ticker = nextTicker()
 		}
 	}
-}
-
-func (app *application) Shutdown() {
-	ctrlC <- os.Interrupt
 }
 
 func (app *application) Start(s service.Service) error {
@@ -757,6 +757,12 @@ func AppRestart() {
 	DebugFunc()
 
 	restartCh <- struct{}{}
+}
+
+func AppShutdown() {
+	DebugFunc()
+
+	shutdownCh <- struct{}{}
 }
 
 func IsRunningAsService() bool {

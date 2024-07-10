@@ -19,28 +19,28 @@ import (
 )
 
 const (
-	FlagNameHTTPHeaderLimit = "http.headerlimit"
-	FlagNameHTTPBodyLimit   = "http.bodylimit"
-)
-
-var (
-	FlagHTTPHeaderLimit = flag.Int64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
-	FlagHTTPBodyLimit   = flag.Int64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
-)
-
-var (
-	httpServer *http.Server
-
-	ErrUnauthorized  = fmt.Errorf("Unauthorized")
-	ErrNoBodyContent = fmt.Errorf("no HTTP body provided")
-)
-
-const (
 	CONTENT_TYPE        = "Content-Type"
 	CONTENT_LENGTH      = "Content-Length"
 	CONTENT_DISPOSITION = "Content-Disposition"
 
 	HEADER_LOCATION = "Location"
+
+	FlagNameHTTPHeaderLimit = "http.headerlimit"
+	FlagNameHTTPBodyLimit   = "http.bodylimit"
+	FlagNameHTTPTLSInsecure = "http.tlsinsecure"
+	FlagNameHTTPTimeout     = "http.timeout"
+)
+
+var (
+	FlagHTTPHeaderLimit = flag.Int64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
+	FlagHTTPBodyLimit   = flag.Int64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
+	FlagHTTPTLSInsecure = flag.Bool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
+	FlagHTTPTimeout     = flag.Int(FlagNameHTTPTimeout, 10000, "HTTP default request timeout")
+
+	httpServer *http.Server
+
+	ErrUnauthorized  = fmt.Errorf("Unauthorized")
+	ErrNoBodyContent = fmt.Errorf("no HTTP body provided")
 )
 
 type BasicAuthFunc func(username string, password string) error
@@ -267,16 +267,20 @@ func HTTPWriteJson(status int, w http.ResponseWriter, ba []byte) error {
 	return nil
 }
 
-func HTTPRequest(timeout time.Duration, method string, address string, headers map[string]string, username string, password string, body io.Reader, expectedCode int) (*http.Response, []byte, error) {
+func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method string, address string, headers map[string]string, username string, password string, body io.Reader, expectedCode int) (*http.Response, []byte, error) {
 	DebugFunc("Method: %s URL: %s Username: %s Password: %s", method, address, username, strings.Repeat("X", len(password)))
 
 	client := &http.Client{}
 
-	if strings.Contains(address, "https") {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+	if httpTransport != nil {
+		client.Transport = httpTransport
+	} else {
+		if *FlagHTTPTLSInsecure {
+			client.Transport = &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			}
 		}
 	}
 
