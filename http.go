@@ -323,10 +323,8 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 	}
 
 	if expectedCode > 0 && resp.StatusCode != expectedCode {
-		return nil, nil, fmt.Errorf("unexpected HTTP staus code, expected %d got %d", expectedCode, resp.StatusCode)
+		return nil, nil, fmt.Errorf("unexpected HTTP status code, expected %d got %d", expectedCode, resp.StatusCode)
 	}
-
-	// Caution: if read the body then respect then take this with  your TIMEOUT parameter into account
 
 	ba, err := ReadBody(resp.Body)
 	if Error(err) {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -490,4 +491,14 @@ func NoDebug(fn func()) {
 	}()
 
 	fn()
+}
+
+func LevelToIndex(level string) int {
+	return slices.Index([]string{
+		LevelDebug,
+		LevelInfo,
+		LevelWarn,
+		LevelError,
+		LevelFatal,
+	}, level)
 }
