@@ -2,7 +2,6 @@ package common
 
 import (
 	"sync"
-	"time"
 )
 
 type Notice struct {
@@ -25,10 +24,6 @@ func (this *Notice) Channel() chan struct{} {
 
 	if this.ch == nil {
 		this.ch = make(chan struct{})
-
-		time.AfterFunc(time.Millisecond, func() {
-			close(this.ch)
-		})
 	}
 
 	return this.ch
