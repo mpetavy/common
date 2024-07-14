@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"golang.org/x/exp/slices"
 	"net/http"
 	"regexp"
 	"strings"
@@ -11,7 +12,6 @@ type RestURLField struct {
 	Name        string
 	Description string
 	Default     string
-	Optional    bool
 }
 
 type RestURL struct {
@@ -23,8 +23,7 @@ type RestURL struct {
 	Success     []int
 	Failure     []int
 	Headers     []RestURLField
-	PathValues  []RestURLField
-	PathParams  []RestURLField
+	Values      []RestURLField
 }
 
 func NewRestURL(method string, resource string) *RestURL {
@@ -66,31 +65,54 @@ func (u *RestURL) Validate(r *http.Request) error {
 		}
 	}
 
-	for _, param := range u.PathParams {
-		if !r.URL.Query().Has(param.Name) {
-			if param.Optional {
-				if param.Default != "" {
-					r.URL.Query().Add(param.Name, param.Default)
-				}
-			} else {
-				return fmt.Errorf("missing HTTP header: %s", param.Name)
-			}
-		}
-	}
-
 	for _, header := range u.Headers {
 		if r.Header.Get(header.Name) == "" {
-			if header.Optional {
-				if header.Default != "" {
-					r.Header.Add(header.Name, header.Default)
-				}
-			} else {
+			if header.Default == "" {
 				return fmt.Errorf("missing HTTP header: %s", header.Name)
 			}
 		}
 	}
 
+	for _, value := range u.Values {
+		if !r.URL.Query().Has(value.Name) {
+			if value.Default == "" {
+				return fmt.Errorf("missing HTTP value: %s", value.Name)
+			}
+		}
+	}
+
 	return nil
+}
+
+func (u *RestURL) CleanHeader(r *http.Request, name string) string {
+	v := r.Header.Get(name)
+	if v == "" {
+		p := slices.IndexFunc(u.Headers, func(field RestURLField) bool {
+			return field.Name == name
+		})
+
+		if p != -1 {
+			v = u.Headers[p].Default
+		}
+	}
+
+	return v
+}
+
+func (u *RestURL) CleanValue(r *http.Request, name string) string {
+	q := r.URL.Query()
+	v := q.Get(name)
+	if v == "" {
+		p := slices.IndexFunc(u.Values, func(field RestURLField) bool {
+			return field.Name == name
+		})
+
+		if p != -1 {
+			v = u.Values[p].Default
+		}
+	}
+
+	return v
 }
 
 func (u *RestURL) SwaggerInfo() string {
