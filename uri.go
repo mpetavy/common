@@ -25,7 +25,9 @@ const (
 	CidrSplitV6     = "]:"
 )
 
-func (uri *URI) Parse(s string) error {
+func NewURI(s string) (*URI, error) {
+	uri := &URI{}
+
 	p := strings.Index(s, SchemeSep)
 	if p != -1 {
 		uri.Scheme = s[:p]
@@ -36,7 +38,7 @@ func (uri *URI) Parse(s string) error {
 			uri.Opaque = s[:p]
 			uri.Path = s[p+len(OpaqueSep):]
 
-			return nil
+			return uri, nil
 		}
 	}
 
@@ -77,7 +79,7 @@ func (uri *URI) Parse(s string) error {
 		uri.Host = cidr
 	}
 
-	return nil
+	return uri, nil
 }
 
 func isV6(s string) bool {

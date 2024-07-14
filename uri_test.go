@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/url"
 	"testing"
 )
@@ -26,13 +26,13 @@ func TestURLBuilder_parse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt, func(t *testing.T) {
-			uri := &URI{}
-			assert.NoError(t, uri.Parse(tt))
-			assert.Equal(t, tt, uri.String())
+			uri, err := NewURI(tt)
+			require.NoError(t, err)
+			require.Equal(t, tt, uri.String())
 
 			u, err := url.Parse(tt)
-			assert.NoError(t, err)
-			assert.Equal(t, tt, u.String())
+			require.NoError(t, err)
+			require.Equal(t, tt, u.String())
 		})
 	}
 }
