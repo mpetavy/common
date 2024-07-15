@@ -12,7 +12,6 @@ import (
 )
 
 type EventConfigurationReset struct {
-	Cfg *bytes.Buffer
 }
 
 type Configuration struct {
@@ -184,52 +183,7 @@ func initConfiguration() error {
 func ResetConfiguration() error {
 	DebugFunc()
 
-	buf := &bytes.Buffer{}
-
-	Events.Emit(EventConfigurationReset{buf}, false)
-
-	if buf.Len() > 0 {
-		err := SaveConfigurationFile(buf.Bytes())
-		if Error(err) {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func LoadConfiguration() (*Configuration, error) {
-	DebugFunc()
-
-	cfg := NewConfiguration()
-
-	ba, err := LoadConfigurationFile()
-	if Error(err) {
-		return nil, err
-	}
-
-	if ba == nil {
-		return cfg, nil
-	}
-
-	err = json.Unmarshal(ba, cfg)
-	if Error(err) {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-func SaveConfiguration(cfg interface{}) error {
-	ba, err := json.MarshalIndent(cfg, "", "  ")
-	if Error(err) {
-		return err
-	}
-
-	err = SaveConfigurationFile(ba)
-	if Error(err) {
-		return err
-	}
+	Events.Emit(EventConfigurationReset{}, false)
 
 	return nil
 }
@@ -312,7 +266,7 @@ func registerIniFileFlags() (map[string]string, error) {
 	return m, nil
 }
 
-func LoadConfigurationFile() ([]byte, error) {
+func LoadConfigurationFile[T any]() (*T, error) {
 	DebugFunc()
 
 	if !FileExists(*FlagCfgFile) {
@@ -340,22 +294,29 @@ func LoadConfigurationFile() ([]byte, error) {
 		return nil, err
 	}
 
-	return []byte(RemoveJsonComments(string(ba))), nil
+	ba = []byte(RemoveJsonComments(string(ba)))
+
+	cfg := new(T)
+
+	err = json.Unmarshal(ba, cfg)
+	if Error(err) {
+		return nil, err
+	}
+
+	return cfg, nil
 }
 
-func SaveConfigurationFile(ba []byte) error {
+func SaveConfigurationFile(cfg any) error {
 	DebugFunc(*FlagCfgFile)
 
-	buf := bytes.Buffer{}
-
-	err := json.Indent(&buf, ba, "", "  ")
+	ba, err := json.MarshalIndent(cfg, "", "  ")
 	if Error(err) {
 		return err
 	}
 
 	m := make(map[string]interface{})
 
-	err = json.Unmarshal(buf.Bytes(), &m)
+	err = json.Unmarshal(ba, &m)
 	if Error(err) {
 		return err
 	}
@@ -364,7 +325,7 @@ func SaveConfigurationFile(ba []byte) error {
 		m["applicationTitle"] = Title()
 	}
 
-	if v, ok := m["applicationVersion"]; !ok || v == "" {
+	if v, ok := m["app"]; !ok || v == "" {
 		m["applicationVersion"] = Version(true, true, true)
 	}
 
@@ -373,26 +334,9 @@ func SaveConfigurationFile(ba []byte) error {
 		return err
 	}
 
-	buf.Reset()
-	_, err = buf.Write(ba)
+	err = os.WriteFile(*FlagCfgFile, ba, DefaultFileMode)
 	if Error(err) {
 		return err
-	}
-
-	fileConfig, err := LoadConfigurationFile()
-	if Error(err) {
-		return err
-	}
-
-	if string(buf.Bytes()) != string(fileConfig) {
-		Debug("Reformat of configuration file %s done", *FlagCfgFile)
-
-		Error(FileBackup(*FlagCfgFile))
-
-		err = os.WriteFile(*FlagCfgFile, buf.Bytes(), DefaultFileMode)
-		if Error(err) {
-			return err
-		}
 	}
 
 	return nil
@@ -561,23 +505,12 @@ func registerCfgFileFlags() (map[string]string, error) {
 
 	m := make(map[string]string)
 
-	ba, err := LoadConfigurationFile()
+	cfg, err := LoadConfigurationFile[Configuration]()
 	if Error(err) {
-		return m, err
+		return nil, err
 	}
 
-	if ba == nil {
-		return m, nil
-	}
-
-	cfg := Configuration{}
-
-	err = json.Unmarshal(ba, &cfg)
-	if Error(err) {
-		return m, err
-	}
-
-	if cfg.Flags != nil {
+	if cfg != nil && cfg.Flags != nil {
 		for _, key := range cfg.Flags.Keys() {
 			value, _ := cfg.Flags.Get(key)
 
