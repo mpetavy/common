@@ -159,11 +159,11 @@ func initLog() error {
 		flags = log.Lmsgprefix
 	}
 
-	LogDebug = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelDebug), flags)
-	LogInfo = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelInfo), flags)
-	LogWarn = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), prefix(LevelWarn), flags)
-	LogError = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelError), flags)
-	LogFatal = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), prefix(LevelFatal), flags)
+	LogDebug = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), "", flags)
+	LogInfo = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), "", flags)
+	LogWarn = log.New(MultiWriter(append([]io.Writer{os.Stdout}, writers...)...), "", flags)
+	LogError = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), "", flags)
+	LogFatal = log.New(MultiWriter(append([]io.Writer{os.Stderr}, writers...)...), "", flags)
 
 	log.SetFlags(flags)
 
@@ -222,7 +222,7 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 		return string(ba)
 
 	case IsLogVerboseEnabled():
-		msg = fmt.Sprintf("%s %-"+strconv.Itoa(maxLen)+"s %s", now.Format(SortedDateTimeMilliMask), source, msg)
+		msg = fmt.Sprintf("%s | %-5s | %-"+strconv.Itoa(maxLen)+"s | %s", now.Format(SortedDateTimeMilliMask), level, source, msg)
 	default:
 		if level != LevelDebug && level != LevelInfo {
 			msg = fmt.Sprintf("%s: %s", Capitalize(strings.ToLower(level)), msg)
