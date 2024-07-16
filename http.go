@@ -130,7 +130,7 @@ func HTTPServerStart(port int, tlsConfig *tls.Config, mux *http.ServeMux) error 
 	httpServer.SetKeepAlivesEnabled(false)
 	httpServer.MaxHeaderBytes = int(*FlagHTTPHeaderLimit)
 
-	Info(fmt.Sprintf("%s server %s start", protocolInfo, httpServer.Addr))
+	StartInfo(fmt.Sprintf("%s server %s", protocolInfo, httpServer.Addr))
 
 	if tlsConfig != nil {
 		err = httpServer.ListenAndServeTLS("", "")
@@ -169,7 +169,7 @@ func HTTPServerStop() error {
 		protocolInfo = "HTTPS"
 	}
 
-	Info(fmt.Sprintf("%s server %s stop", protocolInfo, httpServer.Addr))
+	StopInfo(fmt.Sprintf("%s server %s", protocolInfo, httpServer.Addr))
 
 	httpServer = nil
 

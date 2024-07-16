@@ -502,3 +502,11 @@ func LevelToIndex(level string) int {
 		LevelFatal,
 	}, level)
 }
+
+func StartInfo(msg string) {
+	Info("%s: start", msg)
+}
+
+func StopInfo(msg string) {
+	Info("%s: stop", msg)
+}
