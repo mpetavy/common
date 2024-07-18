@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -34,7 +35,7 @@ var (
 	FlagHTTPHeaderLimit = flag.Int64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
 	FlagHTTPBodyLimit   = flag.Int64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
 	FlagHTTPTLSInsecure = flag.Bool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
-	FlagHTTPTimeout     = flag.Int(FlagNameHTTPTimeout, 10000, "HTTP default request timeout")
+	FlagHTTPTimeout     = flag.Int(FlagNameHTTPTimeout, 30000, "HTTP default request timeout")
 
 	httpServer *http.Server
 
@@ -266,7 +267,7 @@ func HTTPWriteJson(status int, w http.ResponseWriter, ba []byte) error {
 	return nil
 }
 
-func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method string, address string, headers map[string]string, username string, password string, body io.Reader, expectedCode int) (*http.Response, []byte, error) {
+func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method string, address string, headers http.Header, formdata url.Values, username string, password string, body io.Reader, expectedCode int) (*http.Response, []byte, error) {
 	DebugFunc("Method: %s URL: %s Username: %s Password: %s", method, address, username, strings.Repeat("X", len(password)))
 
 	client := &http.Client{}
@@ -283,6 +284,10 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 		}
 	}
 
+	if formdata != nil && body == nil {
+		body = strings.NewReader(formdata.Encode())
+	}
+
 	req, err := http.NewRequest(method, address, body)
 	if Error(err) {
 		return nil, nil, err
@@ -296,10 +301,16 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 		req.SetBasicAuth(username, password)
 	}
 
-	if headers != nil {
-		for k, v := range headers {
-			req.Header.Set(k, v)
+	if formdata != nil {
+		if headers.Get(CONTENT_TYPE) == "" {
+			headers.Set("CONTENT_TYPE", "MimetypeApplicationXWWWFormUrlencoded.MimeType")
 		}
+
+		req.PostForm = formdata
+	}
+
+	if headers != nil {
+		req.Header = headers
 	}
 
 	var resp *http.Response

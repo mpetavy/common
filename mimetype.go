@@ -49,6 +49,7 @@ var (
 	MimetypeApplicationXPython                                                   = registerMimeType("application/x-python", "py")
 	MimetypeApplicationXShockwaveFlash                                           = registerMimeType("application/x-shockwave-flash", "swf")
 	MimetypeApplicationXTar                                                      = registerMimeType("application/x-tar", "tar")
+	MimetypeApplicationXWWWFormUrlencoded                                        = registerMimeType("application/x-www-form-urlencoded", "")
 	MimetypeApplicationZip                                                       = registerMimeType("application/zip", "zip")
 	MimetypeAudioAiff                                                            = registerMimeType("audio/aiff", "aiff")
 	MimetypeAudioAmr                                                             = registerMimeType("audio/amr", "amr")
