@@ -152,26 +152,6 @@ func (tr *TimeoutRegister[T]) Close() {
 	tr.closeCh <- struct{}{}
 }
 
-func Background(timeout time.Duration, fn func() error) error {
-	errCh := make(chan error, 2)
-
-	go func() {
-		defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
-		errCh <- fn()
-	}()
-
-	ti := time.AfterFunc(timeout, func() {
-		errCh <- nil
-	})
-
-	err := <-errCh
-
-	ti.Stop()
-
-	return err
-}
-
 type GoRoutinesRegister struct {
 	list []uint64
 	mu   sync.Mutex

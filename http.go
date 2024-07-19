@@ -133,19 +133,22 @@ func HTTPServerStart(port int, tlsConfig *tls.Config, mux *http.ServeMux) error 
 
 	StartInfo(fmt.Sprintf("%s server %s", protocolInfo, httpServer.Addr))
 
-	if tlsConfig != nil {
-		err = httpServer.ListenAndServeTLS("", "")
-	} else {
-		err = httpServer.ListenAndServe()
-	}
-
-	if err != nil && err == http.ErrServerClosed {
-		err = nil
-	}
-
+	ln, err := net.Listen("tcp", httpServer.Addr)
 	if Error(err) {
 		return err
 	}
+
+	go func() {
+		defer func() {
+			WarnError(ln.Close())
+		}()
+
+		if tlsConfig != nil {
+			WarnError(httpServer.ServeTLS(ln, "", ""))
+		} else {
+			WarnError(httpServer.Serve(ln))
+		}
+	}()
 
 	return nil
 }
