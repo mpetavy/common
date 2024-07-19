@@ -75,11 +75,16 @@ const (
 
 func init() {
 	Events.AddListener(EventInit{}, func(ev Event) {
+		tlsVersion := TlsVersion12
+		if hasAESGCMHardwareSupport {
+			tlsVersion = TlsVersion13
+		}
+
 		FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
 		FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS certificates and server name")
 		FlagTlsServername = flag.String(FlagNameTlsServername, "", "TLS expected servername")
-		FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, TlsVersion12, "TLS min version")
-		FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, TlsVersion12, "TLS max version")
+		FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, tlsVersion, "TLS min version")
+		FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, tlsVersion, "TLS max version")
 		FlagTlsCiphers = flag.String(FlagNameTlsCiphers, "", "TLS ciphers zo use")
 		FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
 		FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")

@@ -58,14 +58,8 @@ func (kvs *KeyValues) getKey(line string) string {
 	return line[:strings.Index(line, "=")]
 }
 
-func (kvs *KeyValues) Add(key string, value string) error {
-	if key == "" {
-		return fmt.Errorf("key cannot be null")
-	}
-
+func (kvs *KeyValues) Add(key string, value string) {
 	*kvs = append(*kvs, KeyValue(key+"="+value))
-
-	return nil
 }
 
 func (kvs *KeyValues) Put(key string, value string) error {

@@ -71,7 +71,10 @@ func Unzip(dest, src string) error {
 				return err
 			}
 
-			f.Close()
+			err = f.Close()
+			if Error(err) {
+				return err
+			}
 
 			err = os.Chtimes(path, ti, ti)
 			if Error(err) {
