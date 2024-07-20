@@ -70,13 +70,13 @@ func (this *EventManager) Emit(event interface{}, reverse bool) {
 		currentEmits = slices.Delete(currentEmits, p, p+1)
 	}()
 
-	DebugFunc(eventType)
-
 	funcs, ok := this.listeners[eventType]
 
-	if !ok {
+	if !ok && len(funcs) == 0 {
 		return
 	}
+
+	DebugFunc(eventType)
 
 	funcs = SliceClone(funcs)
 

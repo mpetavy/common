@@ -12,6 +12,7 @@ var (
 		"tls: unknown certificate",
 		"tls handshake error",
 		"use of closed network connection",
+		"http: Server closed",
 	}
 )
 

@@ -406,6 +406,10 @@ func WarnError(err error) bool {
 		return err != nil
 	}
 
+	if IsSuppressedError(err) {
+		return DebugErrorIndex(1, err)
+	}
+
 	mu.Lock()
 	defer mu.Unlock()
 
