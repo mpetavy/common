@@ -76,7 +76,7 @@ func (this *EventManager) Emit(event interface{}, reverse bool) {
 		return
 	}
 
-	DebugFunc(eventType)
+	//DebugFunc(eventType)
 
 	funcs = SliceClone(funcs)
 

@@ -44,22 +44,22 @@ var (
 	FlagLogBreak    = flag.Bool(FlagNameLogBreak, false, "break on error")
 	FlagLogGap      = flag.Int(FlagNameLogGap, 100, "time gap after show a separator")
 
-	mu          ReentrantMutex
-	fw          *fileWriter
-	rw                      = newMemoryWriter()
-	LogDebug    *log.Logger = log.New(rw, prefix(LevelDebug), 0)
-	LogInfo     *log.Logger = log.New(rw, prefix(LevelInfo), 0)
-	LogWarn     *log.Logger = log.New(rw, prefix(LevelWarn), 0)
-	LogError    *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
-	LogFatal    *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
-	lastErr     string
-	lastLog     = time.Now()
-	isLogInit   bool
-	listNoDebug = NewGoRoutinesRegister()
+	mu             ReentrantMutex
+	fw             *fileWriter
+	rw                         = newMemoryWriter()
+	LogDebug       *log.Logger = log.New(rw, prefix(LevelDebug), 0)
+	LogInfo        *log.Logger = log.New(rw, prefix(LevelInfo), 0)
+	LogWarn        *log.Logger = log.New(rw, prefix(LevelWarn), 0)
+	LogError       *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
+	LogFatal       *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
+	lastErrorEntry *LogEntry
+	lastLogTime    = time.Now()
+	isLogInit      bool
+	listNoDebug    = NewGoRoutinesRegister()
 )
 
 type EventLog struct {
-	Entry LogEntry
+	Entry *LogEntry
 }
 
 type LogEntry struct {
@@ -67,7 +67,8 @@ type LogEntry struct {
 	Timestamp  string    `json:"timestamp"`
 	Level      string    `json:"level"`
 	Source     string    `json:"source"`
-	Message    string    `json:"message"`
+	Msg        string    `json:"message"`
+	PrintMsg   string    `json:"printMessage"`
 	Stacktrace string    `json:"stacktrace"`
 }
 
@@ -185,27 +186,24 @@ func closeLog() error {
 	return nil
 }
 
-func formatLog(level string, index int, msg string, addStacktrace bool) string {
+func formatLog(level string, index int, msg string, addStacktrace bool) *LogEntry {
 	ri := GetRuntimeInfo(index)
 
 	source := fmt.Sprintf("%s/%s/%s:%d", ri.Pack, ri.File, ri.Fn, ri.Line)
 
 	now := time.Now().UTC()
 
+	logEntry := &LogEntry{
+		Time:       now,
+		Timestamp:  now.Format(time.RFC3339),
+		Level:      level,
+		Source:     source,
+		Msg:        msg,
+		Stacktrace: ri.Stack,
+	}
+
 	if addStacktrace {
 		msg = msg + "\n" + ri.Stack
-	}
-
-	e := LogEntry{
-		Time:      now,
-		Timestamp: now.Format(time.RFC3339),
-		Level:     level,
-		Source:    source,
-		Message:   msg,
-	}
-
-	if level != LevelDebug {
-		Events.Emit(EventLog{Entry: e}, false)
 	}
 
 	// shorten the "source" position only for console log
@@ -217,9 +215,9 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 
 	switch {
 	case IsLogJsonEnabled():
-		ba, _ := json.MarshalIndent(e, "", "  ")
+		ba, _ := json.MarshalIndent(logEntry, "", "  ")
 
-		return string(ba)
+		msg = string(ba)
 
 	case IsLogVerboseEnabled():
 		msg = fmt.Sprintf("%s | %-5s | %-"+strconv.Itoa(maxLen)+"s | %s", now.Format(SortedDateTimeMilliMask), level, source, msg)
@@ -229,24 +227,30 @@ func formatLog(level string, index int, msg string, addStacktrace bool) string {
 		}
 	}
 
-	return msg
+	logEntry.PrintMsg = msg
+
+	return logEntry
 }
 
 func logDebugPrint(s string) {
-	if time.Since(lastLog) > MillisecondToDuration(*FlagLogGap) {
-		msg := fmt.Sprintf("time gap [%v]", time.Since(lastLog).Truncate(time.Millisecond))
+	if time.Since(lastLogTime) > MillisecondToDuration(*FlagLogGap) {
+		msg := fmt.Sprintf("time gap [%v]", time.Since(lastLogTime).Truncate(time.Millisecond))
 		msg = fmt.Sprintf("%s %s -", strings.Repeat("-", 120-len(msg)-6-3), msg)
 
 		LogDebug.Print(msg)
 	}
 
-	lastLog = time.Now()
+	lastLogTime = time.Now()
 
 	LogDebug.Print(s)
+
+	lastErrorEntry = nil
 }
 
 func logInfoPrint(s string) {
 	LogInfo.Print(s)
+
+	lastErrorEntry = nil
 }
 
 func logWarnPrint(s string) {
@@ -273,9 +277,9 @@ func Debug(format string, args ...any) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(format), false))
+	logEntry := formatLog(LevelDebug, 2, strings.TrimSpace(format), false)
 
-	lastErr = ""
+	logDebugPrint(logEntry.PrintMsg)
 }
 
 func DebugIndex(index int, format string, args ...any) {
@@ -290,9 +294,9 @@ func DebugIndex(index int, format string, args ...any) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(format), false))
+	logEntry := formatLog(LevelDebug, 2+index, strings.TrimSpace(format), false)
 
-	lastErr = ""
+	logDebugPrint(logEntry.PrintMsg)
 }
 
 func DebugFunc(args ...any) {
@@ -316,31 +320,9 @@ func DebugFunc(args ...any) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	logDebugPrint(formatLog(LevelDebug, 2, str, false))
+	logEntry := formatLog(LevelDebug, 2, str, false)
 
-	lastErr = ""
-}
-
-func DebugStack(args ...any) {
-	ri := GetRuntimeInfo(1)
-
-	var str string
-
-	switch len(args) {
-	case 0:
-		str = strings.TrimSpace(ri.Fn + "()")
-	case 1:
-		str = strings.TrimSpace(fmt.Sprintf(ri.Fn+"(): %v", args[0]))
-	default:
-		str = strings.TrimSpace(fmt.Sprintf(ri.Fn+"(): "+fmt.Sprintf("%v", args[0]), args[1:]...))
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	logDebugPrint(formatLog(LevelDebug, 2, str, true))
-
-	lastErr = ""
+	logDebugPrint(logEntry.PrintMsg)
 }
 
 func Info(format string, args ...any) {
@@ -351,9 +333,11 @@ func Info(format string, args ...any) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	logInfoPrint(formatLog(LevelInfo, 2, strings.TrimSpace(format), false))
+	logEntry := formatLog(LevelInfo, 2, strings.TrimSpace(format), false)
 
-	lastErr = ""
+	Events.Emit(EventLog{Entry: logEntry}, false)
+
+	logInfoPrint(logEntry.PrintMsg)
 }
 
 func Warn(format string, args ...any) {
@@ -364,9 +348,11 @@ func Warn(format string, args ...any) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(format), false))
+	logEntry := formatLog(LevelWarn, 2, strings.TrimSpace(format), false)
 
-	lastErr = ""
+	Events.Emit(EventLog{Entry: logEntry}, false)
+
+	logWarnPrint(logEntry.PrintMsg)
 }
 
 func TraceError(err error) error {
@@ -387,11 +373,9 @@ func DebugError(err error) bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if err.Error() != lastErr {
-		logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
+	logEntry := formatLog(LevelDebug, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
-		lastErr = err.Error()
-	}
+	logDebugPrint(logEntry.PrintMsg)
 
 	return true
 }
@@ -404,11 +388,9 @@ func DebugErrorIndex(index int, err error) bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if err.Error() != lastErr {
-		logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
+	logEntry := formatLog(LevelDebug, 2+index, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
-		lastErr = err.Error()
-	}
+	logDebugPrint(logEntry.PrintMsg)
 
 	return true
 }
@@ -425,13 +407,21 @@ func WarnError(err error) bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if err.Error() != lastErr {
-		logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
+	logEntry := formatLog(LevelWarn, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
-		lastErr = err.Error()
-	}
+	Events.Emit(EventLog{Entry: logEntry}, false)
+
+	logWarnPrint(logEntry.PrintMsg)
 
 	return true
+}
+
+func isLikeLastError(logEntry *LogEntry) bool {
+	if lastErrorEntry == nil {
+		return false
+	}
+
+	return lastErrorEntry.Msg == logEntry.Msg
 }
 
 func Error(err error) bool {
@@ -446,11 +436,17 @@ func Error(err error) bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if err.Error() != lastErr {
-		logErrorPrint(formatLog(LevelError, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
+	logEntry := formatLog(LevelError, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
-		lastErr = err.Error()
+	Events.Emit(EventLog{Entry: logEntry}, false)
+
+	if isLikeLastError(logEntry) {
+		return true
 	}
+
+	lastErrorEntry = logEntry
+
+	logErrorPrint(logEntry.PrintMsg)
 
 	if *FlagLogBreak {
 		Exit(1)
@@ -467,14 +463,14 @@ func Panic(err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if err.Error() != lastErr {
-		if isLogInit {
-			if err.Error() != lastErr {
-				logFatalPrint(formatLog(LevelFatal, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled()))
-			}
-		} else {
-			logFatalPrint(Capitalize(strings.TrimSpace(err.Error())))
-		}
+	logEntry := formatLog(LevelFatal, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
+
+	Events.Emit(EventLog{Entry: logEntry}, false)
+
+	if isLogInit {
+		logFatalPrint(logEntry.PrintMsg)
+	} else {
+		logFatalPrint(Capitalize(strings.TrimSpace(err.Error())))
 	}
 
 	Exit(1)
