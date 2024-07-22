@@ -274,6 +274,8 @@ func Debug(format string, args ...any) {
 	defer mu.Unlock()
 
 	logDebugPrint(formatLog(LevelDebug, 2, strings.TrimSpace(format), false))
+
+	lastErr = ""
 }
 
 func DebugIndex(index int, format string, args ...any) {
@@ -289,6 +291,8 @@ func DebugIndex(index int, format string, args ...any) {
 	defer mu.Unlock()
 
 	logDebugPrint(formatLog(LevelDebug, 2+index, strings.TrimSpace(format), false))
+
+	lastErr = ""
 }
 
 func DebugFunc(args ...any) {
@@ -313,6 +317,8 @@ func DebugFunc(args ...any) {
 	defer mu.Unlock()
 
 	logDebugPrint(formatLog(LevelDebug, 2, str, false))
+
+	lastErr = ""
 }
 
 func DebugStack(args ...any) {
@@ -333,6 +339,8 @@ func DebugStack(args ...any) {
 	defer mu.Unlock()
 
 	logDebugPrint(formatLog(LevelDebug, 2, str, true))
+
+	lastErr = ""
 }
 
 func Info(format string, args ...any) {
@@ -344,6 +352,8 @@ func Info(format string, args ...any) {
 	defer mu.Unlock()
 
 	logInfoPrint(formatLog(LevelInfo, 2, strings.TrimSpace(format), false))
+
+	lastErr = ""
 }
 
 func Warn(format string, args ...any) {
@@ -355,6 +365,8 @@ func Warn(format string, args ...any) {
 	defer mu.Unlock()
 
 	logWarnPrint(formatLog(LevelWarn, 2, strings.TrimSpace(format), false))
+
+	lastErr = ""
 }
 
 func TraceError(err error) error {
