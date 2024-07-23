@@ -151,18 +151,3 @@ func (om *OrderedMap[K, V]) MarshalJSON() ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
-
-//func (om *OrderedMap[K, V]) Unmarshal(data []byte, v any) error {
-//	var m map[string]interface{}
-//
-//	err := json.Unmarshal(data, &m)
-//	if common.Error(err) {
-//		return err
-//	}
-//
-//	for k, v := range m {
-//
-//	}
-//
-//	return nil
-//}
