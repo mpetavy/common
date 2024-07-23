@@ -1,5 +1,14 @@
 package common
 
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"reflect"
+	"sort"
+	"strings"
+)
+
 type item[K comparable, V any] struct {
 	key   K
 	value V
@@ -84,8 +93,76 @@ func (om *OrderedMap[K, V]) Keys() []K {
 	return keys
 }
 
+func (om *OrderedMap[K, V]) Sort(fn func(K, K) bool) {
+	sort.SliceStable(om.items, func(i, j int) bool {
+		return fn(om.items[i].key, om.items[j].key)
+	})
+}
+
 func (om *OrderedMap[K, V]) Range(fn func(K, V)) {
 	for i := 0; i < len(om.items); i++ {
 		fn(om.items[i].key, om.items[i].value)
 	}
 }
+
+func (om *OrderedMap[K, V]) MarshalJSON() ([]byte, error) {
+	buf := bytes.Buffer{}
+
+	buf.WriteString("{")
+	for i := 0; i < len(om.items); i++ {
+		if i > 0 {
+			buf.WriteString(",")
+		}
+
+		kj, err := json.Marshal(om.items[i].key)
+		if err != nil {
+			return nil, err
+		}
+
+		vj, err := json.Marshal(om.items[i].value)
+		if err != nil {
+			return nil, err
+		}
+
+		kk := string(kj)
+		if !strings.HasPrefix(kk, "\"") {
+			kk = "\"" + kk
+		}
+		if !strings.HasSuffix(kk, "\"") {
+			kk = kk + "\""
+		}
+		vv := string(vj)
+
+		buf.WriteString(fmt.Sprintf("%s:", kk))
+
+		isObj := reflect.TypeOf(om.items[i].value).Kind() == reflect.Slice || reflect.TypeOf(om.items[i].value).Kind() == reflect.Map
+
+		if isObj {
+			buf.WriteString("{")
+		}
+
+		buf.WriteString(vv)
+
+		if isObj {
+			buf.WriteString("}")
+		}
+	}
+	buf.WriteString("}")
+
+	return buf.Bytes(), nil
+}
+
+//func (om *OrderedMap[K, V]) Unmarshal(data []byte, v any) error {
+//	var m map[string]interface{}
+//
+//	err := json.Unmarshal(data, &m)
+//	if common.Error(err) {
+//		return err
+//	}
+//
+//	for k, v := range m {
+//
+//	}
+//
+//	return nil
+//}

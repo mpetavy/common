@@ -1,7 +1,11 @@
 package common
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"os"
 	"strconv"
 	"testing"
 )
@@ -84,4 +88,39 @@ func TestIndex(t *testing.T) {
 	k, v = orderedMap.GetByIndex(1)
 	assert.Equal(t, 2, k)
 	assert.Equal(t, "22", v)
+}
+
+func TestJson(t *testing.T) {
+	type Obj struct {
+		Name string `json:"name"`
+	}
+	orderedMapInt := NewOrderedMap[int, Obj]()
+
+	orderedMapInt.Add(0, Obj{"A"})
+	orderedMapInt.Add(1, Obj{"B"})
+	orderedMapInt.Add(2, Obj{"C"})
+
+	ba, err := json.MarshalIndent(orderedMapInt, "", "    ")
+	require.NoError(t, err)
+
+	fmt.Printf("%s\n", string(ba))
+
+	var m map[string]interface{}
+
+	err = json.Unmarshal(ba, &m)
+	require.NoError(t, err)
+
+	orderedMapString := NewOrderedMap[string, string]()
+	for _, env := range os.Environ() {
+		splits := Split(env, "=")
+		orderedMapString.Add(splits[0], splits[1])
+	}
+
+	ba, err = json.MarshalIndent(orderedMapString, "", "    ")
+	require.NoError(t, err)
+
+	fmt.Printf("%s\n", string(ba))
+
+	err = json.Unmarshal(ba, &m)
+	require.NoError(t, err)
 }
