@@ -2,7 +2,6 @@ package common
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -103,8 +102,6 @@ func TestJson(t *testing.T) {
 	ba, err := json.MarshalIndent(orderedMapInt, "", "    ")
 	require.NoError(t, err)
 
-	fmt.Printf("%s\n", string(ba))
-
 	var m map[string]interface{}
 
 	err = json.Unmarshal(ba, &m)
@@ -118,8 +115,6 @@ func TestJson(t *testing.T) {
 
 	ba, err = json.MarshalIndent(orderedMapString, "", "    ")
 	require.NoError(t, err)
-
-	fmt.Printf("%s\n", string(ba))
 
 	err = json.Unmarshal(ba, &m)
 	require.NoError(t, err)

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/dlclark/regexp2"
 	"regexp"
 	"strings"
 )
@@ -18,7 +19,12 @@ type Jason struct {
 func NewJason(s string) (*Jason, error) {
 	var m map[string]interface{}
 
-	err := json.Unmarshal([]byte(RemoveJsonComments(s)), &m)
+	s, err := RemoveJsonComments(s)
+	if Error(err) {
+		return nil, err
+	}
+
+	err = json.Unmarshal([]byte(s), &m)
 	if Error(err) {
 		return nil, err
 	}
@@ -269,11 +275,17 @@ func (jason *Jason) Pretty() (string, error) {
 	return jason.pretty(0)
 }
 
-func RemoveJsonComments(s string) string {
+func RemoveJsonComments(s string) (string, error) {
 	// enable multiline mode
 	// skip from start of line to the first \\ and remove the remaining characters
 
 	s = regexp.MustCompile("(?m)(^ *\t*)\\/\\/.*").ReplaceAllString(s, "")
+
+	var err error
+	s, err = regexp2.MustCompile(",(?=\\s*[\\)\\]\\{])", 0).Replace(s, "", -1, -1)
+	if Error(err) {
+		return "", err
+	}
 
 	r := bytes.Buffer{}
 
@@ -287,5 +299,5 @@ func RemoveJsonComments(s string) string {
 		}
 	}
 
-	return r.String()
+	return r.String(), nil
 }
