@@ -294,7 +294,12 @@ func LoadConfigurationFile[T any]() (*T, error) {
 		return nil, err
 	}
 
-	ba = []byte(RemoveJsonComments(string(ba)))
+	s, err := RemoveJsonComments(string(ba))
+	if Error(err) {
+		return nil, err
+	}
+
+	ba = []byte(s)
 
 	cfg := new(T)
 

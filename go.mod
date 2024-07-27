@@ -5,6 +5,7 @@ go 1.21
 require (
 	cloud.google.com/go/translate v1.7.1
 	github.com/beevik/etree v1.1.4
+	github.com/dlclark/regexp2 v1.11.2
 	github.com/dop251/goja v0.0.0-20230427124612-428fc442ff5f
 	github.com/dop251/goja_nodejs v0.0.0-20230322100729-2550c7b6c124
 	github.com/fatih/structtag v1.2.0
@@ -42,7 +43,6 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/creack/goselect v0.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dlclark/regexp2 v1.9.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
