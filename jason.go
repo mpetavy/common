@@ -281,8 +281,9 @@ func RemoveJsonComments(s string) (string, error) {
 
 	s = regexp.MustCompile("(?m)(^ *\t*)\\/\\/.*").ReplaceAllString(s, "")
 
+	// remove a pending , on the last element before a closing ) ] or }
 	var err error
-	s, err = regexp2.MustCompile(",(?=\\s*[\\)\\]\\{])", 0).Replace(s, "", -1, -1)
+	s, err = regexp2.MustCompile(",(?=\\s*[\\)\\]\\}])", 0).Replace(s, "", -1, -1)
 	if Error(err) {
 		return "", err
 	}
