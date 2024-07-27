@@ -25,6 +25,7 @@ require (
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
 	github.com/stretchr/testify v1.9.0
+	github.com/wk8/go-ordered-map/v2 v2.1.8
 	go.bug.st/serial v1.5.0
 	golang.org/x/crypto v0.23.0
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
@@ -60,7 +61,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect

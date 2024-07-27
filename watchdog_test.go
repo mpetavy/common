@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"os"
 	"os/exec"
@@ -19,7 +18,6 @@ func TestWatchdog(t *testing.T) {
 	}
 
 	_, err := NewWatchdogCmd(cmd, time.Second*3)
-	fmt.Printf("%T\n", err)
 
 	require.True(t, IsErrTimeout(err))
 	require.True(t, os.IsTimeout(err))
