@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	orderedmap "github.com/wk8/go-ordered-map/v2"
 	"html"
 	"strings"
 )
@@ -10,14 +11,14 @@ type Element struct {
 	Name      string
 	Text      string
 	PlainText bool
-	Attrs     *OrderedMap[string, string]
+	Attrs     *orderedmap.OrderedMap[string, string]
 	Elements  []*Element
 }
 
 func NewElement(name string) *Element {
 	return &Element{
 		Name:  name,
-		Attrs: NewOrderedMap[string, string](),
+		Attrs: orderedmap.New[string, string](),
 	}
 }
 
@@ -44,17 +45,17 @@ func (e *Element) String() string {
 		return sb.String()
 	}
 
-	e.Attrs.Range(func(k string, v string) {
+	for pair := e.Attrs.Oldest(); pair != nil; pair = pair.Next() {
 		if sb.Len() > 0 {
 			sb.WriteString(" ")
 		}
 
-		if v == "" {
-			sb.WriteString(k)
+		if pair.Value == "" {
+			sb.WriteString(pair.Key)
 		} else {
-			sb.WriteString(fmt.Sprintf("%s=\"%s\"", k, html.EscapeString(v)))
+			sb.WriteString(fmt.Sprintf("%s=\"%s\"", pair.Key, html.EscapeString(pair.Value)))
 		}
-	})
+	}
 
 	sb.WriteString(">")
 
@@ -100,13 +101,13 @@ func (e *Element) RemoveElement(element *Element) *Element {
 }
 
 func (e *Element) AddAttr(name string, value string) *Element {
-	e.Attrs.Add(name, value)
+	e.Attrs.Set(name, value)
 
 	return e
 }
 
 func (e *Element) RemoveAttr(name string) *Element {
-	e.Attrs.Remove(name)
+	e.Attrs.Delete(name)
 
 	return e
 }

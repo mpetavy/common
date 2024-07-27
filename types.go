@@ -700,8 +700,12 @@ func IndexNth(str string, substr string, count int) int {
 func Min[T constraints.Ordered](values ...T) T {
 	var v T
 
+	initialized := false
+
 	for _, value := range values {
-		if value < v {
+		if !initialized || value < v {
+			initialized = true
+
 			v = value
 		}
 	}
@@ -712,8 +716,12 @@ func Min[T constraints.Ordered](values ...T) T {
 func Max[T constraints.Ordered](values ...T) T {
 	var v T
 
+	initialized := false
+
 	for _, value := range values {
-		if value > v {
+		if !initialized || value > v {
+			initialized = true
+
 			v = value
 		}
 	}
