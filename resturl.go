@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 )
 
 type RestURLField struct {
@@ -14,28 +16,37 @@ type RestURLField struct {
 	Default     string
 }
 
+type RestURLStats struct {
+	sync.Mutex
+	Count       int          `json:"count,omitempty"`
+	SumDuration DurationJSON `json:"sumDuration,omitempty"`
+	MinDuration DurationJSON `json:"minDuration,omitempty"`
+	MaxDuration DurationJSON `json:"maxDuration,omitempty"`
+}
+
 type RestURL struct {
-	Description string
-	Method      string
-	Resource    string
-	Consumes    []string
-	Produces    []string
-	Success     []int
-	Failure     []int
-	Headers     []RestURLField
-	Values      []RestURLField
+	Description string         `json:"description,omitempty"`
+	Method      string         `json:"method,omitempty"`
+	Resource    string         `json:"resoure,omitempty"`
+	Consumes    []string       `json:"consumes,omitempty"`
+	Produces    []string       `json:"produces,omitempty"`
+	Success     []int          `json:"success,omitempty"`
+	Failure     []int          `json:"failure,omitempty"`
+	Headers     []RestURLField `json:"headers,omitempty"`
+	Values      []RestURLField `json:"values,omitempty"`
+	Stats       RestURLStats   `json:"stats,omitempty"`
 }
 
 func NewRestURL(method string, resource string) *RestURL {
 	return &RestURL{Method: method, Resource: resource}
 }
 
-func (u *RestURL) MuxString() string {
-	return fmt.Sprintf("%s %s", u.Method, u.Resource)
+func (restUrl *RestURL) MuxString() string {
+	return fmt.Sprintf("%s %s", restUrl.Method, restUrl.Resource)
 }
 
-func (u *RestURL) Format(args ...any) string {
-	s := u.Resource
+func (restUrl *RestURL) Format(args ...any) string {
+	s := restUrl.Resource
 
 	if strings.Contains(s, "{") {
 		regex := regexp.MustCompile("{.*?\\}")
@@ -47,25 +58,25 @@ func (u *RestURL) Format(args ...any) string {
 	return s
 }
 
-func (u *RestURL) URL(address string, args ...any) string {
-	return fmt.Sprintf("%s%s", address, u.Format(args...))
+func (restUrl *RestURL) URL(address string, args ...any) string {
+	return fmt.Sprintf("%s%s", address, restUrl.Format(args...))
 }
 
-func (u *RestURL) Validate(r *http.Request) error {
-	if u.Method != r.Method {
+func (restUrl *RestURL) Validate(r *http.Request) error {
+	if restUrl.Method != r.Method {
 		return fmt.Errorf("invalid HTTP method")
 	}
 
 	rPaths := Split(r.URL.Path, "/")
-	uPaths := Split(u.Resource, "/")
+	uPaths := Split(restUrl.Resource, "/")
 
-	if !strings.Contains(u.Resource, "*") {
+	if !strings.Contains(restUrl.Resource, "*") {
 		if len(rPaths) != len(uPaths) {
 			return fmt.Errorf("invalid amount of HTTP request path")
 		}
 	}
 
-	for _, header := range u.Headers {
+	for _, header := range restUrl.Headers {
 		if r.Header.Get(header.Name) == "" {
 			if header.Default == "" {
 				return fmt.Errorf("missing HTTP header: %s", header.Name)
@@ -73,7 +84,7 @@ func (u *RestURL) Validate(r *http.Request) error {
 		}
 	}
 
-	for _, value := range u.Values {
+	for _, value := range restUrl.Values {
 		if !r.URL.Query().Has(value.Name) {
 			if value.Default == "" {
 				return fmt.Errorf("missing HTTP value: %s", value.Name)
@@ -84,43 +95,64 @@ func (u *RestURL) Validate(r *http.Request) error {
 	return nil
 }
 
-func (u *RestURL) CleanHeader(r *http.Request, name string) string {
+func (restUrl *RestURL) CleanHeader(r *http.Request, name string) string {
 	v := r.Header.Get(name)
 	if v == "" {
-		p := slices.IndexFunc(u.Headers, func(field RestURLField) bool {
+		p := slices.IndexFunc(restUrl.Headers, func(field RestURLField) bool {
 			return field.Name == name
 		})
 
 		if p != -1 {
-			v = u.Headers[p].Default
+			v = restUrl.Headers[p].Default
 		}
 	}
 
 	return v
 }
 
-func (u *RestURL) CleanValue(r *http.Request, name string) string {
+func (restUrl *RestURL) CleanValue(r *http.Request, name string) string {
 	q := r.URL.Query()
 	v := q.Get(name)
 	if v == "" {
-		p := slices.IndexFunc(u.Values, func(field RestURLField) bool {
+		p := slices.IndexFunc(restUrl.Values, func(field RestURLField) bool {
 			return field.Name == name
 		})
 
 		if p != -1 {
-			v = u.Values[p].Default
+			v = restUrl.Values[p].Default
 		}
 	}
 
 	return v
 }
 
-func (u *RestURL) SwaggerInfo() string {
+func (restUrl *RestURL) UpdateStats(start time.Time) {
+	d := time.Since(start)
+
+	restUrl.Stats.Lock()
+	defer func() {
+		restUrl.Stats.Unlock()
+	}()
+
+	restUrl.Stats.Count++
+	restUrl.Stats.SumDuration.Duration += d
+	if restUrl.Stats.Count == 1 {
+		restUrl.Stats.MinDuration.Duration = d
+		restUrl.Stats.MaxDuration.Duration = d
+	} else {
+		restUrl.Stats.MinDuration.Duration = Min(restUrl.Stats.MinDuration.Duration, d)
+		restUrl.Stats.MaxDuration.Duration = Max(restUrl.Stats.MaxDuration.Duration, d)
+	}
+
+	DebugFunc("restUrl.UpdateStats: %+v", restUrl.Stats)
+}
+
+func (restUrl *RestURL) SwaggerInfo() string {
 	sb := strings.Builder{}
 
-	sb.WriteString(fmt.Sprintf("@Title %s\n", u.Resource))
-	sb.WriteString(fmt.Sprintf("@Description %s\n", u.Description))
-	sb.WriteString(fmt.Sprintf("@Accept %s\n", strings.Join(u.Consumes, " ")))
+	sb.WriteString(fmt.Sprintf("@Title %s\n", restUrl.Resource))
+	sb.WriteString(fmt.Sprintf("@Description %s\n", restUrl.Description))
+	sb.WriteString(fmt.Sprintf("@Accept %s\n", strings.Join(restUrl.Consumes, " ")))
 
 	return sb.String()
 }

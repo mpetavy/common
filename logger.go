@@ -504,9 +504,9 @@ func LevelToIndex(level string) int {
 }
 
 func StartInfo(msg string) {
-	Info("%s: start", msg)
+	Info("Start %s", msg)
 }
 
 func StopInfo(msg string) {
-	Info("%s: stop", msg)
+	Info("Stop %s", msg)
 }

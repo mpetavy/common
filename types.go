@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -772,4 +773,26 @@ func SetStructValue(obj any, field string, value any) error {
 	prop.Set(reflect.ValueOf(value))
 
 	return nil
+}
+
+type DurationJSON struct {
+	time.Duration
+}
+
+func (d *DurationJSON) UnmarshalJSON(b []byte) (err error) {
+	if b[0] == '"' {
+		sd := string(b[1 : len(b)-1])
+		d.Duration, err = time.ParseDuration(sd)
+		return
+	}
+
+	var id int64
+	id, err = json.Number(string(b)).Int64()
+	d.Duration = time.Duration(id)
+
+	return
+}
+
+func (d DurationJSON) MarshalJSON() (b []byte, err error) {
+	return []byte(fmt.Sprintf(`"%s"`, d.String())), nil
 }
