@@ -257,8 +257,8 @@ func CompareHashes(expected string, actual string) error {
 	return err
 }
 
-func HTTPWriteJson(status int, w http.ResponseWriter, ba []byte) error {
-	w.Header().Set(CONTENT_TYPE, MimetypeApplicationJson.MimeType)
+func HTTPWrite(w http.ResponseWriter, status int, mimeType string, ba []byte) error {
+	w.Header().Set(CONTENT_TYPE, mimeType)
 	w.Header().Set(CONTENT_LENGTH, strconv.Itoa(len(ba)))
 	w.WriteHeader(status)
 
