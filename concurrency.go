@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -194,5 +195,59 @@ func (tr *GoRoutinesRegister) Deregister() {
 
 	if p != -1 {
 		tr.list = slices.Delete(tr.list, p, p+1)
+	}
+}
+
+type BackgroundTask struct {
+	fn      func(task *BackgroundTask)
+	wg      sync.WaitGroup
+	aliveCh chan struct{}
+	isAlive atomic.Bool
+}
+
+func NewBackgroundTask(fn func(task *BackgroundTask)) *BackgroundTask {
+	return &BackgroundTask{fn: fn}
+}
+
+func (bt *BackgroundTask) Start() {
+	DebugFunc()
+
+	if bt.isAlive.Load() {
+		return
+	}
+
+	bt.isAlive.Store(true)
+	bt.aliveCh = make(chan struct{})
+
+	bt.wg.Add(1)
+	go func() {
+		defer func() {
+			bt.wg.Done()
+		}()
+
+		bt.fn(bt)
+	}()
+}
+
+func (bt *BackgroundTask) IsAlive() bool {
+	return bt.isAlive.Load()
+}
+
+func (bt *BackgroundTask) Channel() chan struct{} {
+	return bt.aliveCh
+}
+
+func (bt *BackgroundTask) Stop(waitFor bool) {
+	DebugFunc()
+
+	if !bt.isAlive.Load() {
+		return
+	}
+
+	bt.isAlive.Store(false)
+	close(bt.aliveCh)
+
+	if waitFor {
+		bt.wg.Wait()
 	}
 }
