@@ -19,12 +19,12 @@ type Jason struct {
 func NewJason(s string) (*Jason, error) {
 	var m map[string]interface{}
 
-	s, err := RemoveJsonComments(s)
+	ba, err := RemoveJsonComments([]byte(s))
 	if Error(err) {
 		return nil, err
 	}
 
-	err = json.Unmarshal([]byte(s), &m)
+	err = json.Unmarshal(ba, &m)
 	if Error(err) {
 		return nil, err
 	}
@@ -275,17 +275,20 @@ func (jason *Jason) Pretty() (string, error) {
 	return jason.pretty(0)
 }
 
-func RemoveJsonComments(s string) (string, error) {
+func RemoveJsonComments(ba []byte) ([]byte, error) {
 	// enable multiline mode
 	// skip from start of line to the first \\ and remove the remaining characters
 
+	s := string(ba)
+
 	s = regexp.MustCompile("(?m)(^ *\t*)\\/\\/.*").ReplaceAllString(s, "")
+	s = regexp.MustCompile("(?m)(^ *\t*)\\#.*").ReplaceAllString(s, "")
 
 	// remove a pending , on the last element before a closing ) ] or }
 	var err error
 	s, err = regexp2.MustCompile(",(?=\\s*[\\)\\]\\}])", 0).Replace(s, "", -1, -1)
 	if Error(err) {
-		return "", err
+		return nil, err
 	}
 
 	r := bytes.Buffer{}
@@ -300,5 +303,5 @@ func RemoveJsonComments(s string) (string, error) {
 		}
 	}
 
-	return r.String(), nil
+	return r.Bytes(), nil
 }
