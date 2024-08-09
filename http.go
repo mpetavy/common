@@ -335,13 +335,13 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 		}
 	}
 
-	if expectedCode > 0 && resp.StatusCode != expectedCode {
-		return nil, nil, fmt.Errorf("unexpected HTTP status code, expected %d got %d", expectedCode, resp.StatusCode)
-	}
-
 	ba, err := ReadBody(resp.Body)
 	if Error(err) {
 		return nil, nil, err
+	}
+
+	if expectedCode > 0 && resp.StatusCode != expectedCode {
+		return nil, nil, fmt.Errorf("unexpected HTTP status code, expected %d got %d\nBody: %s", expectedCode, resp.StatusCode, ba)
 	}
 
 	return resp, ba, nil
