@@ -33,7 +33,7 @@ type RestURL struct {
 	Success     []int          `json:"success,omitempty"`
 	Failure     []int          `json:"failure,omitempty"`
 	Headers     []RestURLField `json:"headers,omitempty"`
-	Values      []RestURLField `json:"values,omitempty"`
+	Params      []RestURLField `json:"params,omitempty"`
 	Stats       RestURLStats   `json:"stats,omitempty"`
 }
 
@@ -84,7 +84,7 @@ func (restUrl *RestURL) Validate(r *http.Request) error {
 		}
 	}
 
-	for _, value := range restUrl.Values {
+	for _, value := range restUrl.Params {
 		if !r.URL.Query().Has(value.Name) {
 			if value.Default == "" {
 				return fmt.Errorf("missing HTTP value: %s", value.Name)
@@ -95,7 +95,7 @@ func (restUrl *RestURL) Validate(r *http.Request) error {
 	return nil
 }
 
-func (restUrl *RestURL) CleanHeader(r *http.Request, name string) string {
+func (restUrl *RestURL) Header(r *http.Request, name string) string {
 	v := r.Header.Get(name)
 	if v == "" {
 		p := slices.IndexFunc(restUrl.Headers, func(field RestURLField) bool {
@@ -110,16 +110,16 @@ func (restUrl *RestURL) CleanHeader(r *http.Request, name string) string {
 	return v
 }
 
-func (restUrl *RestURL) CleanValue(r *http.Request, name string) string {
+func (restUrl *RestURL) Param(r *http.Request, name string) string {
 	q := r.URL.Query()
 	v := q.Get(name)
 	if v == "" {
-		p := slices.IndexFunc(restUrl.Values, func(field RestURLField) bool {
+		p := slices.IndexFunc(restUrl.Params, func(field RestURLField) bool {
 			return field.Name == name
 		})
 
 		if p != -1 {
-			v = restUrl.Values[p].Default
+			v = restUrl.Params[p].Default
 		}
 	}
 

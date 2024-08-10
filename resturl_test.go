@@ -24,7 +24,7 @@ func TestNewRestURL(t *testing.T) {
 
 	// require "offset" value
 
-	u.Values = []RestURLField{{
+	u.Params = []RestURLField{{
 		Name:        "offset",
 		Description: "offset to start from",
 		Default:     "",
@@ -36,7 +36,7 @@ func TestNewRestURL(t *testing.T) {
 
 	// "offset" value with default value
 
-	u.Values = []RestURLField{{
+	u.Params = []RestURLField{{
 		Name:        "offset",
 		Description: "offset to start from",
 		Default:     "123",
@@ -45,16 +45,16 @@ func TestNewRestURL(t *testing.T) {
 	req, err = http.NewRequest(http.MethodGet, "/patient/123/doc/456", nil)
 	require.NoError(t, err)
 	require.NoError(t, u.Validate(req))
-	require.Equal(t, "123", u.CleanValue(req, "offset"))
+	require.Equal(t, "123", u.Param(req, "offset"))
 
 	// "offset" value with given value
 
 	req, err = http.NewRequest(http.MethodGet, "/patient/123/doc/456?offset=99", nil)
 	require.NoError(t, err)
 	require.NoError(t, u.Validate(req))
-	require.Equal(t, "99", u.CleanValue(req, "offset"))
+	require.Equal(t, "99", u.Param(req, "offset"))
 
-	u.Values = []RestURLField{{
+	u.Params = []RestURLField{{
 		Name:        "offset",
 		Description: "offset to start from",
 		Default:     "123",
