@@ -147,7 +147,7 @@ func DetectMimeType(filename string, buf []byte) (MimetypeExtension, error) {
 	return MimetypeApplicationOctetStream, fmt.Errorf("cannot detect mime type")
 }
 
-func readFileHeader(path string) ([]byte, error) {
+func ReadFileHeader(path string) ([]byte, error) {
 	byteSlice := make([]byte, MimetypeHeaderLen)
 
 	file, err := os.Open(path)
