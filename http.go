@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"strings"
@@ -19,8 +20,12 @@ import (
 )
 
 const (
+	AUTHORIZATION = "Authorization"
+	BEARER        = "Bearer"
+
 	CONTENT_TYPE        = "Content-Type"
 	CONTENT_LENGTH      = "Content-Length"
+	CONTENT_MD5         = "Content-MD5"
 	CONTENT_DISPOSITION = "Content-Disposition"
 
 	HEADER_LOCATION = "Location"
@@ -287,6 +292,13 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 		}
 	}
 
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		for key, val := range via[0].Header {
+			req.Header[key] = val
+		}
+		return nil
+	}
+
 	if formdata != nil && body == nil {
 		body = strings.NewReader(formdata.Encode())
 	}
@@ -296,12 +308,21 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 		return nil, nil, err
 	}
 
-	if username != "" || password != "" {
-		if username == "" {
-			username = "dummy"
-		}
+	// GO won't transmit Content-Length with PATCH HTTP method, even when defined in the headers...
+	if method == http.MethodPatch {
+		headerContentLength := headers.Get(CONTENT_LENGTH)
+		if headerContentLength != "" {
+			contentLength, err := strconv.Atoi(headerContentLength)
+			if Error(err) {
+				return nil, nil, err
+			}
 
-		req.SetBasicAuth(username, password)
+			Debug("Explicit set %s with HTTP PATCH method", CONTENT_LENGTH)
+
+			// https://stackoverflow.com/questions/63537645/content-length-header-is-not-getting-set-for-patch-requests-with-empty-nil-paylo
+			req.TransferEncoding = []string{"identity"}
+			req.ContentLength = int64(contentLength)
+		}
 	}
 
 	if formdata != nil {
@@ -314,6 +335,32 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 
 	if headers != nil {
 		req.Header = headers
+	}
+
+	if username != "" || password != "" {
+		if username == BEARER {
+			req.Header[AUTHORIZATION] = []string{fmt.Sprintf("%s %s", BEARER, password)}
+		} else {
+			if username == "" {
+				username = "dummy"
+			}
+
+			req.SetBasicAuth(username, password)
+		}
+	}
+
+	if IsLogVerboseEnabled() {
+		ba, err := httputil.DumpRequestOut(req, IsTextMimeType(req.Header.Get(CONTENT_TYPE)))
+		if Error(err) {
+			return nil, nil, err
+		}
+
+		s := string(ba)
+		if password != "" {
+			s = strings.Replace(s, password, strings.Repeat("X", len(password)), -1)
+		}
+
+		Debug("HTTP Request:\n%s\n", s)
 	}
 
 	var resp *http.Response
@@ -335,13 +382,27 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 		}
 	}
 
+	if IsLogVerboseEnabled() {
+		ba, err := httputil.DumpResponse(resp, IsTextMimeType(resp.Header.Get(CONTENT_TYPE)))
+		if Error(err) {
+			return nil, nil, err
+		}
+
+		s := string(ba)
+		if password != "" {
+			s = strings.Replace(s, password, strings.Repeat("X", len(password)), -1)
+		}
+
+		Debug("HTTP Response:\n%s\n", s)
+	}
+
 	ba, err := ReadBody(resp.Body)
 	if Error(err) {
 		return nil, nil, err
 	}
 
 	if expectedCode > 0 && resp.StatusCode != expectedCode {
-		return nil, nil, fmt.Errorf("unexpected HTTP status code, expected %d got %d\nBody: %s", expectedCode, resp.StatusCode, ba)
+		return nil, nil, fmt.Errorf("unexpected HTTP status code, expected %d got %d\nResponseBody\n%s", expectedCode, resp.StatusCode, ba)
 	}
 
 	return resp, ba, nil

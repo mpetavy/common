@@ -6,6 +6,7 @@ import (
 	"github.com/h2non/filetype"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -146,7 +147,7 @@ func DetectMimeType(filename string, buf []byte) (MimetypeExtension, error) {
 	return MimetypeApplicationOctetStream, fmt.Errorf("cannot detect mime type")
 }
 
-func ReadHeader(path string) ([]byte, error) {
+func readFileHeader(path string) ([]byte, error) {
 	byteSlice := make([]byte, MimetypeHeaderLen)
 
 	file, err := os.Open(path)
@@ -165,6 +166,42 @@ func ReadHeader(path string) ([]byte, error) {
 	return byteSlice[:bytesRead], nil
 }
 
-func IsImageMimeType(s string) bool {
-	return strings.HasPrefix(s, "image/")
+func IsImageMimeType(mimeType string) bool {
+	if strings.Contains(mimeType, ";") {
+		mimeType = mimeType[:strings.Index(mimeType, ";")]
+	}
+
+	b := strings.HasPrefix(mimeType, "image/")
+
+	DebugFunc("%s: %v", mimeType, b)
+
+	return b
+}
+
+func IsTextMimeType(mimeType string) bool {
+	if strings.Contains(mimeType, ";") {
+		mimeType = mimeType[:strings.Index(mimeType, ";")]
+	}
+
+	b := slices.Contains([]string{
+		MimetypeApplicationGmlXml.MimeType,
+		MimetypeApplicationGpxXml.MimeType,
+		MimetypeApplicationJavascript.MimeType,
+		MimetypeApplicationJson.MimeType,
+		MimetypeTextHtml.MimeType,
+		MimetypeTextCss.MimeType,
+		MimetypeTextPlain.MimeType,
+		MimetypeTextRtf.MimeType,
+		MimetypeTextXml.MimeType,
+		MimetypeTextXLua.MimeType,
+		MimetypeTextXPerl.MimeType,
+		MimetypeTextXPhp.MimeType,
+		MimetypeTextXTcl.MimeType,
+		MimetypeApplicationGmlXml.MimeType,
+		MimetypeApplicationXWWWFormUrlencoded.MimeType,
+	}, mimeType)
+
+	DebugFunc("%s: %v", mimeType, b)
+
+	return b
 }

@@ -1,21 +1,16 @@
 package common
 
 import (
-	"encoding/json"
+	"bytes"
+	"encoding/gob"
 )
 
-func Clone[T any](t T) (T, error) {
-	x := new(T)
+func Clone[T any](in T) T {
+	buf := new(bytes.Buffer)
+	out := new(T)
 
-	ba, err := json.Marshal(t)
-	if Error(err) {
-		return *x, err
-	}
+	Panic(gob.NewEncoder(buf).Encode(in))
+	Panic(gob.NewDecoder(buf).Decode(out))
 
-	err = json.Unmarshal(ba, x)
-	if Error(err) {
-		return *x, err
-	}
-
-	return *x, nil
+	return *out
 }
