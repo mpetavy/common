@@ -246,6 +246,77 @@ func FileSize(filename string) (int64, error) {
 	return file.Size(), nil
 }
 
+// FileCompare does ... guess what :-)
+func FileCompare(filename0 string, filename1 string) error {
+	if !FileExists(filename0) {
+		return &ErrFileNotFound{FileName: filename0}
+	}
+
+	if !FileExists(filename1) {
+		return &ErrFileNotFound{FileName: filename1}
+	}
+
+	size0, err := FileSize(filename0)
+	if Error(err) {
+		return err
+	}
+
+	size1, err := FileSize(filename1)
+	if Error(err) {
+		return err
+	}
+
+	if size0 != size1 {
+		return fmt.Errorf("file %s with size %d differs in size with %s with size %d", filename0, size0, filename1, size1)
+	}
+
+	file0, err := os.Open(filename0)
+	if Error(err) {
+		return err
+	}
+	defer func() {
+		Error(file0.Close())
+	}()
+
+	file1, err := os.Open(filename1)
+	if Error(err) {
+		return err
+	}
+	defer func() {
+		Error(file1.Close())
+	}()
+
+	buf0 := make([]byte, 8192)
+	read := 0
+	buf1 := make([]byte, 8192)
+
+	for read < int(size0) {
+		n0, err := ReadFully(file0, buf0)
+		if Error(err) {
+			return err
+		}
+
+		n1, err := ReadFully(file1, buf1)
+		if Error(err) {
+			return err
+		}
+
+		if n0 != n1 {
+			return fmt.Errorf("file %s which reads %d bytes differs  with %s which reads %d bytes", filename0, n0, filename1, n1)
+		}
+
+		for i := 0; i < n0; i++ {
+			if buf0[i] != buf1[i] {
+				return fmt.Errorf("file content of %s differs to file %s at byte position %d", filename0, filename1, read+i)
+			}
+		}
+
+		read += n0
+	}
+
+	return nil
+}
+
 // FileCopy does ... guess what :-)
 func FileCopy(src string, dst string) error {
 	fi, err := os.Stat(src)
@@ -913,12 +984,12 @@ func ReadFully(r io.Reader, p []byte) (int, error) {
 		n, err := r.Read(p)
 		sum += n
 
-		if Error(err) {
-			return sum, err
+		if err == io.EOF || n == len(p) {
+			return sum, nil
 		}
 
-		if n == len(p) {
-			return sum, nil
+		if Error(err) {
+			return 0, err
 		}
 
 		p = p[n:]

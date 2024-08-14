@@ -220,6 +220,11 @@ func formatLog(level string, index int, msg string, addStacktrace bool) *LogEntr
 		msg = string(ba)
 
 	case IsLogVerboseEnabled():
+		if level == LevelDebug {
+			msg = strings.ReplaceAll(msg, "\n\t", "\n")
+			msg = strings.ReplaceAll(msg, "\n", "\n\t")
+		}
+
 		msg = fmt.Sprintf("%s | %-5s | %-"+strconv.Itoa(maxLen)+"s | %s", now.Format(SortedDateTimeMilliMask), level, source, msg)
 	default:
 		if level != LevelDebug && level != LevelInfo {
