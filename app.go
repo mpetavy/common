@@ -540,7 +540,7 @@ func Run(mandatoryFlags []string) {
 		return nil
 	}()
 	if err != nil && !IsErrExit(err) {
-		Panic(err)
+		Error(err)
 	}
 }
 

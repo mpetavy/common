@@ -443,11 +443,11 @@ func Error(err error) bool {
 
 	logEntry := formatLog(LevelError, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
-	Events.Emit(EventLog{Entry: logEntry}, false)
-
 	if isLikeLastError(logEntry) {
 		return true
 	}
+
+	Events.Emit(EventLog{Entry: logEntry}, false)
 
 	lastErrorEntry = logEntry
 
