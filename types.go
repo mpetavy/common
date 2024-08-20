@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/paulrosania/go-charset/charset"
 	_ "github.com/paulrosania/go-charset/data"
+	"github.com/saintfish/chardet"
 	"golang.org/x/exp/constraints"
 	"io"
 	"math"
@@ -137,26 +138,30 @@ func DefaultConsoleEncoding() string {
 	}
 }
 
-func ToUTF8String(s string, cs string) (string, error) {
-	b, err := ToUTF8(strings.NewReader(s), cs)
+func ToUTF8(ba []byte, inputEncoding string) ([]byte, error) {
+	if inputEncoding == "" {
+		detector := chardet.NewTextDetector()
 
-	if Error(err) {
-		return "", err
+		result, err := detector.DetectBest(ba)
+		if !WarnError(err) {
+			inputEncoding = result.Charset
+		}
 	}
 
-	return string(b), nil
-}
+	if strings.ToUpper(inputEncoding) == "UTF-8" {
+		return ba, nil
+	}
 
-func ToUTF8(r io.Reader, cs string) ([]byte, error) {
-	rcs, err := charset.NewReader(cs, r)
+	rcs, err := charset.NewReader(inputEncoding, bytes.NewReader(ba))
 	if Error(err) {
 		return []byte{}, err
 	}
+
 	b, err := io.ReadAll(rcs)
-
 	if Error(err) {
-		return []byte{}, err
+		return nil, err
 	}
+
 	return b, nil
 }
 
