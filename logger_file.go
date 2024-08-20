@@ -86,7 +86,7 @@ func (fw *fileWriter) createFile() error {
 
 	dir := filepath.Dir(*FlagLogFileName)
 	if !FileExists(dir) {
-		err := os.MkdirAll(dir, os.ModePerm)
+		err := os.MkdirAll(dir, DefaultDirMode)
 		if err != nil {
 			return err
 		}
