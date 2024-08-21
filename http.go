@@ -23,6 +23,7 @@ const (
 	AUTHORIZATION = "Authorization"
 	BEARER        = "Bearer"
 
+	ACCEPT              = "Accept"
 	CONTENT_TYPE        = "Content-Type"
 	CONTENT_LENGTH      = "Content-Length"
 	CONTENT_MD5         = "Content-MD5"

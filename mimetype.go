@@ -22,6 +22,7 @@ var Mimetypes = make(map[string]MimetypeExtension)
 
 var (
 	MimetypeApplicationDicom                                                     = registerMimeType("application/dicom", "dcm")
+	MimetypeApplicationDicomJson                                                 = registerMimeType("application/dicom+json", "dcm.json")
 	MimetypeApplicationEpubZip                                                   = registerMimeType("application/epub+zip", "epub")
 	MimetypeApplicationGeoJson                                                   = registerMimeType("application/geo+json", "geojson")
 	MimetypeApplicationGmlXml                                                    = registerMimeType("application/gml+xml", "gml")
