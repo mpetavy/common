@@ -379,16 +379,16 @@ func setFlags() error {
 				m:      mapDefaults,
 			},
 			{
-				origin: "env",
-				m:      mapEnv,
+				origin: "ini file",
+				m:      mapIniFile,
 			},
 			{
-				origin: "cfg file",
+				origin: "json file",
 				m:      mapCfgFile,
 			},
 			{
-				origin: "ini file",
-				m:      mapIniFile,
+				origin: "env",
+				m:      mapEnv,
 			},
 			{
 				origin: "args",
