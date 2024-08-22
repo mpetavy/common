@@ -185,6 +185,7 @@ func IsTextMimeType(mimeType string) bool {
 	}
 
 	b := slices.Contains([]string{
+		MimetypeApplicationDicomJson.MimeType,
 		MimetypeApplicationGmlXml.MimeType,
 		MimetypeApplicationGpxXml.MimeType,
 		MimetypeApplicationJavascript.MimeType,
