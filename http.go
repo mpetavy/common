@@ -41,7 +41,7 @@ var (
 	FlagHTTPHeaderLimit = flag.Int64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
 	FlagHTTPBodyLimit   = flag.Int64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
 	FlagHTTPTLSInsecure = flag.Bool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
-	FlagHTTPTimeout     = flag.Int(FlagNameHTTPTimeout, 30000, "HTTP default request timeout")
+	FlagHTTPTimeout     = flag.Int(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
 
 	httpServer *http.Server
 
