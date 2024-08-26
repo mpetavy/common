@@ -6,14 +6,20 @@ import (
 )
 
 func TestClone(t *testing.T) {
-	require.Equal(t, 0, Clone(0))
-	require.Equal(t, "a", Clone("a"))
+	x, err := Clone(0)
+	require.NoError(t, err)
+	require.Equal(t, 0, x)
+
+	y, err := Clone("a")
+	require.NoError(t, err)
+	require.Equal(t, "a", y)
 
 	m := make(map[string]int)
 	m["a"] = 1
 	m["b"] = 2
 
-	mCopy := Clone(m)
+	mCopy, err := Clone(m)
+	require.NoError(t, err)
 
 	require.Equal(t, m, mCopy)
 
@@ -39,7 +45,8 @@ func TestClone(t *testing.T) {
 		},
 	}
 
-	sCopy := Clone(s)
+	sCopy, err := Clone(s)
+	require.NoError(t, err)
 
 	require.Equal(t, s, sCopy)
 
