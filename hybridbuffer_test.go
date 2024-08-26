@@ -19,6 +19,8 @@ func TestHybridWriter(t *testing.T) {
 
 	require.Equal(t, len(msg), n)
 
+	require.Equal(t, len(msg), hb.Len())
+
 	r, err := hb.BytesReader()
 	require.NoError(t, err)
 
