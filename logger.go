@@ -34,15 +34,15 @@ const (
 )
 
 var (
-	FlagLogFileName = flag.String(FlagNameLogFileName, "", "filename to log file")
-	FlagLogFileSize = flag.Int(FlagNameLogFileSize, 5*1024*1024, "max log file size")
+	FlagLogFileName = systemFlagString(FlagNameLogFileName, "", "filename to log file")
+	FlagLogFileSize = systemFlagInt(FlagNameLogFileSize, 5*1024*1024, "max log file size")
 	FlagLogVerbose  = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
-	FlagLogIO       = flag.Bool(FlagNameLogIO, false, "trace logging")
-	FlagLogJson     = flag.Bool(FlagNameLogJson, false, "JSON output")
-	FlagLogSys      = flag.Bool(FlagNameLogSys, false, "Use OS system logger")
-	FlagLogCount    = flag.Int(FlagNameLogCount, 1000, "log count")
-	FlagLogBreak    = flag.Bool(FlagNameLogBreak, false, "break on error")
-	FlagLogGap      = flag.Int(FlagNameLogGap, 100, "time gap after show a separator")
+	FlagLogIO       = systemFlagBool(FlagNameLogIO, false, "trace logging")
+	FlagLogJson     = systemFlagBool(FlagNameLogJson, false, "JSON output")
+	FlagLogSys      = systemFlagBool(FlagNameLogSys, false, "Use OS system logger")
+	FlagLogCount    = systemFlagInt(FlagNameLogCount, 1000, "log count")
+	FlagLogBreak    = systemFlagBool(FlagNameLogBreak, false, "break on error")
+	FlagLogGap      = systemFlagInt(FlagNameLogGap, 100, "time gap after show a separator")
 
 	mu             ReentrantMutex
 	fw             *fileWriter

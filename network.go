@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -26,10 +25,10 @@ const (
 )
 
 var (
-	FlagIoPrimaryIface     = flag.String(FlagNameIoNetworkIface, "", "primary ethernet interface")
-	FlagIoNetworkTimeout   = flag.Int(FlagNameIoNetworkTimeout, 10*1000, "network ready timeout")
-	FlagIoConnectTimeout   = flag.Int(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
-	FlagIoReadwriteTimeout = flag.Int(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
+	FlagIoPrimaryIface     = systemFlagString(FlagNameIoNetworkIface, "", "primary ethernet interface")
+	FlagIoNetworkTimeout   = systemFlagInt(FlagNameIoNetworkTimeout, 10*1000, "network ready timeout")
+	FlagIoConnectTimeout   = systemFlagInt(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
+	FlagIoReadwriteTimeout = systemFlagInt(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
 )
 
 type HostInfo struct {

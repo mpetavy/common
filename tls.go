@@ -13,7 +13,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"flag"
 	"fmt"
 	"github.com/grantae/certinfo"
 	"golang.org/x/sys/cpu"
@@ -80,16 +79,16 @@ func init() {
 			tlsVersion = TlsVersion13
 		}
 
-		FlagTlsInsecure = flag.Bool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
-		FlagTlsVerify = flag.Bool(FlagNameTlsVerify, false, "Verify TLS certificates and server name")
-		FlagTlsServername = flag.String(FlagNameTlsServername, "", "TLS expected servername")
-		FlagTlsMinVersion = flag.String(FlagNameTlsMinVersion, tlsVersion, "TLS min version")
-		FlagTlsMaxVersion = flag.String(FlagNameTlsMaxVersion, tlsVersion, "TLS max version")
-		FlagTlsCiphers = flag.String(FlagNameTlsCiphers, "", "TLS ciphers zo use")
-		FlagTlsPassword = flag.String(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
-		FlagTlsCertificate = flag.String(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
-		FlagTlsMutual = flag.String(FlagNameTlsMutual, "", "Mutual TLS PKCS12 certificates & privkey container file or buffer")
-		FlagTlsKeyLen = flag.Int(FlagNameTlsKeylen, 256, "Key length")
+		FlagTlsInsecure = systemFlagBool(FlagNameTlsInsecure, false, "Use insecure TLS versions and cipher suites")
+		FlagTlsVerify = systemFlagBool(FlagNameTlsVerify, false, "Verify TLS certificates and server name")
+		FlagTlsServername = systemFlagString(FlagNameTlsServername, "", "TLS expected servername")
+		FlagTlsMinVersion = systemFlagString(FlagNameTlsMinVersion, tlsVersion, "TLS min version")
+		FlagTlsMaxVersion = systemFlagString(FlagNameTlsMaxVersion, tlsVersion, "TLS max version")
+		FlagTlsCiphers = systemFlagString(FlagNameTlsCiphers, "", "TLS ciphers zo use")
+		FlagTlsPassword = systemFlagString(FlagNameTlsPassword, pkcs12.DefaultPassword, "TLS PKCS12 certificates & privkey container file (P12 format)")
+		FlagTlsCertificate = systemFlagString(FlagNameTlsCertificate, "", "Server TLS PKCS12 certificates & privkey container file or buffer")
+		FlagTlsMutual = systemFlagString(FlagNameTlsMutual, "", "Mutual TLS PKCS12 certificates & privkey container file or buffer")
+		FlagTlsKeyLen = systemFlagInt(FlagNameTlsKeylen, 256, "Key length")
 	})
 
 	Events.AddListener(EventFlagsSet{}, func(ev Event) {

@@ -63,8 +63,8 @@ func (e *ErrUnknownFlag) Error() string {
 func init() {
 	Events.AddListener(EventInit{}, func(ev Event) {
 		FlagCfgFile = flag.String(FlagNameCfgFile, "", "Configuration file")
-		FlagCfgReset = flag.Bool(FlagNameCfgReset, false, "Reset configuration file")
-		FlagCfgCreate = flag.Bool(FlagNameCfgCreate, false, "Reset configuration file and exit")
+		FlagCfgReset = systemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
+		FlagCfgCreate = systemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
 	})
 
 	Events.AddListener(EventFlagsParsed{}, func(event Event) {

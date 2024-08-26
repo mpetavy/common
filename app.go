@@ -92,19 +92,23 @@ const (
 	FlagNameScriptStop      = "script.stop"
 	FlagNameUsage           = "h"
 	FlagNameUsageMd         = "hmd"
+	FlagNameUsageAll        = "hh"
+	FlagNameUsageAllMd      = "hhmd"
 	FlagNameNoBanner        = "nb"
 )
 
 var (
-	FlagService         = flag.String(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
-	FlagServiceUser     = flag.String(FlagNameServiceUsername, "", "Service user")
-	FlagServicePassword = flag.String(FlagNameServicePassword, "", "Service password")
-	FlagServiceTimeout  = flag.Int(FlagNameServiceTimeout, 1000, "Service timeout")
-	FlagScriptTimeout   = flag.Int(FlagNameScriptTimeout, 5000, "Script timeout")
+	FlagService         = systemFlagString(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
+	FlagServiceUser     = systemFlagString(FlagNameServiceUsername, "", "Service user")
+	FlagServicePassword = systemFlagString(FlagNameServicePassword, "", "Service password")
+	FlagServiceTimeout  = systemFlagInt(FlagNameServiceTimeout, 1000, "Service timeout")
+	FlagScriptTimeout   = systemFlagInt(FlagNameScriptTimeout, 5000, "Script timeout")
 	FlagScriptStart     *string
 	FlagScriptStop      *string
 	FlagUsage           = flag.Bool(FlagNameUsage, false, "show flags description and usage")
 	FlagUsageMd         = flag.Bool(FlagNameUsageMd, false, "show flags description and usage in markdown format")
+	FlagUsageAll        = flag.Bool(FlagNameUsageAll, false, "show flags and system flags description and usage")
+	FlagUsageAllMd      = flag.Bool(FlagNameUsageAllMd, false, "show flags and system flags description and usage in markdown format")
 	FlagNoBanner        = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
 
 	app                     *application
@@ -134,8 +138,8 @@ func Init(title string, version string, git string, build string, description st
 	Panic(initWorkingPath())
 
 	Events.AddListener(EventInit{}, func(ev Event) {
-		FlagScriptStart = flag.String(FlagNameScriptStart, fmt.Sprintf("%s%s-start%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
-		FlagScriptStop = flag.String(FlagNameScriptStop, fmt.Sprintf("%s%s-stop%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
+		FlagScriptStart = systemFlagString(FlagNameScriptStart, fmt.Sprintf("%s%s-start%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
+		FlagScriptStop = systemFlagString(FlagNameScriptStop, fmt.Sprintf("%s%s-stop%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
 	})
 
 	ba, err := resources.ReadFile("go.mod")
@@ -193,8 +197,8 @@ func Init(title string, version string, git string, build string, description st
 		}
 	}
 
-	FlagAppProduct = flag.String(FlagNameAppProduct, title, "app product")
-	FlagAppTicker = flag.Int(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
+	FlagAppProduct = systemFlagString(FlagNameAppProduct, title, "app product")
+	FlagAppTicker = systemFlagInt(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
 
 	app = &application{
 		Title:         title,
@@ -258,7 +262,7 @@ func initWorkingPath() error {
 }
 
 func usage() error {
-	if *FlagUsageMd {
+	if *FlagUsageMd || *FlagUsageAllMd {
 		dir, err := os.Getwd()
 		if Error(err) {
 			return err
@@ -270,6 +274,10 @@ func usage() error {
 		st.AddCols("Flag", "Default value", "Only CmdLine", "Description")
 
 		flag.VisitAll(func(fl *flag.Flag) {
+			if !*FlagUsageAllMd && slices.Contains(SystemFlagNames, fl.Name) {
+				return
+			}
+
 			defValue := fl.DefValue
 			if strings.HasPrefix(defValue, dir) {
 				defValue = fmt.Sprintf("./%s", defValue[len(dir)+1:])
@@ -287,8 +295,26 @@ func usage() error {
 		return &ErrExit{}
 	}
 
-	if *FlagUsage {
-		flag.Usage()
+	if *FlagUsage || *FlagUsageAll {
+		fmt.Printf("Usage of %s:\n", strings.ToUpper(Title()))
+
+		flag.VisitAll(func(fl *flag.Flag) {
+			if !*FlagUsageAll && slices.Contains(SystemFlagNames, fl.Name) {
+				return
+			}
+
+			ty := fmt.Sprintf("%T", fl.Value)
+			ty = strings.TrimPrefix(ty, "*flag.")
+			ty = strings.TrimSuffix(ty, "Value")
+
+			def := ""
+			if fl.DefValue != "" {
+				def = fmt.Sprintf("(default '%s')", fl.DefValue)
+			}
+
+			fmt.Printf("  -%s (%s)\n", fl.Name, ty)
+			fmt.Printf("      %s%s\n", fl.Usage, def)
+		})
 
 		return &ErrExit{}
 	}
@@ -555,8 +581,13 @@ func ExitOrError(err error) error {
 func showBanner() {
 	onceBanner.Do(func() {
 		if app != nil {
+			version := ""
+			if app.Version != "" {
+				version = fmt.Sprintf(" %s", app.Version)
+			}
+
 			banner.WriteString(fmt.Sprintf("\n"))
-			banner.WriteString(fmt.Sprintf("%s %s - %s\n", strings.ToUpper(app.Title), app.Version, app.Description))
+			banner.WriteString(fmt.Sprintf("%s%s - %s\n", strings.ToUpper(app.Title), version, app.Description))
 			banner.WriteString(fmt.Sprintf("\n"))
 			banner.WriteString(fmt.Sprintf("Copyright: © %d %s\n", app.Date.Year(), app.Developer))
 			banner.WriteString(fmt.Sprintf("Homepage:  %s\n", app.Homepage))

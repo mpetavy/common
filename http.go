@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -38,10 +37,10 @@ const (
 )
 
 var (
-	FlagHTTPHeaderLimit = flag.Int64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
-	FlagHTTPBodyLimit   = flag.Int64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
-	FlagHTTPTLSInsecure = flag.Bool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
-	FlagHTTPTimeout     = flag.Int(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
+	FlagHTTPHeaderLimit = systemFlagInt64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
+	FlagHTTPBodyLimit   = systemFlagInt64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
+	FlagHTTPTLSInsecure = systemFlagBool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
+	FlagHTTPTimeout     = systemFlagInt(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
 
 	httpServer *http.Server
 

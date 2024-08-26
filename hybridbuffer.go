@@ -2,7 +2,6 @@ package common
 
 import (
 	"bytes"
-	"flag"
 	"io"
 	"os"
 	"sync/atomic"
@@ -13,7 +12,7 @@ const (
 )
 
 var (
-	FlagIoBufferThreshold = flag.Int(FlagNameIoBufferThreshold, 10*1024*1024, "byte threshold to store to file")
+	FlagIoBufferThreshold = systemFlagInt(FlagNameIoBufferThreshold, 10*1024*1024, "byte threshold to store to file")
 )
 
 type HybridBuffer struct {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	ctxio "github.com/jbenet/go-context/io"
 	"io"
@@ -27,7 +26,7 @@ var (
 	DefaultFileMode  = FileMode(true, true, false)
 	DefaultDirMode   = FileMode(true, true, true)
 
-	FlagIoFileBackups = flag.Int(FlagNameIoFileBackups, 3, "amount of file backups")
+	FlagIoFileBackups = systemFlagInt(FlagNameIoFileBackups, 3, "amount of file backups")
 )
 
 type ErrFileNotFound struct {
