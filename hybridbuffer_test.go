@@ -12,15 +12,14 @@ func TestHybridWriter(t *testing.T) {
 	msg, err := RndBytes(100)
 	require.NoError(t, err)
 
-	hw, err := NewHybridBuffer()
-	require.NoError(t, err)
+	hb := NewHybridBuffer()
 
-	n, err := hw.Write(msg)
+	n, err := hb.Write(msg)
 	require.NoError(t, err)
 
 	require.Equal(t, len(msg), n)
 
-	r, err := hw.BytesReader()
+	r, err := hb.BytesReader()
 	require.NoError(t, err)
 
 	ba, err := io.ReadAll(r)

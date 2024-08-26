@@ -17,16 +17,16 @@ var (
 
 type HybridBuffer struct {
 	io.ReadWriteCloser
-	buf     *bytes.Buffer
-	file    *os.File
-	written int
-	inRead  atomic.Bool
+	buf    *bytes.Buffer
+	file   *os.File
+	count  int
+	inRead atomic.Bool
 }
 
-func NewHybridBuffer() (*HybridBuffer, error) {
+func NewHybridBuffer() *HybridBuffer {
 	return &HybridBuffer{
 		buf: &bytes.Buffer{},
-	}, nil
+	}
 }
 
 func (hb *HybridBuffer) Write(p []byte) (int, error) {
@@ -39,7 +39,7 @@ func (hb *HybridBuffer) Write(p []byte) (int, error) {
 		hb.inRead.Store(false)
 	}
 
-	if hb.file == nil && hb.written+len(p) > *FlagIoBufferThreshold {
+	if hb.file == nil && hb.count+len(p) > *FlagIoBufferThreshold {
 
 		tempFile, err := CreateTempFile()
 		if Error(err) {
@@ -60,7 +60,7 @@ func (hb *HybridBuffer) Write(p []byte) (int, error) {
 		hb.buf = nil
 	}
 
-	hb.written += len(p)
+	hb.count += len(p)
 
 	if hb.file != nil {
 		return hb.file.Write(p)
@@ -98,4 +98,8 @@ func (hb *HybridBuffer) BytesReader() (io.Reader, error) {
 	}
 
 	return NewAutoCloser(bytes.NewReader(hb.buf.Bytes())), nil
+}
+
+func (hb *HybridBuffer) Len() int {
+	return hb.count
 }
