@@ -92,8 +92,8 @@ const (
 	FlagNameScriptStop      = "script.stop"
 	FlagNameUsage           = "h"
 	FlagNameUsageMd         = "hmd"
-	FlagNameUsageAll        = "hh"
-	FlagNameUsageAllMd      = "hhmd"
+	FlagNameUsageAll        = "hs"
+	FlagNameUsageAllMd      = "hsmd"
 	FlagNameNoBanner        = "nb"
 )
 
@@ -127,8 +127,8 @@ var (
 	runningAsExecutable     bool
 	runningInteractive      bool
 	restart                 bool
-	restartCh               = make(chan struct{})
-	shutdownCh              = make(chan struct{})
+	restartCh               = make(chan struct{}, 1)
+	shutdownCh              = make(chan struct{}, 1)
 	ctrlC                   = make(chan os.Signal, 1)
 	isFirstTicker           = true
 	banner                  = bytes.Buffer{}
@@ -309,7 +309,7 @@ func usage() error {
 
 			def := ""
 			if fl.DefValue != "" {
-				def = fmt.Sprintf("(default '%s')", fl.DefValue)
+				def = fmt.Sprintf(" (default '%s')", fl.DefValue)
 			}
 
 			fmt.Printf("  -%s (%s)\n", fl.Name, ty)
@@ -729,13 +729,14 @@ func (app *application) applicationLoop() error {
 	for {
 		if app.StartFunc != nil {
 			err := app.StartFunc()
-			if Error(err) {
-				return err
-			}
 
 			startupCh <- err
 
 			close(startupCh)
+
+			if Error(err) {
+				return err
+			}
 		}
 
 		Error(app.applicationRun())

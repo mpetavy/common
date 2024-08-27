@@ -60,6 +60,19 @@ func Sleep(d time.Duration) {
 	}
 }
 
+func SleepWithChannel(d time.Duration, ch chan struct{}) {
+	id := uuid.New().String()
+
+	select {
+	case <-time.After(d):
+		DebugIndex(1, "Sleep [%s] %v continue", id, d)
+	case <-AppLifecycle().Channel():
+		DebugIndex(1, "Sleep [%s] interrupted because of app lifecyle end", id)
+	case <-ch:
+		DebugIndex(1, "Sleep [%s] interrupted because of channel end", id)
+	}
+}
+
 func Catch(fn func() error) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
