@@ -108,8 +108,7 @@ type ActionItem struct {
 
 func init() {
 	Events.AddListener(EventInit{}, func(ev Event) {
-		storeSecret, err := RndBytes(32)
-		Panic(err)
+		storeSecret := RndBytes(32)
 
 		SessionStore = memstore.NewMemStore(storeSecret)
 		SessionStore.Options.Secure = true

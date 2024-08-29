@@ -444,12 +444,7 @@ func debugFlags() {
 		flag.VisitAll(func(f *flag.Flag) {
 			flagValue := flagInfos[f.Name]
 
-			v := flagValue.Value
-			if strings.Contains(strings.ToLower(f.Name), "password") || strings.Contains(strings.ToLower(f.Name), "pwd") {
-				v = strings.Repeat("X", len(v))
-			}
-
-			st.AddCols(f.Name, v, IsCmdlineOnlyFlag(f.Name), flagValue.Origin)
+			st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), IsCmdlineOnlyFlag(f.Name), flagValue.Origin)
 		})
 	})
 

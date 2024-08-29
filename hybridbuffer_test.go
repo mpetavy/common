@@ -9,8 +9,7 @@ import (
 func TestHybridWriter(t *testing.T) {
 	*FlagIoBufferThreshold = 10
 
-	msg, err := RndBytes(100)
-	require.NoError(t, err)
+	msg := RndBytes(100)
 
 	hb := NewHybridBuffer()
 

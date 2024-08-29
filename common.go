@@ -103,19 +103,17 @@ func Rnd(max int) int {
 	return int(nBig.Int64())
 }
 
-func RndBytes(n int) ([]byte, error) {
+func RndBytes(n int) []byte {
 	DebugFunc()
 
 	b := make([]byte, n)
 	_, err := rand.Read(b)
-	if Error(err) {
-		return nil, err
-	}
+	Panic(err)
 
-	return b, nil
+	return b
 }
 
-func RndString(l int) (string, error) {
+func RndString(l int) string {
 	DebugFunc()
 
 	var letters = []rune("012345678abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -126,7 +124,7 @@ func RndString(l int) (string, error) {
 		sb.WriteRune(letters[Rnd(lenLetter)])
 	}
 
-	return sb.String(), nil
+	return sb.String()
 }
 
 func ExecuteCmd(cmd *exec.Cmd) ([]byte, error) {

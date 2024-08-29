@@ -108,10 +108,7 @@ func TestNewSeparatorSplitFunc(t *testing.T) {
 	world := []byte("world")
 	prefix := []byte(">>>")
 	suffix := []byte("<<<")
-	noiseStr, err := RndString(10)
-	if Error(err) {
-		return
-	}
+	noiseStr := RndString(10)
 	noise := []byte(noiseStr)
 
 	type args struct {

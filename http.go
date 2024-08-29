@@ -185,7 +185,7 @@ func HTTPServerStop() error {
 	return nil
 }
 
-func InitHashAlgorithm(s string) (crypto.Hash, error) {
+func HashAlgorithm(s string) (crypto.Hash, error) {
 	DebugFunc()
 
 	p := strings.Index(s, ":")
@@ -224,28 +224,43 @@ func HashBytes(crypto crypto.Hash, r io.Reader) ([]byte, error) {
 	return hasher.Sum(nil), nil
 }
 
-func HashString(crypto crypto.Hash, s string) (string, error) {
-	p := strings.Index(s, ":")
-	if p != -1 && crypto.String() == s[:p] {
+func IsHashedValue(s string) bool {
+	_, err := HashAlgorithm(s)
+
+	return err == nil
+}
+
+func HashValue(algorithm crypto.Hash, s string) (string, error) {
+	current, err := HashAlgorithm(s)
+	if err == nil {
+		if current != algorithm {
+			return "", fmt.Errorf("Different hash algorithm used %s. Expected %s, current %s", s, algorithm.String(), current.String())
+		}
+
 		return s, nil
 	}
 
-	hash, err := HashBytes(crypto, strings.NewReader(s))
+	p := strings.Index(s, ":")
+	if p != -1 && algorithm.String() == s[:p] {
+		return s, nil
+	}
+
+	hash, err := HashBytes(algorithm, strings.NewReader(s))
 	if Error(err) {
 		return "", err
 	}
 
-	return fmt.Sprintf("%s:%s", strings.ToUpper(crypto.String()), hex.EncodeToString(hash)), nil
+	return fmt.Sprintf("%s:%s", strings.ToUpper(algorithm.String()), hex.EncodeToString(hash)), nil
 }
 
 func CompareHashes(expected string, actual string) error {
 	err := func() error {
-		hashAlgorithm, err := InitHashAlgorithm(expected)
+		hashAlgorithm, err := HashAlgorithm(expected)
 		if Error(err) {
 			return err
 		}
 
-		actualHashed, err := HashString(hashAlgorithm, actual)
+		actualHashed, err := HashValue(hashAlgorithm, actual)
 		if Error(err) {
 			return err
 		}

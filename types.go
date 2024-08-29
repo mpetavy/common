@@ -801,3 +801,19 @@ func (d *DurationJSON) UnmarshalJSON(b []byte) (err error) {
 func (d DurationJSON) MarshalJSON() (b []byte, err error) {
 	return []byte(fmt.Sprintf(`"%s"`, d.String())), nil
 }
+
+func HidePasswordValue(name string, value string) string {
+	if IsHashedValue(value) {
+		return value
+	}
+
+	name = strings.ToLower(name)
+
+	for _, hit := range []string{"password", "pwd", "credential", "subscription", "private"} {
+		if strings.Contains(name, hit) {
+			return strings.Repeat("X", len(value))
+		}
+	}
+
+	return value
+}

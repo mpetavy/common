@@ -6,10 +6,7 @@ import (
 )
 
 func TestEncrypt(t *testing.T) {
-	key, err := RndBytes(16)
-	if err != nil {
-		Error(err)
-	}
+	key := RndBytes(16)
 
 	txt := "Hello world!"
 	enc, err := EncryptString(key, txt)

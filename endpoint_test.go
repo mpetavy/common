@@ -74,10 +74,7 @@ func test(t *testing.T, address string, tlsConfig *tls.Config, txt string, isCli
 }
 
 func TestEndpoint(t *testing.T) {
-	txt, err := RndString(100)
-	if Error(err) {
-		return
-	}
+	txt := RndString(100)
 
 	port, err := FindFreePort("tcp", 1024, nil)
 	if Error(err) {
