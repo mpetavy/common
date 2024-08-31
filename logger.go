@@ -41,7 +41,7 @@ var (
 	FlagLogJson     = systemFlagBool(FlagNameLogJson, false, "JSON output")
 	FlagLogSys      = systemFlagBool(FlagNameLogSys, false, "Use OS system logger")
 	FlagLogCount    = systemFlagInt(FlagNameLogCount, 1000, "log count")
-	FlagLogBreak    = systemFlagBool(FlagNameLogBreak, false, "break on error")
+	FlagLogBreak    = systemFlagString(FlagNameLogBreak, "", "break on error")
 	FlagLogGap      = systemFlagInt(FlagNameLogGap, 100, "time gap after show a separator")
 
 	mu             ReentrantMutex
@@ -453,7 +453,7 @@ func Error(err error) bool {
 
 	logErrorPrint(logEntry.PrintMsg)
 
-	if *FlagLogBreak {
+	if *FlagLogBreak != "" && (*FlagLogBreak == "any" || strings.Contains(logEntry.PrintMsg, *FlagLogBreak)) {
 		Exit(1)
 	}
 

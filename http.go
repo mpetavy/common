@@ -186,8 +186,6 @@ func HTTPServerStop() error {
 }
 
 func HashAlgorithm(s string) (crypto.Hash, error) {
-	DebugFunc()
-
 	p := strings.Index(s, ":")
 	if p != -1 {
 		s = s[:p]
