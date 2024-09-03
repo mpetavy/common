@@ -40,3 +40,17 @@ func TestBackgroundTask(t *testing.T) {
 
 	bt.Stop(true)
 }
+
+func TestAlignedTicker(t *testing.T) {
+	stopAt := time.Now().Add(time.Second * 5)
+
+	at := NewAlignedTicker(time.Second * 2)
+
+	for time.Now().Before(stopAt) {
+		sleep := at.SleepUntilNextTicker()
+
+		time.Sleep(sleep)
+
+		require.True(t, time.Now().Second()%int(at.SleepTime.Seconds()) == 0)
+	}
+}

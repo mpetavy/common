@@ -251,3 +251,31 @@ func (bt *BackgroundTask) Stop(waitFor bool) {
 		bt.wg.Wait()
 	}
 }
+
+type AlignedTicker struct {
+	IsFirstTicker bool
+	SleepTime     time.Duration
+}
+
+func NewAlignedTicker(sleepTime time.Duration) *AlignedTicker {
+	return &AlignedTicker{
+		IsFirstTicker: false,
+		SleepTime:     sleepTime,
+	}
+}
+
+func (at *AlignedTicker) SleepUntilNextTicker() time.Duration {
+	var delta time.Duration
+
+	if !at.IsFirstTicker {
+		nextTick := time.Now().Truncate(at.SleepTime).Add(at.SleepTime)
+
+		delta = nextTick.Sub(time.Now())
+
+		Debug("Next ticker: %v sleep: %v\n", CalcDeadline(time.Now(), delta).Truncate(at.SleepTime).Format(DateTimeMilliMask), delta)
+	}
+
+	at.IsFirstTicker = false
+
+	return delta
+}
