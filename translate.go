@@ -23,7 +23,7 @@ const (
 
 func init() {
 	Events.AddListener(EventInit{}, func(ev Event) {
-		FlagAppLanguage = systemFlagString(FlagNameAppLanguage, "en", "language for messages")
+		FlagAppLanguage = flag.String(FlagNameAppLanguage, "en", "language for messages")
 	})
 
 	Events.AddListener(EventFlagsSet{}, func(ev Event) {
