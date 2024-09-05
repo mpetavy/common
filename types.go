@@ -360,7 +360,7 @@ func ParseMemory(txt string) (int64, error) {
 	return int64(f * math.Pow(1024, float64(0))), nil
 }
 
-func FormatMemory(bytes int64) string {
+func FormatMemory(bytes uint64) string {
 	neg := bytes < 0
 
 	fbytes := math.Abs(float64(bytes))
