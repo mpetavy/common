@@ -11,9 +11,9 @@ import (
 )
 
 type RestURLField struct {
-	Name        string
-	Description string
-	Default     string
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Default     string `json:"default,omitempty"`
 }
 
 type RestURLStats struct {
