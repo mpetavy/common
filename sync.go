@@ -3,9 +3,9 @@ package common
 import "sync"
 
 type Sync[T any] struct {
-	mu    sync.RWMutex
+	sync.RWMutex
 	isSet bool
-	ref   T
+	Ref   T
 }
 
 func NewSync[T any]() *Sync[T] {
@@ -14,36 +14,38 @@ func NewSync[T any]() *Sync[T] {
 
 func NewSyncOf[T any](t T) *Sync[T] {
 	return &Sync[T]{
-		ref:   t,
+		Ref:   t,
 		isSet: true,
 	}
 }
 
 func (sync *Sync[T]) IsSet() bool {
-	sync.mu.RLock()
-	defer sync.mu.RUnlock()
+	sync.RLock()
+	defer sync.RUnlock()
 
 	return sync.isSet
 }
 
 func (sync *Sync[T]) Get() T {
-	sync.mu.RLock()
-	defer sync.mu.RUnlock()
+	sync.RLock()
+	defer sync.RUnlock()
 
-	return sync.ref
+	clone := sync.Ref
+
+	return clone
 }
 
 func (sync *Sync[T]) Set(value T) {
-	sync.mu.Lock()
-	defer sync.mu.Unlock()
+	sync.Lock()
+	defer sync.Unlock()
 
 	sync.isSet = true
-	sync.ref = value
+	sync.Ref = value
 }
 
 func (sync *Sync[T]) Run(fn func(T)) {
-	sync.mu.Lock()
-	defer sync.mu.Unlock()
+	sync.Lock()
+	defer sync.Unlock()
 
-	fn(sync.ref)
+	fn(sync.Ref)
 }
