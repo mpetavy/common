@@ -14,15 +14,15 @@ import (
 )
 
 const (
-	FlagNameLogFileName = "log.file"
-	FlagNameLogFileSize = "log.filesize"
-	FlagNameLogVerbose  = "log.verbose"
-	FlagNameLogIO       = "log.io"
-	FlagNameLogJson     = "log.json"
-	FlagNameLogSys      = "log.sys"
-	FlagNameLogCount    = "log.count"
-	FlagNameLogBreak    = "log.break"
-	FlagNameLogGap      = "log.gap"
+	FlagNameLogFileName     = "log.file"
+	FlagNameLogFileSize     = "log.filesize"
+	FlagNameLogVerbose      = "log.verbose"
+	FlagNameLogIO           = "log.io"
+	FlagNameLogJson         = "log.json"
+	FlagNameLogSys          = "log.sys"
+	FlagNameLogCount        = "log.count"
+	FlagNameLogBreakOnError = "log.breakonerror"
+	FlagNameLogGap          = "log.gap"
 )
 
 const (
@@ -34,15 +34,15 @@ const (
 )
 
 var (
-	FlagLogFileName = systemFlagString(FlagNameLogFileName, "", "filename to log file")
-	FlagLogFileSize = systemFlagInt(FlagNameLogFileSize, 5*1024*1024, "max log file size")
-	FlagLogVerbose  = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
-	FlagLogIO       = systemFlagBool(FlagNameLogIO, false, "trace logging")
-	FlagLogJson     = systemFlagBool(FlagNameLogJson, false, "JSON output")
-	FlagLogSys      = systemFlagBool(FlagNameLogSys, false, "Use OS system logger")
-	FlagLogCount    = systemFlagInt(FlagNameLogCount, 1000, "log count")
-	FlagLogBreak    = systemFlagString(FlagNameLogBreak, "", "break on error")
-	FlagLogGap      = systemFlagInt(FlagNameLogGap, 100, "time gap after show a separator")
+	FlagLogFileName     = systemFlagString(FlagNameLogFileName, "", "filename to log file")
+	FlagLogFileSize     = systemFlagInt(FlagNameLogFileSize, 5*1024*1024, "max log file size")
+	FlagLogVerbose      = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
+	FlagLogIO           = systemFlagBool(FlagNameLogIO, false, "trace logging")
+	FlagLogJson         = systemFlagBool(FlagNameLogJson, false, "JSON output")
+	FlagLogSys          = systemFlagBool(FlagNameLogSys, false, "Use OS system logger")
+	FlagLogCount        = systemFlagInt(FlagNameLogCount, 1000, "log count")
+	FlagLogBreakOnError = systemFlagString(FlagNameLogBreakOnError, "", "break on logging an error")
+	FlagLogGap          = systemFlagInt(FlagNameLogGap, 100, "time gap after show a separator")
 
 	mu             ReentrantMutex
 	fw             *fileWriter
@@ -438,6 +438,10 @@ func Error(err error) bool {
 		return DebugErrorIndex(1, err)
 	}
 
+	if strings.Contains(strings.ToLower(err.Error()), "fatal") {
+		fatal(err, 3)
+	}
+
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -453,7 +457,7 @@ func Error(err error) bool {
 
 	logErrorPrint(logEntry.PrintMsg)
 
-	if *FlagLogBreak != "" && (*FlagLogBreak == "any" || strings.Contains(logEntry.PrintMsg, *FlagLogBreak)) {
+	if *FlagLogBreakOnError != "" && (*FlagLogBreakOnError == "any" || strings.Contains(logEntry.PrintMsg, *FlagLogBreakOnError)) {
 		Exit(1)
 	}
 
@@ -461,6 +465,10 @@ func Error(err error) bool {
 }
 
 func Panic(err error) {
+	fatal(err, 3)
+}
+
+func fatal(err error, index int) {
 	if err == nil || IsErrExit(err) {
 		return
 	}
@@ -468,7 +476,7 @@ func Panic(err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	logEntry := formatLog(LevelFatal, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
+	logEntry := formatLog(LevelFatal, index, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
 	Events.Emit(EventLog{Entry: logEntry}, false)
 

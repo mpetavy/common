@@ -1,9 +1,7 @@
 package common
 
-import "sync"
-
 type Sync[T any] struct {
-	sync.RWMutex
+	ReentrantMutex
 	isSet bool
 	Ref   T
 }
@@ -20,15 +18,15 @@ func NewSyncOf[T any](t T) *Sync[T] {
 }
 
 func (sync *Sync[T]) IsSet() bool {
-	sync.RLock()
-	defer sync.RUnlock()
+	sync.Lock()
+	defer sync.Unlock()
 
 	return sync.isSet
 }
 
 func (sync *Sync[T]) Get() T {
-	sync.RLock()
-	defer sync.RUnlock()
+	sync.Lock()
+	defer sync.Unlock()
 
 	clone := sync.Ref
 

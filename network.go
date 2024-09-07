@@ -110,12 +110,12 @@ func IsPortAvailable(network string, port int) error {
 		case "tcp":
 			if network == "tcp" {
 				tcpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-				if Error(err) {
+				if err != nil {
 					return err
 				}
 
 				err = tcpListener.Close()
-				if Error(err) {
+				if err != nil {
 					return err
 				}
 
@@ -124,12 +124,12 @@ func IsPortAvailable(network string, port int) error {
 		case "udp":
 			if network == "udp" {
 				udpListener, err := net.ListenPacket("udp4", fmt.Sprintf(":%d", port))
-				if Error(err) {
+				if err != nil {
 					return err
 				}
 
 				err = udpListener.Close()
-				if Error(err) {
+				if err != nil {
 					return err
 				}
 
