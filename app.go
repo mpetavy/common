@@ -387,7 +387,7 @@ func checkMandatoryFlags(flags []string) error {
 					return fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
 				}
 
-				if IsFlagProvided(flagName) {
+				if IsFlagProvided(flagName) || fl.Value.String() != "" || fl.DefValue != "" {
 					defined++
 				}
 			}
