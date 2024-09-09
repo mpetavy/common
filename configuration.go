@@ -471,18 +471,17 @@ func registerArgsFlags() (map[string]string, error) {
 	return m, nil
 }
 
+func FlagNameAsEnvName(flagName string) string {
+	return strings.ToUpper(fmt.Sprintf("%s_%s", Title(), strings.ReplaceAll(flagName, ".", "_")))
+}
+
 func registerEnvFlags() (map[string]string, error) {
 	DebugFunc()
 
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		envName := fmt.Sprintf("%s_%s", Title(), strings.ReplaceAll(f.Name, ".", "_"))
-
-		envValue := os.Getenv(strings.ToUpper(envName))
-		if envValue == "" {
-			envValue = os.Getenv(strings.ToLower(envName))
-		}
+		envValue := os.Getenv(FlagNameAsEnvName(f.Name))
 
 		if envValue != "" {
 			m[f.Name] = envValue

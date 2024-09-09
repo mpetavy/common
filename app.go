@@ -271,7 +271,7 @@ func usage() error {
 		st := NewStringTable()
 		st.Markdown = true
 
-		st.AddCols("Flag", "Default value", "Only CmdLine", "Description")
+		st.AddCols("Flag name", "ENV name", "Default value", "Only CmdLine", "Description")
 
 		flag.VisitAll(func(fl *flag.Flag) {
 			if !*FlagUsageAllMd && slices.Contains(SystemFlagNames, fl.Name) {
@@ -287,7 +287,7 @@ func usage() error {
 			if IsCmdlineOnlyFlag(fl.Name) {
 				onlyCmdLine = "*"
 			}
-			st.AddCols(fl.Name, defValue, onlyCmdLine, fl.Usage)
+			st.AddCols(fl.Name, FlagNameAsEnvName(fl.Name), defValue, onlyCmdLine, fl.Usage)
 		})
 
 		fmt.Printf("%s\n", st.String())
