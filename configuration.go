@@ -62,15 +62,23 @@ func (e *ErrUnknownFlag) Error() string {
 
 func init() {
 	Events.AddListener(EventInit{}, func(ev Event) {
-		FlagCfgFile = flag.String(FlagNameCfgFile, "", "Configuration file")
+		var dir string
+
+		if IsRunningAsService() {
+			exe, err := os.Executable()
+			Panic(err)
+
+			dir = filepath.Dir(exe)
+		} else {
+			wd, err := os.Getwd()
+			Panic(err)
+
+			dir = wd
+		}
+
+		FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(filepath.Join(dir, AppFilename(".json"))), "Configuration file")
 		FlagCfgReset = systemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
 		FlagCfgCreate = systemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
-	})
-
-	Events.AddListener(EventFlagsParsed{}, func(event Event) {
-		if *FlagCfgFile == "" {
-			*FlagCfgFile = CleanPath(AppFilename(".json"))
-		}
 	})
 }
 
@@ -270,21 +278,7 @@ func LoadConfigurationFile[T any]() (*T, error) {
 	DebugFunc()
 
 	if !FileExists(*FlagCfgFile) {
-		exe, err := os.Executable()
-		if Error(err) {
-			return nil, err
-		}
-
-		f := CleanPath(filepath.Join(filepath.Dir(exe), filepath.Base(*FlagCfgFile)))
-
-		if !FileExists(f) {
-			return nil, nil
-		}
-
-		err = flag.Set(FlagNameCfgFile, f)
-		if Error(err) {
-			return nil, err
-		}
+		return nil, nil
 	}
 
 	DebugFunc(*FlagCfgFile)
