@@ -187,6 +187,9 @@ func closeLog() error {
 }
 
 func formatLog(level string, index int, msg string, addStacktrace bool) *LogEntry {
+	addStacktrace = addStacktrace || level == LevelError
+	isLogVerboseEnabled := IsLogVerboseEnabled() || level == LevelError
+
 	ri := GetRuntimeInfo(index)
 
 	source := fmt.Sprintf("%s/%s/%s:%d", ri.Pack, ri.File, ri.Fn, ri.Line)
@@ -219,7 +222,7 @@ func formatLog(level string, index int, msg string, addStacktrace bool) *LogEntr
 
 		msg = string(ba)
 
-	case IsLogVerboseEnabled():
+	case isLogVerboseEnabled:
 		if level == LevelDebug {
 			msg = strings.ReplaceAll(msg, "\n\t", "\n")
 			msg = strings.ReplaceAll(msg, "\n", "\n\t")
