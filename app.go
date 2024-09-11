@@ -118,11 +118,13 @@ var (
 	appLifecycle            = NewNotice()
 	startupCh               = make(chan error, 1)
 	onceBanner              sync.Once
+	onceRunningInDocker     sync.Once
 	onceRunningAsService    sync.Once
 	onceRunningAsExecutable sync.Once
 	onceRunningInteractive  sync.Once
 	onceShutdownHooks       sync.Once
 	onceTitle               sync.Once
+	runningInDocker         bool
 	runningAsService        bool
 	runningAsExecutable     bool
 	runningInteractive      bool
@@ -804,6 +806,16 @@ func AppShutdown() {
 	DebugFunc()
 
 	shutdownCh <- struct{}{}
+}
+
+func IsRunningInDocker() bool {
+	onceRunningInDocker.Do(func() {
+		runningInDocker = FileExists(("/.dockerenv"))
+	})
+
+	DebugFunc(runningInDocker)
+
+	return runningInDocker
 }
 
 func IsRunningAsService() bool {
