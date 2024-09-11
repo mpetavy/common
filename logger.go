@@ -17,6 +17,7 @@ const (
 	FlagNameLogFileName     = "log.file"
 	FlagNameLogFileSize     = "log.filesize"
 	FlagNameLogVerbose      = "log.verbose"
+	FlagNameLogVerboseError = "log.verbose.error"
 	FlagNameLogIO           = "log.io"
 	FlagNameLogJson         = "log.json"
 	FlagNameLogSys          = "log.sys"
@@ -37,6 +38,7 @@ var (
 	FlagLogFileName     = systemFlagString(FlagNameLogFileName, "", "filename to log file")
 	FlagLogFileSize     = systemFlagInt(FlagNameLogFileSize, 5*1024*1024, "max log file size")
 	FlagLogVerbose      = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
+	FlagLogVerboseError = flag.Bool(FlagNameLogVerboseError, false, "verbose error logging")
 	FlagLogIO           = systemFlagBool(FlagNameLogIO, false, "trace logging")
 	FlagLogJson         = systemFlagBool(FlagNameLogJson, false, "JSON output")
 	FlagLogSys          = systemFlagBool(FlagNameLogSys, false, "Use OS system logger")
@@ -187,8 +189,7 @@ func closeLog() error {
 }
 
 func formatLog(level string, index int, msg string, addStacktrace bool) *LogEntry {
-	addStacktrace = addStacktrace || level == LevelError
-	isLogVerboseEnabled := IsLogVerboseEnabled() || level == LevelError
+	verbose := IsLogVerboseEnabled() || (*FlagLogVerboseError && slices.Contains([]string{LevelError, LevelFatal}, level))
 
 	ri := GetRuntimeInfo(index)
 
@@ -222,7 +223,7 @@ func formatLog(level string, index int, msg string, addStacktrace bool) *LogEntr
 
 		msg = string(ba)
 
-	case isLogVerboseEnabled:
+	case verbose:
 		if level == LevelDebug {
 			msg = strings.ReplaceAll(msg, "\n\t", "\n")
 			msg = strings.ReplaceAll(msg, "\n", "\n\t")
