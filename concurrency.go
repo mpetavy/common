@@ -55,46 +55,48 @@ func RegisteredGoRoutines(f func(id int, ri RuntimeInfo)) {
 	}
 }
 
-func GoRoutineId() uint64 {
-	b := make([]byte, 1<<16)
-	b = b[:runtime.Stack(b, false)]
-	b = bytes.TrimPrefix(b, []byte("goroutine "))
-	b = b[:bytes.IndexByte(b, ' ')]
-	n, _ := strconv.ParseUint(string(b), 10, 64)
+func getRoutineId(s string) uint64 {
+	s = strings.TrimPrefix(s, "goroutine ")
+
+	i := strings.Index(s, " ")
+	if i == -1 {
+		i = len(s)
+	}
+
+	n, err := strconv.ParseUint(s[:i], 10, 64)
+
+	Panic(err)
 
 	return n
+}
+
+func GoRoutineId() uint64 {
+	b := make([]byte, 64*1024)
+	b = b[:runtime.Stack(b, false)]
+
+	return getRoutineId(string(b))
 }
 
 func GoRoutineIds() []uint64 {
 	ids := make([]uint64, 0)
 
-	b := make([]byte, 1<<16)
+	b := make([]byte, 1024*1024)
 	b = b[:runtime.Stack(b, true)]
 
 	scanner := bufio.NewScanner(bytes.NewReader(b))
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if !strings.HasPrefix(line, "goroutine") {
+		if !strings.HasPrefix(line, "goroutine ") {
 			continue
 		}
 
-		b = bytes.TrimPrefix([]byte(line), []byte("goroutine "))
-		b = b[:bytes.IndexByte(b, ' ')]
-		n, _ := strconv.ParseUint(string(b), 10, 64)
+		id := getRoutineId(line)
 
-		ids = append(ids, n)
+		ids = append(ids, id)
 	}
 
 	return ids
-}
-
-func GoRoutineName() string {
-	buf := make([]byte, 100)
-	runtime.Stack(buf, true)
-	buf = bytes.Split(buf, []byte{'\n'})[0]
-	buf = buf[:len(buf)-1]
-	return string(bytes.TrimSuffix(buf, []byte("[running]")))
 }
 
 type TimeoutRegister[T comparable] struct {
