@@ -9,25 +9,14 @@ import (
 type goVars struct {
 	sync.RWMutex
 	register map[uint64]map[string]any
+	lastTime time.Time
 }
 
 var (
-	GoVars *goVars
-)
-
-func init() {
 	GoVars = &goVars{
 		register: make(map[uint64]map[string]any),
 	}
-
-	go func() {
-		for {
-			time.Sleep(500 * time.Millisecond)
-
-			GoVars.garbadge()
-		}
-	}()
-}
+)
 
 func (g *goVars) Set(name string, value any) {
 	g.Lock()
@@ -53,6 +42,18 @@ func (g *goVars) GetById(id uint64) map[string]any {
 		g.RUnlock()
 	}()
 
+	if g.lastTime.IsZero() || g.lastTime.Before(time.Now()) {
+		g.lastTime = time.Now()
+
+		ids := GoRoutineIds()
+
+		for id := range g.register {
+			if !slices.Contains(ids, id) {
+				delete(g.register, id)
+			}
+		}
+	}
+
 	values, ok := g.register[id]
 
 	if !ok {
@@ -64,19 +65,4 @@ func (g *goVars) GetById(id uint64) map[string]any {
 
 func (g *goVars) Get(id uint64) map[string]any {
 	return g.GetById(GoRoutineId())
-}
-
-func (g *goVars) garbadge() {
-	g.Lock()
-	defer func() {
-		g.Unlock()
-	}()
-
-	ids := GoRoutineIds()
-
-	for k := range g.register {
-		if !slices.Contains(ids, k) {
-			delete(g.register, k)
-		}
-	}
 }
