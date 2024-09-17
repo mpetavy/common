@@ -809,7 +809,7 @@ func HidePasswordValue(name string, value string) string {
 
 	name = strings.ToLower(name)
 
-	for _, hit := range []string{"password", "pwd", "credential", "subscription", "private"} {
+	for _, hit := range []string{"password", "token", "pwd", "credential", "subscription", "private"} {
 		if strings.Contains(name, hit) {
 			return strings.Repeat("X", len(value))
 		}

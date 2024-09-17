@@ -1,11 +1,13 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"runtime"
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -54,13 +56,37 @@ func RegisteredGoRoutines(f func(id int, ri RuntimeInfo)) {
 }
 
 func GoRoutineId() uint64 {
-	b := make([]byte, 64)
+	b := make([]byte, 1<<16)
 	b = b[:runtime.Stack(b, false)]
 	b = bytes.TrimPrefix(b, []byte("goroutine "))
 	b = b[:bytes.IndexByte(b, ' ')]
 	n, _ := strconv.ParseUint(string(b), 10, 64)
 
 	return n
+}
+
+func GoRoutineIds() []uint64 {
+	ids := make([]uint64, 0)
+
+	b := make([]byte, 1<<16)
+	b = b[:runtime.Stack(b, true)]
+
+	scanner := bufio.NewScanner(bytes.NewReader(b))
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if !strings.HasPrefix(line, "goroutine") {
+			continue
+		}
+
+		b = bytes.TrimPrefix([]byte(line), []byte("goroutine "))
+		b = b[:bytes.IndexByte(b, ' ')]
+		n, _ := strconv.ParseUint(string(b), 10, 64)
+
+		ids = append(ids, n)
+	}
+
+	return ids
 }
 
 func GoRoutineName() string {
