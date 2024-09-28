@@ -64,14 +64,27 @@ type EventLog struct {
 	Entry *LogEntry
 }
 
+func NewLogEntry(level string, source string, msg string) *LogEntry {
+	now := time.Now().UTC()
+
+	return &LogEntry{
+		Time:        now,
+		Timestamp:   now.Format(time.RFC3339),
+		GoRoutineId: GoRoutineId(),
+		Level:       level,
+		Source:      source,
+		Msg:         msg,
+	}
+}
+
 type LogEntry struct {
-	Time       time.Time `json:"-"`
-	Timestamp  string    `json:"timestamp"`
-	Level      string    `json:"level"`
-	Source     string    `json:"source"`
-	Msg        string    `json:"message"`
-	PrintMsg   string    `json:"printMessage"`
-	Stacktrace string    `json:"stacktrace"`
+	Time        time.Time `json:"-"`
+	Timestamp   string    `json:"timestamp"`
+	GoRoutineId uint64    `json:"goRoutineId"`
+	Level       string    `json:"level"`
+	Source      string    `json:"source"`
+	Msg         string    `json:"message"`
+	PrintMsg    string    `json:"printMessage"`
 }
 
 func init() {
@@ -195,16 +208,7 @@ func formatLog(level string, index int, msg string, addStacktrace bool) *LogEntr
 
 	source := fmt.Sprintf("%s/%s/%s:%d", ri.Pack, ri.File, ri.Fn, ri.Line)
 
-	now := time.Now().UTC()
-
-	logEntry := &LogEntry{
-		Time:       now,
-		Timestamp:  now.Format(time.RFC3339),
-		Level:      level,
-		Source:     source,
-		Msg:        msg,
-		Stacktrace: ri.Stack,
-	}
+	logEntry := NewLogEntry(level, source, msg)
 
 	if addStacktrace {
 		msg = msg + "\n" + ri.Stack
@@ -229,7 +233,7 @@ func formatLog(level string, index int, msg string, addStacktrace bool) *LogEntr
 			msg = strings.ReplaceAll(msg, "\n", "\n\t")
 		}
 
-		msg = fmt.Sprintf("%s | %-5s | %-"+strconv.Itoa(maxLen)+"s | %s", now.Format(SortedDateTimeMilliMask), level, source, msg)
+		msg = fmt.Sprintf("%s | %9d | %-5s | %-"+strconv.Itoa(maxLen)+"s | %s", logEntry.Time.Format(SortedDateTimeMilliMask), logEntry.GoRoutineId, level, source, msg)
 	default:
 		if level != LevelDebug && level != LevelInfo {
 			msg = fmt.Sprintf("%s: %s", Capitalize(strings.ToLower(level)), msg)

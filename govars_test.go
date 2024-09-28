@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestGoVars(t *testing.T) {
+func TestGoRoutineVars(t *testing.T) {
 	ids := make(map[uint64]string, 0)
 
 	quit := make(chan struct{})
@@ -19,7 +19,7 @@ func TestGoVars(t *testing.T) {
 
 			ids[id] = value
 
-			GoVars.Set("value", value)
+			GoRoutineVars.Set("value", value)
 
 			<-quit
 		}(i)
@@ -28,7 +28,7 @@ func TestGoVars(t *testing.T) {
 	time.Sleep(time.Second)
 
 	for k, v := range ids {
-		value := GoVars.GetById(k)["value"]
+		value := GoRoutineVars.GetById(k)["value"]
 
 		require.Equal(t, v, value)
 	}
@@ -38,7 +38,7 @@ func TestGoVars(t *testing.T) {
 	time.Sleep(time.Second)
 
 	for k := range ids {
-		value := GoVars.GetById(k)["value"]
+		value := GoRoutineVars.GetById(k)["value"]
 
 		require.Nil(t, value)
 	}

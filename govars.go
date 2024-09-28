@@ -6,19 +6,19 @@ import (
 	"time"
 )
 
-type goVars struct {
+type goRoutineVars struct {
 	sync.RWMutex
 	register map[uint64]map[string]any
 	lastTime time.Time
 }
 
 var (
-	GoVars = &goVars{
+	GoRoutineVars = &goRoutineVars{
 		register: make(map[uint64]map[string]any),
 	}
 )
 
-func (g *goVars) Set(name string, value any) {
+func (g *goRoutineVars) Set(name string, value any) {
 	g.Lock()
 	defer func() {
 		g.Unlock()
@@ -36,7 +36,7 @@ func (g *goVars) Set(name string, value any) {
 	g.register[id] = values
 }
 
-func (g *goVars) GetById(id uint64) map[string]any {
+func (g *goRoutineVars) GetById(id uint64) map[string]any {
 	g.RLock()
 	defer func() {
 		g.RUnlock()
@@ -63,6 +63,6 @@ func (g *goVars) GetById(id uint64) map[string]any {
 	return values
 }
 
-func (g *goVars) Get(id uint64) map[string]any {
+func (g *goRoutineVars) Get(id uint64) map[string]any {
 	return g.GetById(GoRoutineId())
 }
