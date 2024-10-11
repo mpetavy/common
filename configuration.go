@@ -14,6 +14,10 @@ import (
 type EventConfigurationReset struct {
 }
 
+type EventConfigurationCloud struct {
+	Flags map[string]string
+}
+
 type Configuration struct {
 	ApplicationTitle   string    `json:"applicationTitle"`
 	ApplicationVersion string    `json:"applicationVersion"`
@@ -278,7 +282,9 @@ func LoadConfigurationFile[T any]() (*T, error) {
 	DebugFunc()
 
 	if !FileExists(*FlagCfgFile) {
-		return nil, nil
+		return nil, &ErrFileNotFound{
+			FileName: *FlagCfgFile,
+		}
 	}
 
 	DebugFunc(*FlagCfgFile)
@@ -342,85 +348,90 @@ func SaveConfigurationFile(cfg any) error {
 func setFlags() error {
 	DebugFunc()
 
-	if len(flagInfos) == 0 {
-		mapDefaults, err := registerDefaultFlags()
-		if Error(err) {
-			return err
-		}
-		mapCfgFile, err := registerCfgFileFlags()
-		if Error(err) {
-			return err
-		}
-		mapIniFile, err := registerIniFileFlags()
-		if Error(err) {
-			return err
-		}
-		mapArgs, err := registerArgsFlags()
-		if Error(err) {
-			return err
-		}
-		mapEnv, err := registerEnvFlags()
+	flagMaps := []struct {
+		origin string
+		fn     func() (map[string]string, error)
+		flags  map[string]string
+	}{
+		{
+			origin: "default",
+			fn:     registerDefaultFlags,
+		},
+		{
+			origin: "ini file",
+			fn:     registerIniFileFlags,
+		},
+		{
+			origin: "cfg file",
+			fn:     registerCfgFileFlags,
+		},
+		{
+			origin: "env",
+			fn:     registerEnvFlags,
+		},
+		{
+			origin: "args",
+			fn:     registerArgsFlags,
+		},
+		{
+			origin: "cloud",
+			fn:     registerCloudFlags,
+		},
+		{
+			origin: "args",
+			fn:     registerArgsFlags,
+		},
+	}
+
+	for i := 0; i < len(flagMaps); i++ {
+		var err error
+
+		flagMaps[i].flags, err = flagMaps[i].fn()
 		if Error(err) {
 			return err
 		}
 
-		maps := []struct {
-			origin string
-			m      map[string]string
-		}{
-			{
-				origin: "default",
-				m:      mapDefaults,
-			},
-			{
-				origin: "ini file",
-				m:      mapIniFile,
-			},
-			{
-				origin: "json file",
-				m:      mapCfgFile,
-			},
-			{
-				origin: "env",
-				m:      mapEnv,
-			},
-			{
-				origin: "args",
-				m:      mapArgs,
-			},
+		for key, value := range flagMaps[i].flags {
+			err := flag.Set(key, value)
+			if Error(err) {
+				return err
+			}
+		}
+	}
+
+	flagNames := []string{}
+	flag.VisitAll(func(f *flag.Flag) {
+		flagNames = append(flagNames, f.Name)
+	})
+
+	for _, flagName := range flagNames {
+		if IsCmdlineOnlyFlag(flagName) || strings.HasPrefix(flagName, "test.") {
+			continue
 		}
 
-		flag.VisitAll(func(f *flag.Flag) {
-			if IsCmdlineOnlyFlag(f.Name) {
-				delete(mapEnv, f.Name)
-				delete(mapCfgFile, f.Name)
-				delete(mapIniFile, f.Name)
+		var origin string
+		var value string
+
+		for _, flagMap := range flagMaps {
+			v, ok := flagMap.flags[flagName]
+
+			if !ok {
+				continue
 			}
 
-			var origin string
-			var value string
+			origin = flagMap.origin
+			value = v
 
-			for _, m := range maps {
-				v, ok := m.m[f.Name]
-
-				if !ok {
-					continue
-				}
-
-				origin = m.origin
-				value = v
+			err := flag.Set(flagName, v)
+			if Error(err) {
+				return err
 			}
+		}
 
-			// ignore GO's test flags
-			if !strings.HasPrefix(f.Name, "test.") {
-				Error(flag.Set(f.Name, value))
-			}
-
-			flagInfos[f.Name] = flagInfo{
-				Value:  value,
-				Origin: origin,
-			}
-		})
+		flagInfos[flagName] = flagInfo{
+			Value:  value,
+			Origin: origin,
+		}
 	}
 
 	debugFlags()
@@ -463,10 +474,32 @@ func registerArgsFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.Visit(func(f *flag.Flag) {
-		if IsFlagProvided(f.Name) {
-			m[f.Name] = f.Value.String()
-		}
+		m[f.Name] = f.Value.String()
 	})
+
+	return m, nil
+}
+
+func registerCloudFlags() (map[string]string, error) {
+	DebugFunc()
+
+	m := make(map[string]string)
+
+	event := &EventConfigurationCloud{}
+	event.Flags = make(map[string]string)
+
+	Events.Emit(event, false)
+
+	for key, value := range event.Flags {
+		if flag.Lookup(key) == nil {
+			return nil, &ErrUnknownFlag{
+				Origin: "External",
+				Name:   key,
+			}
+		}
+
+		m[key] = value
+	}
 
 	return m, nil
 }
@@ -481,10 +514,10 @@ func registerEnvFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		envValue := os.Getenv(FlagNameAsEnvName(f.Name))
+		value := os.Getenv(FlagNameAsEnvName(f.Name))
 
-		if envValue != "" {
-			m[f.Name] = envValue
+		if value != "" {
+			m[f.Name] = value
 		}
 	})
 
@@ -497,8 +530,12 @@ func registerCfgFileFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	cfg, err := LoadConfigurationFile[Configuration]()
+	_, ok := err.(*ErrFileNotFound)
+	if ok {
+		return m, nil
+	}
 	if Error(err) {
-		return nil, err
+		return m, err
 	}
 
 	if cfg != nil && cfg.Flags != nil {
