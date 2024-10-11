@@ -14,10 +14,6 @@ import (
 type EventConfigurationReset struct {
 }
 
-type EventConfigurationAzure struct {
-	Flags map[string]string
-}
-
 type Configuration struct {
 	ApplicationTitle   string    `json:"applicationTitle"`
 	ApplicationVersion string    `json:"applicationVersion"`

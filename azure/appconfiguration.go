@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+type EventConfigurationAzure struct {
+	Flags map[string]string
+}
+
 func getFlag(ctx context.Context, configClient *azappconfig.Client, credentialClient *azidentity.DefaultAzureCredential, key string) (string, error) {
 	common.DebugFunc(key)
 	resp, err := configClient.GetSetting(
