@@ -4,9 +4,9 @@ go 1.23
 
 require (
 	cloud.google.com/go/translate v1.7.1
-	github.com/Azure/azure-sdk-for-go/sdk/data/azappconfig v1.1.0
+	github.com/Azure/azure-sdk-for-go/sdk/appconfig/azappconfig v0.3.2
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.0
-	github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal v0.7.1
+	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets v0.12.0
 	github.com/beevik/etree v1.1.4
 	github.com/dlclark/regexp2 v1.11.2
 	github.com/dop251/goja v0.0.0-20230427124612-428fc442ff5f
