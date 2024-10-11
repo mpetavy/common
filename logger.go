@@ -46,18 +46,17 @@ var (
 	FlagLogBreakOnError = systemFlagString(FlagNameLogBreakOnError, "", "break on logging an error")
 	FlagLogGap          = systemFlagInt(FlagNameLogGap, 100, "time gap after show a separator")
 
-	mu             ReentrantMutex
-	fw             *fileWriter
-	rw                         = newMemoryWriter()
-	LogDebug       *log.Logger = log.New(rw, prefix(LevelDebug), 0)
-	LogInfo        *log.Logger = log.New(rw, prefix(LevelInfo), 0)
-	LogWarn        *log.Logger = log.New(rw, prefix(LevelWarn), 0)
-	LogError       *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
-	LogFatal       *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
-	lastErrorEntry *LogEntry
-	lastLogTime    = time.Now()
-	isLogInit      bool
-	listNoDebug    = NewGoRoutinesRegister()
+	mu          ReentrantMutex
+	fw          *fileWriter
+	rw                      = newMemoryWriter()
+	LogDebug    *log.Logger = log.New(rw, prefix(LevelDebug), 0)
+	LogInfo     *log.Logger = log.New(rw, prefix(LevelInfo), 0)
+	LogWarn     *log.Logger = log.New(rw, prefix(LevelWarn), 0)
+	LogError    *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
+	LogFatal    *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
+	lastLogTime             = time.Now()
+	isLogInit   bool
+	listNoDebug = NewGoRoutinesRegister()
 )
 
 type EventLog struct {
@@ -256,14 +255,10 @@ func logDebugPrint(s string) {
 	lastLogTime = time.Now()
 
 	LogDebug.Print(s)
-
-	lastErrorEntry = nil
 }
 
 func logInfoPrint(s string) {
 	LogInfo.Print(s)
-
-	lastErrorEntry = nil
 }
 
 func logWarnPrint(s string) {
@@ -430,11 +425,15 @@ func WarnError(err error) bool {
 }
 
 func isLikeLastError(logEntry *LogEntry) bool {
-	if lastErrorEntry == nil {
+	lastErrorEntry, ok := GoRoutineVars.Get().Get(goVarslastLogEntry)
+
+	if !ok {
 		return false
 	}
 
-	return lastErrorEntry.Msg == logEntry.Msg
+	entry := lastErrorEntry.(*LogEntry)
+
+	return entry.Msg == logEntry.Msg
 }
 
 func Error(err error) bool {
@@ -461,7 +460,7 @@ func Error(err error) bool {
 
 	Events.Emit(EventLog{Entry: logEntry}, false)
 
-	lastErrorEntry = logEntry
+	GoRoutineVars.Get().Set(goVarslastLogEntry, logEntry)
 
 	logErrorPrint(logEntry.PrintMsg)
 

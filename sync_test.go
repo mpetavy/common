@@ -23,6 +23,14 @@ func TestSync(t *testing.T) {
 	assert.Equal(t, "error", e.Error())
 }
 
+func TestSyncSame(t *testing.T) {
+	str := "Hello world"
+
+	s := NewSyncOf(&str)
+
+	assert.True(t, &str == s.Get())
+}
+
 func TestSynOf(t *testing.T) {
 	var counter int
 

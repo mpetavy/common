@@ -2,67 +2,75 @@ package common
 
 import (
 	"slices"
-	"sync"
 	"time"
 )
 
-type goRoutineVars struct {
-	sync.RWMutex
-	register map[uint64]map[string]any
-	lastTime time.Time
-}
-
-var (
-	GoRoutineVars = &goRoutineVars{
-		register: make(map[uint64]map[string]any),
-	}
+const (
+	goVarslastLogEntry = "LAST_LOG_ENTRY"
 )
 
-func (g *goRoutineVars) Set(name string, value any) {
-	g.Lock()
-	defer func() {
-		g.Unlock()
-	}()
+type goRoutineVars map[uint64]map[string]any
 
-	id := GoRoutineId()
+var (
+	vars          = make(goRoutineVars)
+	GoRoutineVars = NewSyncOf(&vars)
+)
 
-	values, ok := g.register[id]
+func init() {
+	t := time.NewTicker(time.Second)
+	go func() {
+		defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
-	if !ok {
-		values = make(map[string]any)
-	}
-
-	values[name] = value
-	g.register[id] = values
-}
-
-func (g *goRoutineVars) GetById(id uint64) map[string]any {
-	g.RLock()
-	defer func() {
-		g.RUnlock()
-	}()
-
-	if g.lastTime.IsZero() || g.lastTime.Before(time.Now()) {
-		g.lastTime = time.Now()
-
-		ids := GoRoutineIds()
-
-		for id := range g.register {
-			if !slices.Contains(ids, id) {
-				delete(g.register, id)
+		for {
+			select {
+			case <-t.C:
+				GoRoutineVars.Get().cleanup()
 			}
 		}
-	}
-
-	values, ok := g.register[id]
-
-	if !ok {
-		return nil
-	}
-
-	return values
+	}()
 }
 
-func (g *goRoutineVars) Get(id uint64) map[string]any {
-	return g.GetById(GoRoutineId())
+func (g *goRoutineVars) cleanup() {
+	GoRoutineVars.Run(func(g *goRoutineVars) {
+		ids := GoRoutineIds()
+
+		for id := range *g {
+			if !slices.Contains(ids, id) {
+				delete(*g, id)
+			}
+		}
+	})
+}
+
+func (g *goRoutineVars) Set(name string, value any) {
+	GoRoutineVars.Run(func(g *goRoutineVars) {
+		id := GoRoutineId()
+
+		values, ok := (*g)[id]
+
+		if !ok {
+			values = make(map[string]any)
+		}
+
+		values[name] = value
+		(*g)[id] = values
+	})
+}
+
+func (g *goRoutineVars) GetById(id uint64, key string) (value any, ok bool) {
+	GoRoutineVars.Run(func(g *goRoutineVars) {
+		m, found := (*g)[id]
+
+		if !found {
+			return
+		}
+
+		value, ok = m[key]
+	})
+
+	return value, ok
+}
+
+func (g *goRoutineVars) Get(key string) (value any, ok bool) {
+	return g.GetById(GoRoutineId(), key)
 }
