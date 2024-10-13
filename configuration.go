@@ -348,89 +348,79 @@ func SaveConfigurationFile(cfg any) error {
 func setFlags() error {
 	DebugFunc()
 
+	// is flag.Set(...=) ist used then the correct list fo cmdline flags is destroyed, that's why here preserved...
+	argsFlags, _ := registerArgsFlags()
+
 	flagMaps := []struct {
-		origin string
-		fn     func() (map[string]string, error)
-		flags  map[string]string
+		origin     string
+		fn         func() (map[string]string, error)
+		flags      map[string]string
+		initialSet bool
 	}{
 		{
-			origin: "default",
-			fn:     registerDefaultFlags,
+			origin:     "default",
+			fn:         registerDefaultFlags,
+			initialSet: false,
 		},
 		{
-			origin: "ini file",
-			fn:     registerIniFileFlags,
+			origin:     "ini file",
+			fn:         registerIniFileFlags,
+			initialSet: true,
 		},
 		{
-			origin: "cfg file",
-			fn:     registerCfgFileFlags,
+			origin:     "cfg file",
+			fn:         registerCfgFileFlags,
+			initialSet: true,
 		},
 		{
-			origin: "env",
-			fn:     registerEnvFlags,
+			origin:     "env",
+			fn:         registerEnvFlags,
+			initialSet: true,
 		},
 		{
-			origin: "args",
-			fn:     registerArgsFlags,
+			origin:     "args",
+			flags:      argsFlags,
+			initialSet: true,
 		},
 		{
-			origin: "cloud",
-			fn:     registerCloudFlags,
+			origin:     "cloud",
+			fn:         registerCloudFlags,
+			initialSet: true,
 		},
 		{
-			origin: "args",
-			fn:     registerArgsFlags,
+			origin:     "args",
+			fn:         nil,
+			flags:      argsFlags,
+			initialSet: true,
 		},
 	}
 
 	for i := 0; i < len(flagMaps); i++ {
 		var err error
 
-		flagMaps[i].flags, err = flagMaps[i].fn()
-		if Error(err) {
-			return err
-		}
-
-		for key, value := range flagMaps[i].flags {
-			err := flag.Set(key, value)
-			if Error(err) {
-				return err
-			}
-		}
-	}
-
-	flagNames := []string{}
-	flag.VisitAll(func(f *flag.Flag) {
-		if IsCmdlineOnlyFlag(f.Name) {
-			return
-		}
-
-		flagNames = append(flagNames, f.Name)
-	})
-
-	for _, flagName := range flagNames {
-		var origin string
-		var value string
-
-		for _, flagMap := range flagMaps {
-			v, ok := flagMap.flags[flagName]
-
-			if !ok {
-				continue
-			}
-
-			origin = flagMap.origin
-			value = v
-
-			err := flag.Set(flagName, v)
+		if flagMaps[i].fn != nil {
+			flagMaps[i].flags, err = flagMaps[i].fn()
 			if Error(err) {
 				return err
 			}
 		}
 
-		flagInfos[flagName] = flagInfo{
-			Value:  value,
-			Origin: origin,
+		if flagMaps[i].initialSet {
+			for key, value := range flagMaps[i].flags {
+				if IsCmdlineOnlyFlag(key) {
+					continue
+				}
+
+				err := flag.Set(key, value)
+				if Error(err) {
+					return err
+				}
+
+				flagInfos[key] = flagInfo{
+					Value:  value,
+					Origin: flagMaps[i].origin,
+				}
+			}
 		}
 	}
 
