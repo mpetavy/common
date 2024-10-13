@@ -401,14 +401,14 @@ func setFlags() error {
 
 	flagNames := []string{}
 	flag.VisitAll(func(f *flag.Flag) {
+		if IsCmdlineOnlyFlag(f.Name) {
+			return
+		}
+
 		flagNames = append(flagNames, f.Name)
 	})
 
 	for _, flagName := range flagNames {
-		if IsCmdlineOnlyFlag(flagName) || strings.HasPrefix(flagName, "test.") {
-			continue
-		}
-
 		var origin string
 		var value string
 
@@ -462,6 +462,10 @@ func registerDefaultFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
+		if IsCmdlineOnlyFlag(f.Name) {
+			return
+		}
+
 		m[f.Name] = f.Value.String()
 	})
 
@@ -514,6 +518,10 @@ func registerEnvFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
+		if IsCmdlineOnlyFlag(f.Name) {
+			return
+		}
+
 		value := os.Getenv(FlagNameAsEnvName(f.Name))
 
 		if value != "" {
