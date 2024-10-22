@@ -45,7 +45,7 @@ func TestSynOf(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			s.Run(func(v *int) {
+			s.RunSynchronized(func(v *int) {
 				*v++
 			})
 		}()

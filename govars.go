@@ -31,7 +31,7 @@ func init() {
 }
 
 func (g *goRoutineVars) cleanup() {
-	GoRoutineVars.Run(func(g *goRoutineVars) {
+	GoRoutineVars.RunSynchronized(func(g *goRoutineVars) {
 		ids := GoRoutineIds()
 
 		for id := range *g {
@@ -43,7 +43,7 @@ func (g *goRoutineVars) cleanup() {
 }
 
 func (g *goRoutineVars) Set(name string, value any) {
-	GoRoutineVars.Run(func(g *goRoutineVars) {
+	GoRoutineVars.RunSynchronized(func(g *goRoutineVars) {
 		id := GoRoutineId()
 
 		values, ok := (*g)[id]
@@ -58,7 +58,7 @@ func (g *goRoutineVars) Set(name string, value any) {
 }
 
 func (g *goRoutineVars) GetById(id uint64, key string) (value any, ok bool) {
-	GoRoutineVars.Run(func(g *goRoutineVars) {
+	GoRoutineVars.RunSynchronized(func(g *goRoutineVars) {
 		m, found := (*g)[id]
 
 		if !found {
