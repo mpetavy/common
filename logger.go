@@ -464,7 +464,7 @@ func Error(err error) bool {
 
 	logErrorPrint(logEntry.PrintMsg)
 
-	if *FlagLogBreakOnError != "" && (*FlagLogBreakOnError == "any" || strings.Contains(logEntry.PrintMsg, *FlagLogBreakOnError)) {
+	if *FlagLogBreakOnError != "" && (ToBool(*FlagLogBreakOnError) || strings.Contains(logEntry.PrintMsg, *FlagLogBreakOnError)) {
 		Exit(1)
 	}
 
