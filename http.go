@@ -289,7 +289,7 @@ func HTTPWrite(w http.ResponseWriter, status int, mimeType string, ba []byte) er
 }
 
 func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method string, address string, headers http.Header, formdata url.Values, username string, password string, body io.Reader, expectedCode int) (*http.Response, []byte, error) {
-	DebugFunc("Method: %s URL: %s Username: %s Password: %s", method, address, username, strings.Repeat("X", len(password)))
+	DebugFunc()
 
 	client := &http.Client{}
 
@@ -373,7 +373,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 			s = strings.Replace(s, password, strings.Repeat("X", len(password)), -1)
 		}
 
-		Debug("HTTP Request:\n%s\n", s)
+		Debug("HTTP Request: %s %s Username: %s Password: %s\n%s\n", method, address, username, strings.Repeat("X", len(password)), s)
 	}
 
 	var resp *http.Response
@@ -406,7 +406,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 			s = strings.Replace(s, password, strings.Repeat("X", len(password)), -1)
 		}
 
-		Debug("HTTP Response:\n%s\n", s)
+		Debug("HTTP Response: %s %s Username: %s Password: %s\n%s\n", method, address, username, strings.Repeat("X", len(password)), s)
 	}
 
 	ba, err := ReadBody(resp.Body)
