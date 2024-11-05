@@ -98,11 +98,11 @@ const (
 )
 
 var (
-	FlagService         = systemFlagString(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
-	FlagServiceUser     = systemFlagString(FlagNameServiceUsername, "", "Service user")
-	FlagServicePassword = systemFlagString(FlagNameServicePassword, "", "Service password")
-	FlagServiceTimeout  = systemFlagInt(FlagNameServiceTimeout, 1000, "Service timeout")
-	FlagScriptTimeout   = systemFlagInt(FlagNameScriptTimeout, 5000, "Script timeout")
+	FlagService         = SystemFlagString(FlagNameService, "", "Service operation ("+strings.Join([]string{SERVICE_SIMULATE, SERVICE_START, SERVICE_STOP, SERVICE_RESTART, SERVICE_INSTALL, SERVICE_UNINSTALL}, ",")+")")
+	FlagServiceUser     = SystemFlagString(FlagNameServiceUsername, "", "Service user")
+	FlagServicePassword = SystemFlagString(FlagNameServicePassword, "", "Service password")
+	FlagServiceTimeout  = SystemFlagInt(FlagNameServiceTimeout, 1000, "Service timeout")
+	FlagScriptTimeout   = SystemFlagInt(FlagNameScriptTimeout, 5000, "Script timeout")
 	FlagScriptStart     *string
 	FlagScriptStop      *string
 	FlagUsage           = flag.Bool(FlagNameUsage, false, "show flags description and usage")
@@ -140,8 +140,8 @@ func Init(title string, version string, git string, build string, description st
 	Panic(initWorkingPath())
 
 	Events.AddListener(EventInit{}, func(ev Event) {
-		FlagScriptStart = systemFlagString(FlagNameScriptStart, fmt.Sprintf("%s%s-start%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
-		FlagScriptStop = systemFlagString(FlagNameScriptStop, fmt.Sprintf("%s%s-stop%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
+		FlagScriptStart = SystemFlagString(FlagNameScriptStart, fmt.Sprintf("%s%s-start%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
+		FlagScriptStop = SystemFlagString(FlagNameScriptStop, fmt.Sprintf("%s%s-stop%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
 	})
 
 	ba, err := resources.ReadFile("go.mod")
@@ -200,7 +200,7 @@ func Init(title string, version string, git string, build string, description st
 	}
 
 	FlagAppProduct = flag.String(FlagNameAppProduct, title, "app product")
-	FlagAppTicker = systemFlagInt(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
+	FlagAppTicker = SystemFlagInt(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
 
 	app = &application{
 		Title:         title,

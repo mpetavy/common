@@ -12,7 +12,7 @@ const (
 )
 
 var (
-	FlagIoBufferThreshold = systemFlagInt(FlagNameIoBufferThreshold, 10*1024*1024, "byte threshold to store to file")
+	FlagIoBufferThreshold = SystemFlagInt(FlagNameIoBufferThreshold, 10*1024*1024, "byte threshold to store to file")
 )
 
 type HybridBuffer struct {

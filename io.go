@@ -26,7 +26,7 @@ var (
 	DefaultFileMode  = FileMode(true, true, false)
 	DefaultDirMode   = FileMode(true, true, true)
 
-	FlagIoFileBackups = systemFlagInt(FlagNameIoFileBackups, 3, "amount of file backups")
+	FlagIoFileBackups = SystemFlagInt(FlagNameIoFileBackups, 3, "amount of file backups")
 )
 
 type ErrFileNotFound struct {

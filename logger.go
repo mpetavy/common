@@ -35,16 +35,16 @@ const (
 )
 
 var (
-	FlagLogFileName     = systemFlagString(FlagNameLogFileName, "", "filename to log file")
-	FlagLogFileSize     = systemFlagInt(FlagNameLogFileSize, 5*1024*1024, "max log file size")
+	FlagLogFileName     = SystemFlagString(FlagNameLogFileName, "", "filename to log file")
+	FlagLogFileSize     = SystemFlagInt(FlagNameLogFileSize, 5*1024*1024, "max log file size")
 	FlagLogVerbose      = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
 	FlagLogVerboseError = flag.Bool(FlagNameLogVerboseError, false, "verbose error logging")
-	FlagLogIO           = systemFlagBool(FlagNameLogIO, false, "trace logging")
-	FlagLogJson         = systemFlagBool(FlagNameLogJson, false, "JSON output")
-	FlagLogSys          = systemFlagBool(FlagNameLogSys, false, "Use OS system logger")
-	FlagLogCount        = systemFlagInt(FlagNameLogCount, 1000, "log count")
-	FlagLogBreakOnError = systemFlagString(FlagNameLogBreakOnError, "", "break on logging an error")
-	FlagLogGap          = systemFlagInt(FlagNameLogGap, 100, "time gap after show a separator")
+	FlagLogIO           = SystemFlagBool(FlagNameLogIO, false, "trace logging")
+	FlagLogJson         = SystemFlagBool(FlagNameLogJson, false, "JSON output")
+	FlagLogSys          = SystemFlagBool(FlagNameLogSys, false, "Use OS system logger")
+	FlagLogCount        = SystemFlagInt(FlagNameLogCount, 1000, "log count")
+	FlagLogBreakOnError = SystemFlagString(FlagNameLogBreakOnError, "", "break on logging an error")
+	FlagLogGap          = SystemFlagInt(FlagNameLogGap, 100, "time gap after show a separator")
 
 	mu          ReentrantMutex
 	fw          *fileWriter

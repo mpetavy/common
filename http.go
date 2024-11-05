@@ -37,10 +37,10 @@ const (
 )
 
 var (
-	FlagHTTPHeaderLimit = systemFlagInt64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
-	FlagHTTPBodyLimit   = systemFlagInt64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
-	FlagHTTPTLSInsecure = systemFlagBool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
-	FlagHTTPTimeout     = systemFlagInt(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
+	FlagHTTPHeaderLimit = SystemFlagInt64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
+	FlagHTTPBodyLimit   = SystemFlagInt64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
+	FlagHTTPTLSInsecure = SystemFlagBool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
+	FlagHTTPTimeout     = SystemFlagInt(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
 
 	httpServer *http.Server
 

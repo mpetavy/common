@@ -81,8 +81,8 @@ func init() {
 		}
 
 		FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(filepath.Join(dir, AppFilename(".json"))), "Configuration file")
-		FlagCfgReset = systemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
-		FlagCfgCreate = systemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
+		FlagCfgReset = SystemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
+		FlagCfgCreate = SystemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
 	})
 }
 

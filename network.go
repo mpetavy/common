@@ -25,10 +25,10 @@ const (
 )
 
 var (
-	FlagIoPrimaryIface     = systemFlagString(FlagNameIoNetworkIface, "", "primary ethernet interface")
-	FlagIoNetworkTimeout   = systemFlagInt(FlagNameIoNetworkTimeout, 10*1000, "network ready timeout")
-	FlagIoConnectTimeout   = systemFlagInt(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
-	FlagIoReadwriteTimeout = systemFlagInt(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
+	FlagIoPrimaryIface     = SystemFlagString(FlagNameIoNetworkIface, "", "primary ethernet interface")
+	FlagIoNetworkTimeout   = SystemFlagInt(FlagNameIoNetworkTimeout, 10*1000, "network ready timeout")
+	FlagIoConnectTimeout   = SystemFlagInt(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
+	FlagIoReadwriteTimeout = SystemFlagInt(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
 )
 
 type HostInfo struct {
