@@ -16,13 +16,13 @@ const (
 var (
 	FlagInsightsInstrumentationkey = common.SystemFlagString(FlagNameInsightsInstrumentationkey, "", "Azure insights instrumentation key")
 	FlagInsightsBatchSize          = common.SystemFlagInt(FlagNameInsightsBatchSize, 8192, "Azure insights batch size")
-	FlagInsightsBatchInterval      = common.SystemFlagInt(FlagNameInsightsBatchInterval, 2000, "Azure insights batch interval")
+	FlagInsightsBatchInterval      = common.SystemFlagInt(FlagNameInsightsBatchInterval, 100, "Azure insights batch interval")
 
 	insightClient appinsights.TelemetryClient
 )
 
 func init() {
-	common.Events.AddListener(&common.EventFlagsSet{}, func(event common.Event) {
+	common.Events.AddListener(common.EventFlagsSet{}, func(event common.Event) {
 		if *FlagInsightsInstrumentationkey == "" {
 			return
 		}
