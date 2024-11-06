@@ -116,7 +116,7 @@ var (
 	FlagAppTicker           *int
 	ticker                  *time.Ticker
 	appLifecycle            = NewNotice()
-	startupCh               = make(chan error, 1)
+	startupCh               = make(chan error, 10)
 	onceBanner              sync.Once
 	onceRunningInDocker     sync.Once
 	onceRunningAsService    sync.Once
@@ -570,6 +570,8 @@ func Run(mandatoryFlags []string) {
 	if err != nil && !IsErrExit(err) {
 		Error(err)
 	}
+
+	startupCh <- err
 }
 
 func ExitOrError(err error) error {
@@ -733,8 +735,6 @@ func (app *application) applicationLoop() error {
 			err := app.StartFunc()
 
 			startupCh <- err
-
-			close(startupCh)
 
 			if Error(err) {
 				return err
