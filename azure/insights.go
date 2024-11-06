@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/microsoft/ApplicationInsights-Go/appinsights"
 	"github.com/mpetavy/common"
+	"net/http"
 	"time"
 )
 
@@ -57,6 +58,46 @@ func init() {
 			// Either way, we don't want to wait around for it
 			// to complete, so let's just exit.
 		}
+	})
+
+	common.Events.AddListener(common.EventTelemetry{}, func(event common.Event) {
+		common.Catch(func() error {
+			eventTelemetry := event.(common.EventTelemetry)
+
+			if eventTelemetry.Code == 0 {
+				eventTelemetry.Code = http.StatusOK
+			}
+
+			req := common.Split(eventTelemetry.Title, " ")
+			if len(req) == 1 {
+				req = []string{"", req[0]}
+			}
+
+			request := appinsights.NewRequestTelemetry(req[0], req[1], 0, http.StatusText(eventTelemetry.Code))
+
+			// Note that the timestamp will be set to time.Now() minus the
+			// specified duration.  This can be overridden by either manually
+			// setting the Timestamp and Duration fields, or with MarkTime:
+			request.MarkTime(eventTelemetry.Start, eventTelemetry.End)
+
+			// Source of request
+			request.Source = req[1]
+
+			// Success is normally inferred from the responseCode, but can be overridden:
+			request.Success = eventTelemetry.Err == ""
+
+			// Request ID's are randomly generated GUIDs, but this can also be overridden:
+			//request.Id = "<id>"
+
+			// Context tags become more useful here as well
+			//request.Tags.Session().SetId("<session id>")
+			//request.Tags.User().SetAccountId("<user id>")
+
+			// Finally track it
+			insightClient.Track(request)
+
+			return nil
+		})
 	})
 
 	common.Events.AddListener(common.EventLog{}, func(event common.Event) {

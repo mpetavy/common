@@ -50,6 +50,28 @@ func init() {
 		Telemetry = nil
 	})
 
+	common.Events.AddListener(common.EventTelemetry{}, func(event common.Event) {
+		common.Catch(func() error {
+			if Telemetry == nil {
+				return nil
+			}
+
+			eventTelemetry := event.(common.EventTelemetry)
+
+			t := otel.Tracer(common.Title())
+
+			_, span := t.Start(
+				context.Background(),
+				eventTelemetry.Title,
+				tracer.WithTimestamp(eventTelemetry.Start),
+			)
+
+			span.End()
+
+			return nil
+		})
+	})
+
 	common.Events.AddListener(common.EventLog{}, func(event common.Event) {
 		common.Catch(func() error {
 			if Telemetry == nil {
@@ -229,39 +251,4 @@ func (t *OpenTelemetry) Shutdown() error {
 	}
 
 	return nil
-}
-
-func (t *OpenTelemetry) NewSpan(parentCtx context.Context, title string) *OpenTelemetrySpan {
-	if !*FlagOpentelemetryEnabled {
-		return &OpenTelemetrySpan{}
-	}
-
-	ctx, span := t.Tracer.Start(parentCtx, title)
-
-	return &OpenTelemetrySpan{
-		telemery: t,
-		ctx:      ctx,
-		span:     span,
-	}
-}
-
-func (s *OpenTelemetrySpan) NewSpan(title string) *OpenTelemetrySpan {
-	if !*FlagOpentelemetryEnabled {
-		return &OpenTelemetrySpan{}
-	}
-
-	ctx, span := s.telemery.Tracer.Start(s.ctx, title)
-
-	return &OpenTelemetrySpan{
-		ctx:  ctx,
-		span: span,
-	}
-}
-
-func (s *OpenTelemetrySpan) End() {
-	if !*FlagOpentelemetryEnabled {
-		return
-	}
-
-	s.span.End()
 }
