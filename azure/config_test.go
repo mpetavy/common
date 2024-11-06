@@ -1,4 +1,4 @@
-package azureconfig
+package azure
 
 import (
 	"context"
@@ -33,9 +33,9 @@ func TestChatSample(t *testing.T) {
 	clientID := os.Getenv("AZURE_CLIENT_ID")
 	clientSecret := os.Getenv("AZURE_CLIENT_SECRET")
 
-	tenantID = *FlagCfgAzureTenantID
-	clientID = *FlagCfgAzureClientID
-	clientSecret = *FlagCfgAzureClientSecret
+	tenantID = *FlagAzureTenantID
+	clientID = *FlagAzureClientID
+	clientSecret = *FlagAzureClientSecret
 
 	if tenantID == "" || clientID == "" || clientSecret == "" {
 		log.Fatal("Environment variables AZURE_TENANT_ID, AZURE_CLIENT_ID, and AZURE_CLIENT_SECRET must be set.")

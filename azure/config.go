@@ -1,4 +1,4 @@
-package azureconfig
+package azure
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
 	"github.com/mpetavy/common"
 	"net/url"
-	"os"
 	"strings"
 )
 
@@ -19,20 +18,26 @@ import (
 // https://github.com/Azure/open-service-broker-azure/issues/540
 
 const (
-	FlagNameCfgAzureTenantID     = "cfg.azure.tenant_id"
-	FlagNameCfgAzureClientID     = "cfg.azure.client_id"
-	FlagNameCfgAzureClientSecret = "cfg.azure.client_secret"
-	FlagNameCfgAzureEndpoint     = "cfg.azure.endpoint"
-	FlagNameCfgAzureTimeout      = "cfg.azure.timeout"
+	FlagNameAzureCfgEndpoint = "azure.cfg.endpoint"
 )
 
 var (
-	FlagCfgAzureTenantID     = common.SystemFlagString(FlagNameCfgAzureTenantID, os.Getenv("AZURE_TENANT_ID"), "Azure configuration tenant ID. Omit to use ENV.")
-	FlagCfgAzureClientID     = common.SystemFlagString(FlagNameCfgAzureClientID, os.Getenv("AZURE_CLIENT_ID"), "Azure configuration client ID. Omit to use ENV.")
-	FlagCfgAzureClientSecret = common.SystemFlagString(FlagNameCfgAzureClientSecret, os.Getenv("AZURE_CLIENT_SECRET"), "Azure configuration client secret. Omit to use ENV.")
-	FlagCfgAzureEndpoint     = common.SystemFlagString(FlagNameCfgAzureEndpoint, "", "Azure configuration endpoint")
-	FlagCfgAzureTimeout      = common.SystemFlagInt(FlagNameCfgAzureTimeout, 30000, "Azure configuration timeout")
+	FlagAzureCfgEndpoint = common.SystemFlagString(FlagNameAzureCfgEndpoint, "", "Azure configuration endpoint")
 )
+
+func init() {
+	common.Events.AddListener(&common.EventFlagsExternal{}, func(event common.Event) {
+		if *FlagAzureCfgEndpoint == "" {
+			return
+		}
+
+		flags, err := AzureAppConfiguration(true)
+		common.Panic(err)
+
+		eventConfiguraion := event.(*common.EventFlagsExternal)
+		eventConfiguraion.Flags = flags
+	})
+}
 
 func getValue(ctx context.Context, credentialClient azcore.TokenCredential, key string, value string) (string, error) {
 	common.DebugFunc(key)
@@ -75,7 +80,7 @@ func getValue(ctx context.Context, credentialClient azcore.TokenCredential, key 
 func AzureAppConfiguration(onlyFlags bool) (map[string]string, error) {
 	common.DebugFunc()
 
-	ctx, cancel := context.WithTimeout(context.Background(), common.MillisecondToDuration(*FlagCfgAzureTimeout))
+	ctx, cancel := context.WithTimeout(context.Background(), common.MillisecondToDuration(*FlagAzureTimeout))
 	defer cancel()
 
 	flags := make(map[string]string)
@@ -83,8 +88,8 @@ func AzureAppConfiguration(onlyFlags bool) (map[string]string, error) {
 	var err error
 	var credentialClient azcore.TokenCredential
 
-	if *FlagCfgAzureTenantID != "" {
-		credentialClient, err = azidentity.NewClientSecretCredential(*FlagCfgAzureTenantID, *FlagCfgAzureClientID, *FlagCfgAzureClientSecret, nil)
+	if *FlagAzureTenantID != "" {
+		credentialClient, err = azidentity.NewClientSecretCredential(*FlagAzureTenantID, *FlagAzureClientID, *FlagAzureClientSecret, nil)
 		if common.Error(err) {
 			return nil, err
 		}
@@ -97,19 +102,19 @@ func AzureAppConfiguration(onlyFlags bool) (map[string]string, error) {
 
 	var configClient *azappconfig.Client
 
-	if strings.HasPrefix(*FlagCfgAzureEndpoint, "Endpoint=") {
-		configClient, err = azappconfig.NewClientFromConnectionString(*FlagCfgAzureEndpoint, nil)
+	if strings.HasPrefix(*FlagAzureCfgEndpoint, "Endpoint=") {
+		configClient, err = azappconfig.NewClientFromConnectionString(*FlagAzureCfgEndpoint, nil)
 		if common.Error(err) {
 			return nil, err
 		}
 	} else {
-		configClient, err = azappconfig.NewClient(*FlagCfgAzureEndpoint, credentialClient, nil)
+		configClient, err = azappconfig.NewClient(*FlagAzureCfgEndpoint, credentialClient, nil)
 		if common.Error(err) {
 			return nil, err
 		}
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), common.MillisecondToDuration(*FlagCfgAzureTimeout))
+	ctx, cancel = context.WithTimeout(context.Background(), common.MillisecondToDuration(*FlagAzureTimeout))
 	defer func() {
 		cancel()
 	}()

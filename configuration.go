@@ -14,7 +14,7 @@ import (
 type EventConfigurationReset struct {
 }
 
-type EventConfigurationCloud struct {
+type EventFlagsExternal struct {
 	Flags map[string]string
 }
 
@@ -383,8 +383,8 @@ func setFlags() error {
 			initialSet: true,
 		},
 		{
-			origin:     "cloud",
-			fn:         registerCloudFlags,
+			origin:     "external",
+			fn:         registerExternalFlags,
 			initialSet: true,
 		},
 		{
@@ -474,12 +474,12 @@ func registerArgsFlags() (map[string]string, error) {
 	return m, nil
 }
 
-func registerCloudFlags() (map[string]string, error) {
+func registerExternalFlags() (map[string]string, error) {
 	DebugFunc()
 
 	m := make(map[string]string)
 
-	event := &EventConfigurationCloud{}
+	event := &EventFlagsExternal{}
 	event.Flags = make(map[string]string)
 
 	Events.Emit(event, false)
