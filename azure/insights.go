@@ -5,6 +5,7 @@ import (
 	"github.com/microsoft/ApplicationInsights-Go/appinsights"
 	"github.com/mpetavy/common"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -73,28 +74,31 @@ func init() {
 				req = []string{"", req[0]}
 			}
 
-			request := appinsights.NewRequestTelemetry(req[0], req[1], 0, http.StatusText(eventTelemetry.Code))
+			u, err := url.Parse(req[1])
+			if common.Error(err) {
+				return err
+			}
 
-			// Note that the timestamp will be set to time.Now() minus the
-			// specified duration.  This can be overridden by either manually
-			// setting the Timestamp and Duration fields, or with MarkTime:
-			request.MarkTime(eventTelemetry.Start, eventTelemetry.End)
+			switch {
+			case eventTelemetry.IsTelemetryRequest:
+				request := appinsights.NewRequestTelemetry(req[0], req[1], 0, http.StatusText(eventTelemetry.Code))
 
-			// Source of request
-			request.Source = req[1]
+				request.MarkTime(eventTelemetry.Start, eventTelemetry.End)
+				request.Duration = eventTelemetry.End.Sub(eventTelemetry.Start)
+				request.Source = req[1]
+				request.Success = eventTelemetry.IsSuccess()
 
-			// Success is normally inferred from the responseCode, but can be overridden:
-			request.Success = eventTelemetry.Err == ""
+				insightClient.Track(request)
+			case !eventTelemetry.IsTelemetryRequest:
 
-			// Request ID's are randomly generated GUIDs, but this can also be overridden:
-			//request.Id = "<id>"
+				request := appinsights.NewRemoteDependencyTelemetry(req[0], fmt.Sprintf("%s%s%s", u.Scheme, u.Host, u.Path), u.RequestURI(), eventTelemetry.IsSuccess())
+				request.ResultCode = http.StatusText(eventTelemetry.Code)
+				request.MarkTime(eventTelemetry.Start, eventTelemetry.End)
+				request.Duration = eventTelemetry.End.Sub(eventTelemetry.Start)
+				request.Success = eventTelemetry.IsSuccess()
 
-			// Context tags become more useful here as well
-			//request.Tags.Session().SetId("<session id>")
-			//request.Tags.User().SetAccountId("<user id>")
-
-			// Finally track it
-			insightClient.Track(request)
+				insightClient.Track(request)
+			}
 
 			return nil
 		})

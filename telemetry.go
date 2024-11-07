@@ -6,10 +6,15 @@ import (
 )
 
 type EventTelemetry struct {
-	Ctx   context.Context
-	Title string
-	Start time.Time
-	End   time.Time
-	Err   string
-	Code  int
+	IsTelemetryRequest bool
+	Ctx                context.Context
+	Title              string
+	Start              time.Time
+	End                time.Time
+	Err                string
+	Code               int
+}
+
+func (et EventTelemetry) IsSuccess() bool {
+	return et.Code/100 == 2
 }

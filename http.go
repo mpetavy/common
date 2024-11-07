@@ -76,6 +76,48 @@ func Header(r *http.Request, name string) (string, error) {
 	return "", fmt.Errorf("missing header '%s'", name)
 }
 
+type StatusResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (w *StatusResponseWriter) WriteHeader(code int) {
+	w.statusCode = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func NewStatusResponseWriter(w http.ResponseWriter) *StatusResponseWriter {
+	// Set statusCode to 200 by default in case WriteHeader is not explicitly called.
+	return &StatusResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+}
+
+func TelemetryHandler(next http.HandlerFunc) http.HandlerFunc {
+	DebugFunc()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		eventTelemetry := EventTelemetry{
+			IsTelemetryRequest: true,
+			Ctx:                r.Context(),
+			Title:              fmt.Sprintf("%s %s", r.Method, r.URL.String()),
+			Start:              time.Now(),
+		}
+		defer func() {
+			eventTelemetry.End = time.Now()
+
+			Events.Emit(eventTelemetry, false)
+		}()
+
+		sw := NewStatusResponseWriter(w)
+
+		next.ServeHTTP(sw, r)
+
+		eventTelemetry.Code = sw.statusCode
+		if eventTelemetry.Code == 0 {
+			eventTelemetry.Code = http.StatusOK
+		}
+	}
+}
+
 func BasicAuthHandler(authFunc BasicAuthFunc, next http.HandlerFunc) http.HandlerFunc {
 	DebugFunc()
 
@@ -290,6 +332,17 @@ func HTTPWrite(w http.ResponseWriter, status int, mimeType string, ba []byte) er
 
 func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method string, address string, headers http.Header, formdata url.Values, username string, password string, body io.Reader, expectedCode int) (*http.Response, []byte, error) {
 	DebugFunc()
+
+	eventTelemetry := EventTelemetry{
+		IsTelemetryRequest: false,
+		Title:              fmt.Sprintf("%s %s", method, address),
+		Start:              time.Now(),
+	}
+	defer func() {
+		eventTelemetry.End = time.Now()
+
+		Events.Emit(eventTelemetry, false)
+	}()
 
 	client := &http.Client{}
 
