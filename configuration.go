@@ -411,6 +411,16 @@ func setFlags() error {
 					continue
 				}
 
+				if strings.HasPrefix(value, "$ENV(") && strings.HasSuffix(value, ")") {
+					envName := value[5 : len(value)-1]
+					envValue, ok := os.LookupEnv(envName)
+					if !ok {
+						return fmt.Errorf("ENV variable cannot be evaluated: %s", value)
+					}
+
+					value = envValue
+				}
+
 				err := flag.Set(key, value)
 				if Error(err) {
 					return err

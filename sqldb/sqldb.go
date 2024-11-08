@@ -20,7 +20,7 @@ type Database struct {
 	DSN         string
 	Timeout     time.Duration
 	Isolation   sql.IsolationLevel
-	db          *sql.DB
+	Conn        *sql.DB
 	txCounter   int
 	tx          *sql.Tx
 	txCtx       context.Context
@@ -55,7 +55,7 @@ func (database *Database) currentDb() dbintf {
 	if database.tx != nil {
 		return database.tx
 	} else {
-		return database.db
+		return database.Conn
 	}
 }
 
@@ -87,18 +87,18 @@ func (database *Database) Open() error {
 		return err
 	}
 
-	database.db = db
+	database.Conn = db
 
 	return nil
 }
 
 func (database *Database) Close() error {
-	err := database.db.Close()
+	err := database.Conn.Close()
 	if common.Error(err) {
 		return err
 	}
 
-	database.db = nil
+	database.Conn = nil
 
 	return nil
 }
@@ -114,7 +114,7 @@ func (database *Database) Begin() error {
 
 	var err error
 
-	database.tx, err = database.db.BeginTx(database.txCtx, &sql.TxOptions{Isolation: database.Isolation})
+	database.tx, err = database.Conn.BeginTx(database.txCtx, &sql.TxOptions{Isolation: database.Isolation})
 	if common.Error(err) {
 		return err
 	}
