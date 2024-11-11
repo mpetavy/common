@@ -53,7 +53,10 @@ func getValue(ctx context.Context, credentialClient azcore.TokenCredential, key 
 		return "", err
 	}
 
-	secretUrl, err := url.Parse(m["uri"].(string))
+	uri := m["uri"].(string)
+	key = uri[strings.LastIndex(uri, "/")+1:]
+
+	secretUrl, err := url.Parse(uri)
 	if common.Error(err) {
 		return "", err
 	}
