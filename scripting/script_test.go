@@ -199,10 +199,8 @@ func checkChanged(t *testing.T, db *sqldb.SqlDB, changed bool) {
 	assert.Equal(t, []string{"ID", "NAME"}, resultset.ColumnNames)
 
 	for i := 0; i < resultset.RowCount; i++ {
-		id, err := resultset.Get(i, "ID")
-		assert.NoError(t, err)
-		name, err := resultset.Get(i, "NAME")
-		assert.NoError(t, err)
+		id := resultset.FieldByName(i, "ID")
+		name := resultset.FieldByName(i, "NAME")
 
 		assert.Equal(t, strconv.Itoa(i), id.String())
 		if !changed {
@@ -227,8 +225,7 @@ func TestDb(t *testing.T) {
 	rs, err := database.Query("select sqlite_version()")
 	assert.NoError(t, err)
 
-	version, err := rs.Get(0, "sqlite_version")
-	assert.NoError(t, err)
+	version := rs.FieldByName(0, "sqlite_version")
 
 	assert.NotEqual(t, "", version)
 

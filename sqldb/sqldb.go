@@ -206,12 +206,20 @@ func cleanFieldname(fieldname string) string {
 	return strings.ToUpper(regexFieldName.FindString(fieldname))
 }
 
-func (rs *Resultset) Get(row int, fieldName string) (Field, error) {
+func (rs *Resultset) FieldByName(row int, fieldName string) Field {
 	resultsetValue := reflect.ValueOf(rs.Rows)
 	rowValue := resultsetValue.Elem().Index(row)
 	colValue := rowValue.FieldByName(cleanFieldname(fieldName))
 
-	return colValue.Interface().(Field), nil
+	return colValue.Interface().(Field)
+}
+
+func (rs *Resultset) FieldByIndex(row int, col int) Field {
+	resultsetValue := reflect.ValueOf(rs.Rows)
+	rowValue := resultsetValue.Elem().Index(row)
+	colValue := rowValue.FieldByIndex([]int{col})
+
+	return colValue.Interface().(Field)
 }
 
 func (sqlDb *SqlDB) Query(sqlcmd string, args ...any) (*Resultset, error) {

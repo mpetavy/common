@@ -2,8 +2,11 @@ package common
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -52,11 +55,29 @@ func (st *StringTable) AddCols(txts ...interface{}) {
 			}
 
 			continue
-
 		}
 
 		st.AddCol(txt)
 	}
+}
+
+func (st *StringTable) InsertCols(row int, txts ...interface{}) {
+	cols := []any{}
+	for _, txt := range txts {
+		val := reflect.ValueOf(txt)
+		if val.Type().Kind() == reflect.Slice || val.Type().Kind() == reflect.Array {
+			for i := 0; i < val.Len(); i++ {
+				cols = append(cols, fmt.Sprintf("%v", val.Index(i)))
+			}
+
+			continue
+
+		}
+
+		cols = append(cols, fmt.Sprintf("%v", txt))
+	}
+
+	st.Cells = slices.Insert(st.Cells, row, cols)
 }
 
 func (st *StringTable) rower(cols []interface{}, colLengths []int, cross bool) string {
@@ -172,6 +193,50 @@ func (st *StringTable) Html() string {
 	sb.WriteString("</table>\n")
 
 	return sb.String()
+}
+
+func (st *StringTable) JSON(indent string) ([]byte, error) {
+	buf := bytes.Buffer{}
+	buf.WriteString("[\n")
+
+	if len(st.Cells) > 1 {
+		for y := 1; y < len(st.Cells); y++ {
+			if y > 1 {
+				buf.WriteString(",\n")
+			}
+
+			buf.WriteString(fmt.Sprintf("%s{\n", indent))
+
+			for x := 0; x < len(st.Cells[y]); x++ {
+				if x > 0 {
+					buf.WriteString(",\n")
+				}
+
+				name, err := json.Marshal(st.Cells[0][x])
+				if Error(err) {
+					return nil, err
+				}
+
+				name = name[1 : len(name)-1]
+
+				value, err := json.Marshal(st.Cells[y][x])
+				if Error(err) {
+					return nil, err
+				}
+
+				value = value[1 : len(value)-1]
+
+				buf.WriteString(fmt.Sprintf("%s%s\"%v\": \"%v\"", indent, indent, string(name), string(value)))
+			}
+			buf.WriteString(fmt.Sprintf("\n"))
+			buf.WriteString(fmt.Sprintf("%s}", indent))
+		}
+		buf.WriteString("\n")
+	}
+
+	buf.WriteString("]\n")
+
+	return buf.Bytes(), nil
 }
 
 func (st *StringTable) Debug() {
