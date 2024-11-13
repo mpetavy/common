@@ -28,6 +28,7 @@ func TestNewRestURL(t *testing.T) {
 		Name:        "offset",
 		Description: "offset to start from",
 		Default:     "",
+		Mandatory:   true,
 	}}
 
 	req, err = http.NewRequest(http.MethodGet, "/patient/123/doc/456", nil)
@@ -40,6 +41,7 @@ func TestNewRestURL(t *testing.T) {
 		Name:        "offset",
 		Description: "offset to start from",
 		Default:     "123",
+		Mandatory:   false,
 	}}
 
 	req, err = http.NewRequest(http.MethodGet, "/patient/123/doc/456", nil)
@@ -58,5 +60,6 @@ func TestNewRestURL(t *testing.T) {
 		Name:        "offset",
 		Description: "offset to start from",
 		Default:     "123",
+		Mandatory:   false,
 	}}
 }

@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-type Database struct {
+type SqlDB struct {
 	Driver      string
 	DSN         string
 	Timeout     time.Duration
@@ -36,12 +36,8 @@ type dbintf interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-func DatabaseDrivers() []string {
-	return sql.Drivers()
-}
-
-func NewDatabase(driver, dsn string) (*Database, error) {
-	db := &Database{}
+func NewSqlDB(driver, dsn string) (*SqlDB, error) {
+	db := &SqlDB{}
 
 	err := db.Init(driver, dsn)
 	if common.Error(err) {
@@ -51,34 +47,34 @@ func NewDatabase(driver, dsn string) (*Database, error) {
 	return db, nil
 }
 
-func (database *Database) currentDb() dbintf {
-	if database.tx != nil {
-		return database.tx
+func (sqlDb *SqlDB) currentDb() dbintf {
+	if sqlDb.tx != nil {
+		return sqlDb.tx
 	} else {
-		return database.Conn
+		return sqlDb.Conn
 	}
 }
 
-func (database *Database) Init(driver, dsn string) error {
-	database.Driver = driver
-	database.DSN = dsn
-	database.Timeout = time.Minute
-	database.Isolation = sql.LevelReadCommitted
+func (sqlDb *SqlDB) Init(driver, dsn string) error {
+	sqlDb.Driver = driver
+	sqlDb.DSN = dsn
+	sqlDb.Timeout = time.Minute
+	sqlDb.Isolation = sql.LevelReadCommitted
 
 	return nil
 }
 
-func (database *Database) Open() error {
-	db, err := sql.Open(database.Driver, database.DSN)
+func (sqlDb *SqlDB) Open() error {
+	db, err := sql.Open(sqlDb.Driver, sqlDb.DSN)
 	if common.Error(err) {
 		return err
 	}
 
 	ctx := context.Background()
-	if database.Timeout != 0 {
+	if sqlDb.Timeout != 0 {
 		var cancel context.CancelFunc
 
-		ctx, cancel = context.WithTimeout(context.Background(), database.Timeout)
+		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.Timeout)
 		defer cancel()
 	}
 
@@ -87,34 +83,34 @@ func (database *Database) Open() error {
 		return err
 	}
 
-	database.Conn = db
+	sqlDb.Conn = db
 
 	return nil
 }
 
-func (database *Database) Close() error {
-	err := database.Conn.Close()
+func (sqlDb *SqlDB) Close() error {
+	err := sqlDb.Conn.Close()
 	if common.Error(err) {
 		return err
 	}
 
-	database.Conn = nil
+	sqlDb.Conn = nil
 
 	return nil
 }
 
-func (database *Database) Begin() error {
-	database.txCounter++
+func (sqlDb *SqlDB) Begin() error {
+	sqlDb.txCounter++
 
-	if database.txCounter > 1 {
+	if sqlDb.txCounter > 1 {
 		return nil
 	}
 
-	database.txCtx, database.txCtxCancel = context.WithCancel(context.Background())
+	sqlDb.txCtx, sqlDb.txCtxCancel = context.WithCancel(context.Background())
 
 	var err error
 
-	database.tx, err = database.Conn.BeginTx(database.txCtx, &sql.TxOptions{Isolation: database.Isolation})
+	sqlDb.tx, err = sqlDb.Conn.BeginTx(sqlDb.txCtx, &sql.TxOptions{Isolation: sqlDb.Isolation})
 	if common.Error(err) {
 		return err
 	}
@@ -122,58 +118,58 @@ func (database *Database) Begin() error {
 	return nil
 }
 
-func (database *Database) Rollback() error {
-	database.txCounter--
+func (sqlDb *SqlDB) Rollback() error {
+	sqlDb.txCounter--
 
-	if database.txCounter > 0 {
+	if sqlDb.txCounter > 0 {
 		return nil
 	}
 
-	err := database.tx.Rollback()
+	err := sqlDb.tx.Rollback()
 	if common.Error(err) {
 		return err
 	}
 
-	database.txCtxCancel()
+	sqlDb.txCtxCancel()
 
-	database.tx = nil
-	database.txCtx = nil
-	database.txCtxCancel = nil
+	sqlDb.tx = nil
+	sqlDb.txCtx = nil
+	sqlDb.txCtxCancel = nil
 
 	return nil
 }
 
-func (database *Database) Commit() error {
-	database.txCounter--
+func (sqlDb *SqlDB) Commit() error {
+	sqlDb.txCounter--
 
-	if database.txCounter > 0 {
+	if sqlDb.txCounter > 0 {
 		return nil
 	}
 
-	err := database.tx.Commit()
+	err := sqlDb.tx.Commit()
 	if common.Error(err) {
 		return err
 	}
 
-	database.txCtxCancel()
+	sqlDb.txCtxCancel()
 
-	database.tx = nil
-	database.txCtx = nil
-	database.txCtxCancel = nil
+	sqlDb.tx = nil
+	sqlDb.txCtx = nil
+	sqlDb.txCtxCancel = nil
 
 	return nil
 }
 
-func (database *Database) Execute(sqlcmd string, args ...any) (int64, error) {
+func (sqlDb *SqlDB) Execute(sqlcmd string, args ...any) (int64, error) {
 	ctx := context.Background()
-	if database.Timeout != 0 {
+	if sqlDb.Timeout != 0 {
 		var cancel context.CancelFunc
 
-		ctx, cancel = context.WithTimeout(context.Background(), database.Timeout)
+		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.Timeout)
 		defer cancel()
 	}
 
-	result, err := database.currentDb().ExecContext(ctx, sqlcmd, args...)
+	result, err := sqlDb.currentDb().ExecContext(ctx, sqlcmd, args...)
 	if common.Error(err) {
 		return 0, err
 	}
@@ -201,6 +197,7 @@ func (f *Field) String() string {
 
 type Resultset struct {
 	ColumnNames []string
+	ColumnTypes []*sql.ColumnType
 	RowCount    int
 	Rows        any
 }
@@ -217,16 +214,16 @@ func (rs *Resultset) Get(row int, fieldName string) (Field, error) {
 	return colValue.Interface().(Field), nil
 }
 
-func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) {
+func (sqlDb *SqlDB) Query(sqlcmd string, args ...any) (*Resultset, error) {
 	ctx := context.Background()
-	if database.Timeout != 0 {
+	if sqlDb.Timeout != 0 {
 		var cancel context.CancelFunc
 
-		ctx, cancel = context.WithTimeout(context.Background(), database.Timeout)
+		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.Timeout)
 		defer cancel()
 	}
 
-	query, err := database.currentDb().QueryContext(ctx, sqlcmd, args...)
+	query, err := sqlDb.currentDb().QueryContext(ctx, sqlcmd, args...)
 	if common.Error(err) {
 		return nil, err
 	}
@@ -249,6 +246,7 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 
 	rows := &Resultset{
 		ColumnNames: columnNames,
+		ColumnTypes: columnTypes,
 	}
 
 	scanBuilder := dynamicstruct.NewStruct()
@@ -303,6 +301,8 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 	recordBuf := bytes.Buffer{}
 
 	for query.Next() {
+		rows.RowCount++
+
 		scan := scanStruct.New()
 		scanPtrs := make([]any, len(columnNames))
 		scanElem := reflect.ValueOf(scan).Elem()
@@ -406,15 +406,15 @@ func (database *Database) Query(sqlcmd string, args ...any) (*Resultset, error) 
 		recordBuf.Write(ba)
 	}
 
-	if recordBuf.Len() > 0 {
-		recordBuf.WriteString("]")
-	}
-
 	rows.Rows = recordStruct.NewSliceOfStructs()
 
-	err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
-	if common.Error(err) {
-		return nil, err
+	if recordBuf.Len() > 0 {
+		recordBuf.WriteString("]")
+
+		err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
+		if common.Error(err) {
+			return nil, err
+		}
 	}
 
 	return rows, nil

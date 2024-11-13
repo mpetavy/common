@@ -192,7 +192,7 @@ func TestScriptEngineHL7(t *testing.T) {
 	}
 }
 
-func checkChanged(t *testing.T, db *sqldb.Database, changed bool) {
+func checkChanged(t *testing.T, db *sqldb.SqlDB, changed bool) {
 	resultset, err := db.Query("select id,name from foo order by id")
 	assert.NoError(t, err)
 
@@ -214,7 +214,7 @@ func checkChanged(t *testing.T, db *sqldb.Database, changed bool) {
 }
 
 func TestDb(t *testing.T) {
-	database, err := sqldb.NewDatabase("sqlite3", "")
+	database, err := sqldb.NewSqlDB("sqlite3", "")
 	assert.NoError(t, err)
 
 	err = database.Open()

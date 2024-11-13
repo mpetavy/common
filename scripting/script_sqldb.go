@@ -1,56 +1,57 @@
 package scripting
 
 import (
+	"database/sql"
 	"github.com/mpetavy/common"
 	"github.com/mpetavy/common/sqldb"
 )
 
 func EnableDatabase(engine *ScriptEngine) error {
-	database := &sqldb.Database{}
+	sqlDb := &sqldb.SqlDB{}
 
 	obj := engine.VM.NewObject()
 
-	err := obj.Set("drivers", sqldb.DatabaseDrivers())
+	err := obj.Set("drivers", sql.Drivers())
 	if common.Error(err) {
 		return err
 	}
 
-	err = obj.Set("init", database.Init)
+	err = obj.Set("init", sqlDb.Init)
 	if common.Error(err) {
 		return err
 	}
 
-	err = obj.Set("begin", database.Begin)
+	err = obj.Set("begin", sqlDb.Begin)
 	if common.Error(err) {
 		return err
 	}
 
-	err = obj.Set("close", database.Close)
+	err = obj.Set("close", sqlDb.Close)
 	if common.Error(err) {
 		return err
 	}
 
-	err = obj.Set("commit", database.Commit)
+	err = obj.Set("commit", sqlDb.Commit)
 	if common.Error(err) {
 		return err
 	}
 
-	err = obj.Set("execute", database.Execute)
+	err = obj.Set("execute", sqlDb.Execute)
 	if common.Error(err) {
 		return err
 	}
 
-	err = obj.Set("open", database.Open)
+	err = obj.Set("open", sqlDb.Open)
 	if common.Error(err) {
 		return err
 	}
 
-	err = obj.Set("query", database.Query)
+	err = obj.Set("query", sqlDb.Query)
 	if common.Error(err) {
 		return err
 	}
 
-	err = obj.Set("rollback", database.Rollback)
+	err = obj.Set("rollback", sqlDb.Rollback)
 	if common.Error(err) {
 		return err
 	}

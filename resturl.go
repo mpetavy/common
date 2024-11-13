@@ -14,6 +14,7 @@ type RestURLField struct {
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 	Default     string `json:"default,omitempty"`
+	Mandatory   bool   `json:"mandatory,omitempty"`
 }
 
 type RestURLStats struct {
@@ -83,16 +84,16 @@ func (restURL *RestURL) Validate(r *http.Request) error {
 
 	for _, header := range restURL.Headers {
 		if r.Header.Get(header.Name) == "" {
-			if header.Default == "" {
+			if header.Default == "" && header.Mandatory {
 				return fmt.Errorf("missing HTTP header: %s", header.Name)
 			}
 		}
 	}
 
-	for _, value := range restURL.Params {
-		if !r.URL.Query().Has(value.Name) {
-			if value.Default == "" {
-				return fmt.Errorf("missing HTTP value: %s", value.Name)
+	for _, param := range restURL.Params {
+		if !r.URL.Query().Has(param.Name) {
+			if param.Default == "" && param.Mandatory {
+				return fmt.Errorf("missing HTTP value: %s", param.Name)
 			}
 		}
 	}
