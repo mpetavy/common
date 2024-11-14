@@ -39,7 +39,7 @@ func (c *gojaConsole) table(data interface{}) {
 			k := iter.Key()
 			v := iter.Value()
 
-			st.AddCols(k, fmt.Sprintf("%+v", v.Elem()))
+			st.AddCols(k.String(), fmt.Sprintf("%+v", v.Elem()))
 		}
 	case reflect.Struct:
 		err := common.IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
@@ -52,17 +52,17 @@ func (c *gojaConsole) table(data interface{}) {
 		}
 	case reflect.Array:
 		for i := 0; i < val.Len(); i++ {
-			st.AddCols(strconv.Itoa(i), val.Index(i))
+			st.AddCols(strconv.Itoa(i), val.Index(i).String())
 		}
 	case reflect.Slice:
 		for i := 0; i < val.Len(); i++ {
-			st.AddCols(strconv.Itoa(i), val.Slice(i, i+1))
+			st.AddCols(strconv.Itoa(i), val.Slice(i, i+1).String())
 		}
 	default:
 		common.Error(common.TraceError(fmt.Errorf("unsupported type")))
 	}
 
-	common.Debug(st.String())
+	common.Debug(st.Table())
 }
 
 func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
