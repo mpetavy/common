@@ -4,15 +4,15 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"testing"
 )
 
 func TestContainsWildcard(t *testing.T) {
-	assert.True(t, ContainsWildcard("a?b"))
-	assert.True(t, ContainsWildcard("a*b"))
-	assert.False(t, ContainsWildcard("ab"))
+	require.True(t, ContainsWildcard("a?b"))
+	require.True(t, ContainsWildcard("a*b"))
+	require.False(t, ContainsWildcard("ab"))
 }
 
 func ew(t *testing.T, s string, m string) bool {
@@ -25,21 +25,21 @@ func ew(t *testing.T, s string, m string) bool {
 }
 
 func TestEqualWildcards(t *testing.T) {
-	assert.True(t, ew(t, "TEST.GO", "test.go"))
-	assert.False(t, ew(t, "TEST.GO", "test.goo"))
-	assert.False(t, ew(t, "TEST.GO", "test.go?"))
-	assert.True(t, ew(t, "TEST.GO", "test.go*"))
-	assert.True(t, ew(t, "TEST.GO", "*.go"))
-	assert.True(t, ew(t, "TEST.GO", "test.*"))
-	assert.True(t, ew(t, "TEST.GO", "??st.go"))
-	assert.True(t, ew(t, "TEST.GO", "test.??"))
-	assert.True(t, ew(t, "?", "?"))
-	assert.True(t, ew(t, "?", "?"))
-	assert.True(t, ew(t, "CFG.FILE", "cfg.file*"))
-	assert.True(t, ew(t, "CFG.FILE.TEMPLATE", "cfg.file*"))
-	assert.True(t, ew(t, "?MD", "?md"))
-	assert.False(t, ew(t, "?MD", "?.md"))
-	assert.False(t, ew(t, "?MD", "\\?md"))
+	require.True(t, ew(t, "TEST.GO", "test.go"))
+	require.False(t, ew(t, "TEST.GO", "test.goo"))
+	require.False(t, ew(t, "TEST.GO", "test.go?"))
+	require.True(t, ew(t, "TEST.GO", "test.go*"))
+	require.True(t, ew(t, "TEST.GO", "*.go"))
+	require.True(t, ew(t, "TEST.GO", "test.*"))
+	require.True(t, ew(t, "TEST.GO", "??st.go"))
+	require.True(t, ew(t, "TEST.GO", "test.??"))
+	require.True(t, ew(t, "?", "?"))
+	require.True(t, ew(t, "?", "?"))
+	require.True(t, ew(t, "CFG.FILE", "cfg.file*"))
+	require.True(t, ew(t, "CFG.FILE.TEMPLATE", "cfg.file*"))
+	require.True(t, ew(t, "?MD", "?md"))
+	require.False(t, ew(t, "?MD", "?.md"))
+	require.False(t, ew(t, "?MD", "\\?md"))
 
 	masks := []string{
 		FlagNameCfgFile + "*",
@@ -51,13 +51,13 @@ func TestEqualWildcards(t *testing.T) {
 	}
 
 	for _, mask := range masks {
-		assert.True(t, ew(t, mask, mask), mask)
+		require.True(t, ew(t, mask, mask), mask)
 	}
 
-	assert.True(t, ew(t, "cfg.file", "cfg.file*"))
-	assert.True(t, ew(t, "cfg.file.template", "cfg.file*"))
+	require.True(t, ew(t, "cfg.file", "cfg.file*"))
+	require.True(t, ew(t, "cfg.file.template", "cfg.file*"))
 
-	assert.False(t, ew(t, "cfg.file", "xxx"))
+	require.False(t, ew(t, "cfg.file", "xxx"))
 }
 
 type InnerStruct struct {
@@ -85,8 +85,8 @@ func TestIterateStruct(t *testing.T) {
 		return nil
 	})
 
-	assert.NoError(t, err)
-	assert.Equal(t, &OuterStruct{
+	require.NoError(t, err)
+	require.Equal(t, &OuterStruct{
 		OuterField: "aaa",
 		Tel: InnerStruct{
 			InnerField: "bbb",
@@ -344,7 +344,7 @@ func TestNewSeparatorSplitFunc(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sf, err := NewSeparatorSplitFunc(tt.args.prefix, tt.args.suffix, tt.args.remove)
 
-			assert.Equal(t, tt.wantErr, err != nil)
+			require.Equal(t, tt.wantErr, err != nil)
 
 			if tt.wantErr {
 				return
@@ -359,7 +359,7 @@ func TestNewSeparatorSplitFunc(t *testing.T) {
 				buf.Write(scanner.Bytes())
 			}
 
-			assert.Equalf(t, tt.want, buf.Bytes(), "NewSplitFuncSeparator(%v, %v, %v)", tt.args.prefix, tt.args.suffix, tt.args.remove)
+			require.Equalf(t, tt.want, buf.Bytes(), "NewSplitFuncSeparator(%v, %v, %v)", tt.args.prefix, tt.args.suffix, tt.args.remove)
 		})
 	}
 }
@@ -398,7 +398,7 @@ func TestReverseSlice(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, ReverseSlice(tt.args.original), "ReverseSlice(%v)", tt.args.original)
+			require.Equalf(t, tt.want, ReverseSlice(tt.args.original), "ReverseSlice(%v)", tt.args.original)
 		})
 	}
 }
@@ -429,7 +429,7 @@ func TestTrim4Path(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, Trim4Path(tt.args.path), "Trim4Path(%v)", tt.args.path)
+			require.Equalf(t, tt.want, Trim4Path(tt.args.path), "Trim4Path(%v)", tt.args.path)
 		})
 	}
 }
@@ -454,8 +454,8 @@ func TestSplitCmdline(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmds := SplitCmdline(tt.cmdline)
-			assert.Equal(t, tt.count, len(cmds))
-			assert.Equal(t, tt.want, cmds, tt.cmdline)
+			require.Equal(t, tt.count, len(cmds))
+			require.Equal(t, tt.want, cmds, tt.cmdline)
 		})
 	}
 }
@@ -528,19 +528,19 @@ func TestIndexNth(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, IndexNth(tt.args.str, tt.args.substr, tt.args.count), "NthIndex(%v, %v, %v)", tt.args.str, tt.args.count, tt.args.substr)
+			require.Equalf(t, tt.want, IndexNth(tt.args.str, tt.args.substr, tt.args.count), "NthIndex(%v, %v, %v)", tt.args.str, tt.args.count, tt.args.substr)
 		})
 	}
 }
 
 func TestMin(t *testing.T) {
-	assert.Equal(t, 0, Min(2, 1, 0))
-	assert.Equal(t, -1, Min(-1, 0, 1))
+	require.Equal(t, 0, Min(2, 1, 0))
+	require.Equal(t, -1, Min(-1, 0, 1))
 }
 
 func TestMax(t *testing.T) {
-	assert.Equal(t, 2, Max(2, 1, 0))
-	assert.Equal(t, 1, Max(-1, 0, 1))
+	require.Equal(t, 2, Max(2, 1, 0))
+	require.Equal(t, 1, Max(-1, 0, 1))
 }
 
 func TestStructValue(t *testing.T) {
@@ -550,9 +550,17 @@ func TestStructValue(t *testing.T) {
 
 	var s S
 
-	assert.NoError(t, SetStructValue(&s, "A", 99))
+	require.NoError(t, SetStructValue(&s, "A", 99))
 
 	v, err := GetStructValue(&s, "A")
-	assert.NoError(t, err)
-	assert.Equal(t, 99, int(v.Int()))
+	require.NoError(t, err)
+	require.Equal(t, 99, int(v.Int()))
+}
+
+func TestEqualType(t *testing.T) {
+	require.True(t, IsEqualType(nil, nil))
+	require.True(t, IsEqualType(1, 2))
+	require.False(t, IsEqualType(1, "a"))
+	require.False(t, IsEqualType(1, nil))
+	require.False(t, IsEqualType(nil, 1))
 }

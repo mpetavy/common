@@ -817,3 +817,7 @@ func HidePasswordValue(name string, value string) string {
 
 	return value
 }
+
+func IsEqualType(a any, b any) bool {
+	return reflect.TypeOf(a) == reflect.TypeOf(b)
+}
