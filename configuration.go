@@ -449,7 +449,7 @@ func debugFlags() {
 		flag.VisitAll(func(f *flag.Flag) {
 			flagValue := flagInfos[f.Name]
 
-			st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), IsCmdlineOnlyFlag(f.Name), flagValue.Origin)
+			st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), fmt.Sprintf("%v", IsCmdlineOnlyFlag(f.Name)), flagValue.Origin)
 		})
 	})
 

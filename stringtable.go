@@ -2,7 +2,6 @@ package common
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -10,17 +9,9 @@ import (
 	"strings"
 )
 
-const (
-	NONE = iota
-	LEFT
-	CENTER
-	RIGHT
-)
-
 type StringTable struct {
-	Cells    [][]interface{}
+	Cells    [][]string
 	NoHeader bool
-	Markdown bool
 	Aligment []int
 }
 
@@ -37,21 +28,21 @@ func (st *StringTable) Rows() int {
 }
 
 func (st *StringTable) AddRow() {
-	st.Cells = append(st.Cells, make([]interface{}, 0))
+	st.Cells = append(st.Cells, make([]string, 0))
 }
 
-func (st *StringTable) AddCol(txt interface{}) {
+func (st *StringTable) AddCol(txt string) {
 	y := len(st.Cells) - 1
-	st.Cells[y] = append(st.Cells[y], fmt.Sprintf("%v", txt))
+	st.Cells[y] = append(st.Cells[y], txt)
 }
 
-func (st *StringTable) AddCols(txts ...interface{}) {
+func (st *StringTable) AddCols(txts ...string) {
 	st.AddRow()
 	for _, txt := range txts {
 		val := reflect.ValueOf(txt)
 		if val.Type().Kind() == reflect.Slice || val.Type().Kind() == reflect.Array {
 			for i := 0; i < val.Len(); i++ {
-				st.AddCol(val.Index(i))
+				st.AddCol(fmt.Sprintf("%v", val.Index(i)))
 			}
 
 			continue
@@ -61,8 +52,8 @@ func (st *StringTable) AddCols(txts ...interface{}) {
 	}
 }
 
-func (st *StringTable) InsertCols(row int, txts ...interface{}) {
-	cols := []any{}
+func (st *StringTable) InsertCols(row int, txts ...string) {
+	cols := []string{}
 	for _, txt := range txts {
 		val := reflect.ValueOf(txt)
 		if val.Type().Kind() == reflect.Slice || val.Type().Kind() == reflect.Array {
@@ -74,20 +65,19 @@ func (st *StringTable) InsertCols(row int, txts ...interface{}) {
 
 		}
 
-		cols = append(cols, fmt.Sprintf("%v", txt))
+		cols = append(cols, txt)
 	}
 
 	st.Cells = slices.Insert(st.Cells, row, cols)
 }
 
-func (st *StringTable) rower(cols []interface{}, colLengths []int, cross bool) string {
+func (st *StringTable) rower(markdown bool, cols []string, colLengths []int, cross bool) string {
 	line := strings.Builder{}
 
 	for x := 0; x < len(cols); x++ {
-		format := fmt.Sprintf("%%-%dv", colLengths[x])
 		if line.Len() > 0 {
 			if cross {
-				if st.Markdown {
+				if markdown {
 					line.WriteString(" | ")
 				} else {
 					line.WriteString("-+-")
@@ -96,12 +86,13 @@ func (st *StringTable) rower(cols []interface{}, colLengths []int, cross bool) s
 				line.WriteString(" | ")
 			}
 		}
-		line.WriteString(fmt.Sprintf(format, cols[x]))
+
+		line.WriteString(cols[x] + strings.Repeat(" ", colLengths[x]-len(cols[x])))
 	}
 
 	txt := line.String()
 
-	if st.Markdown {
+	if markdown {
 		txt = "| " + txt + " |"
 	}
 
@@ -110,7 +101,16 @@ func (st *StringTable) rower(cols []interface{}, colLengths []int, cross bool) s
 	return txt
 }
 
-func (st *StringTable) String() string {
+func (st *StringTable) Table() string {
+	return st.table(false)
+}
+
+func (st *StringTable) Markdown() string {
+
+	return st.table(true)
+}
+
+func (st *StringTable) table(markdown bool) string {
 	colLengths := make([]int, 0)
 
 	for y := 0; y < len(st.Cells); y++ {
@@ -119,39 +119,23 @@ func (st *StringTable) String() string {
 		}
 
 		for x := 0; x < len(st.Cells[y]); x++ {
-			colLengths[x] = max(colLengths[x], len(fmt.Sprintf("%v", st.Cells[y][x])))
+			colLengths[x] = max(colLengths[x], len(st.Cells[y][x]))
 		}
 	}
 
 	sb := strings.Builder{}
 
 	for y := 0; y < len(st.Cells); y++ {
-		sb.WriteString(st.rower(st.Cells[y], colLengths, false))
+		sb.WriteString(st.rower(markdown, st.Cells[y], colLengths, false))
 
 		if y == 0 && !st.NoHeader {
-			sep := make([]interface{}, len(st.Cells[0]))
+			sep := make([]string, len(st.Cells[0]))
 			for x := 0; x < len(sep); x++ {
-				align := 0
-				if x < len(st.Aligment) {
-					align = st.Aligment[x]
-				}
-
-				s := ""
-
-				switch align {
-				case NONE:
-					s = fmt.Sprintf("%s", strings.Repeat("-", colLengths[x]))
-				case LEFT:
-					s = fmt.Sprintf(":%s", strings.Repeat("-", colLengths[x]-1))
-				case CENTER:
-					s = fmt.Sprintf(":%s:", strings.Repeat("-", colLengths[x]-2))
-				case RIGHT:
-					s = fmt.Sprintf("%s:", strings.Repeat("-", colLengths[x]-1))
-				}
+				s := fmt.Sprintf("%s", strings.Repeat("-", colLengths[x]))
 
 				sep[x] = s
 			}
-			sb.WriteString(st.rower(sep, colLengths, true))
+			sb.WriteString(st.rower(markdown, sep, colLengths, true))
 		}
 	}
 
@@ -195,48 +179,40 @@ func (st *StringTable) Html() string {
 	return sb.String()
 }
 
-func (st *StringTable) JSON(indent string) ([]byte, error) {
-	buf := bytes.Buffer{}
-	buf.WriteString("[\n")
+func (st *StringTable) JSON(indent string) string {
+	sb := strings.Builder{}
+	sb.WriteString("[\n")
 
 	if len(st.Cells) > 1 {
 		for y := 1; y < len(st.Cells); y++ {
 			if y > 1 {
-				buf.WriteString(",\n")
+				sb.WriteString(",\n")
 			}
 
-			buf.WriteString(fmt.Sprintf("%s{\n", indent))
+			sb.WriteString(fmt.Sprintf("%s{\n", indent))
 
 			for x := 0; x < len(st.Cells[y]); x++ {
 				if x > 0 {
-					buf.WriteString(",\n")
+					sb.WriteString(",\n")
 				}
 
-				name, err := json.Marshal(st.Cells[0][x])
-				if Error(err) {
-					return nil, err
-				}
-
+				name, _ := json.Marshal(st.Cells[0][x])
 				name = name[1 : len(name)-1]
 
-				value, err := json.Marshal(st.Cells[y][x])
-				if Error(err) {
-					return nil, err
-				}
-
+				value, _ := json.Marshal(st.Cells[y][x])
 				value = value[1 : len(value)-1]
 
-				buf.WriteString(fmt.Sprintf("%s%s\"%v\": \"%v\"", indent, indent, string(name), string(value)))
+				sb.WriteString(fmt.Sprintf("%s%s\"%v\": \"%v\"", indent, indent, string(name), string(value)))
 			}
-			buf.WriteString(fmt.Sprintf("\n"))
-			buf.WriteString(fmt.Sprintf("%s}", indent))
+			sb.WriteString(fmt.Sprintf("\n"))
+			sb.WriteString(fmt.Sprintf("%s}", indent))
 		}
-		buf.WriteString("\n")
+		sb.WriteString("\n")
 	}
 
-	buf.WriteString("]\n")
+	sb.WriteString("]\n")
 
-	return buf.Bytes(), nil
+	return sb.String()
 }
 
 func (st *StringTable) CSV() string {
@@ -261,7 +237,7 @@ func (st *StringTable) CSV() string {
 }
 
 func (st *StringTable) Debug() {
-	scanner := bufio.NewScanner(strings.NewReader(st.String()))
+	scanner := bufio.NewScanner(strings.NewReader(st.Table()))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		Debug(line)

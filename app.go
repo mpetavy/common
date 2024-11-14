@@ -271,7 +271,6 @@ func usage() error {
 		}
 
 		st := NewStringTable()
-		st.Markdown = true
 
 		st.AddCols("Flag name", "ENV name", "Default value", "Only CmdLine", "Description")
 
@@ -292,7 +291,7 @@ func usage() error {
 			st.AddCols(fl.Name, FlagNameAsEnvName(fl.Name), defValue, onlyCmdLine, fl.Usage)
 		})
 
-		fmt.Printf("%s\n", st.String())
+		fmt.Printf("%s\n", st.Markdown())
 
 		return &ErrExit{}
 	}
