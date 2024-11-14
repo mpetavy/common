@@ -239,6 +239,27 @@ func (st *StringTable) JSON(indent string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func (st *StringTable) CSV() string {
+	sb := strings.Builder{}
+
+	for y := 0; y < len(st.Cells); y++ {
+		if y == 0 && st.NoHeader {
+			continue
+		}
+
+		for x := 0; x < len(st.Cells[y]); x++ {
+			if x > 0 {
+				sb.WriteString(",")
+			}
+			sb.WriteString(fmt.Sprintf("\"%v\"", st.Cells[y][x]))
+		}
+
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
+}
+
 func (st *StringTable) Debug() {
 	scanner := bufio.NewScanner(strings.NewReader(st.String()))
 	for scanner.Scan() {

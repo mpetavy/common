@@ -59,6 +59,10 @@ func (e *HTTPError) Error() string {
 	return fmt.Sprintf("%d: %s", e.StatusCode, e.Message)
 }
 
+func (e *HTTPError) Return(w http.ResponseWriter) {
+	http.Error(w, e.Message, e.StatusCode)
+}
+
 func Header(r *http.Request, name string) (string, error) {
 	DebugFunc()
 
