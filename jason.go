@@ -275,6 +275,23 @@ func (jason *Jason) Pretty() (string, error) {
 	return jason.pretty(0)
 }
 
+func PrettyPrintJSON(ba []byte) ([]byte, error) {
+	var jsonObj any
+
+	err := json.Unmarshal(ba, &jsonObj)
+	if Error(err) {
+		return nil, err
+	}
+
+	// Marshal it back with indentation
+	prettyJSON, err := json.MarshalIndent(jsonObj, "", "  ")
+	if Error(err) {
+		return nil, err
+	}
+
+	return prettyJSON, nil
+}
+
 func RemoveJsonComments(ba []byte) ([]byte, error) {
 	// enable multiline mode
 	// skip from start of line to the first \\ and remove the remaining characters
@@ -285,8 +302,7 @@ func RemoveJsonComments(ba []byte) ([]byte, error) {
 	s = regexp.MustCompile("(?m)(^ *\t*)\\#.*").ReplaceAllString(s, "")
 
 	// remove a pending , on the last element before a closing ) ] or }
-	var err error
-	s, err = regexp2.MustCompile(",(?=\\s*[\\)\\]\\}])", 0).Replace(s, "", -1, -1)
+	s, err := regexp2.MustCompile(",(?=\\s*[\\)\\]\\}])", 0).Replace(s, "", -1, -1)
 	if Error(err) {
 		return nil, err
 	}

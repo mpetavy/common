@@ -281,17 +281,28 @@ func registerIniFileFlags() (map[string]string, error) {
 func LoadConfigurationFile[T any]() (*T, error) {
 	DebugFunc()
 
-	if !FileExists(*FlagCfgFile) {
-		return nil, &ErrFileNotFound{
-			FileName: *FlagCfgFile,
+	var ba []byte
+	var err error
+
+	filenameOrJson := strings.TrimSpace(*FlagCfgFile)
+
+	if filenameOrJson != "" && strings.HasPrefix(filenameOrJson, "{") {
+		Debug("Read flag %s as JSON content", FlagNameCfgFile)
+
+		ba = []byte(filenameOrJson)
+	} else {
+		Debug("Read flag %s as JSON file: %scontent", FlagNameCfgFile, filenameOrJson)
+
+		if !FileExists(filenameOrJson) {
+			return nil, &ErrFileNotFound{
+				FileName: filenameOrJson,
+			}
 		}
-	}
 
-	DebugFunc(*FlagCfgFile)
-
-	ba, err := os.ReadFile(*FlagCfgFile)
-	if Error(err) {
-		return nil, err
+		ba, err = os.ReadFile(filenameOrJson)
+		if Error(err) {
+			return nil, err
+		}
 	}
 
 	ba, err = RemoveJsonComments(ba)
