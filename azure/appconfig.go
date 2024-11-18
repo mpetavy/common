@@ -18,11 +18,11 @@ import (
 // https://github.com/Azure/open-service-broker-azure/issues/540
 
 const (
-	FlagNameAzureCfgEndpoint = "azure.cfg.endpoint"
+	FlagNameAzureCfg = "azure.cfg"
 )
 
 var (
-	FlagAzureCfgEndpoint = common.SystemFlagString(FlagNameAzureCfgEndpoint, "", "Azure configuration endpoint")
+	FlagAzureCfgEndpoint = common.SystemFlagString(FlagNameAzureCfg, "", "Azure configuration endpoint")
 )
 
 func init() {
