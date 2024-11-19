@@ -229,7 +229,11 @@ func (st *StringTable) CSV() string {
 			if x > 0 {
 				sb.WriteString(",")
 			}
-			sb.WriteString(fmt.Sprintf("\"%v\"", st.Cells[y][x]))
+			value := st.Cells[y][x]
+
+			value = strings.ReplaceAll(value, "\"", "\"\"")
+
+			sb.WriteString(fmt.Sprintf("\"%v\"", value))
 		}
 
 		sb.WriteString("\n")
