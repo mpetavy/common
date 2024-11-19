@@ -126,16 +126,18 @@ func (st *StringTable) table(markdown bool) string {
 	sb := strings.Builder{}
 
 	for y := 0; y < len(st.Cells); y++ {
-		sb.WriteString(st.rower(markdown, st.Cells[y], colLengths, false))
+		if y > 0 || !st.NoHeader {
+			sb.WriteString(st.rower(markdown, st.Cells[y], colLengths, false))
 
-		if y == 0 && !st.NoHeader {
-			sep := make([]string, len(st.Cells[0]))
-			for x := 0; x < len(sep); x++ {
-				s := fmt.Sprintf("%s", strings.Repeat("-", colLengths[x]))
+			if y == 0 {
+				sep := make([]string, len(st.Cells[0]))
+				for x := 0; x < len(sep); x++ {
+					s := fmt.Sprintf("%s", strings.Repeat("-", colLengths[x]))
 
-				sep[x] = s
+					sep[x] = s
+				}
+				sb.WriteString(st.rower(markdown, sep, colLengths, true))
 			}
-			sb.WriteString(st.rower(markdown, sep, colLengths, true))
 		}
 	}
 
