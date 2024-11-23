@@ -33,7 +33,6 @@ type RestURL struct {
 	Produces    []string       `json:"produces,omitempty"`
 	Success     []int          `json:"success,omitempty"`
 	Failure     []int          `json:"failure,omitempty"`
-	Headers     []RestURLField `json:"headers,omitempty"`
 	Params      []RestURLField `json:"params,omitempty"`
 	Stats       RestURLStats   `json:"stats,omitempty"`
 	statsCh     chan time.Duration
@@ -82,18 +81,10 @@ func (restURL *RestURL) Validate(r *http.Request) error {
 		}
 	}
 
-	for _, header := range restURL.Headers {
-		if r.Header.Get(header.Name) == "" {
-			if header.Default == "" && header.Mandatory {
-				return fmt.Errorf("missing HTTP header: %s", header.Name)
-			}
-		}
-	}
-
 	for _, param := range restURL.Params {
-		if !r.URL.Query().Has(param.Name) {
+		if !r.URL.Query().Has(param.Name) && r.Header.Get(param.Name) == "" {
 			if param.Default == "" && param.Mandatory {
-				return fmt.Errorf("missing HTTP value: %s", param.Name)
+				return fmt.Errorf("missing HTTP query/header param: %s", param.Name)
 			}
 		}
 	}
@@ -101,35 +92,54 @@ func (restURL *RestURL) Validate(r *http.Request) error {
 	return nil
 }
 
-func (restURL *RestURL) Header(r *http.Request, name string) string {
-	v := r.Header.Get(name)
-	if v == "" {
-		p := slices.IndexFunc(restURL.Headers, func(field RestURLField) bool {
-			return field.Name == name
-		})
+func (restURL *RestURL) ParamValue(r *http.Request, name string) string {
+	v := r.URL.Query().Get(name)
+	if v != "" {
+		return v
+	}
 
-		if p != -1 {
-			v = restURL.Headers[p].Default
-		}
+	v = r.Header.Get(name)
+	if v != "" {
+		return v
+	}
+
+	p := slices.IndexFunc(restURL.Params, func(field RestURLField) bool {
+		return field.Name == name
+	})
+
+	if p != -1 {
+		v = restURL.Params[p].Default
 	}
 
 	return v
 }
 
-func (restURL *RestURL) Param(r *http.Request, name string) string {
-	q := r.URL.Query()
-	v := q.Get(name)
-	if v == "" {
-		p := slices.IndexFunc(restURL.Params, func(field RestURLField) bool {
-			return field.Name == name
-		})
+func (restURL *RestURL) ParamValues(r *http.Request, name string) []string {
+	list := []string{}
 
-		if p != -1 {
-			v = restURL.Params[p].Default
-		}
+	v := r.URL.Query().Get(name)
+	if v != "" {
+		list = append(list, v)
 	}
 
-	return v
+	v = r.Header.Get(name)
+	if v != "" {
+		list = append(list, r.Header.Values(name)...)
+	}
+
+	if len(list) > 0 {
+		return list
+	}
+
+	p := slices.IndexFunc(restURL.Params, func(field RestURLField) bool {
+		return field.Name == name
+	})
+
+	if p != -1 {
+		v = restURL.Params[p].Default
+	}
+
+	return []string{v}
 }
 
 func (restURL *RestURL) updateStats() {
