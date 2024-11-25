@@ -2,9 +2,9 @@ package common
 
 import (
 	"fmt"
-	"golang.org/x/exp/slices"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"

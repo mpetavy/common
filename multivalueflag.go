@@ -1,7 +1,7 @@
 package common
 
 import (
-	"golang.org/x/exp/slices"
+	"slices"
 	"strings"
 )
 

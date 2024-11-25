@@ -2,7 +2,7 @@ package common
 
 import (
 	"fmt"
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 type Event interface{}
