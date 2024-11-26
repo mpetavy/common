@@ -336,18 +336,22 @@ func (g *GzipResponseWriter) Write(data []byte) (int, error) {
 
 func HTTPWrite(w http.ResponseWriter, r *http.Request, status int, mimeType string, ba []byte) error {
 	w.Header().Set(CONTENT_TYPE, mimeType)
-	w.Header().Set(CONTENT_LENGTH, strconv.Itoa(len(ba)))
 
-	if strings.Contains(r.Header.Get(ACCEPT_ENCODING), "gzip") {
+	useGZip := strings.Contains(r.Header.Get(ACCEPT_ENCODING), "gzip")
+
+	if useGZip {
 		w.Header().Set(CONTENT_ENCODING, "gzip")
+	} else {
+		w.Header().Set(CONTENT_LENGTH, strconv.Itoa(len(ba)))
 	}
 
 	w.WriteHeader(status)
 
-	if strings.Contains(r.Header.Get(ACCEPT_ENCODING), "gzip") {
+	if useGZip {
 		gzipWriter := gzip.NewWriter(w)
 
 		defer func() {
+			Error(gzipWriter.Flush())
 			Error(gzipWriter.Close())
 		}()
 
@@ -377,6 +381,10 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 	}()
 
 	client := &http.Client{}
+
+	if headers == nil {
+		headers = make(http.Header)
+	}
 
 	if httpTransport != nil {
 		client.Transport = httpTransport
@@ -431,9 +439,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 		req.PostForm = formdata
 	}
 
-	if headers != nil {
-		req.Header = headers
-	}
+	req.Header = headers
 
 	if username != "" || password != "" {
 		if username == BEARER {
