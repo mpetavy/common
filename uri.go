@@ -13,6 +13,7 @@ type URI struct {
 	Host     string
 	Port     string
 	Path     string
+	Params   url.Values
 }
 
 const (
@@ -23,10 +24,13 @@ const (
 	CidrSep         = "/"
 	CidrSplit       = ":"
 	CidrSplitV6     = "]:"
+	ParamsSep       = "?"
+	ParamSep        = "&"
+	ParamValueSep   = "="
 )
 
 func NewURI(s string) (*URI, error) {
-	uri := &URI{}
+	uri := &URI{Params: make(url.Values)}
 
 	p := strings.Index(s, SchemeSep)
 	if p != -1 {
@@ -77,6 +81,30 @@ func NewURI(s string) (*URI, error) {
 		uri.Port = cidr[p+len(sep):]
 	} else {
 		uri.Host = cidr
+	}
+
+	if strings.HasPrefix(uri.Scheme, "http") {
+		p = strings.Index(uri.Path, ParamsSep)
+		if p != -1 {
+			paramsSplits := Split(uri.Path[p+1:], ParamSep)
+			for _, paramsSplit := range paramsSplits {
+				splits := Split(paramsSplit, ParamValueSep)
+
+				value := ""
+				if len(splits) > 1 {
+					var err error
+
+					value, err = url.QueryUnescape(splits[1])
+					if Error(err) {
+						return nil, err
+					}
+				}
+
+				uri.Params.Add(splits[0], value)
+			}
+
+			uri.Path = uri.Path[:p]
+		}
 	}
 
 	return uri, nil
@@ -132,6 +160,11 @@ func (uri *URI) String() string {
 	}
 
 	sb.WriteString(uri.Path)
+
+	if len(uri.Params) > 0 {
+		sb.WriteString("?")
+		sb.WriteString(uri.Params.Encode())
+	}
 
 	return sb.String()
 }

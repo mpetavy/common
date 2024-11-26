@@ -28,7 +28,7 @@ type RestURL struct {
 	sync.Mutex
 	Description string         `json:"description,omitempty"`
 	Method      string         `json:"method,omitempty"`
-	Resource    string         `json:"resoure,omitempty"`
+	Endpoint    string         `json:"endpoint,omitempty"`
 	Consumes    []string       `json:"consumes,omitempty"`
 	Produces    []string       `json:"produces,omitempty"`
 	Success     []int          `json:"success,omitempty"`
@@ -39,7 +39,7 @@ type RestURL struct {
 }
 
 func NewRestURL(method string, resource string) *RestURL {
-	restURL := &RestURL{Method: method, Resource: resource, statsCh: make(chan time.Duration, 1000)}
+	restURL := &RestURL{Method: method, Endpoint: resource, statsCh: make(chan time.Duration, 1000)}
 
 	go restURL.updateStats()
 
@@ -47,11 +47,11 @@ func NewRestURL(method string, resource string) *RestURL {
 }
 
 func (restURL *RestURL) MuxString() string {
-	return fmt.Sprintf("%s %s", restURL.Method, restURL.Resource)
+	return fmt.Sprintf("%s %s", restURL.Method, restURL.Endpoint)
 }
 
 func (restURL *RestURL) Format(args ...any) string {
-	s := restURL.Resource
+	s := restURL.Endpoint
 
 	if strings.Contains(s, "{") {
 		regex := regexp.MustCompile("{.*?\\}")
@@ -73,9 +73,9 @@ func (restURL *RestURL) Validate(r *http.Request) error {
 	}
 
 	rPaths := Split(r.URL.Path, "/")
-	uPaths := Split(restURL.Resource, "/")
+	uPaths := Split(restURL.Endpoint, "/")
 
-	if !strings.Contains(restURL.Resource, "*") {
+	if !strings.Contains(restURL.Endpoint, "*") {
 		if len(rPaths) != len(uPaths) {
 			return fmt.Errorf("invalid amount of HTTP request path")
 		}
@@ -179,7 +179,7 @@ func (restURL *RestURL) UpdateStats(start time.Time) {
 func (restURL *RestURL) SwaggerInfo() string {
 	sb := strings.Builder{}
 
-	sb.WriteString(fmt.Sprintf("@Title %s\n", restURL.Resource))
+	sb.WriteString(fmt.Sprintf("@Title %s\n", restURL.Endpoint))
 	sb.WriteString(fmt.Sprintf("@Description %s\n", restURL.Description))
 	sb.WriteString(fmt.Sprintf("@Accept %s\n", strings.Join(restURL.Consumes, " ")))
 

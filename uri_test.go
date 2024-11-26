@@ -14,6 +14,7 @@ func TestURLBuilder_parse(t *testing.T) {
 		"http://user@www.google.de:9999",
 		"http://user:password@www.google.de:9999",
 		"http://user:password@www.google.de:9999/path",
+		"http://user:password@www.google.de:9999/path?p0=Donald+Duck&p1=%C3%B6%C3%A4%C3%BC%C3%9F",
 		"ftp://ftp.is.co.za/rfc/rfc1808.txt",
 		"http://www.ietf.org/rfc/rfc2396.txt",
 		"ldap://[2001:db8::7]/c=GB?objectClass?one",
