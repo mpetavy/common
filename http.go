@@ -347,7 +347,9 @@ func HTTPWrite(w http.ResponseWriter, r *http.Request, status int, mimeType stri
 	if strings.Contains(r.Header.Get(ACCEPT_ENCODING), "gzip") {
 		gzipWriter := gzip.NewWriter(w)
 
-		defer Error(gzipWriter.Close())
+		defer func() {
+			Error(gzipWriter.Close())
+		}()
 
 		w = &GzipResponseWriter{Writer: gzipWriter, ResponseWriter: w}
 	}
