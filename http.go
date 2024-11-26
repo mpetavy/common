@@ -2,6 +2,7 @@ package common
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto"
 	"crypto/tls"
@@ -27,6 +28,9 @@ const (
 	CONTENT_LENGTH      = "Content-Length"
 	CONTENT_MD5         = "Content-MD5"
 	CONTENT_DISPOSITION = "Content-Disposition"
+	CONTENT_ENCODING    = "Content-Encoding"
+
+	ACCEPT_ENCODING = "Accept-Encoding"
 
 	HEADER_LOCATION = "Location"
 
@@ -321,10 +325,32 @@ func CompareHashes(expected string, actual string) error {
 	return err
 }
 
-func HTTPWrite(w http.ResponseWriter, status int, mimeType string, ba []byte) error {
+type GzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (g *GzipResponseWriter) Write(data []byte) (int, error) {
+	return g.Writer.Write(data)
+}
+
+func HTTPWrite(w http.ResponseWriter, r *http.Request, status int, mimeType string, ba []byte) error {
 	w.Header().Set(CONTENT_TYPE, mimeType)
 	w.Header().Set(CONTENT_LENGTH, strconv.Itoa(len(ba)))
+
+	if strings.Contains(r.Header.Get(ACCEPT_ENCODING), "gzip") {
+		w.Header().Set(CONTENT_ENCODING, "gzip")
+	}
+
 	w.WriteHeader(status)
+
+	if strings.Contains(r.Header.Get(ACCEPT_ENCODING), "gzip") {
+		gzipWriter := gzip.NewWriter(w)
+
+		defer Error(gzipWriter.Close())
+
+		w = &GzipResponseWriter{Writer: gzipWriter, ResponseWriter: w}
+	}
 
 	_, err := w.Write(ba)
 	if Error(err) {
