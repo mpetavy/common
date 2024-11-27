@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"slices"
+	"sync"
 )
 
 type Event interface{}
@@ -10,12 +11,13 @@ type Event interface{}
 type EventFunc func(Event)
 
 type EventManager struct {
-	listeners map[string][]*EventFunc
+	listeners    map[string][]*EventFunc
+	currentEmits []string
+	sync.Mutex
 }
 
 var (
-	Events       = NewEventManager()
-	currentEmits []string
+	Events = NewEventManager()
 )
 
 func NewEventManager() *EventManager {
@@ -24,24 +26,24 @@ func NewEventManager() *EventManager {
 	}
 }
 
-func (this *EventManager) AddListener(event interface{}, eventFunc EventFunc) *EventFunc {
+func (eventManager *EventManager) AddListener(event interface{}, eventFunc EventFunc) *EventFunc {
 	eventType := fmt.Sprintf("%T", event)
 
 	DebugFunc("%T", event)
 
-	if _, ok := this.listeners[eventType]; ok {
-		this.listeners[eventType] = append(this.listeners[eventType], &eventFunc)
+	if _, ok := eventManager.listeners[eventType]; ok {
+		eventManager.listeners[eventType] = append(eventManager.listeners[eventType], &eventFunc)
 	} else {
-		this.listeners[eventType] = []*EventFunc{&eventFunc}
+		eventManager.listeners[eventType] = []*EventFunc{&eventFunc}
 	}
 
 	return &eventFunc
 }
 
-func (this *EventManager) RemoveListener(eventFunc *EventFunc) {
+func (eventManager *EventManager) RemoveListener(eventFunc *EventFunc) {
 	DebugFunc()
 
-	for eventType, funcs := range this.listeners {
+	for eventType, funcs := range eventManager.listeners {
 		for i := range funcs {
 			if funcs[i] == eventFunc {
 				funcs = SliceDelete(funcs, i)
@@ -50,28 +52,46 @@ func (this *EventManager) RemoveListener(eventFunc *EventFunc) {
 		}
 
 		if len(funcs) == 0 {
-			delete(this.listeners, eventType)
+			delete(eventManager.listeners, eventType)
 		} else {
-			this.listeners[eventType] = funcs
+			eventManager.listeners[eventType] = funcs
 		}
 	}
 }
 
-func (this *EventManager) Emit(event interface{}, reverse bool) {
+func (eventManager *EventManager) registerEventType(eventType string) bool {
+	eventManager.Lock()
+	defer eventManager.Unlock()
+
+	if slices.Contains(eventManager.currentEmits, eventType) {
+		return false
+	}
+
+	eventManager.currentEmits = append(eventManager.currentEmits, eventType)
+
+	return true
+}
+
+func (eventManager *EventManager) unregisterEventType(eventType string) {
+	eventManager.Lock()
+	defer eventManager.Unlock()
+
+	p := slices.Index(eventManager.currentEmits, eventType)
+	if p != -1 {
+		eventManager.currentEmits = slices.Delete(eventManager.currentEmits, p, p+1)
+	}
+}
+
+func (eventManager *EventManager) Emit(event interface{}, reverse bool) {
 	eventType := fmt.Sprintf("%T", event)
 
-	if slices.Contains(currentEmits, eventType) {
+	if !eventManager.registerEventType(eventType) {
 		return
 	}
 
-	currentEmits = append(currentEmits, eventType)
-	defer func() {
-		p := slices.Index(currentEmits, eventType)
-		currentEmits = slices.Delete(currentEmits, p, p+1)
-	}()
+	defer eventManager.unregisterEventType(eventType)
 
-	funcs, ok := this.listeners[eventType]
-
+	funcs, ok := eventManager.listeners[eventType]
 	if !ok && len(funcs) == 0 {
 		return
 	}
