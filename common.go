@@ -39,6 +39,26 @@ func ToBool(s string) bool {
 	return s == "true" || s == "1" || strings.HasPrefix(s, "t") || strings.HasPrefix(s, "y") || strings.HasPrefix(s, "j")
 }
 
+func ToSlice[T any](values ...T) []T {
+	list := []T{}
+
+	for _, v := range values {
+		list = append(list, v)
+	}
+
+	return list
+}
+
+func ToAnySlice[T any](values ...T) []any {
+	list := []any{}
+
+	for _, v := range values {
+		list = append(list, v)
+	}
+
+	return list
+}
+
 func Eval[T any](b bool, trueFunc T, falseFunc T) T {
 	if b {
 		return trueFunc

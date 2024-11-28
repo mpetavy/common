@@ -133,7 +133,7 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	return engine, nil
 }
 
-func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any) (goja.Value, error) {
+func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args ...any) (goja.Value, error) {
 	type result struct {
 		value goja.Value
 		err   error
@@ -165,7 +165,12 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args any
 					return fmt.Errorf("undefined function %s", funcName)
 				}
 
-				value, err = fn(goja.Undefined(), engine.VM.ToValue(args))
+				list := []goja.Value{}
+				for _, arg := range args {
+					list = append(list, engine.VM.ToValue(arg))
+				}
+
+				value, err = fn(goja.Undefined(), list...)
 				if common.DebugError(err) {
 					return err
 				}
