@@ -110,12 +110,15 @@ func (sqlDb *SqlDB) Open() error {
 		return err
 	}
 
-	sqlDb.Conn = db
+	ctx, cancel := context.WithTimeout(context.Background(), common.MillisecondToDuration(*queryTimeout))
+	defer cancel()
 
-	err = sqlDb.Revalidate(true)
+	err = db.PingContext(ctx)
 	if common.Error(err) {
 		return err
 	}
+
+	sqlDb.Conn = db
 
 	return nil
 }
