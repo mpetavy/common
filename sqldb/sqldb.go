@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/mpetavy/common"
 	dynamicstruct "github.com/ompluscator/dynamic-struct"
 	"reflect"
@@ -16,18 +15,23 @@ import (
 )
 
 type SqlDB struct {
-	Driver      string
-	DSN         string
-	Timeout     time.Duration
-	Isolation   sql.IsolationLevel
-	Conn        *sql.DB
-	txCounter   int
-	tx          *sql.Tx
-	txCtx       context.Context
-	txCtxCancel context.CancelFunc
+	Driver            string
+	DSN               string
+	Isolation         sql.IsolationLevel
+	Conn              *sql.DB
+	txCounter         int
+	tx                *sql.Tx
+	txCtx             context.Context
+	txCtxCancel       context.CancelFunc
+	lastUsage         time.Time
+	QueryTimeout      time.Duration
+	RevalidateTimeout time.Duration
 }
 
 var (
+	revalidateTimeout = common.SystemFlagInt("sqldb.revalidatetimeout", 5*60*1000, "Timeout after db connection is revalidated")
+	queryTimeout      = common.SystemFlagInt("sqldb.querytimeout", 30*1000, "Timeout for db queries")
+
 	regexFieldName = regexp.MustCompile("([\\w\\d_]+)")
 )
 
@@ -55,10 +59,51 @@ func (sqlDb *SqlDB) currentDb() dbintf {
 	}
 }
 
+func (sqlDb *SqlDB) Revalidate(force bool) error {
+	fmt.Printf("-----------------\n")
+	fmt.Printf("%v\n", force)
+	fmt.Printf("%v\n", time.Now())
+	fmt.Printf("%v\n", sqlDb.lastUsage)
+
+	if !force && sqlDb.lastUsage.Add(sqlDb.RevalidateTimeout).After(time.Now()) {
+		sqlDb.lastUsage = time.Now()
+
+		return nil
+	}
+
+	for try := 0; ; try++ {
+		ctx := context.Background()
+		if sqlDb.QueryTimeout != 0 {
+			var cancel context.CancelFunc
+
+			ctx, cancel = context.WithTimeout(context.Background(), sqlDb.QueryTimeout)
+			defer cancel()
+		}
+
+		err := sqlDb.Conn.PingContext(ctx)
+		if !common.Error(err) {
+			sqlDb.lastUsage = time.Now()
+
+			return nil
+		}
+		if try > 0 {
+			return err
+		}
+
+		common.IgnoreError(sqlDb.Close())
+
+		err = sqlDb.Open()
+		if common.Error(err) {
+			return err
+		}
+	}
+}
+
 func (sqlDb *SqlDB) Init(driver, dsn string) error {
 	sqlDb.Driver = driver
 	sqlDb.DSN = dsn
-	sqlDb.Timeout = time.Minute
+	sqlDb.QueryTimeout = common.MillisecondToDuration(*queryTimeout)
+	sqlDb.RevalidateTimeout = common.MillisecondToDuration(*revalidateTimeout)
 	sqlDb.Isolation = sql.LevelReadCommitted
 
 	return nil
@@ -70,20 +115,12 @@ func (sqlDb *SqlDB) Open() error {
 		return err
 	}
 
-	ctx := context.Background()
-	if sqlDb.Timeout != 0 {
-		var cancel context.CancelFunc
+	sqlDb.Conn = db
 
-		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.Timeout)
-		defer cancel()
-	}
-
-	err = db.PingContext(ctx)
+	err = sqlDb.Revalidate(true)
 	if common.Error(err) {
 		return err
 	}
-
-	sqlDb.Conn = db
 
 	return nil
 }
@@ -100,6 +137,11 @@ func (sqlDb *SqlDB) Close() error {
 }
 
 func (sqlDb *SqlDB) Begin() error {
+	err := sqlDb.Revalidate(false)
+	if common.Error(err) {
+		return err
+	}
+
 	sqlDb.txCounter++
 
 	if sqlDb.txCounter > 1 {
@@ -107,8 +149,6 @@ func (sqlDb *SqlDB) Begin() error {
 	}
 
 	sqlDb.txCtx, sqlDb.txCtxCancel = context.WithCancel(context.Background())
-
-	var err error
 
 	sqlDb.tx, err = sqlDb.Conn.BeginTx(sqlDb.txCtx, &sql.TxOptions{Isolation: sqlDb.Isolation})
 	if common.Error(err) {
@@ -119,13 +159,18 @@ func (sqlDb *SqlDB) Begin() error {
 }
 
 func (sqlDb *SqlDB) Rollback() error {
+	err := sqlDb.Revalidate(false)
+	if common.Error(err) {
+		return err
+	}
+
 	sqlDb.txCounter--
 
 	if sqlDb.txCounter > 0 {
 		return nil
 	}
 
-	err := sqlDb.tx.Rollback()
+	err = sqlDb.tx.Rollback()
 	if common.Error(err) {
 		return err
 	}
@@ -140,13 +185,18 @@ func (sqlDb *SqlDB) Rollback() error {
 }
 
 func (sqlDb *SqlDB) Commit() error {
+	err := sqlDb.Revalidate(false)
+	if common.Error(err) {
+		return err
+	}
+
 	sqlDb.txCounter--
 
 	if sqlDb.txCounter > 0 {
 		return nil
 	}
 
-	err := sqlDb.tx.Commit()
+	err = sqlDb.tx.Commit()
 	if common.Error(err) {
 		return err
 	}
@@ -161,11 +211,16 @@ func (sqlDb *SqlDB) Commit() error {
 }
 
 func (sqlDb *SqlDB) Execute(sqlcmd string, args ...any) (int64, error) {
+	err := sqlDb.Revalidate(false)
+	if common.Error(err) {
+		return 0, err
+	}
+
 	ctx := context.Background()
-	if sqlDb.Timeout != 0 {
+	if sqlDb.QueryTimeout != 0 {
 		var cancel context.CancelFunc
 
-		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.Timeout)
+		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.QueryTimeout)
 		defer cancel()
 	}
 
@@ -223,11 +278,16 @@ func (rs *Resultset) FieldByIndex(row int, col int) Field {
 }
 
 func (sqlDb *SqlDB) Query(sqlcmd string, args ...any) (*Resultset, error) {
+	err := sqlDb.Revalidate(false)
+	if common.Error(err) {
+		return nil, err
+	}
+
 	ctx := context.Background()
-	if sqlDb.Timeout != 0 {
+	if sqlDb.QueryTimeout != 0 {
 		var cancel context.CancelFunc
 
-		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.Timeout)
+		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.QueryTimeout)
 		defer cancel()
 	}
 
