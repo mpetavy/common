@@ -15,7 +15,6 @@ require (
 	github.com/fatih/structtag v1.2.0
 	github.com/gabriel-vasile/mimetype v1.4.2
 	github.com/go-ini/ini v1.67.0
-	github.com/go-sql-driver/mysql v1.7.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/sessions v1.2.1
 	github.com/grantae/certinfo v0.0.0-20170412194111-59d56a35515b
