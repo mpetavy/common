@@ -60,11 +60,6 @@ func (sqlDb *SqlDB) currentDb() dbintf {
 }
 
 func (sqlDb *SqlDB) Revalidate(force bool) error {
-	fmt.Printf("-----------------\n")
-	fmt.Printf("%v\n", force)
-	fmt.Printf("%v\n", time.Now())
-	fmt.Printf("%v\n", sqlDb.lastUsage)
-
 	if !force && sqlDb.lastUsage.Add(sqlDb.RevalidateTimeout).After(time.Now()) {
 		sqlDb.lastUsage = time.Now()
 
