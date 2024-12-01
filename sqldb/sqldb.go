@@ -59,7 +59,7 @@ func (sqlDb *SqlDB) currentDb() dbintf {
 	}
 }
 
-func (sqlDb *SqlDB) Revalidate(force bool) error {
+func (sqlDb *SqlDB) Ping(force bool) error {
 	if !force && sqlDb.lastUsage.Add(sqlDb.RevalidateTimeout).After(time.Now()) {
 		sqlDb.lastUsage = time.Now()
 
@@ -135,7 +135,7 @@ func (sqlDb *SqlDB) Close() error {
 }
 
 func (sqlDb *SqlDB) Begin() error {
-	err := sqlDb.Revalidate(false)
+	err := sqlDb.Ping(false)
 	if common.Error(err) {
 		return err
 	}
@@ -157,7 +157,7 @@ func (sqlDb *SqlDB) Begin() error {
 }
 
 func (sqlDb *SqlDB) Rollback() error {
-	err := sqlDb.Revalidate(false)
+	err := sqlDb.Ping(false)
 	if common.Error(err) {
 		return err
 	}
@@ -183,7 +183,7 @@ func (sqlDb *SqlDB) Rollback() error {
 }
 
 func (sqlDb *SqlDB) Commit() error {
-	err := sqlDb.Revalidate(false)
+	err := sqlDb.Ping(false)
 	if common.Error(err) {
 		return err
 	}
@@ -209,7 +209,7 @@ func (sqlDb *SqlDB) Commit() error {
 }
 
 func (sqlDb *SqlDB) Execute(sqlcmd string, args ...any) (int64, error) {
-	err := sqlDb.Revalidate(false)
+	err := sqlDb.Ping(false)
 	if common.Error(err) {
 		return 0, err
 	}
@@ -276,7 +276,22 @@ func (rs *Resultset) FieldByIndex(row int, col int) Field {
 }
 
 func (sqlDb *SqlDB) Query(sqlcmd string, args ...any) (*Resultset, error) {
-	err := sqlDb.Revalidate(false)
+	return sqlDb.query(nil, sqlcmd, args...)
+}
+
+func (sqlDb *SqlDB) QueryFunc(fn ResultsetFunc, sqlcmd string, args ...any) (int, error) {
+	rows, err := sqlDb.query(fn, sqlcmd, args...)
+	if common.Error(err) {
+		return 0, err
+	}
+
+	return rows.RowCount, nil
+}
+
+type ResultsetFunc func(rs *Resultset) error
+
+func (sqlDb *SqlDB) query(fn ResultsetFunc, sqlcmd string, args ...any) (*Resultset, error) {
+	err := sqlDb.Ping(false)
 	if common.Error(err) {
 		return nil, err
 	}
@@ -365,8 +380,10 @@ func (sqlDb *SqlDB) Query(sqlcmd string, args ...any) (*Resultset, error) {
 	recordStruct := recordBuilder.Build()
 
 	recordBuf := bytes.Buffer{}
+	count := 0
 
 	for query.Next() {
+		count++
 		rows.RowCount++
 
 		scan := scanStruct.New()
@@ -470,16 +487,40 @@ func (sqlDb *SqlDB) Query(sqlcmd string, args ...any) (*Resultset, error) {
 		}
 
 		recordBuf.Write(ba)
+
+		if fn != nil {
+			rows.Rows = recordStruct.NewSliceOfStructs()
+			rows.RowCount = 1
+
+			if recordBuf.Len() > 0 {
+				recordBuf.WriteString("]")
+
+				err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
+				if common.Error(err) {
+					return nil, err
+				}
+			}
+
+			err := fn(rows)
+			if common.Error(err) {
+				return nil, err
+			}
+
+			recordBuf.Reset()
+		}
 	}
 
-	rows.Rows = recordStruct.NewSliceOfStructs()
+	if fn == nil {
+		rows.Rows = recordStruct.NewSliceOfStructs()
+		rows.RowCount = count
 
-	if recordBuf.Len() > 0 {
-		recordBuf.WriteString("]")
+		if recordBuf.Len() > 0 {
+			recordBuf.WriteString("]")
 
-		err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
-		if common.Error(err) {
-			return nil, err
+			err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
+			if common.Error(err) {
+				return nil, err
+			}
 		}
 	}
 
