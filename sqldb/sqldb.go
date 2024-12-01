@@ -510,9 +510,10 @@ func (sqlDb *SqlDB) query(fn ResultsetFunc, sqlcmd string, args ...any) (*Result
 		}
 	}
 
+	rows.RowCount = count
+
 	if fn == nil {
 		rows.Rows = recordStruct.NewSliceOfStructs()
-		rows.RowCount = count
 
 		if recordBuf.Len() > 0 {
 			recordBuf.WriteString("]")
