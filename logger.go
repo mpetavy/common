@@ -209,7 +209,7 @@ func formatLog(level string, index int, msg string, addStacktrace bool) *LogEntr
 
 	logEntry := NewLogEntry(level, source, msg)
 
-	if addStacktrace || ((level == LevelError || level == LevelFatal) && App().StartFunc != nil && App().StopFunc != nil) {
+	if addStacktrace || ((level == LevelError || level == LevelFatal) && App() != nil && App().StartFunc != nil && App().StopFunc != nil) {
 		msg = msg + "\n" + ri.Stack
 	}
 

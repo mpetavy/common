@@ -50,7 +50,7 @@ X    | X   | X  | X
 		<td>X</td>
 	</tr>
 </table>
-`, st.Html())
+`, st.HTML())
 
 	require.Equal(t, `[
     {
@@ -66,7 +66,7 @@ X    | X   | X  | X
         "a": "X"
     }
 ]
-`, st.JSON("    "))
+`, st.JSON())
 
 	require.Equal(t, `"aaaa","aaa","aa","a"
 "b","bbb","bb","bbbb"

@@ -2,21 +2,33 @@ package common
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"reflect"
 	"slices"
 	"strings"
 )
 
+const (
+	indent = "    "
+)
+
 type StringTable struct {
-	Cells    [][]string
-	NoHeader bool
-	Aligment []int
+	Cells     [][]string
+	NoHeader  bool
+	Alignment []int
 }
 
 func NewStringTable() *StringTable {
 	return &StringTable{}
+}
+
+func writeString(w io.Writer, s string) error {
+	_, err := w.Write([]byte(s))
+
+	return err
 }
 
 func (st *StringTable) Clear() {
@@ -102,15 +114,40 @@ func (st *StringTable) rower(markdown bool, cols []string, colLengths []int, cro
 }
 
 func (st *StringTable) Table() string {
-	return st.table(false)
+	buf := bytes.Buffer{}
+
+	Error(st.table(&buf, false))
+
+	return string(buf.Bytes())
+}
+
+func (st *StringTable) TableToWriter(w io.Writer) error {
+	err := st.table(w, false)
+	if Error(err) {
+		return err
+	}
+
+	return nil
 }
 
 func (st *StringTable) Markdown() string {
+	buf := bytes.Buffer{}
 
-	return st.table(true)
+	Error(st.table(&buf, true))
+
+	return string(buf.Bytes())
 }
 
-func (st *StringTable) table(markdown bool) string {
+func (st *StringTable) MarkdownToWriter(w io.Writer) error {
+	err := st.table(w, true)
+	if Error(err) {
+		return err
+	}
+
+	return nil
+}
+
+func (st *StringTable) table(w io.Writer, markdown bool) error {
 	colLengths := make([]int, 0)
 
 	for y := 0; y < len(st.Cells); y++ {
@@ -123,11 +160,12 @@ func (st *StringTable) table(markdown bool) string {
 		}
 	}
 
-	sb := strings.Builder{}
-
 	for y := 0; y < len(st.Cells); y++ {
 		if y > 0 || !st.NoHeader {
-			sb.WriteString(st.rower(markdown, st.Cells[y], colLengths, false))
+			err := writeString(w, st.rower(markdown, st.Cells[y], colLengths, false))
+			if Error(err) {
+				return err
+			}
 
 			if y == 0 {
 				sep := make([]string, len(st.Cells[0]))
@@ -136,66 +174,129 @@ func (st *StringTable) table(markdown bool) string {
 
 					sep[x] = s
 				}
-				sb.WriteString(st.rower(markdown, sep, colLengths, true))
+				err := writeString(w, st.rower(markdown, sep, colLengths, true))
+				if Error(err) {
+					return err
+				}
 			}
 		}
 	}
 
-	return sb.String()
+	return nil
 }
 
-func (st *StringTable) Html() string {
-	sb := strings.Builder{}
-	sb.WriteString("<table>\n")
+func (st *StringTable) html(w io.Writer) error {
+	err := writeString(w, "<table>\n")
+	if Error(err) {
+		return err
+	}
 
 	for y := 0; y < len(st.Cells); y++ {
 		if y == 0 {
 			if !st.NoHeader {
-				sb.WriteString("\t<thead>\n")
+				err := writeString(w, "\t<thead>\n")
+				if Error(err) {
+					return err
+				}
 			} else {
-				sb.WriteString("\t<tbody>\n")
+				err := writeString(w, "\t<tbody>\n")
+				if Error(err) {
+					return err
+				}
 			}
 		}
 
-		sb.WriteString("\t<tr>\n")
-
-		for x := 0; x < len(st.Cells[y]); x++ {
-			sb.WriteString("\t\t<td>")
-			sb.WriteString(fmt.Sprintf("%v", st.Cells[y][x]))
-			sb.WriteString("</td>\n")
+		err := writeString(w, "\t<tr>\n")
+		if Error(err) {
+			return err
 		}
 
-		sb.WriteString("\t</tr>\n")
+		for x := 0; x < len(st.Cells[y]); x++ {
+			err := writeString(w, "\t\t<td>")
+			if Error(err) {
+				return err
+			}
+			err = writeString(w, fmt.Sprintf("%v", st.Cells[y][x]))
+			if Error(err) {
+				return err
+			}
+			err = writeString(w, "</td>\n")
+			if Error(err) {
+				return err
+			}
+		}
+
+		err = writeString(w, "\t</tr>\n")
+		if Error(err) {
+			return err
+		}
 
 		if y == 0 {
 			if !st.NoHeader {
-				sb.WriteString("\t</thead>\n")
+				err := writeString(w, "\t</thead>\n")
+				if Error(err) {
+					return err
+				}
 			} else {
-				sb.WriteString("\t</tbody>\n")
+				err := writeString(w, "\t</tbody>\n")
+				if Error(err) {
+					return err
+				}
 			}
 		}
 	}
 
-	sb.WriteString("</table>\n")
+	err = writeString(w, "</table>\n")
+	if Error(err) {
+		return err
+	}
 
-	return sb.String()
+	return nil
 }
 
-func (st *StringTable) JSON(indent string) string {
-	sb := strings.Builder{}
-	sb.WriteString("[\n")
+func (st *StringTable) HTML() string {
+	buf := bytes.Buffer{}
+
+	Error(st.html(&buf))
+
+	return string(buf.Bytes())
+}
+
+func (st *StringTable) HTMLToWriter(w io.Writer) error {
+	err := st.html(w)
+	if Error(err) {
+		return err
+	}
+
+	return nil
+}
+
+func (st *StringTable) json(w io.Writer) error {
+	err := writeString(w, "[\n")
+	if Error(err) {
+		return err
+	}
 
 	if len(st.Cells) > 1 {
 		for y := 1; y < len(st.Cells); y++ {
 			if y > 1 {
-				sb.WriteString(",\n")
+				err := writeString(w, ",\n")
+				if Error(err) {
+					return err
+				}
 			}
 
-			sb.WriteString(fmt.Sprintf("%s{\n", indent))
+			err := writeString(w, fmt.Sprintf("%s{\n", indent))
+			if Error(err) {
+				return err
+			}
 
 			for x := 0; x < len(st.Cells[y]); x++ {
 				if x > 0 {
-					sb.WriteString(",\n")
+					err := writeString(w, ",\n")
+					if Error(err) {
+						return err
+					}
 				}
 
 				name, _ := json.Marshal(st.Cells[0][x])
@@ -204,22 +305,54 @@ func (st *StringTable) JSON(indent string) string {
 				value, _ := json.Marshal(st.Cells[y][x])
 				value = value[1 : len(value)-1]
 
-				sb.WriteString(fmt.Sprintf("%s%s\"%v\": \"%v\"", indent, indent, string(name), string(value)))
+				err := writeString(w, fmt.Sprintf("%s%s\"%v\": \"%v\"", indent, indent, string(name), string(value)))
+				if Error(err) {
+					return err
+				}
 			}
-			sb.WriteString(fmt.Sprintf("\n"))
-			sb.WriteString(fmt.Sprintf("%s}", indent))
+
+			err = writeString(w, fmt.Sprintf("\n"))
+			if Error(err) {
+				return err
+			}
+
+			err = writeString(w, fmt.Sprintf("%s}", indent))
+			if Error(err) {
+				return err
+			}
 		}
-		sb.WriteString("\n")
+		err := writeString(w, "\n")
+		if Error(err) {
+			return err
+		}
 	}
 
-	sb.WriteString("]\n")
+	err = writeString(w, "]\n")
+	if Error(err) {
+		return err
+	}
 
-	return sb.String()
+	return nil
 }
 
-func (st *StringTable) CSV() string {
-	sb := strings.Builder{}
+func (st *StringTable) JSON() string {
+	buf := bytes.Buffer{}
 
+	Error(st.json(&buf))
+
+	return string(buf.Bytes())
+}
+
+func (st *StringTable) JSONToWriter(w io.Writer) error {
+	err := st.json(w)
+	if Error(err) {
+		return err
+	}
+
+	return nil
+}
+
+func (st *StringTable) csv(w io.Writer) error {
 	for y := 0; y < len(st.Cells); y++ {
 		if y == 0 && st.NoHeader {
 			continue
@@ -227,25 +360,53 @@ func (st *StringTable) CSV() string {
 
 		for x := 0; x < len(st.Cells[y]); x++ {
 			if x > 0 {
-				sb.WriteString(",")
+				err := writeString(w, ",")
+				if Error(err) {
+					return err
+				}
 			}
 			value := st.Cells[y][x]
 
 			value = strings.ReplaceAll(value, "\"", "\"\"")
 
-			sb.WriteString(fmt.Sprintf("\"%v\"", value))
+			err := writeString(w, fmt.Sprintf("\"%v\"", value))
+			if Error(err) {
+				return err
+			}
 		}
 
-		sb.WriteString("\n")
+		err := writeString(w, "\n")
+		if Error(err) {
+			return err
+		}
 	}
 
-	return sb.String()
+	return nil
 }
 
-func (st *StringTable) Debug() {
+func (st *StringTable) CSV() string {
+	buf := bytes.Buffer{}
+
+	Error(st.csv(&buf))
+
+	return string(buf.Bytes())
+}
+
+func (st *StringTable) CSVToWriter(w io.Writer) error {
+	err := st.csv(w)
+	if Error(err) {
+		return err
+	}
+
+	return nil
+}
+
+func (st *StringTable) Debug() error {
 	scanner := bufio.NewScanner(strings.NewReader(st.Table()))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		Debug(line)
 	}
+
+	return nil
 }
