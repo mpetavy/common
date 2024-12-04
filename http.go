@@ -334,15 +334,17 @@ func (g *GzipResponseWriter) Write(data []byte) (int, error) {
 	return g.Writer.Write(data)
 }
 
-func HTTPWrite(w http.ResponseWriter, r *http.Request, status int, mimeType string, ba []byte) error {
+func HTTPResponse(w http.ResponseWriter, r *http.Request, status int, mimeType string, bodyLen int, body io.Reader) error {
 	w.Header().Set(CONTENT_TYPE, mimeType)
 
 	useGZip := strings.Contains(r.Header.Get(ACCEPT_ENCODING), "gzip")
 
 	if useGZip {
 		w.Header().Set(CONTENT_ENCODING, "gzip")
-	} else {
-		w.Header().Set(CONTENT_LENGTH, strconv.Itoa(len(ba)))
+	}
+
+	if bodyLen >= 0 {
+		w.Header().Set(CONTENT_LENGTH, strconv.Itoa(bodyLen))
 	}
 
 	w.WriteHeader(status)
@@ -358,7 +360,7 @@ func HTTPWrite(w http.ResponseWriter, r *http.Request, status int, mimeType stri
 		w = &GzipResponseWriter{Writer: gzipWriter, ResponseWriter: w}
 	}
 
-	_, err := w.Write(ba)
+	_, err := io.Copy(w, body)
 	if Error(err) {
 		return err
 	}

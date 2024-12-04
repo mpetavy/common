@@ -1,10 +1,10 @@
 package common
 
 import (
-	"bytes"
 	"flag"
 	"github.com/stretchr/testify/require"
 	"io"
+	"os"
 	"strconv"
 	"testing"
 )
@@ -18,7 +18,8 @@ func testSwapBuffer(t *testing.T, useCompression bool) {
 	err = fl.Value.Set(strconv.FormatBool(useCompression))
 	require.NoError(t, err)
 
-	msg := RndBytes(100)
+	msg, err := os.ReadFile("common.go")
+	require.NoError(t, err)
 
 	sb := NewSwapBuffer()
 
@@ -32,7 +33,7 @@ func testSwapBuffer(t *testing.T, useCompression bool) {
 
 	n, err = sb.Write(msg[5:])
 	require.NoError(t, err)
-	require.Equal(t, n, 95)
+	require.Equal(t, n, len(msg)-5)
 
 	// check that is swapped to disk
 
@@ -51,24 +52,16 @@ func testSwapBuffer(t *testing.T, useCompression bool) {
 
 	require.Equal(t, msg, ba)
 
-	var buf bytes.Buffer
+	// check lengths
 
-	// create a reader
-
-	r, err := sb.Reader()
+	compressedLen, err := sb.CompressedLen()
 	require.NoError(t, err)
 
-	n64, err := io.Copy(&buf, r)
-	require.NoError(t, err)
-
-	// check for reading back is correct
-
-	require.Equal(t, msg, buf.Bytes())
-
-	// check for len is correct
-
-	require.Equal(t, int64(len(msg)), n64)
-	require.Equal(t, msg, ba)
+	if useCompression {
+		require.True(t, compressedLen < sb.Len())
+	} else {
+		require.Equal(t, compressedLen, sb.Len())
+	}
 
 	err = sb.Close()
 	require.NoError(t, err)

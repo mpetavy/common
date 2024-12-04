@@ -64,12 +64,12 @@ func (sb *SwapBuffer) Write(p []byte) (int, error) {
 				sb.gzipWriter = gzip.NewWriter(sb.file)
 			}
 
+			sb.written = 0
+
 			n, err = sb.writeBytes(sb.buf.Bytes())
 			if err != nil {
 				return 0, err
 			}
-
-			sb.written -= sb.buf.Len()
 
 			sb.buf.Reset()
 		}
@@ -201,54 +201,19 @@ func (sb *SwapBuffer) Close() error {
 	return nil
 }
 
-type eofReader struct {
-	R io.ReadCloser
-}
-
-func (r eofReader) Read(p []byte) (int, error) {
-	n, err := r.R.Read(p)
-	if err == io.ErrUnexpectedEOF {
-		err = io.EOF
-	}
-
-	return n, err
-}
-
-func (r eofReader) Close() error {
-	return r.R.Close()
-}
-
-func (sb *SwapBuffer) Reader() (io.ReadCloser, error) {
-	if sb.isClosed {
-		return nil, os.ErrInvalid
-	}
-
-	sb.inReadMode = true
-
-	if sb.OnDisk() {
-		_, err := sb.file.Seek(0, io.SeekStart)
-		if err != nil {
-			return nil, err
-		}
-
-		if *FlagIoSwapBufferCompression {
-			sb.gzipReader, err = gzip.NewReader(sb.file)
-
-			if err != nil {
-				return nil, err
-			}
-
-			return &eofReader{
-				R: sb.gzipReader,
-			}, nil
-		}
-
-		return sb.file, nil
-	}
-
-	return io.NopCloser(bytes.NewReader(sb.buf.Bytes())), nil
-}
-
 func (sb *SwapBuffer) Len() int {
 	return sb.written
+}
+
+func (sb *SwapBuffer) CompressedLen() (int, error) {
+	if sb.OnDisk() {
+		l, err := FileSize(sb.file.Name())
+		if Error(err) {
+			return 0, err
+		}
+
+		return int(l), nil
+	}
+
+	return sb.Len(), nil
 }
