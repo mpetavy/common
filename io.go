@@ -147,7 +147,7 @@ func TempDir() string {
 func CreateTempFile() (file *os.File, err error) {
 	tempDir := TempDir()
 
-	file, err = os.CreateTemp(tempDir, GetRuntimeInfo(1).Filename()+"-*")
+	file, err = os.CreateTemp(tempDir, GetRuntimeInfo(1).Filename()+"#*")
 	if Error(err) {
 		return nil, err
 	}

@@ -70,7 +70,7 @@ func (this *Runner) execute(wg *sync.WaitGroup) error {
 
 func (r RuntimeInfo) toString(asFilename bool) string {
 	if asFilename {
-		return fmt.Sprintf("%s-%s-%d-%s", r.Pack, r.File, r.Line, r.Fn)
+		return fmt.Sprintf("%s-%s-%d", r.Pack, r.File, r.Line)
 	} else {
 		return fmt.Sprintf("%s/%s:%d/%s", r.Pack, r.File, r.Line, r.Fn)
 	}
