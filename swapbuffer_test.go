@@ -5,13 +5,17 @@ import (
 	"flag"
 	"github.com/stretchr/testify/require"
 	"io"
+	"strconv"
 	"testing"
 )
 
-func TestSwapBuffer(t *testing.T) {
-	fl := flag.Lookup(FlagNameIoSwapThreshold)
-
+func testSwapBuffer(t *testing.T, useCompression bool) {
+	fl := flag.Lookup(FlagNameIoSwapBufferThreshold)
 	err := fl.Value.Set("10")
+	require.NoError(t, err)
+
+	fl = flag.Lookup(FlagNameIoSwapBufferCompression)
+	err = fl.Value.Set(strconv.FormatBool(useCompression))
 	require.NoError(t, err)
 
 	msg := RndBytes(100)
@@ -57,6 +61,10 @@ func TestSwapBuffer(t *testing.T) {
 	n64, err := io.Copy(&buf, r)
 	require.NoError(t, err)
 
+	// check for reading back is correct
+
+	require.Equal(t, msg, buf.Bytes())
+
 	// check for len is correct
 
 	require.Equal(t, int64(len(msg)), n64)
@@ -64,4 +72,25 @@ func TestSwapBuffer(t *testing.T) {
 
 	err = sb.Close()
 	require.NoError(t, err)
+}
+
+func TestSwapBuffer(t *testing.T) {
+	tests := []struct {
+		name           string
+		useCompression bool
+	}{
+		{
+			name:           "With compression",
+			useCompression: true,
+		},
+		{
+			name:           "Without compression",
+			useCompression: false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			testSwapBuffer(t, test.useCompression)
+		})
+	}
 }

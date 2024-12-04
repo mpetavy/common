@@ -2,23 +2,28 @@ package common
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
 )
 
 const (
-	FlagNameIoSwapThreshold = "io.swap.threshold"
+	FlagNameIoSwapBufferThreshold   = "io.swapbuffer.threshold"
+	FlagNameIoSwapBufferCompression = "io.swapbuffer.compression"
 )
 
 var (
-	FlagIoSwapThreshold = SystemFlagInt(FlagNameIoSwapThreshold, 10*1024*1024, "byte count threshold to store to file")
+	FlagIoSwapBufferThreshold   = SystemFlagInt(FlagNameIoSwapBufferThreshold, 1*1024*1024, "bytes count threshold to store to file")
+	FlagIoSwapBufferCompression = SystemFlagBool(FlagNameIoSwapBufferCompression, true, "use compression with SwapBuffer")
 )
 
 type SwapBuffer struct {
 	io.ReadWriteCloser
 	buf        bytes.Buffer
 	file       *os.File
+	gzipWriter *gzip.Writer
+	gzipReader *gzip.Reader
 	inReadMode bool
 	isClosed   bool
 	written    int
@@ -44,7 +49,7 @@ func (sb *SwapBuffer) Write(p []byte) (int, error) {
 	n := len(p)
 
 	if !sb.OnDisk() {
-		if sb.written+len(p) > *FlagIoSwapThreshold {
+		if sb.written+len(p) > *FlagIoSwapBufferThreshold {
 			f, err := CreateTempFile()
 			if err != nil {
 				return 0, err
@@ -55,34 +60,75 @@ func (sb *SwapBuffer) Write(p []byte) (int, error) {
 				return 0, err
 			}
 
-			_, err = sb.file.Write(sb.buf.Bytes())
+			if *FlagIoSwapBufferCompression {
+				sb.gzipWriter = gzip.NewWriter(sb.file)
+			}
+
+			n, err = sb.writeBytes(sb.buf.Bytes())
 			if err != nil {
 				return 0, err
 			}
+
+			sb.written -= sb.buf.Len()
 
 			sb.buf.Reset()
 		}
 	}
 
-	if sb.OnDisk() {
-		var err error
+	n, err := sb.writeBytes(p)
+	if err != nil {
+		return 0, err
+	}
 
-		n, err = sb.file.Write(p)
-		if err != nil {
-			return 0, err
+	return n, nil
+}
+
+func (sb *SwapBuffer) writeBytes(p []byte) (int, error) {
+	if sb.OnDisk() {
+		if *FlagIoSwapBufferCompression {
+			n, err := sb.gzipWriter.Write(p)
+			if err != nil {
+				return 0, err
+			}
+
+			err = sb.gzipWriter.Flush()
+			if err != nil {
+				return 0, err
+			}
+
+			sb.written += n
+
+			return n, nil
+		} else {
+			n, err := sb.file.Write(p)
+			if err != nil {
+				return 0, err
+			}
+
+			sb.written += n
+
+			return n, err
 		}
 	} else {
 		var err error
 
-		n, err = sb.buf.Write(p)
+		n, err := sb.buf.Write(p)
 		if err != nil {
 			return 0, err
 		}
+
+		sb.written += n
+
+		return n, nil
 	}
+}
 
-	sb.written += n
-
-	return n, nil
+func (sb *SwapBuffer) readBytes(p []byte) (int, error) {
+	if *FlagIoSwapBufferCompression {
+		return sb.gzipReader.Read(p)
+	} else {
+		return sb.file.Read(p)
+	}
 }
 
 func (sb *SwapBuffer) WriteString(s string) (int, error) {
@@ -102,16 +148,31 @@ func (sb *SwapBuffer) Read(p []byte) (int, error) {
 			if err != nil {
 				return 0, err
 			}
+
+			if *FlagIoSwapBufferCompression {
+				sb.gzipReader, err = gzip.NewReader(sb.file)
+				if err != nil {
+					return 0, err
+				}
+			}
 		}
 	}
 
 	if sb.OnDisk() {
-		n, err := sb.file.Read(p)
-		if err != nil {
-			return 0, err
-		}
+		if *FlagIoSwapBufferCompression {
+			n, err := sb.gzipReader.Read(p)
+			if err == io.ErrUnexpectedEOF {
+				err = io.EOF
+			}
 
-		return n, nil
+			if err != nil {
+				return 0, err
+			}
+
+			return n, nil
+		} else {
+			return sb.file.Read(p)
+		}
 	} else {
 		n, err := sb.buf.Read(p)
 		if err != nil {
@@ -140,6 +201,23 @@ func (sb *SwapBuffer) Close() error {
 	return nil
 }
 
+type eofReader struct {
+	R io.ReadCloser
+}
+
+func (r eofReader) Read(p []byte) (int, error) {
+	n, err := r.R.Read(p)
+	if err == io.ErrUnexpectedEOF {
+		err = io.EOF
+	}
+
+	return n, err
+}
+
+func (r eofReader) Close() error {
+	return r.R.Close()
+}
+
 func (sb *SwapBuffer) Reader() (io.ReadCloser, error) {
 	if sb.isClosed {
 		return nil, os.ErrInvalid
@@ -151,6 +229,18 @@ func (sb *SwapBuffer) Reader() (io.ReadCloser, error) {
 		_, err := sb.file.Seek(0, io.SeekStart)
 		if err != nil {
 			return nil, err
+		}
+
+		if *FlagIoSwapBufferCompression {
+			sb.gzipReader, err = gzip.NewReader(sb.file)
+
+			if err != nil {
+				return nil, err
+			}
+
+			return &eofReader{
+				R: sb.gzipReader,
+			}, nil
 		}
 
 		return sb.file, nil
