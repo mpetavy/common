@@ -38,6 +38,7 @@ const (
 	FlagNameHTTPBodyLimit   = "http.bodylimit"
 	FlagNameHTTPTLSInsecure = "http.tlsinsecure"
 	FlagNameHTTPTimeout     = "http.timeout"
+	FlagNameHTTPGzip        = "http.gzip"
 )
 
 var (
@@ -45,6 +46,7 @@ var (
 	FlagHTTPBodyLimit   = SystemFlagInt64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
 	FlagHTTPTLSInsecure = SystemFlagBool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
 	FlagHTTPTimeout     = SystemFlagInt(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
+	FlagHTTPGzip        = SystemFlagBool(FlagNameHTTPGzip, true, "HTTP GZip support")
 
 	httpServer *http.Server
 
@@ -337,14 +339,14 @@ func (g *GzipResponseWriter) Write(data []byte) (int, error) {
 func HTTPResponse(w http.ResponseWriter, r *http.Request, status int, mimeType string, bodyLen int, body io.Reader) error {
 	w.Header().Set(CONTENT_TYPE, mimeType)
 
-	useGZip := strings.Contains(r.Header.Get(ACCEPT_ENCODING), "gzip")
+	useGZip := *FlagHTTPGzip && strings.Contains(r.Header.Get(ACCEPT_ENCODING), "gzip")
 
 	if useGZip {
 		w.Header().Set(CONTENT_ENCODING, "gzip")
-	}
-
-	if bodyLen >= 0 {
-		w.Header().Set(CONTENT_LENGTH, strconv.Itoa(bodyLen))
+	} else {
+		if bodyLen >= 0 {
+			w.Header().Set(CONTENT_LENGTH, strconv.Itoa(bodyLen))
+		}
 	}
 
 	w.WriteHeader(status)
@@ -360,9 +362,11 @@ func HTTPResponse(w http.ResponseWriter, r *http.Request, status int, mimeType s
 		w = &GzipResponseWriter{Writer: gzipWriter, ResponseWriter: w}
 	}
 
-	_, err := io.Copy(w, body)
-	if Error(err) {
-		return err
+	if body != nil {
+		_, err := io.Copy(w, body)
+		if Error(err) {
+			return err
+		}
 	}
 
 	return nil

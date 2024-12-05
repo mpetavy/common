@@ -304,10 +304,19 @@ func (sqlDb *SqlDB) query(fn ResultsetFunc, sqlcmd string, args ...any) (*Result
 		defer cancel()
 	}
 
-	query, err := sqlDb.currentDb().QueryContext(ctx, sqlcmd, args...)
+	var query *sql.Rows
+	err = common.Catch(func() error {
+		var err error
+
+		query, err = sqlDb.currentDb().QueryContext(ctx, sqlcmd, args...)
+
+		return err
+
+	})
 	if common.Error(err) {
 		return nil, err
 	}
+
 	defer func() {
 		common.Error(query.Close())
 	}()
