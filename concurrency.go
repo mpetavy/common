@@ -3,6 +3,7 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"runtime"
 	"slices"
 	"sort"
@@ -14,10 +15,42 @@ import (
 )
 
 var (
+	concurrentLimit = flag.Int("concurrent.limit", Max(4, runtime.NumCPU()-1), "Limit of current running tasks")
+
 	routines        = make(map[int]RuntimeInfo)
 	routinesCounter = 0
 	routinesMutex   = sync.Mutex{}
+
+	concurrentLimitCh chan struct{}
 )
+
+func init() {
+	Events.AddListener(EventFlagsParsed{}, func(event Event) {
+		concurrentLimitCh = make(chan struct{}, *concurrentLimit)
+	})
+}
+
+func RegisterConcurrent() {
+	if *concurrentLimit == 0 {
+		return
+	}
+
+	DebugFunc("Register...")
+
+	concurrentLimitCh <- struct{}{}
+
+	DebugFunc("Run")
+}
+
+func UnregisterConcurrent() {
+	if *concurrentLimit == 0 {
+		return
+	}
+
+	DebugFunc("Unregister")
+
+	<-concurrentLimitCh
+}
 
 func RegisterGoRoutine(index int) int {
 	routinesMutex.Lock()
