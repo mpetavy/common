@@ -30,9 +30,9 @@ func init() {
 	})
 }
 
-func RegisterConcurrent() {
+func RegisterConcurrentLimit() int {
 	if *concurrentLimit == 0 {
-		return
+		return 0
 	}
 
 	DebugFunc("Register...")
@@ -40,9 +40,11 @@ func RegisterConcurrent() {
 	concurrentLimitCh <- struct{}{}
 
 	DebugFunc("Run")
+
+	return 0
 }
 
-func UnregisterConcurrent() {
+func UnregisterConcurrentLimit(dummy int) {
 	if *concurrentLimit == 0 {
 		return
 	}

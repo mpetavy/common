@@ -566,15 +566,11 @@ func ReadBodyJSON[T any](r io.ReadCloser) ([]T, bool, error) {
 	return records, isArray, nil
 }
 
-func ConcurrentHandler(next http.HandlerFunc) http.HandlerFunc {
+func ConcurrentLimitHandler(next http.HandlerFunc) http.HandlerFunc {
 	DebugFunc()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		RegisterConcurrent()
-
-		defer func() {
-			UnregisterConcurrent()
-		}()
+		defer UnregisterConcurrentLimit(RegisterConcurrentLimit())
 
 		next.ServeHTTP(w, r)
 	}
