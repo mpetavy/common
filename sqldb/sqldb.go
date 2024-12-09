@@ -39,7 +39,7 @@ var (
 	FlagDbQueryTimeout = common.SystemFlagInt(FlagNameDbQueryTimeout, 120*1000, "Database query timeout")
 	FlagDbMaxIdle      = common.SystemFlagInt(FlagNameDbMaxIdle, 0, "Database max idle connections")
 	FlagMaxOpen        = common.SystemFlagInt(FlagNameDbMaxOpen, 0, "Database max open connections")
-	FLagMaxLifetime    = common.SystemFlagInt(FlagNameDbMaxLifetime, 0, "Database connection max lifetime")
+	FlagMaxLifetime    = common.SystemFlagInt(FlagNameDbMaxLifetime, 0, "Database connection max lifetime")
 
 	regexFieldName = regexp.MustCompile("([\\w\\d_]+)")
 )
@@ -87,8 +87,8 @@ func (sqlDb *SqlDb) open() error {
 		if *FlagDbMaxIdle > 0 {
 			sqlDb.conn.SetMaxIdleConns(*FlagDbMaxIdle)
 		}
-		if *FLagMaxLifetime > 0 {
-			sqlDb.conn.SetConnMaxLifetime(common.MillisecondToDuration(*FLagMaxLifetime))
+		if *FlagMaxLifetime > 0 {
+			sqlDb.conn.SetConnMaxLifetime(common.MillisecondToDuration(*FlagMaxLifetime))
 		}
 		if *FlagMaxOpen > 0 {
 			sqlDb.conn.SetMaxOpenConns(*FlagMaxOpen)
@@ -277,11 +277,11 @@ func (rs *Resultset) FieldByIndex(row int, col int) Field {
 }
 
 func (sqlDb *SqlDb) Query(sqlcmd string, args ...any) (*Resultset, error) {
-	return sqlDb.query(nil, sqlcmd, args...)
+	return sqlDb.query(nil, -1, sqlcmd, args...)
 }
 
-func (sqlDb *SqlDb) QueryFunc(fn ResultsetFunc, sqlcmd string, args ...any) (int, error) {
-	rows, err := sqlDb.query(fn, sqlcmd, args...)
+func (sqlDb *SqlDb) QueryPaged(fn ResultsetFunc, pageRowCount int, sqlcmd string, args ...any) (int, error) {
+	rows, err := sqlDb.query(fn, pageRowCount, sqlcmd, args...)
 	if common.Error(err) {
 		return 0, err
 	}
@@ -291,7 +291,7 @@ func (sqlDb *SqlDb) QueryFunc(fn ResultsetFunc, sqlcmd string, args ...any) (int
 
 type ResultsetFunc func(rs *Resultset) error
 
-func (sqlDb *SqlDb) query(fn ResultsetFunc, sqlcmd string, args ...any) (*Resultset, error) {
+func (sqlDb *SqlDb) query(fn ResultsetFunc, pageRowCount int, sqlcmd string, args ...any) (*Resultset, error) {
 	err := sqlDb.open()
 	if common.Error(err) {
 		return nil, err
@@ -333,11 +333,6 @@ func (sqlDb *SqlDb) query(fn ResultsetFunc, sqlcmd string, args ...any) (*Result
 	columnTypes, err := query.ColumnTypes()
 	if common.Error(err) {
 		return nil, err
-	}
-
-	rows := &Resultset{
-		ColumnNames: columnNames,
-		ColumnTypes: columnTypes,
 	}
 
 	scanBuilder := dynamicstruct.NewStruct()
@@ -389,151 +384,153 @@ func (sqlDb *SqlDb) query(fn ResultsetFunc, sqlcmd string, args ...any) (*Result
 	scanStruct := scanBuilder.Build()
 	recordStruct := recordBuilder.Build()
 
-	recordBuf := bytes.Buffer{}
 	count := 0
 
-	for query.Next() {
-		count++
-		rows.RowCount++
+	rows := &Resultset{
+		ColumnNames: columnNames,
+		ColumnTypes: columnTypes,
+	}
 
-		scan := scanStruct.New()
-		scanPtrs := make([]any, len(columnNames))
-		scanElem := reflect.ValueOf(scan).Elem()
+	hasNext := true
 
-		for i := 0; i < scanElem.NumField(); i++ {
-			scanPtrs[i] = scanElem.Field(i).Addr().Interface()
+	for {
+		recordBuf := bytes.Buffer{}
+		recordBuf.WriteString("[")
+
+		rows.RowCount = 0
+
+		for pageRowCount == -1 || (rows.RowCount < pageRowCount) {
+			hasNext = query.Next()
+			if !hasNext {
+				break
+			}
+
+			count++
+			rows.RowCount++
+
+			scan := scanStruct.New()
+			scanPtrs := make([]any, len(columnNames))
+			scanElem := reflect.ValueOf(scan).Elem()
+
+			for i := 0; i < scanElem.NumField(); i++ {
+				scanPtrs[i] = scanElem.Field(i).Addr().Interface()
+			}
+
+			err = query.Scan(scanPtrs...)
+			if common.Error(err) {
+				return nil, err
+			}
+
+			record := recordStruct.New()
+			recordElem := reflect.ValueOf(record).Elem()
+
+			for i := 0; i < scanElem.NumField(); i++ {
+				recordField := recordElem.FieldByName(columnNames[i])
+				recordFieldIsNull := recordField.FieldByName("IsNull")
+				recordFieldValue := recordField.FieldByName("Value")
+
+				switch columnTypes[i].ScanType() {
+				case reflect.TypeOf(sql.NullBool{}):
+					s, ok := scanPtrs[i].(*sql.NullBool)
+					isNull := !(ok && s.Valid)
+					recordFieldIsNull.Set(reflect.ValueOf(isNull))
+					recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
+					if ok && s.Valid {
+						recordFieldValue.Set(reflect.ValueOf(s.Bool))
+					}
+				case reflect.TypeOf(sql.NullByte{}):
+					s, ok := scanPtrs[i].(*sql.NullByte)
+					isNull := !(ok && s.Valid)
+					recordFieldIsNull.Set(reflect.ValueOf(isNull))
+					recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
+					if ok && s.Valid {
+						recordFieldValue.Set(reflect.ValueOf(s.Byte))
+					}
+				case reflect.TypeOf(sql.NullFloat64{}):
+					s, ok := scanPtrs[i].(*sql.NullFloat64)
+					isNull := !(ok && s.Valid)
+					recordFieldIsNull.Set(reflect.ValueOf(isNull))
+					recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
+					if ok && s.Valid {
+						recordFieldValue.Set(reflect.ValueOf(s.Float64))
+					}
+				case reflect.TypeOf(sql.NullInt16{}):
+					s, ok := scanPtrs[i].(*sql.NullInt16)
+					isNull := !(ok && s.Valid)
+					recordFieldIsNull.Set(reflect.ValueOf(isNull))
+					recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
+					if ok && s.Valid {
+						recordFieldValue.Set(reflect.ValueOf(s.Int16))
+					}
+				case reflect.TypeOf(sql.NullInt32{}):
+					s, ok := scanPtrs[i].(*sql.NullInt32)
+					isNull := !(ok && s.Valid)
+					recordFieldIsNull.Set(reflect.ValueOf(isNull))
+					recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
+					if ok && s.Valid {
+						recordFieldValue.Set(reflect.ValueOf(s.Int32))
+					}
+				case reflect.TypeOf(sql.NullInt64{}):
+					s, ok := scanPtrs[i].(*sql.NullInt64)
+					isNull := !(ok && s.Valid)
+					recordFieldIsNull.Set(reflect.ValueOf(isNull))
+					recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
+					if ok && s.Valid {
+						recordFieldValue.Set(reflect.ValueOf(s.Int64))
+					}
+				case reflect.TypeOf(sql.NullTime{}):
+					s, ok := scanPtrs[i].(*sql.NullTime)
+					isNull := !(ok && s.Valid)
+					recordFieldIsNull.Set(reflect.ValueOf(isNull))
+					recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
+					if ok && s.Valid {
+						recordFieldValue.Set(reflect.ValueOf(s.Time))
+					}
+				default:
+					s, ok := scanPtrs[i].(*sql.NullString)
+					isNull := !(ok && s.Valid)
+					recordFieldIsNull.Set(reflect.ValueOf(isNull))
+					recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
+					if ok && s.Valid {
+						recordFieldValue.Set(reflect.ValueOf(s.String))
+					}
+				}
+			}
+
+			ba, err := json.Marshal(record)
+			if common.Error(err) {
+				return nil, err
+			}
+
+			if rows.RowCount > 1 {
+				recordBuf.WriteString(",")
+			}
+
+			recordBuf.Write(ba)
 		}
 
-		err = query.Scan(scanPtrs...)
+		recordBuf.WriteString("]")
+
+		rows.Rows = recordStruct.NewSliceOfStructs()
+
+		err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
 		if common.Error(err) {
 			return nil, err
 		}
 
-		record := recordStruct.New()
-		recordElem := reflect.ValueOf(record).Elem()
-
-		for i := 0; i < scanElem.NumField(); i++ {
-			recordField := recordElem.FieldByName(columnNames[i])
-			recordFieldIsNull := recordField.FieldByName("IsNull")
-			recordFieldValue := recordField.FieldByName("Value")
-
-			switch columnTypes[i].ScanType() {
-			case reflect.TypeOf(sql.NullBool{}):
-				s, ok := scanPtrs[i].(*sql.NullBool)
-				isNull := !(ok && s.Valid)
-				recordFieldIsNull.Set(reflect.ValueOf(isNull))
-				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
-				if ok && s.Valid {
-					recordFieldValue.Set(reflect.ValueOf(s.Bool))
-				}
-			case reflect.TypeOf(sql.NullByte{}):
-				s, ok := scanPtrs[i].(*sql.NullByte)
-				isNull := !(ok && s.Valid)
-				recordFieldIsNull.Set(reflect.ValueOf(isNull))
-				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
-				if ok && s.Valid {
-					recordFieldValue.Set(reflect.ValueOf(s.Byte))
-				}
-			case reflect.TypeOf(sql.NullFloat64{}):
-				s, ok := scanPtrs[i].(*sql.NullFloat64)
-				isNull := !(ok && s.Valid)
-				recordFieldIsNull.Set(reflect.ValueOf(isNull))
-				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
-				if ok && s.Valid {
-					recordFieldValue.Set(reflect.ValueOf(s.Float64))
-				}
-			case reflect.TypeOf(sql.NullInt16{}):
-				s, ok := scanPtrs[i].(*sql.NullInt16)
-				isNull := !(ok && s.Valid)
-				recordFieldIsNull.Set(reflect.ValueOf(isNull))
-				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
-				if ok && s.Valid {
-					recordFieldValue.Set(reflect.ValueOf(s.Int16))
-				}
-			case reflect.TypeOf(sql.NullInt32{}):
-				s, ok := scanPtrs[i].(*sql.NullInt32)
-				isNull := !(ok && s.Valid)
-				recordFieldIsNull.Set(reflect.ValueOf(isNull))
-				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
-				if ok && s.Valid {
-					recordFieldValue.Set(reflect.ValueOf(s.Int32))
-				}
-			case reflect.TypeOf(sql.NullInt64{}):
-				s, ok := scanPtrs[i].(*sql.NullInt64)
-				isNull := !(ok && s.Valid)
-				recordFieldIsNull.Set(reflect.ValueOf(isNull))
-				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
-				if ok && s.Valid {
-					recordFieldValue.Set(reflect.ValueOf(s.Int64))
-				}
-			case reflect.TypeOf(sql.NullTime{}):
-				s, ok := scanPtrs[i].(*sql.NullTime)
-				isNull := !(ok && s.Valid)
-				recordFieldIsNull.Set(reflect.ValueOf(isNull))
-				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
-				if ok && s.Valid {
-					recordFieldValue.Set(reflect.ValueOf(s.Time))
-				}
-			default:
-				s, ok := scanPtrs[i].(*sql.NullString)
-				isNull := !(ok && s.Valid)
-				recordFieldIsNull.Set(reflect.ValueOf(isNull))
-				recordFieldIsNull.Set(reflect.ValueOf(!(ok && s.Valid)))
-				if ok && s.Valid {
-					recordFieldValue.Set(reflect.ValueOf(s.String))
-				}
-			}
-		}
-
-		ba, err := json.MarshalIndent(record, "", "    ")
-		if common.Error(err) {
-			return nil, err
-		}
-
-		if recordBuf.Len() == 0 {
-			recordBuf.WriteString("[")
-		} else {
-			recordBuf.WriteString(",")
-		}
-
-		recordBuf.Write(ba)
-
-		if fn != nil {
-			rows.Rows = recordStruct.NewSliceOfStructs()
-			rows.RowCount = 1
-
-			if recordBuf.Len() > 0 {
-				recordBuf.WriteString("]")
-
-				err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
-				if common.Error(err) {
-					return nil, err
-				}
-			}
-
+		if rows.RowCount > 0 && fn != nil {
 			err := fn(rows)
 			if common.Error(err) {
 				return nil, err
 			}
+		}
 
-			recordBuf.Reset()
+		if !hasNext {
+			break
 		}
 	}
 
 	rows.RowCount = count
-
-	if fn == nil {
-		rows.Rows = recordStruct.NewSliceOfStructs()
-
-		if recordBuf.Len() > 0 {
-			recordBuf.WriteString("]")
-
-			err = json.Unmarshal(recordBuf.Bytes(), &rows.Rows)
-			if common.Error(err) {
-				return nil, err
-			}
-		}
-	}
 
 	return rows, nil
 }

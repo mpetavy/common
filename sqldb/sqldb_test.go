@@ -9,6 +9,11 @@ import (
 	"testing"
 )
 
+const (
+	ROW_COUNT  = 10000
+	PAGE_COUNT = 123
+)
+
 func checkChanged(t *testing.T, db *SqlDb, changed bool) {
 	resultset, err := db.Query("select id,name from foo order by id")
 	require.NoError(t, err)
@@ -26,6 +31,31 @@ func checkChanged(t *testing.T, db *SqlDb, changed bool) {
 			require.Equal(t, "changed", name.String())
 		}
 	}
+
+	ids := make(map[string]struct{})
+	for i := range ROW_COUNT {
+		ids[strconv.Itoa(i)] = struct{}{}
+	}
+
+	fn := func(rs *Resultset) error {
+		require.Equal(t, []string{"ID", "NAME"}, resultset.ColumnNames)
+		require.LessOrEqual(t, rs.RowCount, PAGE_COUNT)
+
+		for i := 0; i < rs.RowCount; i++ {
+			id := rs.FieldByName(i, "ID")
+
+			delete(ids, id.String())
+		}
+
+		return nil
+	}
+
+	rowCount, err := db.QueryPaged(fn, PAGE_COUNT, "select id,name from foo order by id")
+	require.NoError(t, err)
+	require.Equal(t, ROW_COUNT, rowCount)
+
+	require.True(t, len(ids) == 0)
+
 }
 
 func TestSqlDb(t *testing.T) {
@@ -56,7 +86,7 @@ func TestSqlDb(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < ROW_COUNT; i++ {
 		_, err = database.Execute("insert into foo(id, name) values(?, ?)", i, fmt.Sprintf("こんにちは世界%03d", i))
 		require.NoError(t, err)
 	}
