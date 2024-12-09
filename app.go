@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"reflect"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -362,6 +363,34 @@ func FlagValue(flagname string) string {
 	}
 
 	return ""
+}
+
+func MandatoryFlags(excludes ...string) []string {
+	excludes = append(excludes, "test*")
+
+	mandatoryFlags := []string{}
+
+	isExcluded := func(flagName string) bool {
+		for _, exclude := range excludes {
+			b, _ := EqualWildcards(flagName, exclude)
+
+			if b {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	flag.VisitAll(func(f *flag.Flag) {
+		isZero := reflect.ValueOf(f.Value).Elem().IsZero()
+
+		if !slices.Contains(SystemFlagNames, f.Name) && isZero && f.DefValue == "" && !isExcluded(f.Name) {
+			mandatoryFlags = append(mandatoryFlags, f.Name)
+		}
+	})
+
+	return mandatoryFlags
 }
 
 func checkMandatoryFlags(flags []string) error {

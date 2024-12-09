@@ -14,23 +14,32 @@ import (
 	"time"
 )
 
-type SqlDB struct {
-	Driver            string
-	DSN               string
-	Isolation         sql.IsolationLevel
-	Conn              *sql.DB
-	txCounter         int
-	tx                *sql.Tx
-	txCtx             context.Context
-	txCtxCancel       context.CancelFunc
-	lastUsage         time.Time
-	QueryTimeout      time.Duration
-	RevalidateTimeout time.Duration
+type SqlDb struct {
+	Driver      string
+	DSN         string
+	conn        *sql.DB
+	txCounter   int
+	tx          *sql.Tx
+	txCtx       context.Context
+	txCtxCancel context.CancelFunc
 }
 
+const (
+	FlagNameDbPingTimeout  = "db.ping.timeout"
+	FlagNameDbQueryTimeout = "db.query.timeout"
+	FlagNameDbMaxIdle      = "db.max.idle"
+	FlagNameDbMaxOpen      = "db.max.open"
+	FlagNameDbMaxLifetime  = "db.max.lifetime"
+
+	isolation = sql.LevelReadCommitted
+)
+
 var (
-	revalidateTimeout = common.SystemFlagInt("sqldb.revalidatetimeout", 5*60*1000, "Timeout after db connection is revalidated")
-	queryTimeout      = common.SystemFlagInt("sqldb.querytimeout", 30*1000, "Timeout for db queries")
+	FlagDbPingTimeout  = common.SystemFlagInt(FlagNameDbPingTimeout, 3*1000, "Database ping timeout")
+	FlagDbQueryTimeout = common.SystemFlagInt(FlagNameDbQueryTimeout, 120*1000, "Database query timeout")
+	FlagDbMaxIdle      = common.SystemFlagInt(FlagNameDbMaxIdle, 0, "Database max idle connections")
+	FlagMaxOpen        = common.SystemFlagInt(FlagNameDbMaxOpen, 0, "Database max open connections")
+	FLagMaxLifetime    = common.SystemFlagInt(FlagNameDbMaxLifetime, 0, "Database connection max lifetime")
 
 	regexFieldName = regexp.MustCompile("([\\w\\d_]+)")
 )
@@ -40,102 +49,94 @@ type dbintf interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-func NewSqlDB(driver, dsn string) (*SqlDB, error) {
-	db := &SqlDB{}
+func NewSqlDb(driver, dsn string) (*SqlDb, error) {
+	sqlDb := &SqlDb{}
 
-	err := db.Init(driver, dsn)
+	err := sqlDb.Init(driver, dsn)
 	if common.Error(err) {
 		return nil, err
 	}
 
-	return db, nil
+	return sqlDb, nil
 }
 
-func (sqlDb *SqlDB) currentDb() dbintf {
+func (sqlDb *SqlDb) Init(driver, dsn string) error {
+	sqlDb.Driver = driver
+	sqlDb.DSN = dsn
+
+	return nil
+}
+
+func (sqlDb *SqlDb) currentDb() dbintf {
 	if sqlDb.tx != nil {
 		return sqlDb.tx
 	} else {
-		return sqlDb.Conn
+		return sqlDb.conn
 	}
 }
 
-func (sqlDb *SqlDB) Ping(force bool) error {
-	if !force && sqlDb.lastUsage.Add(sqlDb.RevalidateTimeout).After(time.Now()) {
-		sqlDb.lastUsage = time.Now()
+func (sqlDb *SqlDb) open() error {
+	if sqlDb.conn == nil {
+		var err error
 
-		return nil
-	}
-
-	for try := 0; ; try++ {
-		ctx := context.Background()
-		if sqlDb.QueryTimeout != 0 {
-			var cancel context.CancelFunc
-
-			ctx, cancel = context.WithTimeout(context.Background(), sqlDb.QueryTimeout)
-			defer cancel()
-		}
-
-		err := sqlDb.Conn.PingContext(ctx)
-		if !common.Error(err) {
-			sqlDb.lastUsage = time.Now()
-
-			return nil
-		}
-		if try > 0 {
-			return err
-		}
-
-		common.IgnoreError(sqlDb.Close())
-
-		err = sqlDb.Open()
+		sqlDb.conn, err = sql.Open(sqlDb.Driver, sqlDb.DSN)
 		if common.Error(err) {
 			return err
 		}
+
+		if *FlagDbMaxIdle > 0 {
+			sqlDb.conn.SetMaxIdleConns(*FlagDbMaxIdle)
+		}
+		if *FLagMaxLifetime > 0 {
+			sqlDb.conn.SetConnMaxLifetime(common.MillisecondToDuration(*FLagMaxLifetime))
+		}
+		if *FlagMaxOpen > 0 {
+			sqlDb.conn.SetMaxOpenConns(*FlagMaxOpen)
+		}
 	}
-}
 
-func (sqlDb *SqlDB) Init(driver, dsn string) error {
-	sqlDb.Driver = driver
-	sqlDb.DSN = dsn
-	sqlDb.QueryTimeout = common.MillisecondToDuration(*queryTimeout)
-	sqlDb.RevalidateTimeout = common.MillisecondToDuration(*revalidateTimeout)
-	sqlDb.Isolation = sql.LevelReadCommitted
+	ctx := context.Background()
+	if *FlagDbPingTimeout != 0 {
+		var cancel context.CancelFunc
 
-	return nil
-}
+		ctx, cancel = context.WithTimeout(context.Background(), common.MillisecondToDuration(*FlagDbPingTimeout))
+		defer cancel()
+	}
 
-func (sqlDb *SqlDB) Open() error {
-	db, err := sql.Open(sqlDb.Driver, sqlDb.DSN)
+	err := sqlDb.conn.PingContext(ctx)
 	if common.Error(err) {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), common.MillisecondToDuration(*queryTimeout))
-	defer cancel()
+	return nil
+}
 
-	err = db.PingContext(ctx)
+func (sqlDb *SqlDb) Close() error {
+	if sqlDb.conn == nil {
+		return nil
+	}
+
+	err := sqlDb.conn.Close()
 	if common.Error(err) {
 		return err
 	}
 
-	sqlDb.Conn = db
+	sqlDb.conn = nil
 
 	return nil
 }
 
-func (sqlDb *SqlDB) Close() error {
-	err := sqlDb.Conn.Close()
+func (sqlDb *SqlDb) Health() error {
+	err := sqlDb.open()
 	if common.Error(err) {
 		return err
 	}
 
-	sqlDb.Conn = nil
-
 	return nil
 }
 
-func (sqlDb *SqlDB) Begin() error {
-	err := sqlDb.Ping(false)
+func (sqlDb *SqlDb) Begin() error {
+	err := sqlDb.open()
 	if common.Error(err) {
 		return err
 	}
@@ -148,7 +149,7 @@ func (sqlDb *SqlDB) Begin() error {
 
 	sqlDb.txCtx, sqlDb.txCtxCancel = context.WithCancel(context.Background())
 
-	sqlDb.tx, err = sqlDb.Conn.BeginTx(sqlDb.txCtx, &sql.TxOptions{Isolation: sqlDb.Isolation})
+	sqlDb.tx, err = sqlDb.conn.BeginTx(sqlDb.txCtx, &sql.TxOptions{Isolation: isolation})
 	if common.Error(err) {
 		return err
 	}
@@ -156,8 +157,8 @@ func (sqlDb *SqlDB) Begin() error {
 	return nil
 }
 
-func (sqlDb *SqlDB) Rollback() error {
-	err := sqlDb.Ping(false)
+func (sqlDb *SqlDb) Rollback() error {
+	err := sqlDb.open()
 	if common.Error(err) {
 		return err
 	}
@@ -182,8 +183,8 @@ func (sqlDb *SqlDB) Rollback() error {
 	return nil
 }
 
-func (sqlDb *SqlDB) Commit() error {
-	err := sqlDb.Ping(false)
+func (sqlDb *SqlDb) Commit() error {
+	err := sqlDb.open()
 	if common.Error(err) {
 		return err
 	}
@@ -208,17 +209,17 @@ func (sqlDb *SqlDB) Commit() error {
 	return nil
 }
 
-func (sqlDb *SqlDB) Execute(sqlcmd string, args ...any) (int64, error) {
-	err := sqlDb.Ping(false)
+func (sqlDb *SqlDb) Execute(sqlcmd string, args ...any) (int64, error) {
+	err := sqlDb.open()
 	if common.Error(err) {
 		return 0, err
 	}
 
 	ctx := context.Background()
-	if sqlDb.QueryTimeout != 0 {
+	if *FlagDbQueryTimeout != 0 {
 		var cancel context.CancelFunc
 
-		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.QueryTimeout)
+		ctx, cancel = context.WithTimeout(context.Background(), common.MillisecondToDuration(*FlagDbQueryTimeout))
 		defer cancel()
 	}
 
@@ -240,7 +241,7 @@ type Field struct {
 	IsNull bool `json:"isnull"`
 }
 
-func (f *Field) String() string {
+func (f Field) String() string {
 	if f.IsNull {
 		return ""
 	}
@@ -275,11 +276,11 @@ func (rs *Resultset) FieldByIndex(row int, col int) Field {
 	return colValue.Interface().(Field)
 }
 
-func (sqlDb *SqlDB) Query(sqlcmd string, args ...any) (*Resultset, error) {
+func (sqlDb *SqlDb) Query(sqlcmd string, args ...any) (*Resultset, error) {
 	return sqlDb.query(nil, sqlcmd, args...)
 }
 
-func (sqlDb *SqlDB) QueryFunc(fn ResultsetFunc, sqlcmd string, args ...any) (int, error) {
+func (sqlDb *SqlDb) QueryFunc(fn ResultsetFunc, sqlcmd string, args ...any) (int, error) {
 	rows, err := sqlDb.query(fn, sqlcmd, args...)
 	if common.Error(err) {
 		return 0, err
@@ -290,17 +291,17 @@ func (sqlDb *SqlDB) QueryFunc(fn ResultsetFunc, sqlcmd string, args ...any) (int
 
 type ResultsetFunc func(rs *Resultset) error
 
-func (sqlDb *SqlDB) query(fn ResultsetFunc, sqlcmd string, args ...any) (*Resultset, error) {
-	err := sqlDb.Ping(false)
+func (sqlDb *SqlDb) query(fn ResultsetFunc, sqlcmd string, args ...any) (*Resultset, error) {
+	err := sqlDb.open()
 	if common.Error(err) {
 		return nil, err
 	}
 
 	ctx := context.Background()
-	if sqlDb.QueryTimeout != 0 {
+	if *FlagDbQueryTimeout != 0 {
 		var cancel context.CancelFunc
 
-		ctx, cancel = context.WithTimeout(context.Background(), sqlDb.QueryTimeout)
+		ctx, cancel = context.WithTimeout(context.Background(), common.MillisecondToDuration(*FlagDbQueryTimeout))
 		defer cancel()
 	}
 

@@ -7,7 +7,7 @@ import (
 )
 
 func EnableDatabase(engine *ScriptEngine) error {
-	sqlDb := &sqldb.SqlDB{}
+	sqlDb := &sqldb.SqlDb{}
 
 	obj := engine.VM.NewObject()
 
@@ -41,7 +41,7 @@ func EnableDatabase(engine *ScriptEngine) error {
 		return err
 	}
 
-	err = obj.Set("open", sqlDb.Open)
+	err = obj.Set("open", sqlDb.Health())
 	if common.Error(err) {
 		return err
 	}

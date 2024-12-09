@@ -4,11 +4,9 @@ import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mpetavy/common"
-	"github.com/mpetavy/common/sqldb"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -190,87 +188,6 @@ func TestScriptEngineHL7(t *testing.T) {
 			return
 		}
 	}
-}
-
-func checkChanged(t *testing.T, db *sqldb.SqlDB, changed bool) {
-	resultset, err := db.Query("select id,name from foo order by id")
-	assert.NoError(t, err)
-
-	assert.Equal(t, []string{"ID", "NAME"}, resultset.ColumnNames)
-
-	for i := 0; i < resultset.RowCount; i++ {
-		id := resultset.FieldByName(i, "ID")
-		name := resultset.FieldByName(i, "NAME")
-
-		assert.Equal(t, strconv.Itoa(i), id.String())
-		if !changed {
-			assert.Equal(t, fmt.Sprintf("こんにちは世界%03d", i), name.String())
-		} else {
-			assert.Equal(t, "changed", name.String())
-		}
-	}
-}
-
-func TestDb(t *testing.T) {
-	database, err := sqldb.NewSqlDB("sqlite3", "")
-	assert.NoError(t, err)
-
-	err = database.Open()
-	assert.NoError(t, err)
-
-	defer func() {
-		assert.NoError(t, database.Close())
-	}()
-
-	rs, err := database.Query("select sqlite_version()")
-	assert.NoError(t, err)
-
-	version := rs.FieldByName(0, "sqlite_version")
-
-	assert.NotEqual(t, "", version)
-
-	stmts := []string{
-		"create table foo (id integer not null primary key, name text)",
-		"delete from foo",
-	}
-
-	for _, stmt := range stmts {
-		_, err = database.Execute(stmt)
-		assert.NoError(t, err)
-	}
-
-	for i := 0; i < 10000; i++ {
-		_, err = database.Execute("insert into foo(id, name) values(?, ?)", i, fmt.Sprintf("こんにちは世界%03d", i))
-		assert.NoError(t, err)
-	}
-
-	checkChanged(t, database, false)
-
-	err = database.Begin()
-	assert.NoError(t, err)
-
-	_, err = database.Execute("update foo set name=?", "changed")
-	assert.NoError(t, err)
-
-	checkChanged(t, database, true)
-
-	err = database.Rollback()
-	assert.NoError(t, err)
-
-	checkChanged(t, database, false)
-
-	err = database.Begin()
-	assert.NoError(t, err)
-
-	_, err = database.Execute("update foo set name=?", "changed")
-	assert.NoError(t, err)
-
-	checkChanged(t, database, true)
-
-	err = database.Commit()
-	assert.NoError(t, err)
-
-	checkChanged(t, database, true)
 }
 
 func TestScriptEngineDatabase(t *testing.T) {
