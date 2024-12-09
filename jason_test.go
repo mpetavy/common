@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func checkError(t *testing.T, err error) {
@@ -22,35 +22,35 @@ func TestJason(t *testing.T) {
 	checkError(t, err)
 
 	b := j.IsString("string")
-	assert.True(t, b, "is a string")
+	require.True(t, b, "is a string")
 
 	b = j.IsInt("string")
-	assert.False(t, b, "is a string")
+	require.False(t, b, "is a string")
 
 	b = j.IsBool("string")
-	assert.False(t, b, "is a string")
+	require.False(t, b, "is a string")
 
 	// ---
 
 	b = j.IsString("int")
-	assert.False(t, b, "is a int")
+	require.False(t, b, "is a int")
 
 	b = j.IsInt("int")
-	assert.True(t, b, "is a int")
+	require.True(t, b, "is a int")
 
 	b = j.IsBool("int")
-	assert.False(t, b, "is a int")
+	require.False(t, b, "is a int")
 
 	// ---
 
 	b = j.IsString("bool")
-	assert.False(t, b, "is a bool")
+	require.False(t, b, "is a bool")
 
 	b = j.IsInt("bool")
-	assert.False(t, b, "is a bool")
+	require.False(t, b, "is a bool")
 
 	b = j.IsBool("bool")
-	assert.True(t, b, "is a bool")
+	require.True(t, b, "is a bool")
 
 	s, err := j.String("string")
 	checkError(t, err)
@@ -59,7 +59,7 @@ func TestJason(t *testing.T) {
 	b, err = j.Bool("bool")
 	checkError(t, err)
 
-	assert.Equal(t, "s", s)
-	assert.Equal(t, 1, i)
-	assert.Equal(t, true, b)
+	require.Equal(t, "s", s)
+	require.Equal(t, 1, i)
+	require.Equal(t, true, b)
 }

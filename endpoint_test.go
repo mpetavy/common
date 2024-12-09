@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 	"time"
@@ -55,17 +55,17 @@ func test(t *testing.T, address string, tlsConfig *tls.Config, txt string, isCli
 				return err
 			}
 
-			assert.Equal(t, nr, nw)
+			require.Equal(t, nr, nw)
 		}
 
-		assert.Equal(t, txt, buf.String())
+		require.Equal(t, txt, buf.String())
 	} else {
 		n, err := conn.Write([]byte(txt))
 		if Error(err) {
 			return err
 		}
 
-		assert.Equal(t, len(txt), n)
+		require.Equal(t, len(txt), n)
 
 		Sleep(time.Second * 2)
 	}

@@ -5,14 +5,14 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func check(t *testing.T, q *Quantum, ints []int) {
 	sl := q.ToSlice()
 
-	assert.True(t, q.Len() == len(ints), "Len of quantum")
-	assert.Equal(t, sl, ints, "Content of quantum")
+	require.True(t, q.Len() == len(ints), "Len of quantum")
+	require.Equal(t, sl, ints, "Content of quantum")
 
 	for i := 0; i < q.Len(); i++ {
 		v, err := q.Get(i)
@@ -22,7 +22,7 @@ func check(t *testing.T, q *Quantum, ints []int) {
 		}
 		if v != sl[i] {
 			fmt.Printf("%s\n", q)
-			assert.Equal(t, v, sl[i], "Get() shows different value on index %d", i)
+			require.Equal(t, v, sl[i], "Get() shows different value on index %d", i)
 		}
 	}
 }
@@ -93,7 +93,7 @@ func TestQuantumLoop(t *testing.T) {
 		sl = append(sl, value)
 	}
 
-	assert.Equal(t, 0, q.Len())
+	require.Equal(t, 0, q.Len())
 
 	for i := 0; i < count; i++ {
 		if sort.SearchInts(sl, i) == -1 {

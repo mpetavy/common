@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -10,5 +10,5 @@ func TestCatch(t *testing.T) {
 		panic("panic")
 	})
 
-	assert.Equal(t, "panic", err.Error())
+	require.Equal(t, "panic", err.Error())
 }

@@ -2,7 +2,7 @@ package common
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 	"time"
@@ -21,11 +21,11 @@ func TestNewThrottledReader(t *testing.T) {
 
 	needed := float64(endTime.Sub(startTime).Seconds())
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, data, ba)
+	require.Equal(t, data, ba)
 
 	expected := math.Ceil(float64(max(0, len(data)-bytesPerSecond)) / float64(bytesPerSecond))
 
-	assert.GreaterOrEqual(t, needed, expected)
+	require.GreaterOrEqual(t, needed, expected)
 }

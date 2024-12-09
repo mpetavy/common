@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 	"time"
@@ -14,16 +14,16 @@ func TestSimple(t *testing.T) {
 	rm.Lock()
 	rm.Lock()
 
-	assert.Equal(t, rm.count, 3)
+	require.Equal(t, rm.count, 3)
 
 	rm.Unlock()
 
-	assert.Equal(t, rm.count, 2)
+	require.Equal(t, rm.count, 2)
 
 	rm.UnlockNow()
 
-	assert.Equal(t, rm.count, 0)
-	assert.Equal(t, rm.current, uint64(0))
+	require.Equal(t, rm.count, 0)
+	require.Equal(t, rm.current, uint64(0))
 }
 
 func TestBlocking(t *testing.T) {
@@ -47,7 +47,7 @@ func TestBlocking(t *testing.T) {
 
 	wg.Wait()
 
-	assert.LessOrEqual(t, int64(100), time.Since(start).Milliseconds())
+	require.LessOrEqual(t, int64(100), time.Since(start).Milliseconds())
 }
 
 func TestBlockingBlock(t *testing.T) {
@@ -79,7 +79,7 @@ func TestBlockingBlock(t *testing.T) {
 				c++
 			} else {
 				if i > 0 {
-					assert.Equal(t, 10, c)
+					require.Equal(t, 10, c)
 				}
 			}
 		}

@@ -1,15 +1,15 @@
 package common
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestRuntimeInfo(t *testing.T) {
 	ri := GetRuntimeInfo(0)
 
-	assert.Equal(t, ri.Pack, "common")
-	assert.Equal(t, ri.File, "runtimeinfo_test.go")
-	assert.Equal(t, ri.Fn, "TestRuntimeInfo")
-	assert.Equal(t, ri.Line, 9)
+	require.Equal(t, ri.Pack, "common")
+	require.Equal(t, ri.File, "runtimeinfo_test.go")
+	require.Equal(t, ri.Fn, "TestRuntimeInfo")
+	require.Equal(t, ri.Line, 9)
 }

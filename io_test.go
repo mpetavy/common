@@ -3,7 +3,7 @@ package common
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"os"
 	"testing"
@@ -36,8 +36,8 @@ func TestTimeoutReader(t *testing.T) {
 	ba := make([]byte, 1)
 	_, err := reader.Read(ba)
 
-	assert.Less(t, time.Since(start), timeout*2)
-	assert.True(t, IsErrTimeout(err))
+	require.Less(t, time.Since(start), timeout*2)
+	require.True(t, IsErrTimeout(err))
 }
 
 func TestTimeoutWriter(t *testing.T) {
@@ -48,8 +48,8 @@ func TestTimeoutWriter(t *testing.T) {
 	ba := make([]byte, 1)
 	_, err := writer.Write(ba)
 
-	assert.Less(t, time.Since(start), timeout*2)
-	assert.True(t, IsErrTimeout(err))
+	require.Less(t, time.Since(start), timeout*2)
+	require.True(t, IsErrTimeout(err))
 }
 
 type SingleByteWriter struct {
@@ -66,8 +66,8 @@ func TestWriteFully(t *testing.T) {
 
 	_, err := WriteFully(SingleByteWriter{&buf}, data)
 
-	assert.NoError(t, err)
-	assert.Equal(t, data, buf.Bytes())
+	require.NoError(t, err)
+	require.Equal(t, data, buf.Bytes())
 }
 
 type SingleByteReader struct {
@@ -84,52 +84,52 @@ func TestReadFully(t *testing.T) {
 
 	_, err := ReadFully(SingleByteReader{bytes.NewReader(data)}, buf)
 
-	assert.NoError(t, err)
-	assert.Equal(t, data, buf)
+	require.NoError(t, err)
+	require.Equal(t, data, buf)
 }
 
 func TestFileMode(t *testing.T) {
 	f, err := CreateTempFile()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = os.Remove(f.Name())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	f, err = os.OpenFile(f.Name(), os.O_CREATE|os.O_TRUNC|os.O_RDWR, ReadOnlyFileMode)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = f.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = os.Chmod(f.Name(), DefaultFileMode)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = os.Remove(f.Name())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestFileBackup(t *testing.T) {
 	f, err := CreateTempFile()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
 		f, err := os.Create(fmt.Sprintf("%s.%d", f.Name(), i+1))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = f.Close()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	for i := 0; i < 5; i++ {
 		err := FileBackup(f.Name())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	files, err := ListFiles(f.Name()+"*", false)
-	assert.Equal(t, len(files), *FlagIoFileBackups+1)
+	require.Equal(t, len(files), *FlagIoFileBackups+1)
 
 	for _, file := range files {
 		err = FileDelete(file)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }

@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 	"time"
@@ -37,5 +37,5 @@ func TestNoticeChannel(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Equal(t, 0, c)
+	require.Equal(t, 0, c)
 }

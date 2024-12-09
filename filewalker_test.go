@@ -2,7 +2,7 @@ package common
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"sort"
@@ -171,10 +171,10 @@ func TestFilewalker(t *testing.T) {
 				tt.fields.IgnoreError,
 				tt.fields.walkFunc,
 			)
-			assert.NoError(t, err)
-			assert.Equal(t, len(tt.wantFiles), len(founds))
+			require.NoError(t, err)
+			require.Equal(t, len(tt.wantFiles), len(founds))
 			for _, item := range tt.wantFiles {
-				assert.True(t, SliceContains(founds, item))
+				require.True(t, SliceContains(founds, item))
 			}
 		})
 	}

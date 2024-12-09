@@ -4,7 +4,7 @@ import (
 	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/mpetavy/common"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,9 +46,9 @@ a.test() + ';' + b.test();
 		return
 	}
 
-	assert.Nil(t, err)
-	assert.True(t, strings.Contains(v.String(), "a.js"))
-	assert.True(t, strings.Contains(v.String(), "b.js"))
+	require.Nil(t, err)
+	require.True(t, strings.Contains(v.String(), "a.js"))
+	require.True(t, strings.Contains(v.String(), "b.js"))
 }
 
 func TestScriptEngineTimeout(t *testing.T) {
@@ -61,8 +61,8 @@ func TestScriptEngineTimeout(t *testing.T) {
 
 	_, err = engine.Run(time.Second, "", nil)
 
-	assert.NotNil(t, err)
-	assert.True(t, common.IsErrTimeout(err))
+	require.NotNil(t, err)
+	require.True(t, common.IsErrTimeout(err))
 }
 
 func TestScriptEngineException(t *testing.T) {
@@ -77,8 +77,8 @@ func TestScriptEngineException(t *testing.T) {
 
 	_, err = engine.Run(time.Second, "", nil)
 
-	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), msg))
+	require.NotNil(t, err)
+	require.True(t, strings.Contains(err.Error(), msg))
 }
 
 func TestScriptEngineArgs(t *testing.T) {
@@ -99,9 +99,9 @@ args.output = "hello " + input;
 
 	_, err = engine.Run(time.Second, "main", args)
 
-	assert.Nil(t, err)
-	assert.NotNil(t, args["output"])
-	assert.Equal(t, "hello world", args["output"])
+	require.Nil(t, err)
+	require.NotNil(t, args["output"])
+	require.Equal(t, "hello world", args["output"])
 }
 
 func TestScriptEngineFormatJavascript(t *testing.T) {
@@ -117,7 +117,7 @@ args.output = "hello " + input;
 		return
 	}
 
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestScriptEngineEtree(t *testing.T) {
@@ -135,7 +135,7 @@ console.log(d.WriteToString());
 
 	_, err = engine.Run(time.Hour, "", nil)
 
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestScriptEngineHL7(t *testing.T) {
@@ -182,7 +182,7 @@ func TestScriptEngineHL7(t *testing.T) {
 			}
 
 			if test.expected != "" {
-				assert.Equal(t, test.expected, output.String())
+				require.Equal(t, test.expected, output.String())
 			}
 		}) {
 			return
@@ -218,9 +218,9 @@ db.close();
 	}
 
 	err = EnableDatabase(engine)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	_, err = engine.Run(time.Hour, "", "")
 
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }

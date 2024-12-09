@@ -2,7 +2,7 @@ package common
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 )
@@ -10,7 +10,7 @@ import (
 func TestSync(t *testing.T) {
 	syncErr := NewSync[error]()
 
-	assert.Nil(t, syncErr.Get())
+	require.Nil(t, syncErr.Get())
 
 	err := fmt.Errorf("error")
 
@@ -18,9 +18,9 @@ func TestSync(t *testing.T) {
 
 	e := syncErr.Get()
 
-	assert.NotNil(t, syncErr.Get())
-	assert.True(t, syncErr.IsSet())
-	assert.Equal(t, "error", e.Error())
+	require.NotNil(t, syncErr.Get())
+	require.True(t, syncErr.IsSet())
+	require.Equal(t, "error", e.Error())
 }
 
 func TestSyncSame(t *testing.T) {
@@ -28,7 +28,7 @@ func TestSyncSame(t *testing.T) {
 
 	s := NewSyncOf(&str)
 
-	assert.True(t, &str == s.Get())
+	require.True(t, &str == s.Get())
 }
 
 func TestSynOf(t *testing.T) {
@@ -53,5 +53,5 @@ func TestSynOf(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Equal(t, count, counter)
+	require.Equal(t, count, counter)
 }

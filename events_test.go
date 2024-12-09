@@ -1,7 +1,6 @@
 package common
 
 import (
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -27,8 +26,8 @@ func TestEventsFuncReceiver(t *testing.T) {
 
 	// check that listeners are modified by Emit
 
-	assert.Equal(t, true, listener1Received.value)
-	assert.Equal(t, true, listener2Received.value)
+	require.Equal(t, true, listener1Received.value)
+	require.Equal(t, true, listener2Received.value)
 
 	// remove only listener1, listener2 should still be notified
 
@@ -38,8 +37,8 @@ func TestEventsFuncReceiver(t *testing.T) {
 
 	// listener1 must not be notified, listener2 still be notified
 
-	assert.Equal(t, true, listener1Received.value)
-	assert.Equal(t, false, listener2Received.value)
+	require.Equal(t, true, listener1Received.value)
+	require.Equal(t, false, listener2Received.value)
 }
 
 type intEvent struct {
