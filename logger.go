@@ -24,6 +24,7 @@ const (
 	FlagNameLogCount        = "log.count"
 	FlagNameLogBreakOnError = "log.breakonerror"
 	FlagNameLogGap          = "log.gap"
+	FlagNameLogEqualError   = "log.equalerror"
 )
 
 const (
@@ -45,6 +46,7 @@ var (
 	FlagLogCount        = SystemFlagInt(FlagNameLogCount, 1000, "log count")
 	FlagLogBreakOnError = SystemFlagString(FlagNameLogBreakOnError, "", "break on logging an error")
 	FlagLogGap          = SystemFlagInt(FlagNameLogGap, 100, "time gap after show a separator")
+	FlagLogEqualError   = SystemFlagBool(FlagNameLogEqualError, false, "Log equal (repeated) error")
 
 	mu          ReentrantMutex
 	fw          *fileWriter
@@ -425,15 +427,21 @@ func WarnError(err error) bool {
 }
 
 func isLikeLastError(logEntry *LogEntry) bool {
-	lastErrorEntry, ok := GoRoutineVars.Get().Get(goVarslastLogEntry)
+	if *FlagLogEqualError {
+		return false
+	}
+
+	entry, ok := GoRoutineVars.Get().Get(goVarslastLogEntry)
 
 	if !ok {
 		return false
 	}
 
-	entry := lastErrorEntry.(*LogEntry)
+	lastErrorEntry := entry.(*LogEntry)
 
-	return entry.Msg == logEntry.Msg
+	b := lastErrorEntry.Msg == logEntry.Msg && logEntry.Time.Sub(lastErrorEntry.Time) <= (time.Millisecond*50)
+
+	return b
 }
 
 func Error(err error) bool {
@@ -443,10 +451,6 @@ func Error(err error) bool {
 
 	if IsSuppressedError(err) {
 		return DebugErrorIndex(1, err)
-	}
-
-	if strings.Contains(strings.ToLower(err.Error()), "fatal") {
-		fatal(err, 3)
 	}
 
 	mu.Lock()
