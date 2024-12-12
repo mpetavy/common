@@ -57,6 +57,19 @@ func (g *goRoutineVars) Set(name string, value any) {
 	})
 }
 
+func (g *goRoutineVars) SetById(id uint64, name string, value any) {
+	GoRoutineVars.RunSynchronized(func(g *goRoutineVars) {
+		values, ok := (*g)[id]
+
+		if !ok {
+			values = make(map[string]any)
+		}
+
+		values[name] = value
+		(*g)[id] = values
+	})
+}
+
 func (g *goRoutineVars) GetById(id uint64, key string) (value any, ok bool) {
 	GoRoutineVars.RunSynchronized(func(g *goRoutineVars) {
 		m, found := (*g)[id]
