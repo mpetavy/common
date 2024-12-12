@@ -401,12 +401,10 @@ func (st *StringTable) CSVToWriter(w io.Writer) error {
 	return nil
 }
 
-func (st *StringTable) Debug() error {
+func (st *StringTable) Debug() {
 	scanner := bufio.NewScanner(strings.NewReader(st.Table()))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		Debug(line)
 	}
-
-	return nil
 }

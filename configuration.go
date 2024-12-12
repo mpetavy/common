@@ -3,11 +3,14 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -290,6 +293,13 @@ func LoadConfigurationFile[T any]() (*T, error) {
 		Debug("Read flag %s as JSON content", FlagNameCfgFile)
 
 		ba = []byte(filenameOrJson)
+
+		if strings.HasPrefix("base64:", filenameOrJson) {
+			ba, err = base64.StdEncoding.DecodeString(filenameOrJson[7:])
+			if Error(err) {
+				return nil, err
+			}
+		}
 	} else {
 		Debug("Read flag %s as JSON file: %scontent", FlagNameCfgFile, filenameOrJson)
 
@@ -573,4 +583,79 @@ func registerCfgFileFlags() (map[string]string, error) {
 	}
 
 	return m, nil
+}
+func MandatoryFlags(excludes ...string) []string {
+	excludes = append(excludes, "test*")
+
+	mandatoryFlags := []string{}
+
+	isExcluded := func(flagName string) bool {
+		for _, exclude := range excludes {
+			b, _ := EqualWildcards(flagName, exclude)
+
+			if b {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	flag.VisitAll(func(f *flag.Flag) {
+		isZero := reflect.ValueOf(f.Value).Elem().IsZero()
+
+		if !slices.Contains(SystemFlagNames, f.Name) && isZero && f.DefValue == "" && !isExcluded(f.Name) {
+			mandatoryFlags = append(mandatoryFlags, f.Name)
+		}
+	})
+
+	return mandatoryFlags
+}
+
+func checkMandatoryFlags(flags []string) error {
+	if *FlagService == SERVICE_UNINSTALL {
+		return nil
+	}
+
+	if flags != nil {
+		notDefined := strings.Builder{}
+
+		for _, mf := range flags {
+			choices := strings.Split(mf, "|")
+			for i := 0; i < len(choices); i++ {
+				choices[i] = "\"-" + choices[i] + "\""
+			}
+
+			allChoices := strings.Join(choices, " or ")
+			defined := 0
+
+			for _, flagName := range strings.Split(mf, "|") {
+				fl := flag.Lookup(flagName)
+
+				if fl == nil || fl.Value == nil {
+					return fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
+				}
+
+				if IsFlagProvided(flagName) || IsFlagAsEnvProvided(flagName) || fl.Value.String() != "" || fl.DefValue != "" {
+					defined++
+				}
+			}
+
+			switch {
+			case defined == 0:
+				if notDefined.Len() > 0 {
+					notDefined.WriteString(", ")
+				}
+				notDefined.WriteString(allChoices)
+			case defined > 1:
+				return TraceError(fmt.Errorf("only one mandatory flag allowed: %s", allChoices))
+			}
+		}
+
+		if notDefined.Len() > 0 {
+			return TraceError(fmt.Errorf("mandatory flag not defined: %s", notDefined.String()))
+		}
+	}
+
+	return nil
 }
