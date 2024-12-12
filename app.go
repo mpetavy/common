@@ -769,7 +769,7 @@ func (app *application) applicationLoop() error {
 			}
 		}
 
-		Error(app.applicationRun())
+		app.applicationRun()
 
 		if !restart {
 			break
