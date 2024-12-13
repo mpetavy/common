@@ -284,40 +284,61 @@ func registerIniFileFlags() (map[string]string, error) {
 func LoadConfigurationFile[T any]() (*T, error) {
 	DebugFunc()
 
-	var ba []byte
-	var err error
+	var content string
 
-	filenameOrJson := strings.TrimSpace(*FlagCfgFile)
+	if FileExists(*FlagCfgFile) {
+		DebugFunc("read as file: %s", *FlagCfgFile)
 
-	if filenameOrJson != "" && strings.HasPrefix(filenameOrJson, "{") {
-		Debug("Read flag %s as JSON content", FlagNameCfgFile)
-
-		ba = []byte(filenameOrJson)
-
-		if strings.HasPrefix("base64:", filenameOrJson) {
-			ba, err = base64.StdEncoding.DecodeString(filenameOrJson[7:])
-			if Error(err) {
-				return nil, err
-			}
-		}
-	} else {
-		Debug("Read flag %s as JSON file: %scontent", FlagNameCfgFile, filenameOrJson)
-
-		if !FileExists(filenameOrJson) {
-			return nil, &ErrFileNotFound{
-				FileName: filenameOrJson,
-			}
-		}
-
-		ba, err = os.ReadFile(filenameOrJson)
+		ba, err := os.ReadFile(*FlagCfgFile)
 		if Error(err) {
 			return nil, err
 		}
+
+		content = string(ba)
+	} else {
+		fl := flag.Lookup(FlagNameCfgFile)
+
+		// configuration set the to flag cfg.file=<content of configuration file>
+
+		if fl.Value.String() != fl.DefValue {
+			DebugFunc("read from flag %s: %s", FlagNameCfgFile)
+
+			content = *FlagCfgFile
+		} else {
+			DebugFunc("read from ENV: %s", FlagNameAsEnvName(FlagNameCfgFile))
+
+			content = strings.TrimSpace(os.Getenv(FlagNameAsEnvName(FlagNameCfgFile)))
+			content = strings.ReplaceAll(content, " ", "")
+			content = strings.ReplaceAll(content, "\n", "")
+			content = strings.ReplaceAll(content, "\r", "")
+		}
 	}
 
-	ba, err = RemoveJsonComments(ba)
-	if Error(err) {
-		return nil, err
+	content = strings.TrimSpace(content)
+
+	if content == "" {
+		return nil, &ErrFileNotFound{
+			FileName: *FlagCfgFile,
+		}
+	}
+
+	// Base64 decoding
+	decoded, err := base64.StdEncoding.DecodeString(content)
+	if err == nil {
+		DebugFunc("decode from Base64")
+
+		content = strings.TrimSpace(string(decoded))
+	}
+
+	ba := []byte(content)
+
+	if bytes.HasPrefix(ba, []byte("{")) && bytes.HasSuffix(ba, []byte("}")) {
+		DebugFunc("read as JSON")
+
+		ba, err = RemoveJsonComments(ba)
+		if Error(err) {
+			return nil, err
+		}
 	}
 
 	cfg := new(T)
