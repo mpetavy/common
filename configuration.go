@@ -390,7 +390,25 @@ func SaveConfigurationFile(cfg any) error {
 func setFlags() error {
 	DebugFunc()
 
-	// is flag.Set(...=) ist used then the correct list fo cmdline flags is destroyed, that's why here preserved...
+	if len(flagInfos) != 0 {
+		Debug("set cached flag values")
+
+		for name, info := range flagInfos {
+			fl := flag.Lookup(name)
+			if fl != nil {
+				err := flag.Set(name, info.Value)
+				if Error(err) {
+					return err
+				}
+			}
+		}
+
+		return nil
+	}
+
+	Debug("create cached flag values")
+
+	// is flag.Set(...=) ist used then the correct list of cmdline flags is destroyed, that's why here preserved...
 	argsFlags, _ := registerArgsFlags()
 
 	flagMaps := []struct {
@@ -402,7 +420,7 @@ func setFlags() error {
 		{
 			origin:     "default",
 			fn:         registerDefaultFlags,
-			initialSet: false,
+			initialSet: true,
 		},
 		{
 			origin:     "ini file",
@@ -490,12 +508,17 @@ func debugFlags() {
 	NoDebug(func() {
 		flag.VisitAll(func(f *flag.Flag) {
 			flagValue := flagInfos[f.Name]
+			flagOrigin := flagValue.Origin
+			flagOnlyCmdline := IsCmdlineOnlyFlag(f.Name)
+			if flagOnlyCmdline {
+				flagOrigin = "only cmdline"
+			}
 
-			st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), fmt.Sprintf("%v", IsCmdlineOnlyFlag(f.Name)), flagValue.Origin)
+			st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), fmt.Sprintf("%v", flagOnlyCmdline), flagOrigin)
 		})
 	})
 
-	st.Debug()
+	Debug(fmt.Sprintf("Flags\n%s", st.Table()))
 }
 
 func registerDefaultFlags() (map[string]string, error) {
