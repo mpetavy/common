@@ -58,12 +58,13 @@ func TestAlignedTicker(t *testing.T) {
 }
 
 func TestConcurrentLimit(t *testing.T) {
+	orgTimeout := *FLagConcurrentTimeout
+
 	start := time.Now()
 	count := 0
 
-	orgTimeout := *FLagConcurrentTimeout
-
-	err := flag.Set(FlagNameConcurrentTimeout, "1000")
+	// can we register "with channel"
+	err := flag.Set(FlagNameConcurrentTimeout, "500")
 	require.NoError(t, err)
 
 	for range *FlagConcurrentLimit {
@@ -76,17 +77,44 @@ func TestConcurrentLimit(t *testing.T) {
 
 	require.True(t, time.Now().Sub(start) < MillisecondToDuration(*FlagConcurrentLimit))
 
+	// now we expect a timeout ...
+
 	start = time.Now()
-
 	b := RegisterConcurrentLimit()
-
 	require.False(t, b)
-
 	require.True(t, time.Now().Sub(start) >= MillisecondToDuration(*FlagConcurrentLimit))
+
+	// and here also a timeout ...
+
+	start = time.Now()
+	b = RegisterConcurrentLimit()
+	require.False(t, b)
+	require.True(t, time.Now().Sub(start) >= MillisecondToDuration(*FlagConcurrentLimit))
+
+	// ok now we reset the channel
 
 	for range count {
 		UnregisterConcurrentLimit(true)
 	}
+
+	// now we should be able to register "with channel" normal agaon
+	start = time.Now()
+	count = 0
+
+	err = flag.Set(FlagNameConcurrentTimeout, "1000")
+	require.NoError(t, err)
+
+	for range *FlagConcurrentLimit {
+		b := RegisterConcurrentLimit()
+
+		count++
+
+		require.True(t, b)
+	}
+
+	require.True(t, time.Now().Sub(start) < MillisecondToDuration(*FlagConcurrentLimit))
+
+	// reset to default
 
 	err = flag.Set(FlagNameConcurrentTimeout, strconv.Itoa(orgTimeout))
 	require.NoError(t, err)
