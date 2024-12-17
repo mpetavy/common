@@ -128,14 +128,18 @@ func TelemetryHandler(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func BasicAuthHandler(authFunc BasicAuthFunc, next http.HandlerFunc) http.HandlerFunc {
+func BasicAuthHandler(mandatory bool, authFunc BasicAuthFunc, next http.HandlerFunc) http.HandlerFunc {
 	DebugFunc()
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		status, err := func() (int, error) {
 			username, password, ok := r.BasicAuth()
 			if !ok {
-				return http.StatusUnauthorized, ErrUnauthorized
+				if mandatory {
+					return http.StatusUnauthorized, ErrUnauthorized
+				} else {
+					return http.StatusOK, nil
+				}
 			}
 
 			err := authFunc(username, password)
