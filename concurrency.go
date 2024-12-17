@@ -15,43 +15,57 @@ import (
 )
 
 var (
-	concurrentLimit = flag.Int("concurrent.limit", Max(4, runtime.NumCPU()-1), "Limit of current running tasks")
+	FlagNameConcurrentLimit   = "concurrent.limit"
+	FlagNameConcurrentTimeout = "concurrent.timeout"
+)
+
+var (
+	FlagConcurrentLimit   = flag.Int(FlagNameConcurrentLimit, Max(4, runtime.NumCPU()*2), "Limit of maximum current running tasks")
+	FLagConcurrentTimeout = flag.Int(FlagNameConcurrentTimeout, 10000, "Tinmeout waiting for running a current running tasks")
 
 	routines        = make(map[int]RuntimeInfo)
 	routinesCounter = 0
 	routinesMutex   = sync.Mutex{}
 
-	concurrentLimitCh chan struct{}
+	onceConcurrentLimit sync.Once
+	concurrentLimitCh   chan struct{}
 )
 
-func init() {
-	Events.AddListener(EventFlagsParsed{}, func(event Event) {
-		concurrentLimitCh = make(chan struct{}, *concurrentLimit)
+func RegisterConcurrentLimit() bool {
+	onceConcurrentLimit.Do(func() {
+		concurrentLimitCh = make(chan struct{}, *FlagConcurrentLimit)
 	})
-}
 
-func RegisterConcurrentLimit() int {
-	if *concurrentLimit == 0 {
-		return 0
+	if *FlagConcurrentLimit == 0 {
+		return false
 	}
 
 	DebugFunc("Register...")
 
-	concurrentLimitCh <- struct{}{}
+	defer func() {
+		DebugFunc("Run")
+	}()
 
-	DebugFunc("Run")
+	select {
+	case concurrentLimitCh <- struct{}{}:
+		return true
+	case <-time.After(MillisecondToDuration(*FLagConcurrentTimeout)):
+		Warn("Concurrent limit exceeded")
 
-	return 0
+		return false
+	}
 }
 
-func UnregisterConcurrentLimit(dummy int) {
-	if *concurrentLimit == 0 {
+func UnregisterConcurrentLimit(fromChannel bool) {
+	if *FlagConcurrentLimit == 0 {
 		return
 	}
 
 	DebugFunc("Unregister")
 
-	<-concurrentLimitCh
+	if fromChannel {
+		<-concurrentLimitCh
+	}
 }
 
 func RegisterGoRoutine(index int) int {

@@ -1,7 +1,9 @@
 package common
 
 import (
+	"flag"
 	"github.com/stretchr/testify/require"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -53,4 +55,39 @@ func TestAlignedTicker(t *testing.T) {
 
 		require.True(t, time.Now().Second()%int(at.SleepTime.Seconds()) == 0)
 	}
+}
+
+func TestConcurrentLimit(t *testing.T) {
+	start := time.Now()
+	count := 0
+
+	orgTimeout := *FLagConcurrentTimeout
+
+	err := flag.Set(FlagNameConcurrentTimeout, "1000")
+	require.NoError(t, err)
+
+	for range *FlagConcurrentLimit {
+		b := RegisterConcurrentLimit()
+
+		count++
+
+		require.True(t, b)
+	}
+
+	require.True(t, time.Now().Sub(start) < MillisecondToDuration(*FlagConcurrentLimit))
+
+	start = time.Now()
+
+	b := RegisterConcurrentLimit()
+
+	require.False(t, b)
+
+	require.True(t, time.Now().Sub(start) >= MillisecondToDuration(*FlagConcurrentLimit))
+
+	for range count {
+		UnregisterConcurrentLimit(true)
+	}
+
+	err = flag.Set(FlagNameConcurrentTimeout, strconv.Itoa(orgTimeout))
+	require.NoError(t, err)
 }
