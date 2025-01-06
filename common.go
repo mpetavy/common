@@ -147,7 +147,7 @@ func RndString(l int) string {
 	return sb.String()
 }
 
-func ExecuteCmd(cmd *exec.Cmd) ([]byte, error) {
+func RunCmd(cmd *exec.Cmd) ([]byte, error) {
 	Debug("exec: %s", SurroundWith(cmd.Args, "\""))
 
 	ba, err := cmd.CombinedOutput()
@@ -182,7 +182,7 @@ func RunScript(timeout time.Duration, filename string) ([]byte, error) {
 		cmd = exec.CommandContext(ctx, "sh", "-c", "./"+filename)
 	}
 
-	ba, err := ExecuteCmd(cmd)
+	ba, err := RunCmd(cmd)
 	if Error(err) {
 		return nil, err
 	}

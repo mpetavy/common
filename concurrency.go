@@ -3,7 +3,6 @@ package common
 import (
 	"bufio"
 	"bytes"
-	"flag"
 	"runtime"
 	"slices"
 	"sort"
@@ -20,8 +19,8 @@ var (
 )
 
 var (
-	FlagConcurrentLimit   = flag.Int(FlagNameConcurrentLimit, Max(4, runtime.NumCPU()*2), "Limit of maximum current running tasks")
-	FLagConcurrentTimeout = flag.Int(FlagNameConcurrentTimeout, 10000, "Tinmeout waiting for running a current running tasks")
+	FlagConcurrentLimit   = SystemFlagInt(FlagNameConcurrentLimit, Max(4, runtime.NumCPU()*2), "Limit of maximum current running tasks")
+	FLagConcurrentTimeout = SystemFlagInt(FlagNameConcurrentTimeout, 10000, "Tinmeout waiting for running a current running tasks")
 
 	routines        = make(map[int]RuntimeInfo)
 	routinesCounter = 0

@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"net"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -265,7 +266,9 @@ func Discover(address string, timeout time.Duration, uid string) ([]string, erro
 		info = strings.ReplaceAll(info, "$port", port)
 		info = strings.ReplaceAll(info, "$address", peer.String())
 
-		list = append(list, info)
+		if !slices.Contains(list, info) {
+			list = append(list, info)
+		}
 
 		Debug("%d bytes read from %s: %s\n", n, peer.String(), info)
 	}

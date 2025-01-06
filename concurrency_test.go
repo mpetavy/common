@@ -44,9 +44,9 @@ func TestBackgroundTask(t *testing.T) {
 }
 
 func TestAlignedTicker(t *testing.T) {
-	stopAt := time.Now().Add(time.Second * 5)
+	stopAt := time.Now().Add(time.Second * 3)
 
-	at := NewAlignedTicker(time.Second * 2)
+	at := NewAlignedTicker(time.Second * 1)
 
 	for time.Now().Before(stopAt) {
 		sleep := at.SleepUntilNextTicker()

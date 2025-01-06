@@ -95,6 +95,7 @@ const (
 	FlagNameUsageAll        = "hs"
 	FlagNameUsageAllMd      = "hsmd"
 	FlagNameNoBanner        = "nb"
+	FlagNameVersion         = "v"
 )
 
 var (
@@ -109,6 +110,7 @@ var (
 	FlagUsageMd         = flag.Bool(FlagNameUsageMd, false, "show flags description and usage in markdown format")
 	FlagUsageAll        = flag.Bool(FlagNameUsageAll, false, "show flags and system flags description and usage")
 	FlagUsageAllMd      = flag.Bool(FlagNameUsageAllMd, false, "show flags and system flags description and usage in markdown format")
+	FlagVersion         = flag.Bool(FlagNameVersion, false, "show version")
 	FlagNoBanner        = flag.Bool(FlagNameNoBanner, false, "no copyright banner")
 
 	app                     *application
@@ -455,6 +457,10 @@ func Run(mandatoryFlags []string) {
 
 		if !*FlagNoBanner && !*FlagUsageMd {
 			showBanner()
+		}
+
+		if *FlagVersion {
+			return nil
 		}
 
 		if flag.NArg() > 0 {
