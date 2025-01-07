@@ -20,9 +20,13 @@ import (
 const UNKNOWN = "unknwon"
 
 type RuntimeInfo struct {
-	Dir, Pack, File, Fn, Stack string
-	Line                       int
-	Timestamp                  time.Time
+	Dir       string    `json:"Directory"`
+	Pack      string    `json:"Package"`
+	File      string    `json:"File"`
+	Fn        string    `json:"Function"`
+	Stack     string    `json:"Stacktrace"`
+	Line      int       `json:"Linenumber"`
+	Timestamp time.Time `json:"Timestamp"`
 }
 
 type SystemInfo struct {

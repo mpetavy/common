@@ -82,15 +82,15 @@ func init() {
 
 			switch eventLog.Entry.Level {
 			case common.LevelDebug:
-				Telemetry.Logger.Debug(eventLog.Entry.Msg)
+				Telemetry.Logger.Debug(eventLog.Entry.StacktraceMsg)
 			case common.LevelInfo:
-				Telemetry.Logger.Info(eventLog.Entry.Msg)
+				Telemetry.Logger.Info(eventLog.Entry.StacktraceMsg)
 			case common.LevelWarn:
-				Telemetry.Logger.Warn(eventLog.Entry.Msg)
+				Telemetry.Logger.Warn(eventLog.Entry.StacktraceMsg)
 			case common.LevelError:
-				Telemetry.Logger.Error(eventLog.Entry.Msg)
+				Telemetry.Logger.Error(eventLog.Entry.StacktraceMsg)
 			case common.LevelFatal:
-				Telemetry.Logger.Error(fmt.Sprintf("FATAL: %s", eventLog.Entry.Msg))
+				Telemetry.Logger.Error(fmt.Sprintf("FATAL: %s", eventLog.Entry.StacktraceMsg))
 			}
 
 			return nil

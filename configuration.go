@@ -158,8 +158,6 @@ func IsCmdlineOnlyFlag(flagName string) bool {
 		}
 	}
 
-	DebugFunc("%s: %v", flagName, r)
-
 	return r
 }
 
@@ -505,17 +503,15 @@ func debugFlags() {
 	st := NewStringTable()
 	st.AddCols("Flag", "Value", "Only cmdline", "Origin")
 
-	NoDebug(func() {
-		flag.VisitAll(func(f *flag.Flag) {
-			flagValue := flagInfos[f.Name]
-			flagOrigin := flagValue.Origin
-			flagOnlyCmdline := IsCmdlineOnlyFlag(f.Name)
-			if flagOnlyCmdline {
-				flagOrigin = "only cmdline"
-			}
+	flag.VisitAll(func(f *flag.Flag) {
+		flagValue := flagInfos[f.Name]
+		flagOrigin := flagValue.Origin
+		flagOnlyCmdline := IsCmdlineOnlyFlag(f.Name)
+		if flagOnlyCmdline {
+			flagOrigin = "only cmdline"
+		}
 
-			st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), fmt.Sprintf("%v", flagOnlyCmdline), flagOrigin)
-		})
+		st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), fmt.Sprintf("%v", flagOnlyCmdline), flagOrigin)
 	})
 
 	Debug(fmt.Sprintf("Flags\n%s", st.Table()))

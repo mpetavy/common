@@ -74,23 +74,33 @@ func (fw *fileWriter) Write(msg []byte) (int, error) {
 }
 
 func (fw *fileWriter) createFile() error {
-	err := fw.closeFile()
-	if err != nil {
-		return err
-	}
-
-	err = FileBackup(*FlagLogFileName)
-	if err != nil {
-		return err
-	}
-
-	dir := filepath.Dir(*FlagLogFileName)
-	if !FileExists(dir) {
-		err := os.MkdirAll(dir, DefaultDirMode)
+	if fw.file != nil {
+		err := fw.closeFile()
 		if err != nil {
 			return err
 		}
+
+		err = FileBackup(*FlagLogFileName)
+		if err != nil {
+			return err
+		}
+
+		err = FileDelete(*FlagLogFileName)
+		if err != nil {
+			return err
+		}
+	} else {
+		dir := filepath.Dir(*FlagLogFileName)
+
+		if !FileExists(dir) {
+			err := os.MkdirAll(dir, DefaultDirMode)
+			if err != nil {
+				return err
+			}
+		}
 	}
+
+	var err error
 
 	fw.file, err = os.OpenFile(*FlagLogFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, DefaultFileMode)
 	if err != nil {

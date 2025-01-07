@@ -114,31 +114,31 @@ func init() {
 
 			switch eventLog.Entry.Level {
 			case common.LevelDebug:
-				trace := appinsights.NewTraceTelemetry(eventLog.Entry.Msg, appinsights.Verbose)
+				trace := appinsights.NewTraceTelemetry(eventLog.Entry.StacktraceMsg, appinsights.Verbose)
 				trace.Properties["goroutineid"] = fmt.Sprintf("%d", eventLog.Entry.GoRoutineId)
 				trace.Properties["source"] = eventLog.Entry.Source
 				trace.Timestamp = eventLog.Entry.Time
 				insightClient.Track(trace)
 			case common.LevelInfo:
-				trace := appinsights.NewTraceTelemetry(eventLog.Entry.Msg, appinsights.Information)
+				trace := appinsights.NewTraceTelemetry(eventLog.Entry.StacktraceMsg, appinsights.Information)
 				trace.Properties["goroutineid"] = fmt.Sprintf("%d", eventLog.Entry.GoRoutineId)
 				trace.Properties["source"] = eventLog.Entry.Source
 				trace.Timestamp = eventLog.Entry.Time
 				insightClient.Track(trace)
 			case common.LevelWarn:
-				trace := appinsights.NewTraceTelemetry(eventLog.Entry.Msg, appinsights.Warning)
+				trace := appinsights.NewTraceTelemetry(eventLog.Entry.StacktraceMsg, appinsights.Warning)
 				trace.Properties["goroutineid"] = fmt.Sprintf("%d", eventLog.Entry.GoRoutineId)
 				trace.Properties["source"] = eventLog.Entry.Source
 				trace.Timestamp = eventLog.Entry.Time
 				insightClient.Track(trace)
 			case common.LevelError:
-				trace := appinsights.NewTraceTelemetry(eventLog.Entry.Msg, appinsights.Error)
+				trace := appinsights.NewTraceTelemetry(eventLog.Entry.StacktraceMsg, appinsights.Error)
 				trace.Properties["goroutineid"] = fmt.Sprintf("%d", eventLog.Entry.GoRoutineId)
 				trace.Properties["source"] = eventLog.Entry.Source
 				trace.Timestamp = eventLog.Entry.Time
 				insightClient.Track(trace)
 			case common.LevelFatal:
-				trace := appinsights.NewTraceTelemetry(eventLog.Entry.Msg, appinsights.Critical)
+				trace := appinsights.NewTraceTelemetry(eventLog.Entry.StacktraceMsg, appinsights.Critical)
 				trace.Properties["goroutineid"] = fmt.Sprintf("%d", eventLog.Entry.GoRoutineId)
 				trace.Properties["source"] = eventLog.Entry.Source
 				trace.Timestamp = eventLog.Entry.Time
