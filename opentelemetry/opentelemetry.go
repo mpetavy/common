@@ -27,12 +27,16 @@ const (
 )
 
 var (
-	FlagOpentelemetryEnabled = common.SystemFlagBool(FlagNameOpentelemetryEnabled, true, "OpenTelemetry enabled")
+	FlagOpentelemetryEnabled = common.SystemFlagBool(FlagNameOpentelemetryEnabled, false, "OpenTelemetry enabled")
 	Telemetry                *OpenTelemetry
 )
 
 func init() {
 	common.Events.AddListener(common.EventFlagsSet{}, func(event common.Event) {
+		if !*FlagOpentelemetryEnabled {
+			return
+		}
+
 		var err error
 
 		Telemetry, err = NewTelemetry(context.Background())
@@ -40,6 +44,10 @@ func init() {
 	})
 
 	common.Events.AddListener(common.EventShutdown{}, func(event common.Event) {
+		if !*FlagOpentelemetryEnabled {
+			return
+		}
+
 		if Telemetry == nil {
 			return
 		}
@@ -51,6 +59,10 @@ func init() {
 	})
 
 	common.Events.AddListener(common.EventTelemetry{}, func(event common.Event) {
+		if !*FlagOpentelemetryEnabled {
+			return
+		}
+
 		common.Catch(func() error {
 			if Telemetry == nil {
 				return nil
@@ -73,6 +85,10 @@ func init() {
 	})
 
 	common.Events.AddListener(common.EventLog{}, func(event common.Event) {
+		if !*FlagOpentelemetryEnabled {
+			return
+		}
+
 		common.Catch(func() error {
 			if Telemetry == nil {
 				return nil

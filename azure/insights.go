@@ -10,12 +10,14 @@ import (
 )
 
 const (
+	FlagNameInsightsEnabled            = "azure.insights.enabled"
 	FlagNameInsightsInstrumentationkey = "azure.insights.instrumentationkey"
 	FlagNameInsightsBatchSize          = "azure.insights.batchsize"
 	FlagNameInsightsBatchInterval      = "azure.insights.batchinterval"
 )
 
 var (
+	FlagInsightsEnabled            = common.SystemFlagBool(FlagNameInsightsEnabled, false, "Azure insights enabled")
 	FlagInsightsInstrumentationkey = common.SystemFlagString(FlagNameInsightsInstrumentationkey, "", "Azure insights instrumentation key")
 	FlagInsightsBatchSize          = common.SystemFlagInt(FlagNameInsightsBatchSize, 8192, "Azure insights batch size")
 	FlagInsightsBatchInterval      = common.SystemFlagInt(FlagNameInsightsBatchInterval, 100, "Azure insights batch interval")
@@ -25,6 +27,10 @@ var (
 
 func init() {
 	common.Events.AddListener(common.EventFlagsSet{}, func(event common.Event) {
+		if !*FlagInsightsEnabled {
+			return
+		}
+
 		if *FlagInsightsInstrumentationkey == "" {
 			return
 		}
@@ -37,6 +43,10 @@ func init() {
 	})
 
 	common.Events.AddListener(common.EventShutdown{}, func(event common.Event) {
+		if !*FlagInsightsEnabled {
+			return
+		}
+
 		if insightClient == nil {
 			return
 		}
@@ -62,6 +72,10 @@ func init() {
 	})
 
 	common.Events.AddListener(common.EventTelemetry{}, func(event common.Event) {
+		if !*FlagInsightsEnabled {
+			return
+		}
+
 		common.Catch(func() error {
 			eventTelemetry := event.(common.EventTelemetry)
 
@@ -105,6 +119,10 @@ func init() {
 	})
 
 	common.Events.AddListener(common.EventLog{}, func(event common.Event) {
+		if !*FlagInsightsEnabled {
+			return
+		}
+
 		common.Catch(func() error {
 			if insightClient == nil {
 				return nil
