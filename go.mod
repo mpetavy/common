@@ -27,6 +27,7 @@ require (
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
 	github.com/ompluscator/dynamic-struct v1.4.0
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
+	github.com/pkg/errors v0.9.1
 	github.com/quasoft/memstore v0.0.0-20191010062613-2bce066d2b0b
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d
 	github.com/stretchr/testify v1.9.0
