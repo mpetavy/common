@@ -230,7 +230,7 @@ func registerIniFileFlags() (map[string]string, error) {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
-		if len(line) == 0 || strings.HasPrefix(line, "#") {
+		if len(line) == 0 || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") || strings.HasPrefix(line, ";") {
 			continue
 		}
 
@@ -410,46 +410,38 @@ func setFlags() error {
 	argsFlags, _ := registerArgsFlags()
 
 	flagMaps := []struct {
-		origin     string
-		fn         func() (map[string]string, error)
-		flags      map[string]string
-		initialSet bool
+		origin string
+		fn     func() (map[string]string, error)
+		flags  map[string]string
 	}{
 		{
-			origin:     "default",
-			fn:         registerDefaultFlags,
-			initialSet: true,
+			origin: "default",
+			fn:     registerDefaultFlags,
 		},
 		{
-			origin:     "ini file",
-			fn:         registerIniFileFlags,
-			initialSet: true,
+			origin: "cfg file",
+			fn:     registerCfgFileFlags,
 		},
 		{
-			origin:     "cfg file",
-			fn:         registerCfgFileFlags,
-			initialSet: true,
+			origin: "ini file",
+			fn:     registerIniFileFlags,
 		},
 		{
-			origin:     "env",
-			fn:         registerEnvFlags,
-			initialSet: true,
+			origin: "env",
+			fn:     registerEnvFlags,
 		},
 		{
-			origin:     "args",
-			flags:      argsFlags,
-			initialSet: true,
+			origin: "args",
+			flags:  argsFlags,
 		},
 		{
-			origin:     "external",
-			fn:         registerExternalFlags,
-			initialSet: true,
+			origin: "external",
+			fn:     registerExternalFlags,
 		},
 		{
-			origin:     "args",
-			fn:         nil,
-			flags:      argsFlags,
-			initialSet: true,
+			origin: "args",
+			fn:     nil,
+			flags:  argsFlags,
 		},
 	}
 
@@ -463,31 +455,25 @@ func setFlags() error {
 			}
 		}
 
-		if flagMaps[i].initialSet {
-			for key, value := range flagMaps[i].flags {
-				if IsCmdlineOnlyFlag(key) {
-					continue
+		for key, value := range flagMaps[i].flags {
+			if strings.HasPrefix(value, "$ENV(") && strings.HasSuffix(value, ")") {
+				envName := value[5 : len(value)-1]
+				envValue, ok := os.LookupEnv(envName)
+				if !ok {
+					return fmt.Errorf("ENV variable cannot be evaluated: %s", value)
 				}
 
-				if strings.HasPrefix(value, "$ENV(") && strings.HasSuffix(value, ")") {
-					envName := value[5 : len(value)-1]
-					envValue, ok := os.LookupEnv(envName)
-					if !ok {
-						return fmt.Errorf("ENV variable cannot be evaluated: %s", value)
-					}
+				value = envValue
+			}
 
-					value = envValue
-				}
+			err := flag.Set(key, value)
+			if Error(err) {
+				return err
+			}
 
-				err := flag.Set(key, value)
-				if Error(err) {
-					return err
-				}
-
-				flagInfos[key] = flagInfo{
-					Value:  value,
-					Origin: flagMaps[i].origin,
-				}
+			flagInfos[key] = flagInfo{
+				Value:  value,
+				Origin: flagMaps[i].origin,
 			}
 		}
 	}
@@ -501,17 +487,18 @@ func setFlags() error {
 
 func debugFlags() {
 	st := NewStringTable()
-	st.AddCols("Flag", "Value", "Only cmdline", "Origin")
+	st.AddCols("Flag", "Value", "Origin", "Only cmdline")
 
 	flag.VisitAll(func(f *flag.Flag) {
 		flagValue := flagInfos[f.Name]
 		flagOrigin := flagValue.Origin
-		flagOnlyCmdline := IsCmdlineOnlyFlag(f.Name)
-		if flagOnlyCmdline {
-			flagOrigin = "only cmdline"
+		flagOnlyCmdline := ""
+
+		if IsCmdlineOnlyFlag(f.Name) {
+			flagOnlyCmdline = "*"
 		}
 
-		st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), fmt.Sprintf("%v", flagOnlyCmdline), flagOrigin)
+		st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), flagOrigin, flagOnlyCmdline)
 	})
 
 	Debug(fmt.Sprintf("Flags\n%s", st.Table()))
@@ -523,10 +510,6 @@ func registerDefaultFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		if IsCmdlineOnlyFlag(f.Name) {
-			return
-		}
-
 		m[f.Name] = f.Value.String()
 	})
 
