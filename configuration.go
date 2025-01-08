@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -468,7 +469,7 @@ func setFlags() error {
 
 			err := flag.Set(key, value)
 			if Error(err) {
-				return err
+				return errors.Wrap(err, fmt.Sprintf("[%s] %s: %s\n", flagMaps[i].origin, key, value))
 			}
 
 			flagInfos[key] = flagInfo{
@@ -510,7 +511,9 @@ func registerDefaultFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		m[f.Name] = f.Value.String()
+		if !strings.HasPrefix(f.Name, "test.") {
+			m[f.Name] = f.Value.String()
+		}
 	})
 
 	return m, nil
