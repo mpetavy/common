@@ -2,11 +2,20 @@ package common
 
 import (
 	"flag"
+	"fmt"
 )
 
 var (
 	SystemFlagNames []string
 )
+
+type ErrFlagNotDefined struct {
+	Name string
+}
+
+func (e *ErrFlagNotDefined) Error() string {
+	return fmt.Sprintf("Flags must be defined: %s", e.Name)
+}
 
 func SystemFlagBool(name string, value bool, usage string) *bool {
 	SystemFlagNames = append(SystemFlagNames, name)

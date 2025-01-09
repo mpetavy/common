@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azappconfig"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
+	"github.com/mpetavy/common"
 	"github.com/stretchr/testify/require"
 	"log"
 	"os"
@@ -13,7 +14,14 @@ import (
 )
 
 func TestAzureAppConfiguration(t *testing.T) {
-	flags, err := AzureAppConfiguration(false)
+	flags, err := AzureAppConfiguration(
+		"23feb136-a94f-44bb-b6ff-e9d9e598f33b",
+		"0385068d-4874-4a8c-a6f3-c87d0acd73b7",
+		common.Secret("secret:+j3WxWEJuWvrwNoGiMiWZEHoNJH6pMXzlVbotQx6XST++EltFWn8+A+5eHT0B8N5AegBVnr2gP4="),
+		common.Secret("secret:FXRnwuwS1v+ign7OTOH8usnYv5In+rPe8qQUlTvfsmobw2CEMTuuW6Wxk4aPgQiKRRXsRH5vBAy7AA8Z5rxTBeEIb0SzC4F/NjG3B3yKCZjWwUIzMluak/eWFMigxn3iOdMYfV5IF5ZVoxg3s1SbM289K6rPLix9OpU0fqCYvHZU0wcLkLCSxUaQP0dUC1ptvLdWm8zSPR/oQHJO+eQ="),
+		false,
+		common.MillisecondToDuration(5000),
+	)
 	require.NoError(t, err)
 
 	keyvalues := make(map[string]string)

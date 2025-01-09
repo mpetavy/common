@@ -6,72 +6,78 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 	"strings"
 )
 
-func AESEncrypt(key []byte, message string) (encmess string, err error) {
-	plainText := []byte(message)
+const (
+	SECRET_PREFIX = "secret:"
+)
 
+func Encrypt(key []byte, message []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if Error(err) {
-		return "", err
+		return nil, err
 	}
 
 	//IV needs to be unique, but doesn't have to be secure.
 	//It's common to put it at the beginning of the ciphertext.
-	cipherText := make([]byte, aes.BlockSize+len(plainText))
+	cipherText := make([]byte, aes.BlockSize+len(message))
 	iv := cipherText[:aes.BlockSize]
 	_, err = io.ReadFull(rand.Reader, iv)
 	if Error(err) {
-		return "", err
+		return nil, err
 	}
 
 	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(cipherText[aes.BlockSize:], plainText)
+	stream.XORKeyStream(cipherText[aes.BlockSize:], message)
 
-	//returns to base64 encoded string
-	encmess = base64.StdEncoding.EncodeToString(cipherText)
-
-	return
+	return cipherText, nil
 }
 
-func AESDecrypt(key []byte, securemess string) (decodedmess string, err error) {
-	cipherText, err := base64.StdEncoding.DecodeString(securemess)
-	if Error(err) {
-		return "", err
-	}
-
+func Decrypt(key []byte, message []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if Error(err) {
-		return "", err
+		return nil, err
 	}
 
-	if len(cipherText) < aes.BlockSize {
-		return "", errors.New("Ciphertext block size is too short!")
+	if len(message) < aes.BlockSize {
+		return nil, errors.New("Ciphertext block size is too short!")
 	}
 
 	//IV needs to be unique, but doesn't have to be secure.
 	//It's common to put it at the beginning of the ciphertext.
-	iv := cipherText[:aes.BlockSize]
-	cipherText = cipherText[aes.BlockSize:]
+	iv := message[:aes.BlockSize]
+	message = message[aes.BlockSize:]
 
 	stream := cipher.NewCFBDecrypter(block, iv)
 	// XORKeyStream can work in-place if the two arguments are the same.
-	stream.XORKeyStream(cipherText, cipherText)
+	stream.XORKeyStream(message, message)
 
-	decodedmess = string(cipherText)
-
-	return
+	return message, nil
 }
 
 func IsStringEnrypted(password string) bool {
-	return strings.HasPrefix(password, "enc:")
+	return strings.HasPrefix(password, SECRET_PREFIX)
 }
 
 func DecryptString(key []byte, txt string) (string, error) {
 	if IsStringEnrypted(txt) {
-		return AESDecrypt(key, txt[4:])
+		txt = txt[len(SECRET_PREFIX):]
+
+		ba, err := base64.StdEncoding.DecodeString(txt)
+		if Error(err) {
+			return "", err
+		}
+
+		s, err := Decrypt(key, ba)
+		if Error(err) {
+			return "", err
+		}
+
+		return string(s), nil
 	} else {
 		return txt, nil
 	}
@@ -79,10 +85,22 @@ func DecryptString(key []byte, txt string) (string, error) {
 
 func EncryptString(key []byte, txt string) (string, error) {
 	if !IsStringEnrypted(txt) {
-		password, err := AESEncrypt(key, txt)
+		s, err := Encrypt(key, []byte(txt))
 
-		return "enc:" + password, err
+		return SECRET_PREFIX + base64.StdEncoding.EncodeToString(s), err
 	} else {
 		return txt, nil
 	}
+}
+
+func Secret(txt string) string {
+	key := os.Getenv("SECRETKEY")
+	if key == "" {
+		Panic(fmt.Errorf("SECRETKEY environment variable not set"))
+	}
+
+	m, err := DecryptString([]byte(key), txt)
+	Panic(err)
+
+	return m
 }

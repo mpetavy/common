@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/stretchr/testify/require"
+	"strings"
 	"testing"
 )
 
@@ -9,15 +10,13 @@ func TestEncrypt(t *testing.T) {
 	key := RndBytes(16)
 
 	txt := "Hello world!"
-	enc, err := EncryptString(key, txt)
-	if err != nil {
-		Error(err)
-	}
+	encrypted, err := EncryptString(key, txt)
+	require.NoError(t, err)
 
-	dec, err := DecryptString(key, enc)
-	if err != nil {
-		Error(err)
-	}
+	require.True(t, strings.HasPrefix(encrypted, SECRET_PREFIX))
 
-	require.Equal(t, txt, dec)
+	decrypted, err := DecryptString(key, encrypted)
+	require.NoError(t, err)
+
+	require.Equal(t, txt, decrypted)
 }

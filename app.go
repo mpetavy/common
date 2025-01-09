@@ -604,7 +604,7 @@ func nextTicker() *time.Ticker {
 	return newTicker
 }
 
-func (app *application) applicationRun() error {
+func (app *application) applicationRun() {
 	if IsRunningAsService() {
 		Info("Service()")
 	} else {
@@ -620,6 +620,8 @@ func (app *application) applicationRun() error {
 			defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
 			err := app.RunFunc()
+
+			Error(err)
 
 			errCh <- err
 		}()
@@ -637,22 +639,22 @@ func (app *application) applicationRun() error {
 		//	fmt.Printf("Restart on time %d\n", runtime.NumGoroutine())
 		//	restart = true
 		//	return nil
-		case err := <-errCh:
-			return err
+		case <-errCh:
+			return
 		case <-appLifecycle.Channel():
 			Info("Stop on request")
-			return nil
+			return
 		case <-restartCh:
 			Info("Restart on request")
 			restart = true
-			return nil
+			return
 		case <-shutdownCh:
 			Info("Shutdown on request")
-			return nil
+			return
 		case <-ctrlC:
 			fmt.Println()
 			Info("Terminate: CTRL-C pressed")
-			return nil
+			return
 		case <-ticker.C:
 			Debug("ticker!")
 
@@ -660,7 +662,7 @@ func (app *application) applicationRun() error {
 
 			err := app.RunFunc()
 			if Error(err) {
-				return err
+				return
 			}
 
 			ticker = nextTicker()
