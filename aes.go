@@ -59,12 +59,12 @@ func Decrypt(key []byte, message []byte) ([]byte, error) {
 	return message, nil
 }
 
-func IsStringEnrypted(password string) bool {
+func IsEncrypted(password string) bool {
 	return strings.HasPrefix(password, SECRET_PREFIX)
 }
 
 func DecryptString(key []byte, txt string) (string, error) {
-	if IsStringEnrypted(txt) {
+	if IsEncrypted(txt) {
 		txt = txt[len(SECRET_PREFIX):]
 
 		ba, err := base64.StdEncoding.DecodeString(txt)
@@ -84,7 +84,7 @@ func DecryptString(key []byte, txt string) (string, error) {
 }
 
 func EncryptString(key []byte, txt string) (string, error) {
-	if !IsStringEnrypted(txt) {
+	if !IsEncrypted(txt) {
 		s, err := Encrypt(key, []byte(txt))
 
 		return SECRET_PREFIX + base64.StdEncoding.EncodeToString(s), err
@@ -93,14 +93,16 @@ func EncryptString(key []byte, txt string) (string, error) {
 	}
 }
 
-func Secret(txt string) string {
+func Secret(txt string) (string, error) {
 	key := os.Getenv("SECRETKEY")
 	if key == "" {
-		Panic(fmt.Errorf("SECRETKEY environment variable not set"))
+		return "", fmt.Errorf("SECRETKEY environment variable not set")
 	}
 
 	m, err := DecryptString([]byte(key), txt)
-	Panic(err)
+	if Error(err) {
+		return "", err
+	}
 
-	return m
+	return m, nil
 }

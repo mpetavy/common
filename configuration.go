@@ -3,7 +3,6 @@ package common
 import (
 	"bufio"
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -34,6 +33,7 @@ type flagInfo struct {
 }
 
 var (
+	FlagCfg       *string
 	FlagCfgReset  *bool
 	FlagCfgCreate *bool
 	FlagCfgFile   *string
@@ -54,6 +54,7 @@ var (
 )
 
 const (
+	FlagNameCfg       = "cfg"
 	FlagNameCfgFile   = "cfg.file"
 	FlagNameCfgReset  = "cfg.reset"
 	FlagNameCfgCreate = "cfg.create"
@@ -85,6 +86,7 @@ func init() {
 		}
 
 		FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(filepath.Join(dir, AppFilename(".json"))), "Configuration file")
+		FlagCfg = SystemFlagString(FlagNameCfg, "", "Configuration as JSON content")
 		FlagCfgReset = SystemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
 		FlagCfgCreate = SystemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
 	})
@@ -267,14 +269,9 @@ func registerIniFileFlags() (map[string]string, error) {
 			value = string(ba)
 		}
 
-		if flag.Lookup(key) == nil {
-			return m, &ErrUnknownFlag{
-				Origin: filepath.Base(f),
-				Name:   key,
-			}
+		if IsValidFlagDefinition(key, value, true) {
+			m[key] = value
 		}
-
-		m[key] = value
 	}
 
 	return m, nil
@@ -283,10 +280,14 @@ func registerIniFileFlags() (map[string]string, error) {
 func LoadConfigurationFile[T any]() (*T, error) {
 	DebugFunc()
 
+	if *FlagCfgFile == "" {
+		return nil, &ErrFileNotFound{}
+	}
+
 	var content string
 
 	if FileExists(*FlagCfgFile) {
-		DebugFunc("read as file: %s", *FlagCfgFile)
+		DebugFunc("read cfg from file: %s", *FlagCfgFile)
 
 		ba, err := os.ReadFile(*FlagCfgFile)
 		if Error(err) {
@@ -295,21 +296,16 @@ func LoadConfigurationFile[T any]() (*T, error) {
 
 		content = string(ba)
 	} else {
-		fl := flag.Lookup(FlagNameCfgFile)
+		fl := flag.Lookup(FlagNameCfg)
 
 		// configuration set the to flag cfg.file=<content of configuration file>
 
 		if fl.Value.String() != fl.DefValue {
-			DebugFunc("read from flag %s: %s", FlagNameCfgFile)
+			content = fl.Value.String()
 
-			content = *FlagCfgFile
-		} else {
-			DebugFunc("read from ENV: %s", FlagNameAsEnvName(FlagNameCfgFile))
-
-			content = strings.TrimSpace(os.Getenv(FlagNameAsEnvName(FlagNameCfgFile)))
-			content = strings.ReplaceAll(content, " ", "")
-			content = strings.ReplaceAll(content, "\n", "")
-			content = strings.ReplaceAll(content, "\r", "")
+			if content != "" {
+				DebugFunc("read cfg from flag: %s", FlagNameCfg)
+			}
 		}
 	}
 
@@ -321,23 +317,9 @@ func LoadConfigurationFile[T any]() (*T, error) {
 		}
 	}
 
-	// Base64 decoding
-	decoded, err := base64.StdEncoding.DecodeString(content)
-	if err == nil {
-		DebugFunc("decode from Base64")
-
-		content = strings.TrimSpace(string(decoded))
-	}
-
-	ba := []byte(content)
-
-	if bytes.HasPrefix(ba, []byte("{")) && bytes.HasSuffix(ba, []byte("}")) {
-		DebugFunc("read as JSON")
-
-		ba, err = RemoveJsonComments(ba)
-		if Error(err) {
-			return nil, err
-		}
+	ba, err := RemoveJsonComments([]byte(content))
+	if Error(err) {
+		return nil, err
 	}
 
 	cfg := new(T)
@@ -407,8 +389,20 @@ func setFlags() error {
 
 	Debug("create cached flag values")
 
-	// is flag.Set(...=) ist used then the correct list of cmdline flags is destroyed, that's why here preserved...
-	argsFlags, _ := registerArgsFlags()
+	defaultFlags, err := registerDefaultFlags()
+	if Error(err) {
+		return err
+	}
+
+	argsFlags, err := registerArgsFlags()
+	if Error(err) {
+		return err
+	}
+
+	envFlags, err := registerEnvFlags()
+	if Error(err) {
+		return err
+	}
 
 	flagMaps := []struct {
 		origin string
@@ -417,7 +411,23 @@ func setFlags() error {
 	}{
 		{
 			origin: "default",
-			fn:     registerDefaultFlags,
+			flags:  defaultFlags,
+		},
+		{
+			origin: "env",
+			flags:  envFlags,
+		},
+		{
+			origin: "args",
+			flags:  argsFlags,
+		},
+		{
+			origin: "ini file",
+			fn:     registerIniFileFlags,
+		},
+		{
+			origin: "external",
+			fn:     registerExternalFlags,
 		},
 		{
 			origin: "cfg file",
@@ -429,19 +439,10 @@ func setFlags() error {
 		},
 		{
 			origin: "env",
-			fn:     registerEnvFlags,
+			flags:  envFlags,
 		},
 		{
 			origin: "args",
-			flags:  argsFlags,
-		},
-		{
-			origin: "external",
-			fn:     registerExternalFlags,
-		},
-		{
-			origin: "args",
-			fn:     nil,
 			flags:  argsFlags,
 		},
 	}
@@ -457,8 +458,16 @@ func setFlags() error {
 		}
 
 		for key, value := range flagMaps[i].flags {
-			if strings.HasPrefix(value, "$ENV(") && strings.HasSuffix(value, ")") {
-				envName := value[5 : len(value)-1]
+			switch {
+			case IsEncrypted(value):
+				var err error
+
+				value, err = Secret(value)
+				if Error(err) {
+					return err
+				}
+			case strings.HasPrefix(value, "env:"):
+				envName := value[4:]
 				envValue, ok := os.LookupEnv(envName)
 				if !ok {
 					return fmt.Errorf("ENV variable cannot be evaluated: %s", value)
@@ -488,7 +497,7 @@ func setFlags() error {
 
 func debugFlags() {
 	st := NewStringTable()
-	st.AddCols("Flag", "Value", "Origin", "Only cmdline")
+	st.AddCols("Flag", "ENV name", "Value", "Origin", "Only cmdline")
 
 	flag.VisitAll(func(f *flag.Flag) {
 		flagValue := flagInfos[f.Name]
@@ -499,10 +508,23 @@ func debugFlags() {
 			flagOnlyCmdline = "*"
 		}
 
-		st.AddCols(f.Name, HidePasswordValue(f.Name, flagValue.Value), flagOrigin, flagOnlyCmdline)
+		st.AddCols(f.Name, FlagNameAsEnvName(f.Name), HidePasswordValue(f.Name, flagValue.Value), flagOrigin, flagOnlyCmdline)
 	})
 
 	Debug(fmt.Sprintf("Flags\n%s", st.Table()))
+}
+
+func IsValidFlagDefinition(name string, value string, checkCmdlineFlag bool) bool {
+	b := flag.Lookup(name) != nil &&
+		!strings.HasPrefix(name, "test.") &&
+		strings.TrimSpace(value) != "" &&
+		(!checkCmdlineFlag || !IsCmdlineOnlyFlag(name))
+
+	if !b {
+		DebugFunc("Invalid flag definition: %s -> %s", name, value)
+	}
+
+	return b
 }
 
 func registerDefaultFlags() (map[string]string, error) {
@@ -511,7 +533,9 @@ func registerDefaultFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		if !strings.HasPrefix(f.Name, "test.") {
+		// With "dummy" be use ALL defaultFlags even with an empty value but skip "test.*"
+
+		if IsValidFlagDefinition(f.Name, "dummy", false) {
 			m[f.Name] = f.Value.String()
 		}
 	})
@@ -525,7 +549,9 @@ func registerArgsFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.Visit(func(f *flag.Flag) {
-		m[f.Name] = f.Value.String()
+		if IsValidFlagDefinition(f.Name, f.Value.String(), false) {
+			m[f.Name] = f.Value.String()
+		}
 	})
 
 	return m, nil
@@ -542,14 +568,9 @@ func registerExternalFlags() (map[string]string, error) {
 	Events.Emit(event, false)
 
 	for key, value := range event.Flags {
-		if flag.Lookup(key) == nil {
-			return nil, &ErrUnknownFlag{
-				Origin: "External",
-				Name:   key,
-			}
+		if IsValidFlagDefinition(key, value, true) {
+			m[key] = value
 		}
-
-		m[key] = value
 	}
 
 	return m, nil
@@ -565,13 +586,9 @@ func registerEnvFlags() (map[string]string, error) {
 	m := make(map[string]string)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		if IsCmdlineOnlyFlag(f.Name) {
-			return
-		}
-
 		value := os.Getenv(FlagNameAsEnvName(f.Name))
 
-		if value != "" {
+		if IsValidFlagDefinition(f.Name, value, true) {
 			m[f.Name] = value
 		}
 	})
@@ -597,14 +614,9 @@ func registerCfgFileFlags() (map[string]string, error) {
 		for _, key := range cfg.Flags.Keys() {
 			value, _ := cfg.Flags.Get(key)
 
-			if flag.Lookup(key) == nil {
-				return m, &ErrUnknownFlag{
-					Origin: *FlagCfgFile,
-					Name:   key,
-				}
+			if IsValidFlagDefinition(key, value, true) {
+				m[key] = value
 			}
-
-			m[key] = value
 		}
 	}
 

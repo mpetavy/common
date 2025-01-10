@@ -40,7 +40,7 @@ var (
 	FlagLogFileName     = SystemFlagString(FlagNameLogFileName, "", "filename to log file")
 	FlagLogFileSize     = SystemFlagInt(FlagNameLogFileSize, 5*1024*1024, "max log file size")
 	FlagLogVerbose      = flag.Bool(FlagNameLogVerbose, false, "verbose logging")
-	FlagLogVerboseError = flag.Bool(FlagNameLogVerboseError, false, "verbose error logging")
+	FlagLogVerboseError = SystemFlagBool(FlagNameLogVerboseError, false, "verbose error logging")
 	FlagLogIO           = SystemFlagBool(FlagNameLogIO, false, "trace logging")
 	FlagLogJson         = SystemFlagBool(FlagNameLogJson, false, "JSON output")
 	FlagLogSys          = SystemFlagBool(FlagNameLogSys, false, "Use OS system logger")

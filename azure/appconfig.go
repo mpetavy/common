@@ -3,7 +3,6 @@ package azure
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -20,11 +19,11 @@ import (
 
 func init() {
 	common.Events.AddListener(&common.EventFlagsExternal{}, func(event common.Event) {
-		if *FlagAzureCfg == "" {
+		if *FlagAzureCfgConn == "" {
 			return
 		}
 
-		flags, err := AzureAppConfiguration(*FlagAzureTenantID, *FlagAzureClientID, *FlagAzureClientSecret, *FlagAzureCfg, true, common.MillisecondToDuration(*FlagAzureTimeout))
+		flags, err := AzureAppConfiguration(*FlagAzureTenantID, *FlagAzureClientID, *FlagAzureClientSecret, *FlagAzureCfgConn, true, common.MillisecondToDuration(*FlagAzureTimeout))
 		common.Panic(err)
 
 		eventFlagsExternal := event.(*common.EventFlagsExternal)
@@ -128,7 +127,7 @@ func AzureAppConfiguration(tenantID string, clientID string, clientSecret string
 		}
 
 		for _, setting := range page.Settings {
-			if !onlyFlags || (setting.Value != nil && *setting.Value != "" && flag.Lookup(*setting.Key) != nil && !common.IsCmdlineOnlyFlag(*setting.Key)) {
+			if !onlyFlags || common.IsValidFlagDefinition(*setting.Key, *setting.Value, true) {
 				value, err := getValue(ctx, credentialClient, *setting.Key, *setting.Value)
 				if common.Error(err) {
 					return nil, err
@@ -138,6 +137,8 @@ func AzureAppConfiguration(tenantID string, clientID string, clientSecret string
 			}
 		}
 	}
+
+	common.DebugFunc("Found %d settings", len(flags))
 
 	return flags, nil
 }

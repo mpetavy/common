@@ -201,7 +201,7 @@ func Init(title string, version string, git string, build string, description st
 		}
 	}
 
-	FlagAppProduct = flag.String(FlagNameAppProduct, title, "app product")
+	FlagAppProduct = SystemFlagString(FlagNameAppProduct, title, "app product")
 	FlagAppTicker = SystemFlagInt(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
 
 	app = &application{
