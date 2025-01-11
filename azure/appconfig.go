@@ -23,7 +23,7 @@ func init() {
 			return
 		}
 
-		flags, err := AzureAppConfiguration(*FlagAzureTenantID, *FlagAzureClientID, *FlagAzureClientSecret, *FlagAzureCfgConn, true, common.MillisecondToDuration(*FlagAzureTimeout))
+		flags, err := AzureAppConfiguration(*FlagAzureTenantID, *FlagAzureClientID, *FlagAzureClientSecret, *FlagAzureCfgConn, *FlagAzureCfgKey, true, common.MillisecondToDuration(*FlagAzureTimeout))
 		common.Panic(err)
 
 		eventFlagsExternal := event.(*common.EventFlagsExternal)
@@ -72,7 +72,7 @@ func getValue(ctx context.Context, credentialClient azcore.TokenCredential, key 
 	return *secretResp.Value, nil
 }
 
-func AzureAppConfiguration(tenantID string, clientID string, clientSecret string, connection string, onlyFlags bool, timeout time.Duration) (map[string]string, error) {
+func AzureAppConfiguration(tenantID string, clientID string, clientSecret string, cfgConn string, cfgKey string, onlyFlags bool, timeout time.Duration) (map[string]string, error) {
 	common.DebugFunc()
 
 	flags := make(map[string]string)
@@ -98,13 +98,13 @@ func AzureAppConfiguration(tenantID string, clientID string, clientSecret string
 
 	var configClient *azappconfig.Client
 
-	if strings.HasPrefix(connection, "Endpoint=") {
-		configClient, err = azappconfig.NewClientFromConnectionString(connection, nil)
+	if strings.HasPrefix(cfgConn, "Endpoint=") {
+		configClient, err = azappconfig.NewClientFromConnectionString(cfgConn, nil)
 		if common.Error(err) {
 			return nil, err
 		}
 	} else {
-		configClient, err = azappconfig.NewClient(connection, credentialClient, nil)
+		configClient, err = azappconfig.NewClient(cfgConn, credentialClient, nil)
 		if common.Error(err) {
 			return nil, err
 		}
@@ -116,6 +116,8 @@ func AzureAppConfiguration(tenantID string, clientID string, clientSecret string
 	}()
 
 	pager := configClient.NewListSettingsPager(azappconfig.SettingSelector{}, nil)
+
+loop:
 	for {
 		page, err := pager.NextPage(ctx)
 		if err != nil {
@@ -127,10 +129,20 @@ func AzureAppConfiguration(tenantID string, clientID string, clientSecret string
 		}
 
 		for _, setting := range page.Settings {
-			if !onlyFlags || common.IsValidFlagDefinition(*setting.Key, *setting.Value, true) {
+			if !onlyFlags || *setting.Key == cfgKey || common.IsValidFlagDefinition(*setting.Key, *setting.Value, true) {
+				if cfgKey != "" && cfgKey != *setting.Key {
+					continue
+				}
+
 				value, err := getValue(ctx, credentialClient, *setting.Key, *setting.Value)
 				if common.Error(err) {
 					return nil, err
+				}
+
+				if cfgKey != "" {
+					flags[common.FlagNameCfgExternal] = value
+
+					break loop
 				}
 
 				flags[*setting.Key] = value

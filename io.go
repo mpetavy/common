@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -174,14 +175,51 @@ func CreateTempDir() (string, error) {
 	return tempdir, err
 }
 
-func IsValidFilename(filename string) bool {
-	for _, r := range []rune(filename) {
-		if !unicode.IsGraphic(r) {
+func IsValidFilename(path string) bool {
+	b := func() bool {
+		if strings.TrimSpace(path) == "" {
 			return false
 		}
-	}
 
-	return true
+		for _, r := range []rune(path) {
+			if !unicode.IsGraphic(r) {
+				return false
+			}
+		}
+
+		cleanPath := filepath.Clean(path)
+
+		if IsWindows() {
+			invalidRunes := `<>:"|?*`
+
+			for _, char := range invalidRunes {
+				if strings.ContainsRune(cleanPath, char) {
+					return false
+				}
+			}
+
+			for _, name := range filepath.SplitList(cleanPath) {
+				if slices.Contains(WindowsRestrictedFilenames, strings.ToUpper(name)) {
+					return false
+				}
+			}
+		}
+
+		tempPath := filepath.Join(TempDir(), path) + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+		err := os.MkdirAll(tempPath, DefaultDirMode)
+		if err != nil {
+			return false
+		} else {
+			DebugError(os.RemoveAll(tempPath))
+		}
+
+		return true
+	}()
+
+	DebugFunc("%s: %v", path, b)
+
+	return b
 }
 
 // FileExists does ... guess what :-)
@@ -193,10 +231,6 @@ func FileExists(filename string) bool {
 		b = false
 	} else {
 		b = true
-	}
-
-	if !IsValidFilename(filename) {
-		filename = fmt.Sprintf("[invalid filename with %d chars]: %s...", len(filename), filename[:Min(len(filename), 10)])
 	}
 
 	Debug(fmt.Sprintf("FileExists %s: %v", filename, b))

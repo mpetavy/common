@@ -18,6 +18,7 @@ func TestAzureAppConfiguration(t *testing.T) {
 		"0385068d-4874-4a8c-a6f3-c87d0acd73b7",
 		clientSecret,
 		connection,
+		"",
 		false,
 		common.MillisecondToDuration(5000),
 	)
@@ -31,5 +32,21 @@ func TestAzureAppConfiguration(t *testing.T) {
 		require.Equal(t, value, flags[key])
 	}
 
-	require.True(t, flags[common.FlagNameCfg] != "")
+	require.True(t, flags["cfg"] != "")
+	require.False(t, common.IsValidFilename(flags["cfg"]))
+
+	flags, err = AzureAppConfiguration(
+		"23feb136-a94f-44bb-b6ff-e9d9e598f33b",
+		"0385068d-4874-4a8c-a6f3-c87d0acd73b7",
+		clientSecret,
+		connection,
+		"cfg",
+		false,
+		common.MillisecondToDuration(5000),
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, len(flags))
+	require.True(t, flags[common.FlagNameCfgExternal] != "")
+	require.False(t, common.IsValidFilename(flags[common.FlagNameCfgExternal]))
 }

@@ -14,6 +14,7 @@ const (
 	FlagNameAzureClientSecret = "azure.client_secret"
 	FlagNameAzureTimeout      = "azure.timeout"
 	FlagNameAzureCfgConn      = "azure.cfg.conn"
+	FlagNameAzureCfgKey       = "azure.cfg.key"
 )
 
 var (
@@ -22,4 +23,5 @@ var (
 	FlagAzureClientSecret = common.SystemFlagString(FlagNameAzureClientSecret, os.Getenv("AZURE_CLIENT_SECRET"), "Azure configuration client secret. Omit to use ENV parameter AZURE_CLIENT_SECRET")
 	FlagAzureTimeout      = common.SystemFlagInt(FlagNameAzureTimeout, 10000, "Azure timeout")
 	FlagAzureCfgConn      = common.SystemFlagString(FlagNameAzureCfgConn, "", "Azure configuration connection")
+	FlagAzureCfgKey       = common.SystemFlagString(FlagNameAzureCfgKey, "", "Azure configuration key name")
 )

@@ -33,10 +33,10 @@ type flagInfo struct {
 }
 
 var (
-	FlagCfg       *string
-	FlagCfgReset  *bool
-	FlagCfgCreate *bool
-	FlagCfgFile   *string
+	FlagCfgExternal *string
+	FlagCfgReset    *bool
+	FlagCfgCreate   *bool
+	FlagCfgFile     *string
 
 	CmdlineOnlyFlags = []string{
 		FlagNameService,
@@ -54,10 +54,10 @@ var (
 )
 
 const (
-	FlagNameCfg       = "cfg"
-	FlagNameCfgFile   = "cfg.file"
-	FlagNameCfgReset  = "cfg.reset"
-	FlagNameCfgCreate = "cfg.create"
+	FlagNameCfgFile     = "cfg.file"
+	FlagNameCfgExternal = "cfg.external"
+	FlagNameCfgReset    = "cfg.reset"
+	FlagNameCfgCreate   = "cfg.create"
 )
 
 type ErrUnknownFlag struct {
@@ -85,8 +85,8 @@ func init() {
 			dir = wd
 		}
 
-		FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(filepath.Join(dir, AppFilename(".json"))), "Configuration file")
-		FlagCfg = SystemFlagString(FlagNameCfg, "", "Configuration as JSON content")
+		FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(filepath.Join(dir, AppFilename(".json"))), "Configuration filepath")
+		FlagCfgExternal = SystemFlagString(FlagNameCfgExternal, "", "Configuration JSON content")
 		FlagCfgReset = SystemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
 		FlagCfgCreate = SystemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
 	})
@@ -296,7 +296,7 @@ func LoadConfigurationFile[T any]() (*T, error) {
 
 		content = string(ba)
 	} else {
-		fl := flag.Lookup(FlagNameCfg)
+		fl := flag.Lookup(FlagNameCfgExternal)
 
 		// configuration set the to flag cfg.file=<content of configuration file>
 
@@ -304,7 +304,7 @@ func LoadConfigurationFile[T any]() (*T, error) {
 			content = fl.Value.String()
 
 			if content != "" {
-				DebugFunc("read cfg from flag: %s", FlagNameCfg)
+				DebugFunc("read cfg from flag: %s", FlagNameCfgExternal)
 			}
 		}
 	}
@@ -508,7 +508,13 @@ func debugFlags() {
 			flagOnlyCmdline = "*"
 		}
 
-		st.AddCols(f.Name, FlagNameAsEnvName(f.Name), HidePasswordValue(f.Name, flagValue.Value), flagOrigin, flagOnlyCmdline)
+		value := HidePasswordValue(f.Name, flagValue.Value)
+
+		if f.Name == FlagNameCfgExternal {
+			value = CapString(value, 80)
+		}
+
+		st.AddCols(f.Name, FlagNameAsEnvName(f.Name), value, flagOrigin, flagOnlyCmdline)
 	})
 
 	Debug(fmt.Sprintf("Flags\n%s", st.Table()))

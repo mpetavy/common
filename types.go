@@ -52,6 +52,8 @@ const (
 
 var (
 	MEMORY_UNITS = []string{"Bytes", "KB", "MB", "GB", "TB"}
+
+	WindowsRestrictedFilenames = []string{"CON", "PRN", "AUX", "NUL", " COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
 )
 
 // Trim4Path trims given path to be usefull as filename
@@ -72,9 +74,7 @@ func Trim4Path(path string) string {
 	path = string(spath)
 
 	if IsWindows() {
-		reservedOnWindows := []string{"CON", "PRN", "AUX", "NUL", " COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
-
-		for _, reserved := range reservedOnWindows {
+		for _, reserved := range WindowsRestrictedFilenames {
 			if path == reserved {
 				path = path + "$"
 
@@ -826,4 +826,12 @@ func HidePasswordValue(name string, value string) string {
 
 func IsEqualType(a any, b any) bool {
 	return reflect.TypeOf(a) == reflect.TypeOf(b)
+}
+
+func CapString(txt string, max int) string {
+	if len(txt) <= max {
+		return txt
+	}
+
+	return txt[:max-3] + "..."
 }
