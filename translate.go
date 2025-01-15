@@ -11,21 +11,18 @@ import (
 	"time"
 )
 
-var (
-	FlagAppLanguage *string
-	systemLanguage  string
-	I18nFile        *ini.File
-)
-
 const (
 	FlagNameAppLanguage = "app.language"
 )
 
-func init() {
-	Events.AddListener(EventInit{}, func(ev Event) {
-		FlagAppLanguage = flag.String(FlagNameAppLanguage, "en", "language for messages")
-	})
+var (
+	FlagAppLanguage = SystemFlagString(FlagNameAppLanguage, "en", "language for messages")
 
+	systemLanguage string
+	I18nFile       *ini.File
+)
+
+func init() {
 	Events.AddListener(EventFlagsSet{}, func(ev Event) {
 		initLanguage()
 	})
