@@ -66,6 +66,10 @@ type ErrUnknownFlag struct {
 }
 
 func (e *ErrUnknownFlag) Error() string {
+	if e.Origin == "" {
+		return fmt.Sprintf("unknown flag: %s", e.Name)
+	}
+
 	return fmt.Sprintf("unknown flag in %s: %s", e.Origin, e.Name)
 }
 
@@ -267,6 +271,13 @@ func registerIniFileFlags() (map[string]string, error) {
 			}
 
 			value = string(ba)
+		}
+
+		if flag.Lookup(key) == nil {
+			return nil, &ErrUnknownFlag{
+				Origin: "ini file",
+				Name:   key,
+			}
 		}
 
 		if IsValidFlagDefinition(key, value, true) {
@@ -620,6 +631,13 @@ func registerCfgFileFlags() (map[string]string, error) {
 		for _, key := range cfg.Flags.Keys() {
 			value, _ := cfg.Flags.Get(key)
 
+			if flag.Lookup(key) == nil {
+				return nil, &ErrUnknownFlag{
+					Origin: "cfg file",
+					Name:   key,
+				}
+			}
+
 			if IsValidFlagDefinition(key, value, true) {
 				m[key] = value
 			}
@@ -680,7 +698,7 @@ func checkMandatoryFlags(flags []string) error {
 					return fmt.Errorf("unknown mandatory flag: \"%s\"", flagName)
 				}
 
-				if IsFlagProvided(flagName) || IsFlagAsEnvProvided(flagName) || fl.Value.String() != "" || fl.DefValue != "" {
+				if IsFlagProvided(flagName) || IsFlagAsEnvProvided(flagName) || fl.Value.String() != fl.DefValue {
 					defined++
 				}
 			}
