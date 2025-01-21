@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"testing"
 	"time"
 )
 
@@ -817,7 +818,7 @@ func IsRunningAsExecutable() bool {
 }
 
 func IsRunningInTest() bool {
-	runningInTest := flag.Lookup("test.v") != nil
+	runningInTest := testing.Testing()
 
 	DebugFunc(runningInTest)
 

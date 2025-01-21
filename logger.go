@@ -108,13 +108,7 @@ func IsLogVerboseEnabled() bool {
 		return *FlagLogVerbose
 	}
 
-	for _, arg := range os.Args {
-		if arg == "-"+FlagNameLogVerbose || arg == "-"+FlagNameLogVerbose+"=true" {
-			return true
-		}
-	}
-
-	return false
+	return IsFlagProvided(FlagNameLogVerbose)
 }
 
 func IsLogJsonEnabled() bool {
@@ -122,13 +116,7 @@ func IsLogJsonEnabled() bool {
 		return *FlagLogJson
 	}
 
-	for _, arg := range os.Args {
-		if arg == "-"+FlagNameLogJson || arg == "-"+FlagNameLogJson+"=true" {
-			return true
-		}
-	}
-
-	return false
+	return IsFlagProvided(FlagNameLogJson)
 }
 
 func IsLogFileEnabled() bool {
@@ -136,13 +124,7 @@ func IsLogFileEnabled() bool {
 		return *FlagLogFileName != ""
 	}
 
-	for _, arg := range os.Args {
-		if arg == "-"+FlagNameLogFileName || strings.HasPrefix(arg, FlagNameLogFileName+"=") {
-			return true
-		}
-	}
-
-	return false
+	return IsFlagProvided(FlagNameLogFileName)
 }
 
 func prefix(p string) string {
