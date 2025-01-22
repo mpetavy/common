@@ -131,7 +131,7 @@ func NewFieldTime(v ...time.Time) FieldTime {
 
 func (c FieldTime) MarshalJSON() ([]byte, error) {
 	if c.Valid {
-		return json.Marshal(c.Time)
+		return json.Marshal(c.Time.UTC())
 	}
 
 	return json.Marshal(nil)

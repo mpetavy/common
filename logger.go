@@ -104,11 +104,13 @@ func init() {
 }
 
 func IsLogVerboseEnabled() bool {
+	// use isLogInit (initial = false) to capture all DEBUG logs before first initLogging so can we log them if verbose logging is enabled
+
 	if FlagLogVerbose != nil {
-		return *FlagLogVerbose
+		return *FlagLogVerbose || !isLogInit
 	}
 
-	return IsFlagProvided(FlagNameLogVerbose)
+	return IsFlagProvided(FlagNameLogVerbose) || !isLogInit
 }
 
 func IsLogJsonEnabled() bool {
@@ -167,9 +169,15 @@ func initLog() error {
 
 	log.SetFlags(flags)
 
-	ClearLogs()
-
 	isLogInit = true
+
+	if *FlagLogVerbose {
+		for _, line := range GetLogs() {
+			LogDebug.Print(line[len(LevelDebug)+1:])
+		}
+	}
+
+	ClearLogs()
 
 	return nil
 }

@@ -532,16 +532,10 @@ func debugFlags() {
 }
 
 func IsValidFlagDefinition(name string, value string, checkCmdlineFlag bool) bool {
-	b := flag.Lookup(name) != nil &&
+	return flag.Lookup(name) != nil &&
 		!strings.HasPrefix(name, "test.") &&
 		strings.TrimSpace(value) != "" &&
 		(!checkCmdlineFlag || !IsCmdlineOnlyFlag(name))
-
-	if !b {
-		DebugFunc("Invalid flag definition: %s -> %s", name, value)
-	}
-
-	return b
 }
 
 func registerDefaultFlags() (map[string]string, error) {

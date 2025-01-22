@@ -84,6 +84,7 @@ func (e *ErrExit) Error() string { return "" }
 const (
 	FlagNameAppProduct      = "app.product"
 	FlagNameAppTicker       = "app.ticker"
+	FlagNameAppStartupDelay = "app.startupdelay"
 	FlagNameService         = "service"
 	FlagNameServiceUsername = "service.username"
 	FlagNameServicePassword = "service.password"
@@ -117,17 +118,17 @@ var (
 	app                     *application
 	FlagAppProduct          *string
 	FlagAppTicker           *int
+	FlagAppStartupDelay     *int
 	ticker                  *time.Ticker
 	appLifecycle            = NewNotice()
-	startupCh               = make(chan error, 10)
 	onceBanner              sync.Once
-	onceRunningInDocker     sync.Once
+	onceRunningAsContainer  sync.Once
 	onceRunningAsService    sync.Once
 	onceRunningAsExecutable sync.Once
 	onceRunningInteractive  sync.Once
 	onceShutdownHooks       sync.Once
 	onceTitle               sync.Once
-	runningInDocker         bool
+	runningAsContainer      bool
 	runningAsService        bool
 	runningAsExecutable     bool
 	runningInteractive      bool
@@ -204,6 +205,7 @@ func Init(title string, version string, git string, build string, description st
 
 	FlagAppProduct = SystemFlagString(FlagNameAppProduct, title, "app product")
 	FlagAppTicker = SystemFlagInt(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
+	FlagAppStartupDelay = SystemFlagInt(FlagNameAppStartupDelay, 3000, "app startup delay")
 
 	app = &application{
 		Title:         title,
@@ -447,6 +449,14 @@ func installService() error {
 }
 
 func Run(mandatoryFlags []string) {
+	run(mandatoryFlags, nil)
+}
+
+func RunTests(m *testing.M) {
+	run(nil, m)
+}
+
+func run(mandatoryFlags []string, m *testing.M) {
 	Events.Emit(EventInit{}, false)
 
 	defer done()
@@ -483,8 +493,6 @@ func Run(mandatoryFlags []string) {
 			return err
 		}
 
-		debugFlags()
-
 		err = checkMandatoryFlags(mandatoryFlags)
 		if Error(err) {
 			return err
@@ -501,6 +509,14 @@ func Run(mandatoryFlags []string) {
 				Error(err)
 			}
 		}()
+
+		if IsRunningAsContainer() {
+			d := MillisecondToDuration(*FlagAppStartupDelay)
+
+			Debug("Startup delay: %v", d)
+
+			Sleep(d)
+		}
 
 		if FileExists(*FlagScriptStart) {
 			_, err = RunScript(MillisecondToDuration(*FlagScriptTimeout), *FlagScriptStart)
@@ -524,7 +540,7 @@ func Run(mandatoryFlags []string) {
 
 		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
-		err = app.applicationLoop()
+		err = app.applicationLoop(m)
 		if Error(err) {
 			return err
 		}
@@ -534,8 +550,6 @@ func Run(mandatoryFlags []string) {
 	if err != nil && !IsErrExit(err) {
 		Error(err)
 	}
-
-	startupCh <- err
 }
 
 func ExitOrError(err error) error {
@@ -682,34 +696,38 @@ func (app *application) Start(s service.Service) error {
 		go func() {
 			defer UnregisterGoRoutine(RegisterGoRoutine(1))
 
-			Error(app.applicationLoop())
+			Error(app.applicationLoop(nil))
 		}()
 	} else {
-		return app.applicationLoop()
+		return app.applicationLoop(nil)
 	}
 
 	return nil
 }
 
-func (app *application) applicationLoop() error {
+func (app *application) applicationLoop(m *testing.M) error {
 	DebugFunc()
 
 	appLifecycle.Set()
 
+	var exitcode int
+
 	for {
 		if app.StartFunc != nil {
 			err := app.StartFunc()
-
-			startupCh <- err
 
 			if Error(err) {
 				return err
 			}
 		}
 
-		app.applicationRun()
+		if m != nil {
+			exitcode = m.Run()
+		} else {
+			app.applicationRun()
+		}
 
-		if !restart {
+		if !restart || m != nil {
 			break
 		}
 
@@ -735,15 +753,15 @@ func (app *application) applicationLoop() error {
 		}
 	}
 
+	if m != nil {
+		Exit(exitcode)
+	}
+
 	return nil
 }
 
 func AppLifecycle() *Notice {
 	return appLifecycle
-}
-
-func AppStartupCh() <-chan error {
-	return startupCh
 }
 
 func (app *application) Stop(s service.Service) error {
@@ -774,14 +792,14 @@ func AppShutdown() {
 	shutdownCh <- struct{}{}
 }
 
-func IsRunningInDocker() bool {
-	onceRunningInDocker.Do(func() {
-		runningInDocker = FileExists(("/.dockerenv"))
+func IsRunningAsContainer() bool {
+	onceRunningAsContainer.Do(func() {
+		runningAsContainer = os.Getpid() == 1 && app.StartFunc != nil
 	})
 
-	DebugFunc(runningInDocker)
+	DebugFunc(runningAsContainer)
 
-	return runningInDocker
+	return runningAsContainer
 }
 
 func IsRunningAsService() bool {

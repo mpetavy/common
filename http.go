@@ -379,10 +379,12 @@ func HTTPResponse(w http.ResponseWriter, r *http.Request, status int, mimeType s
 func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method string, address string, headers http.Header, formdata url.Values, username string, password string, body io.Reader, expectedCode int) (*http.Response, []byte, error) {
 	DebugFunc()
 
+	start := time.Now()
+
 	eventTelemetry := EventTelemetry{
 		IsTelemetryRequest: false,
 		Title:              fmt.Sprintf("%s %s", method, address),
-		Start:              time.Now(),
+		Start:              start,
 	}
 	defer func() {
 		eventTelemetry.End = time.Now()
@@ -496,6 +498,8 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 		}
 	}
 
+	timeNeeded := time.Since(start)
+
 	if IsLogVerboseEnabled() {
 		ba, err := httputil.DumpResponse(resp, IsTextMimeType(resp.Header.Get(CONTENT_TYPE)))
 		if Error(err) {
@@ -507,7 +511,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 			s = strings.Replace(s, password, strings.Repeat("X", len(password)), -1)
 		}
 
-		Debug("HTTP Response: %s %s Username: %s Password: %s\n%s\n", method, address, username, strings.Repeat("X", len(password)), s)
+		Debug("HTTP Response (after %v): %s %s Username: %s Password: %s\n%s\n", timeNeeded, method, address, username, strings.Repeat("X", len(password)), s)
 	}
 
 	ba, err := ReadBody(resp.Body)
