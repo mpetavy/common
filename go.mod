@@ -25,6 +25,7 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/microsoft/ApplicationInsights-Go v0.4.4
+	github.com/nsf/jsondiff v0.0.0-20230430225905-43f6cf3098c1
 	github.com/ompluscator/dynamic-struct v1.4.0
 	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c
 	github.com/pkg/errors v0.9.1

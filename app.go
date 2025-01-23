@@ -540,6 +540,16 @@ func run(mandatoryFlags []string, m *testing.M) {
 
 		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
 
+		if m != nil {
+			go func() {
+				defer UnregisterGoRoutine(RegisterGoRoutine(1))
+
+				<-ctrlC
+
+				os.Exit(1)
+			}()
+		}
+
 		err = app.applicationLoop(m)
 		if Error(err) {
 			return err

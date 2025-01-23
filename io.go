@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -1058,4 +1059,20 @@ func MultiWriter(writers ...io.Writer) io.Writer {
 		}
 	}
 	return &multiwriter{allWriters}
+}
+
+func FileReadLines(filename string) ([]string, error) {
+	ba, err := os.ReadFile(filename)
+	if Error(err) {
+		return nil, err
+	}
+
+	lines := []string{}
+	scanner := bufio.NewScanner(bytes.NewReader(ba))
+	for scanner.Scan() {
+		line := scanner.Text() // Read current line
+		lines = append(lines, line)
+	}
+
+	return lines, scanner.Err()
 }
