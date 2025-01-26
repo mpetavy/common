@@ -89,7 +89,7 @@ func init() {
 			dir = wd
 		}
 
-		FlagCfgFile = flag.String(FlagNameCfgFile, CleanPath(filepath.Join(dir, AppFilename(".json"))), "Configuration filepath")
+		FlagCfgFile = SystemFlagString(FlagNameCfgFile, CleanPath(filepath.Join(dir, AppFilename(".json"))), "Configuration filepath")
 		FlagCfgExternal = SystemFlagString(FlagNameCfgExternal, "", "Configuration JSON content")
 		FlagCfgReset = SystemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
 		FlagCfgCreate = SystemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
