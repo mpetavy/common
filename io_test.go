@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -132,4 +133,60 @@ func TestFileBackup(t *testing.T) {
 		err = FileDelete(file)
 		require.NoError(t, err)
 	}
+}
+
+func TestListFiles(t *testing.T) {
+	dir, err := CreateTempDir()
+	require.NoError(t, err)
+
+	defer func() {
+		require.NoError(t, os.RemoveAll(dir))
+	}()
+
+	subdir := filepath.Join(dir, "subdir")
+
+	err = os.MkdirAll(subdir, DefaultDirMode)
+	require.NoError(t, err)
+
+	files := []string{
+		filepath.Join(dir, "file0.txt"),
+		filepath.Join(dir, "file1.txt"),
+		filepath.Join(dir, "file1.txt.backup"),
+		filepath.Join(dir, "other.ini"),
+		filepath.Join(subdir, "file0.txt"),
+		filepath.Join(subdir, "file1.txt"),
+		filepath.Join(subdir, "other.ini"),
+	}
+
+	for _, file := range files {
+		f, err := os.Create(file)
+		require.NoError(t, err)
+
+		err = f.Close()
+		require.NoError(t, err)
+	}
+
+	found, err := ListFiles(filepath.Join(dir, "*.xxx"), false)
+	require.NoError(t, err)
+	require.Equal(t, 0, len(found))
+
+	found, err = ListFiles(filepath.Join(dir, "*.xxx"), true)
+	require.NoError(t, err)
+	require.Equal(t, 0, len(found))
+
+	found, err = ListFiles(filepath.Join(dir, "*.txt$"), false)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(found))
+
+	found, err = ListFiles(filepath.Join(dir, "*.txt"), false)
+	require.NoError(t, err)
+	require.Equal(t, 3, len(found))
+
+	found, err = ListFiles(filepath.Join(dir, "*.txt"), true)
+	require.NoError(t, err)
+	require.Equal(t, 5, len(found))
+
+	found, err = ListFiles(filepath.Join(dir, "*.ini"), true)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(found))
 }
