@@ -510,7 +510,7 @@ func run(mandatoryFlags []string, m *testing.M) {
 			}
 		}()
 
-		if IsRunningAsContainer() {
+		if IsRunningAsContainer() && *FlagAppStartupDelay > 0 {
 			d := MillisecondToDuration(*FlagAppStartupDelay)
 
 			Debug("Startup delay: %v", d)

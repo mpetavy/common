@@ -1,8 +1,6 @@
 package common
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -37,6 +35,8 @@ var (
 	FlagCfgReset    *bool
 	FlagCfgCreate   *bool
 	FlagCfgFile     *string
+	FlagCfgIni      *string
+	FlagCfgEnv      *string
 
 	CmdlineOnlyFlags = []string{
 		FlagNameService,
@@ -48,6 +48,8 @@ var (
 		FlagNameCfgCreate,
 		FlagNameUsage,
 		FlagNameUsageMd,
+		FlagNameCfgIni,
+		FlagNameCfgEnv,
 	}
 
 	flagInfos = make(map[string]flagInfo)
@@ -58,6 +60,8 @@ const (
 	FlagNameCfgExternal = "cfg.external"
 	FlagNameCfgReset    = "cfg.reset"
 	FlagNameCfgCreate   = "cfg.create"
+	FlagNameCfgIni      = "cfg.inifile"
+	FlagNameCfgEnv      = "cfg.env"
 )
 
 type ErrUnknownFlag struct {
@@ -89,10 +93,12 @@ func init() {
 			dir = wd
 		}
 
-		FlagCfgFile = SystemFlagString(FlagNameCfgFile, CleanPath(filepath.Join(dir, AppFilename(".json"))), "Configuration filepath")
+		FlagCfgFile = SystemFlagString(FlagNameCfgFile, CleanPath(filepath.Join(dir, AppFilename(".json"))), "JSON file configuration path")
 		FlagCfgExternal = SystemFlagString(FlagNameCfgExternal, "", "Configuration JSON content")
 		FlagCfgReset = SystemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
 		FlagCfgCreate = SystemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
+		FlagCfgIni = SystemFlagString(FlagNameCfgIni, CleanPath(filepath.Join(dir, AppFilename(".ini"))), "INI file configuration path")
+		FlagCfgEnv = SystemFlagString(FlagNameCfgEnv, "", "INI file section")
 	})
 }
 
@@ -211,68 +217,20 @@ func ResetConfiguration() error {
 func registerIniFileFlags() (map[string]string, error) {
 	DebugFunc()
 
-	m := make(map[string]string)
-
-	f := CleanPath(AppFilename(".ini"))
-	if !FileExists(f) {
-		return m, nil
+	if !FileExists(*FlagCfgIni) {
+		return nil, nil
 	}
 
-	ba, err := os.ReadFile(f)
+	ini := NewIniFile()
+
+	err := ini.LoadFile(*FlagCfgIni)
 	if Error(err) {
-		return m, err
+		return nil, err
 	}
 
-	if !bytes.HasSuffix(ba, []byte("\n")) {
-		ba = append(ba, '\n')
-	}
+	m := ini.GetAll(DEFAULT_SECTION, *FlagCfgEnv)
 
-	withCrlf, err := NewSeparatorSplitFunc(nil, []byte("\n"), false)
-	if Error(err) {
-		return m, err
-	}
-
-	scanner := bufio.NewScanner(bytes.NewReader(ba))
-	scanner.Split(withCrlf)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if len(line) == 0 || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") || strings.HasPrefix(line, ";") {
-			continue
-		}
-
-		p := strings.Index(line, "=")
-		if p == -1 {
-			continue
-		}
-
-		key := strings.TrimSpace(line[:p])
-		value := strings.TrimSpace(line[p+1:])
-
-		if value == "`" {
-			sb := strings.Builder{}
-
-			for scanner.Scan() {
-				line = scanner.Text()
-				if strings.HasPrefix(line, "`") {
-					break
-				}
-
-				sb.WriteString(line)
-			}
-
-			value = sb.String()
-		}
-
-		if strings.HasPrefix(value, "@") {
-			ba, err := os.ReadFile(value[1:])
-			if Error(err) {
-				return m, err
-			}
-
-			value = string(ba)
-		}
-
+	for key, value := range m {
 		if flag.Lookup(key) == nil {
 			return nil, &ErrUnknownFlag{
 				Origin: "ini file",
@@ -280,8 +238,8 @@ func registerIniFileFlags() (map[string]string, error) {
 			}
 		}
 
-		if IsValidFlagDefinition(key, value, true) {
-			m[key] = value
+		if !IsValidFlagDefinition(key, value, true) {
+			delete(m, key)
 		}
 	}
 
