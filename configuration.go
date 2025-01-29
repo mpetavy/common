@@ -162,7 +162,7 @@ func IsCmdlineOnlyFlag(flagName string) bool {
 		}
 
 		for _, mask := range list {
-			b, _ := EqualWildcards(flagName, mask)
+			b, _ := EqualsWildcard(flagName, mask)
 			if b {
 				r = true
 
@@ -605,7 +605,7 @@ func MandatoryFlags(excludes ...string) []string {
 
 	isExcluded := func(flagName string) bool {
 		for _, exclude := range excludes {
-			b, _ := EqualWildcards(flagName, exclude)
+			b, _ := EqualsWildcard(flagName, exclude)
 
 			if b {
 				return true

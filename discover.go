@@ -98,7 +98,7 @@ func (server *DiscoverServer) Start() error {
 
 				Debug("received UDP broadcast from %+v: %s\n", peer, receivedUID)
 
-				b, err := EqualWildcards(server.uid, receivedUID)
+				b, err := EqualsWildcard(server.uid, receivedUID)
 				if Error(err) {
 					break
 				}

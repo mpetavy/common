@@ -16,7 +16,7 @@ func TestContainsWildcard(t *testing.T) {
 }
 
 func ew(t *testing.T, s string, m string) bool {
-	b, err := EqualWildcards(s, m)
+	b, err := EqualsWildcard(s, m)
 	if Error(err) {
 		t.Fail()
 	}
@@ -24,7 +24,7 @@ func ew(t *testing.T, s string, m string) bool {
 	return b
 }
 
-func TestEqualWildcards(t *testing.T) {
+func TestEqualsWildcard(t *testing.T) {
 	require.True(t, ew(t, "TEST.GO", "test.go"))
 	require.False(t, ew(t, "TEST.GO", "test.goo"))
 	require.False(t, ew(t, "TEST.GO", "test.go?"))
@@ -40,6 +40,8 @@ func TestEqualWildcards(t *testing.T) {
 	require.True(t, ew(t, "?MD", "?md"))
 	require.False(t, ew(t, "?MD", "?.md"))
 	require.False(t, ew(t, "?MD", "\\?md"))
+	require.True(t, ew(t, "file.dcm", "*.dcm"))
+	require.False(t, ew(t, "file.dcm.modfied", "*.dcm"))
 
 	masks := []string{
 		FlagNameCfgFile + "*",

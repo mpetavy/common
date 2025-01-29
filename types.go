@@ -225,7 +225,7 @@ func ContainsWildcard(s string) bool {
 	return strings.ContainsAny(s, "*?")
 }
 
-func EqualWildcards(s, mask string) (bool, error) {
+func EqualsWildcard(s, mask string) (bool, error) {
 	if !ContainsWildcard(mask) {
 		return strings.ToLower(s) == strings.ToLower(mask), nil
 	}
@@ -233,7 +233,7 @@ func EqualWildcards(s, mask string) (bool, error) {
 	mask = strings.ReplaceAll(mask, ".", "\\.")
 	mask = strings.ReplaceAll(mask, "*", ".*")
 	mask = strings.ReplaceAll(mask, "?", ".")
-	mask = "(?i)" + mask
+	mask = "(?i)^" + mask + "$"
 
 	b, err := regexp.Match(mask, []byte(s))
 	if Error(err) {

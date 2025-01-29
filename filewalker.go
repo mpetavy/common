@@ -29,7 +29,7 @@ func (fw *filewalker) walkfunc(path string, f os.FileInfo, err error) error {
 		b := fw.Filemask == ""
 
 		if !b {
-			b, err = EqualWildcards(filepath.Base(path), fw.Filemask)
+			b, err = EqualsWildcard(filepath.Base(path), fw.Filemask)
 			if Error(err) {
 				return err
 			}

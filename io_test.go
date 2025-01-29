@@ -174,17 +174,17 @@ func TestListFiles(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, len(found))
 
-	found, err = ListFiles(filepath.Join(dir, "*.txt$"), false)
+	found, err = ListFiles(filepath.Join(dir, "*.txt"), false)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(found))
 
 	found, err = ListFiles(filepath.Join(dir, "*.txt"), false)
 	require.NoError(t, err)
-	require.Equal(t, 3, len(found))
+	require.Equal(t, 2, len(found))
 
 	found, err = ListFiles(filepath.Join(dir, "*.txt"), true)
 	require.NoError(t, err)
-	require.Equal(t, 5, len(found))
+	require.Equal(t, 4, len(found))
 
 	found, err = ListFiles(filepath.Join(dir, "*.ini"), true)
 	require.NoError(t, err)
