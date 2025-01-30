@@ -94,7 +94,7 @@ func EncryptString(key []byte, txt string) (string, error) {
 }
 
 func Secret(txt string) (string, error) {
-	key := os.Getenv("SECRETKEY")
+	key := ScrambleString(os.Getenv("SECRETKEY"))
 	if key == "" {
 		return "", fmt.Errorf("SECRETKEY environment variable not set")
 	}

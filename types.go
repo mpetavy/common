@@ -835,3 +835,16 @@ func CapString(txt string, max int) string {
 
 	return txt[:max-3] + "..."
 }
+
+func ScrambleString(txt string) string {
+	sb := strings.Builder{}
+	for i := len(txt) - 1; i >= 0; i-- {
+		sb.WriteByte(txt[i])
+	}
+
+	txt = sb.String()
+
+	txt = txt[len(txt)/2:] + txt[:len(txt)/2]
+
+	return sb.String()
+}
