@@ -77,6 +77,7 @@ type EventFlagsSet struct {
 }
 
 type ErrExit struct {
+	ExitCode int
 }
 
 func (e *ErrExit) Error() string { return "" }
@@ -457,9 +458,9 @@ func RunTests(m *testing.M) {
 }
 
 func run(mandatoryFlags []string, m *testing.M) {
-	Events.Emit(EventInit{}, false)
-
 	defer done()
+
+	Events.Emit(EventInit{}, false)
 
 	err := func() error {
 		flag.Parse()
@@ -546,7 +547,7 @@ func run(mandatoryFlags []string, m *testing.M) {
 
 				<-ctrlC
 
-				os.Exit(1)
+				Exit(1)
 			}()
 		}
 
@@ -557,8 +558,16 @@ func run(mandatoryFlags []string, m *testing.M) {
 
 		return nil
 	}()
-	if err != nil && !IsErrExit(err) {
-		Error(err)
+	if err != nil {
+		if IsErrExit(err) {
+			errExit := err.(*ErrExit)
+
+			Exit(errExit.ExitCode)
+		} else {
+			Error(err)
+
+			Exit(1)
+		}
 	}
 }
 

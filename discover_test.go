@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/stretchr/testify/require"
-	"os"
 	"testing"
 	"time"
 )
@@ -20,7 +19,7 @@ var (
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	os.Exit(m.Run())
+	Exit(m.Run())
 }
 
 func discoverServer(backgroundTask *BackgroundTask) {

@@ -194,7 +194,7 @@ func initConfiguration() error {
 		if *FlagCfgCreate {
 			Info("File created: %s", *FlagCfgFile)
 
-			os.Exit(0)
+			Exit(0)
 		}
 	}
 
