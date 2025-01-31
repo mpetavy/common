@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 )
 
@@ -49,17 +48,19 @@ var (
 	FlagLogGap          = SystemFlagInt(FlagNameLogGap, 100, "time gap after show a separator")
 	FlagLogEqualError   = SystemFlagBool(FlagNameLogEqualError, false, "Log equal (repeated) error")
 
-	logReentrant = atomic.Bool{} // prevents reentrant logging
-	logMutex     ReentrantMutex  // synchronizes logging output
-	fw           *fileWriter
-	rw                       = newMemoryWriter()
-	LogDebug     *log.Logger = log.New(rw, prefix(LevelDebug), 0)
-	LogInfo      *log.Logger = log.New(rw, prefix(LevelInfo), 0)
-	LogWarn      *log.Logger = log.New(rw, prefix(LevelWarn), 0)
-	LogError     *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
-	LogFatal     *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
-	lastLogTime              = time.Now()
-	isLogInit    bool
+	// synchronizes logging output
+	logReentrant = GoRoutineMutex{
+		EnterIfSame: false,
+	}
+	fw          *fileWriter
+	rw                      = newMemoryWriter()
+	LogDebug    *log.Logger = log.New(rw, prefix(LevelDebug), 0)
+	LogInfo     *log.Logger = log.New(rw, prefix(LevelInfo), 0)
+	LogWarn     *log.Logger = log.New(rw, prefix(LevelWarn), 0)
+	LogError    *log.Logger = log.New(os.Stderr, prefix(LevelError), 0)
+	LogFatal    *log.Logger = log.New(os.Stderr, prefix(LevelFatal), 0)
+	lastLogTime             = time.Now()
+	isLogInit   bool
 )
 
 type EventLog struct {
@@ -138,9 +139,6 @@ func prefix(p string) string {
 }
 
 func initLog() error {
-	logMutex.Lock()
-	defer logMutex.Unlock()
-
 	Error(closeLog())
 
 	writers := []io.Writer{rw}
@@ -267,16 +265,10 @@ func Debug(format string, args ...any) {
 		return
 	}
 
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
@@ -292,16 +284,10 @@ func DebugIndex(index int, format string, args ...any) {
 		return
 	}
 
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
@@ -317,16 +303,10 @@ func DebugFunc(args ...any) {
 		return
 	}
 
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	ri := GetRuntimeInfo(1)
 
@@ -347,16 +327,10 @@ func DebugFunc(args ...any) {
 }
 
 func Info(format string, args ...any) {
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
@@ -370,16 +344,10 @@ func Info(format string, args ...any) {
 }
 
 func Warn(format string, args ...any) {
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
@@ -407,16 +375,10 @@ func DebugError(err error) bool {
 		return err != nil
 	}
 
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return err != nil
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	logEntry := formatLog(LevelDebug, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
@@ -430,16 +392,10 @@ func DebugErrorIndex(index int, err error) bool {
 		return err != nil
 	}
 
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return err != nil
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	logEntry := formatLog(LevelDebug, 2+index, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
@@ -453,16 +409,10 @@ func WarnError(err error) bool {
 		return err != nil
 	}
 
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return err != nil
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	if IsSuppressedError(err) {
 		return DebugErrorIndex(1, err)
@@ -483,7 +433,6 @@ func isLikeLastError(logEntry *LogEntry) bool {
 	}
 
 	entry, ok := GoRoutineVars.Get().Get(goVarslastLogEntry)
-
 	if !ok {
 		return false
 	}
@@ -495,21 +444,24 @@ func isLikeLastError(logEntry *LogEntry) bool {
 	return b
 }
 
+func LastError() *LogEntry {
+	entry, ok := GoRoutineVars.Get().Get(goVarslastLogEntry)
+	if !ok {
+		return nil
+	}
+
+	return entry.(*LogEntry)
+}
+
 func Error(err error) bool {
 	if err == nil || IsErrExit(err) {
 		return err != nil
 	}
 
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return err != nil
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	if IsSuppressedError(err) {
 		return DebugErrorIndex(1, err)
@@ -539,16 +491,10 @@ func Panic(err error) {
 		return
 	}
 
-	if logReentrant.CompareAndSwap(false, true) {
-		defer func() {
-			logReentrant.Store(false)
-		}()
-	} else {
+	if !logReentrant.TryLock() {
 		return
 	}
-
-	logMutex.Lock()
-	defer logMutex.Unlock()
+	defer logReentrant.Unlock()
 
 	logEntry := formatLog(LevelFatal, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
