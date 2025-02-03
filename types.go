@@ -848,3 +848,17 @@ func ScrambleString(txt string) string {
 
 	return sb.String()
 }
+
+func SortedKeys[K constraints.Ordered, V any](m map[K]V) []K {
+	keys := make([]K, 0, len(m))
+
+	for _key := range m {
+		keys = append(keys, _key)
+	}
+
+	sort.SliceStable(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	return keys
+}

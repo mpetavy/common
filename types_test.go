@@ -566,3 +566,15 @@ func TestEqualType(t *testing.T) {
 	require.False(t, IsEqualType(1, nil))
 	require.False(t, IsEqualType(nil, 1))
 }
+
+func TestSortedKeys(t *testing.T) {
+	m := make(map[string]int)
+
+	m["b"] = 2
+	m["a"] = 1
+	m["c"] = 3
+
+	sortedKey := SortedKeys(m)
+
+	require.Equal(t, []string{"a", "b", "c"}, sortedKey)
+}
