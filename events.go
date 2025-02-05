@@ -98,7 +98,7 @@ func (eventManager *EventManager) Emit(event interface{}, reverse bool) {
 
 	//DebugFunc(eventType)
 
-	funcs = SliceClone(funcs)
+	funcs = slices.Clone(funcs)
 
 	if reverse {
 		funcs = ReverseSlice(funcs)

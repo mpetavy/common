@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -174,7 +175,7 @@ func TestFilewalker(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, len(tt.wantFiles), len(founds))
 			for _, item := range tt.wantFiles {
-				require.True(t, SliceContains(founds, item))
+				require.True(t, slices.Contains(founds, item))
 			}
 		})
 	}
