@@ -89,6 +89,19 @@ func TestReadFully(t *testing.T) {
 	require.Equal(t, data, buf)
 }
 
+func TestCreateTempFile(t *testing.T) {
+	tempFile, err := CreateTempFile()
+	require.NoError(t, err)
+
+	tempDir, err := CreateTempDir()
+	require.NoError(t, err)
+
+	tempFile, err = CreateTempFile(tempDir)
+	require.NoError(t, err)
+
+	require.Equal(t, tempDir, filepath.Dir(tempFile.Name()))
+}
+
 func TestFileMode(t *testing.T) {
 	f, err := CreateTempFile()
 	require.NoError(t, err)

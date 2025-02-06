@@ -163,8 +163,11 @@ func TempDir() string {
 }
 
 // CreateTempFile creates a temporary file
-func CreateTempFile() (file *os.File, err error) {
+func CreateTempFile(path ...string) (file *os.File, err error) {
 	tempDir := TempDir()
+	if path != nil && len(path) > 0 {
+		tempDir = path[0]
+	}
 
 	file, err = os.CreateTemp(tempDir, GetRuntimeInfo(1).Filename()+"#*")
 	if Error(err) {
