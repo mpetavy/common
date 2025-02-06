@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -144,7 +145,10 @@ func InitLog() error {
 	writers := []io.Writer{rw}
 
 	if IsLogFileEnabled() {
-		var err error
+		err := CheckOutputPath(filepath.Dir(*FlagLogFileName))
+		if err != nil {
+			return err
+		}
 
 		fw, err = newFileWriter()
 		if err != nil {
