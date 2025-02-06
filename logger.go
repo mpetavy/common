@@ -138,7 +138,7 @@ func prefix(p string) string {
 	return ""
 }
 
-func initLog() error {
+func InitLog() error {
 	Error(closeLog())
 
 	writers := []io.Writer{rw}

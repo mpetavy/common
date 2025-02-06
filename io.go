@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	ctxio "github.com/jbenet/go-context/io"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"os"
@@ -37,6 +38,22 @@ type ErrFileNotFound struct {
 
 func (e *ErrFileNotFound) Error() string {
 	return fmt.Sprintf("file or path not found: %s", e.FileName)
+}
+
+type ErrNotDirectory struct {
+	Path string
+}
+
+func (e *ErrNotDirectory) Error() string {
+	return fmt.Sprintf("path not a directory: %s", e.Path)
+}
+
+type ErrNotWriteable struct {
+	Path string
+}
+
+func (e *ErrNotWriteable) Error() string {
+	return fmt.Sprintf("path not writeable: %s", e.Path)
 }
 
 type ErrFileIsEmpty struct {
@@ -1075,4 +1092,25 @@ func FileReadLines(filename string) ([]string, error) {
 	}
 
 	return lines, scanner.Err()
+}
+
+func CheckOutputPath(path string) error {
+	if !FileExists(path) {
+		return &ErrFileNotFound{FileName: path}
+	}
+
+	if !IsDirectory(path) {
+		return &ErrNotDirectory{Path: path}
+	}
+
+	f, err := os.CreateTemp(path, "")
+	if Error(err) {
+		return errors.Wrap(err, (&ErrNotWriteable{Path: path}).Error())
+
+	}
+
+	Error(f.Close())
+	Error(os.Remove(f.Name()))
+
+	return nil
 }
