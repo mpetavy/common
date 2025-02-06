@@ -13,10 +13,10 @@ func TestAutoCloser(t *testing.T) {
 	file, err := CreateTempFile()
 	require.NoError(t, err)
 
-	err = os.WriteFile(file.Name(), []byte(msg), DefaultFileMode)
+	err = os.WriteFile(file, []byte(msg), DefaultFileMode)
 	require.NoError(t, err)
 
-	r, err := os.OpenFile(file.Name(), os.O_RDONLY, os.ModePerm)
+	r, err := os.OpenFile(file, os.O_RDONLY, os.ModePerm)
 	require.NoError(t, err)
 
 	ar := NewAutoCloser(r)
@@ -27,5 +27,5 @@ func TestAutoCloser(t *testing.T) {
 
 	require.True(t, ar.IsClosed.Load())
 
-	require.NoError(t, os.Remove(file.Name()))
+	require.NoError(t, os.Remove(file))
 }

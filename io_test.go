@@ -90,13 +90,13 @@ func TestReadFully(t *testing.T) {
 }
 
 func TestFileMode(t *testing.T) {
-	f, err := CreateTempFile()
+	filename, err := CreateTempFile()
 	require.NoError(t, err)
 
-	err = os.Remove(f.Name())
+	err = os.Remove(filename)
 	require.NoError(t, err)
 
-	f, err = os.OpenFile(f.Name(), os.O_CREATE|os.O_TRUNC|os.O_RDWR, ReadOnlyFileMode)
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_TRUNC|os.O_RDWR, ReadOnlyFileMode)
 	require.NoError(t, err)
 
 	err = f.Close()
@@ -110,11 +110,11 @@ func TestFileMode(t *testing.T) {
 }
 
 func TestFileBackup(t *testing.T) {
-	f, err := CreateTempFile()
+	filename, err := CreateTempFile()
 	require.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
-		f, err := os.Create(fmt.Sprintf("%s.%d", f.Name(), i+1))
+		f, err := os.Create(fmt.Sprintf("%s.%d", filename, i+1))
 		require.NoError(t, err)
 
 		err = f.Close()
@@ -122,17 +122,30 @@ func TestFileBackup(t *testing.T) {
 	}
 
 	for i := 0; i < 5; i++ {
-		err := FileBackup(f.Name())
+		err := FileBackup(filename)
 		require.NoError(t, err)
 	}
 
-	files, err := ListFiles(f.Name()+"*", false)
+	files, err := ListFiles(filename+"*", false)
 	require.Equal(t, len(files), *FlagIoFileBackups+1)
 
 	for _, file := range files {
 		err = FileDelete(file)
 		require.NoError(t, err)
 	}
+}
+
+func TestCreateTempFile(t *testing.T) {
+	tempFile, err := CreateTempFile()
+	require.NoError(t, err)
+
+	tempDir, err := CreateTempDir()
+	require.NoError(t, err)
+
+	tempFile, err = CreateTempFile(tempDir)
+	require.NoError(t, err)
+
+	require.Equal(t, tempDir, filepath.Dir(tempFile))
 }
 
 func TestListFiles(t *testing.T) {
