@@ -163,16 +163,12 @@ func TempDir() string {
 }
 
 // CreateTempFile creates a temporary file
-func CreateTempFile(path ...string) (string, error) {
+func CreateTempFile() (file *os.File, err error) {
 	tempDir := TempDir()
 
-	if path != nil && len(path) > 0 {
-		tempDir = path[0]
-	}
-
-	file, err := os.CreateTemp(tempDir, GetRuntimeInfo(1).Filename()+"#*")
+	file, err = os.CreateTemp(tempDir, GetRuntimeInfo(1).Filename()+"#*")
 	if Error(err) {
-		return "", err
+		return nil, err
 	}
 	defer func() {
 		DebugError(file.Close())
@@ -180,7 +176,7 @@ func CreateTempFile(path ...string) (string, error) {
 
 	Debug(fmt.Sprintf("CreateTempFile : %s", file.Name()))
 
-	return file.Name(), nil
+	return file, err
 }
 
 // CreateTempDir creates a temporary file

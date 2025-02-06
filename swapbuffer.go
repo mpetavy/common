@@ -55,7 +55,7 @@ func (sb *SwapBuffer) Write(p []byte) (int, error) {
 				return 0, err
 			}
 
-			sb.file, err = os.OpenFile(f, os.O_CREATE|os.O_APPEND|os.O_RDWR, DefaultFileMode)
+			sb.file, err = os.OpenFile(f.Name(), os.O_CREATE|os.O_APPEND|os.O_RDWR, DefaultFileMode)
 			if err != nil {
 				return 0, err
 			}
