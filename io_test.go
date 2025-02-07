@@ -123,29 +123,31 @@ func TestFileMode(t *testing.T) {
 }
 
 func TestFileBackup(t *testing.T) {
-	f, err := CreateTempFile()
+	dir, err := CreateTempDir()
 	require.NoError(t, err)
 
-	for i := 0; i < 10; i++ {
-		f, err := os.Create(fmt.Sprintf("%s.%d", f.Name(), i+1))
+	defer func() {
+		require.NoError(t, os.RemoveAll(dir))
+	}()
+
+	filename := filepath.Join(dir, "common.log")
+
+	for i := range 10 {
+		err := FileBackup(filename)
+		require.NoError(t, err)
+
+		f, err := os.Create(filename)
+		require.NoError(t, err)
+
+		_, err = fmt.Fprintf(f, "%d\n", i)
 		require.NoError(t, err)
 
 		err = f.Close()
 		require.NoError(t, err)
 	}
 
-	for i := 0; i < 5; i++ {
-		err := FileBackup(f.Name())
-		require.NoError(t, err)
-	}
-
-	files, err := ListFiles(f.Name()+"*", false)
+	files, err := ListFiles(filename+"*", false)
 	require.Equal(t, len(files), *FlagIoFileBackups+1)
-
-	for _, file := range files {
-		err = FileDelete(file)
-		require.NoError(t, err)
-	}
 }
 
 func TestListFiles(t *testing.T) {

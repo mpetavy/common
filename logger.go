@@ -140,6 +140,11 @@ func prefix(p string) string {
 }
 
 func InitLog() error {
+	if !logReentrant.TryLock() {
+		return fmt.Errorf("cannot reentrant lock")
+	}
+	defer logReentrant.Unlock()
+
 	Error(closeLog())
 
 	writers := []io.Writer{rw}

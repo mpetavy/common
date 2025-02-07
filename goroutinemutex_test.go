@@ -20,4 +20,5 @@ func TestGoRoutineMutex(t *testing.T) {
 
 	require.True(t, m.TryLock())
 	require.True(t, m.TryLock())
+	require.True(t, m.TryLock())
 }

@@ -432,7 +432,10 @@ func FileBackup(filename string) error {
 		return nil
 	}
 
-	files, err := ListFiles(filename+".*", false)
+	filename = CleanPath(filename)
+	mask := filepath.Join(filepath.Dir(filename), FileNamePart(filename)+".*")
+
+	files, err := ListFiles(mask, false)
 	if Error(err) {
 		return err
 	}
@@ -451,12 +454,12 @@ func FileBackup(filename string) error {
 		}
 
 		if FileExists(src) {
-			files = SliceRemove(files, dst)
-
-			err := FileCopy(src, dst)
+			err = FileCopy(src, dst)
 			if Error(err) {
 				return err
 			}
+
+			files = SliceRemove(files, src, dst)
 		}
 	}
 

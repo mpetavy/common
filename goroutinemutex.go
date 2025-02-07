@@ -1,7 +1,6 @@
 package common
 
 import (
-	"sync"
 	"sync/atomic"
 )
 
@@ -11,7 +10,6 @@ import (
 
 type GoRoutineMutex struct {
 	EnterIfSame bool
-	mu          sync.Mutex
 	current     atomic.Uint64
 }
 

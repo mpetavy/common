@@ -2,11 +2,13 @@ package common
 
 import "slices"
 
-func SliceRemove[S ~[]E, E comparable](s S, e E) S {
-	p := slices.Index(s, e)
+func SliceRemove[S ~[]E, E comparable](s S, e ...E) S {
+	for i := 0; i < len(e); i++ {
+		p := slices.Index(s, e[i])
 
-	if p != -1 {
-		return slices.Delete(s, p, p+1)
+		if p != -1 {
+			return slices.Delete(s, p, p+1)
+		}
 	}
 
 	return s
