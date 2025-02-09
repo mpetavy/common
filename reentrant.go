@@ -1,77 +1,57 @@
 package common
 
 import (
-	"sync"
+	"sync/atomic"
 )
 
+// ReentrantMutex is a Mutex which shall prevent a function to enter if it is already taken by an other GO routine
 type ReentrantMutex struct {
-	sync.Locker
-
-	mu      sync.Mutex
-	current uint64
-	count   int
+	id           atomic.Uint64
+	count        atomic.Uint64
+	loopNotifier LoopNotifier
 }
 
-func NewReentrantMutex() ReentrantMutex {
-	return ReentrantMutex{
-		mu: sync.Mutex{},
+func NewReentrantMutex() *ReentrantMutex {
+	return &ReentrantMutex{}
+}
+
+func (m *ReentrantMutex) TryLock() bool {
+	id := GoRoutineId()
+
+	if m.id.CompareAndSwap(0, id) || m.id.CompareAndSwap(id, id) {
+		m.count.Store(m.count.Load() + 1)
+
+		return true
+	}
+
+	return false
+}
+
+func (m *ReentrantMutex) Lock() {
+	m.loopNotifier.Reset()
+
+	for !m.TryLock() {
+		m.loopNotifier.Notify()
 	}
 }
 
-func (rm *ReentrantMutex) Lock() {
+func (m *ReentrantMutex) Unlock() {
 	id := GoRoutineId()
 
-	for {
-		rm.mu.Lock()
+	if m.id.CompareAndSwap(id, id) {
+		m.count.Store(Max(0, m.count.Load()-1))
 
-		if rm.current != 0 && rm.current != id {
-			rm.mu.Unlock()
-
-			continue
+		if m.count.Load() == 0 {
+			m.id.Store(0)
 		}
-
-		if rm.current == 0 {
-			rm.current = id
-		}
-
-		rm.count++
-
-		rm.mu.Unlock()
-
-		break
 	}
 }
 
-func (rm *ReentrantMutex) UnlockNow() {
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
-
-	rm.current = 0
-	rm.count = 0
-}
-
-func (rm *ReentrantMutex) Unlock() {
+func (m *ReentrantMutex) UnlockNow() {
 	id := GoRoutineId()
 
-	for {
-		rm.mu.Lock()
-
-		if rm.current != id {
-			rm.mu.Unlock()
-
-			continue
-		}
-
-		if rm.count > 0 {
-			rm.count--
-		}
-
-		if rm.count == 0 {
-			rm.current = 0
-		}
-
-		rm.mu.Unlock()
-
-		break
+	if m.id.CompareAndSwap(id, id) {
+		m.count.Store(0)
+		m.id.Store(0)
 	}
 }

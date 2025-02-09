@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -50,9 +51,7 @@ var (
 	FlagLogEqualError   = SystemFlagBool(FlagNameLogEqualError, false, "Log equal (repeated) error")
 
 	// synchronizes logging output
-	logReentrant = GoRoutineMutex{
-		EnterIfSame: false,
-	}
+	logMutex    sync.Mutex
 	fw          *fileWriter
 	rw                      = newMemoryWriter()
 	LogDebug    *log.Logger = log.New(rw, prefix(LevelDebug), 0)
@@ -140,10 +139,10 @@ func prefix(p string) string {
 }
 
 func InitLog() error {
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return fmt.Errorf("cannot reentrant lock")
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	Error(closeLog())
 
@@ -274,10 +273,10 @@ func Debug(format string, args ...any) {
 		return
 	}
 
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
@@ -293,10 +292,10 @@ func DebugIndex(index int, format string, args ...any) {
 		return
 	}
 
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
@@ -312,10 +311,10 @@ func DebugFunc(args ...any) {
 		return
 	}
 
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	ri := GetRuntimeInfo(1)
 
@@ -336,10 +335,10 @@ func DebugFunc(args ...any) {
 }
 
 func Info(format string, args ...any) {
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
@@ -353,10 +352,10 @@ func Info(format string, args ...any) {
 }
 
 func Warn(format string, args ...any) {
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	if len(args) > 0 {
 		format = fmt.Sprintf(format, args...)
@@ -384,10 +383,10 @@ func DebugError(err error) bool {
 		return err != nil
 	}
 
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return err != nil
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	logEntry := formatLog(LevelDebug, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
@@ -401,10 +400,10 @@ func DebugErrorIndex(index int, err error) bool {
 		return err != nil
 	}
 
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return err != nil
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	logEntry := formatLog(LevelDebug, 2+index, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
@@ -418,10 +417,10 @@ func WarnError(err error) bool {
 		return err != nil
 	}
 
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return err != nil
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	if IsSuppressedError(err) {
 		return DebugErrorIndex(1, err)
@@ -467,10 +466,10 @@ func Error(err error) bool {
 		return err != nil
 	}
 
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return err != nil
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	if IsSuppressedError(err) {
 		return DebugErrorIndex(1, err)
@@ -500,10 +499,10 @@ func Panic(err error) {
 		return
 	}
 
-	if !logReentrant.TryLock() {
+	if !logMutex.TryLock() {
 		return
 	}
-	defer logReentrant.Unlock()
+	defer logMutex.Unlock()
 
 	logEntry := formatLog(LevelFatal, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
