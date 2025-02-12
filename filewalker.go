@@ -26,13 +26,9 @@ func (fw *filewalker) walkfunc(path string, f os.FileInfo, err error) error {
 			return fs.SkipDir
 		}
 	} else {
-		b := fw.Filemask == ""
-
-		if !b {
-			b, err = EqualsWildcard(filepath.Base(path), fw.Filemask)
-			if Error(err) {
-				return err
-			}
+		b, err := EqualsWildcard(filepath.Base(path), fw.Filemask)
+		if Error(err) {
+			return err
 		}
 
 		if !b {
@@ -65,21 +61,7 @@ func NewFileEntry(path string, fileInfo os.FileInfo) (*FileEntry, error) {
 }
 
 func WalkFiles(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, fi os.FileInfo) error) error {
-	path := ""
-	filemask = CleanPath(filemask)
-
-	if ContainsWildcard(filemask) || !FileExists(filemask) {
-		path = filepath.Dir(filemask)
-		filemask = filepath.Base(filemask)
-	} else {
-		if IsDirectory(filemask) {
-			path = filemask
-			filemask = ""
-		} else {
-			path = filepath.Dir(filemask)
-			filemask = filepath.Base(filemask)
-		}
-	}
+	path, filemask := SplitFilemask(filemask)
 
 	if !FileExists(path) || !IsDirectory(path) {
 		return &ErrFileNotFound{

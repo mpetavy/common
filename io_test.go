@@ -205,3 +205,45 @@ func TestListFiles(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, len(found))
 }
+
+func TestSplitFilemask(t *testing.T) {
+	type args struct {
+		filemask string
+	}
+	tests := []struct {
+		name  string
+		args  args
+		want  string
+		want1 string
+	}{
+		{
+			name:  "0",
+			args:  args{"asdf"},
+			want:  CleanPath("."),
+			want1: "asdf",
+		},
+		{
+			name:  "1",
+			args:  args{"."},
+			want:  CleanPath("."),
+			want1: "*",
+		},
+		{
+			name:  "2",
+			args:  args{"*.txt"},
+			want:  CleanPath("."),
+			want1: "*.txt",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := SplitFilemask(tt.args.filemask)
+			if got != tt.want {
+				t.Errorf("SplitFilemask() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("SplitFilemask() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}

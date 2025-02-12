@@ -25,7 +25,6 @@ func (loopNotifier *LoopNotifier) Notify() {
 	if current.After(loopNotifier.NextTime) {
 		loopNotifier.NextTime = current.Add(time.Second)
 
-		//fmt.Printf("LOOP NOTIFIER !!!!!!!!!!!!")
 		logEntry := formatLog(LevelDebug, 2, strings.TrimSpace("Loop notify()"), false)
 
 		logWarnPrint(logEntry.PrintMsg)

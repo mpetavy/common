@@ -1120,3 +1120,25 @@ func CheckOutputPath(path string) error {
 
 	return nil
 }
+
+func SplitFilemask(filemask string) (string, string) {
+	path := ""
+	filemask = CleanPath(filemask)
+
+	if ContainsWildcard(filemask) || !FileExists(filemask) {
+		path = filepath.Dir(filemask)
+		filemask = filepath.Base(filemask)
+	} else {
+		if IsDirectory(filemask) {
+			path = filemask
+			filemask = "*"
+		} else {
+			path = filepath.Dir(filemask)
+			filemask = filepath.Base(filemask)
+		}
+	}
+
+	DebugFunc("%s: path: %s filemask: %s", filemask, path, filemask)
+
+	return path, filemask
+}
