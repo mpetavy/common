@@ -98,7 +98,7 @@ func init() {
 		FlagCfgReset = SystemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
 		FlagCfgCreate = SystemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
 		FlagCfgIni = SystemFlagString(FlagNameCfgIni, CleanPath(filepath.Join(dir, AppFilename(".ini"))), "INI file configuration path")
-		FlagCfgEnv = SystemFlagString(FlagNameCfgEnv, "", "INI file section")
+		FlagCfgEnv = SystemFlagString(FlagNameCfgEnv, DEFAULT_SECTION, "INI file section")
 	})
 }
 
@@ -228,7 +228,7 @@ func registerIniFileFlags() (map[string]string, error) {
 		return nil, err
 	}
 
-	m := ini.GetAll(DEFAULT_SECTION, *FlagCfgEnv)
+	m := ini.GetAll(Split(*FlagCfgEnv, ",")...)
 
 	for key, value := range m {
 		if flag.Lookup(key) == nil {
