@@ -67,8 +67,8 @@ func TestJason(t *testing.T) {
 
 func TestJsonReformat(t *testing.T) {
 	type person struct {
-		Name string `json:"name"`
-		Age  int    `json:"age"`
+		Name string `json:"Name"`
+		Age  int    `json:"Age"`
 	}
 
 	p := &person{
@@ -89,4 +89,23 @@ func TestJsonReformat(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, string(ba0), string(ba1))
+}
+
+func TestJsonFieldName(t *testing.T) {
+	type person struct {
+		Name string `json:"PersonName"`
+		Age  int    `json:"PersonAge"`
+	}
+
+	p := &person{}
+
+	n, err := JsonFieldName(p, "Name")
+	require.NoError(t, err)
+	require.Equal(t, "PersonName", n)
+
+	n, err = JsonFieldName(p, "Age")
+	require.NoError(t, err)
+	require.Equal(t, "PersonAge", n)
+
+	require.Equal(t, "Name", JsonDefaultName("name"))
 }

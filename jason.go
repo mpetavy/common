@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/dlclark/regexp2"
+	"reflect"
 	"regexp"
 	"strings"
 )
@@ -319,4 +320,35 @@ func JsonReformat(ba []byte) ([]byte, error) {
 	}
 
 	return ba, nil
+}
+
+func JsonFieldName(data any, fieldName string) (string, error) {
+	val, ok := data.(reflect.Value)
+	if !ok {
+		val = reflect.Indirect(reflect.ValueOf(data))
+	}
+	typ := val.Type()
+
+	if typ.Kind() != reflect.Struct {
+		return "", fmt.Errorf("not a struct: %s", typ.Name())
+	}
+
+	field, found := typ.FieldByName(fieldName)
+	if !found {
+		return "", fmt.Errorf("field %s not found", fieldName)
+	}
+
+	jsonTag := field.Tag.Get("json")
+	if jsonTag != "" {
+		return jsonTag, nil // Return the explicit JSON tag if available
+	}
+
+	return JsonDefaultName(fieldName), nil
+}
+
+func JsonDefaultName(fieldName string) string {
+	if len(fieldName) == 0 {
+		return ""
+	}
+	return strings.ToUpper(fieldName[:1]) + fieldName[1:]
 }
