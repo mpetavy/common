@@ -275,23 +275,6 @@ func (jason *Jason) Pretty() (string, error) {
 	return jason.pretty(0)
 }
 
-func PrettyPrintJSON(ba []byte) ([]byte, error) {
-	var jsonObj any
-
-	err := json.Unmarshal(ba, &jsonObj)
-	if Error(err) {
-		return nil, err
-	}
-
-	// Marshal it back with indentation
-	prettyJSON, err := json.MarshalIndent(jsonObj, "", "  ")
-	if Error(err) {
-		return nil, err
-	}
-
-	return prettyJSON, nil
-}
-
 func RemoveJsonComments(ba []byte) ([]byte, error) {
 	// enable multiline mode
 	// skip from start of line to the first \\ and remove the remaining characters
@@ -320,4 +303,20 @@ func RemoveJsonComments(ba []byte) ([]byte, error) {
 	}
 
 	return r.Bytes(), nil
+}
+
+func JsonReformat(ba []byte) ([]byte, error) {
+	m := make(map[string]any)
+
+	err := json.Unmarshal(ba, &m)
+	if Error(err) {
+		return nil, err
+	}
+
+	ba, err = json.MarshalIndent(m, "", "    ")
+	if Error(err) {
+		return nil, err
+	}
+
+	return ba, nil
 }

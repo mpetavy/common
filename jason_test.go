@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -62,4 +63,30 @@ func TestJason(t *testing.T) {
 	require.Equal(t, "s", s)
 	require.Equal(t, 1, i)
 	require.Equal(t, true, b)
+}
+
+func TestJsonReformat(t *testing.T) {
+	type person struct {
+		Name string `json:"name"`
+		Age  int    `json:"age"`
+	}
+
+	p := &person{
+		Name: "bob",
+		Age:  17,
+	}
+
+	ba0, err := json.Marshal(p)
+	require.NoError(t, err)
+
+	ba1, err := json.MarshalIndent(p, "", "    ")
+	require.NoError(t, err)
+
+	ba0, err = JsonReformat(ba0)
+	require.NoError(t, err)
+
+	ba1, err = JsonReformat(ba1)
+	require.NoError(t, err)
+
+	require.Equal(t, string(ba0), string(ba1))
 }
