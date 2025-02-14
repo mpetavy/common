@@ -113,9 +113,7 @@ func Catch(fn func() error) (err error) {
 func Exit(code int) {
 	done()
 
-	if !IsRunningInTest() {
-		os.Exit(code)
-	}
+	os.Exit(code)
 }
 
 func Rnd(max int) int {
