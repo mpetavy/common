@@ -57,16 +57,23 @@ var (
 type BasicAuthFunc func(username string, password string) error
 
 type HTTPError struct {
-	StatusCode int
-	Message    string
+	StatusCode int   // HTTP status code
+	Err        error // Original error
 }
 
-func (e *HTTPError) Error() string {
-	return fmt.Sprintf("%d: %s", e.StatusCode, e.Message)
+func (he *HTTPError) Error() string {
+	return fmt.Sprintf("status %d: %v", he.StatusCode, he.Err)
 }
 
-func (e *HTTPError) Return(w http.ResponseWriter) {
-	http.Error(w, e.Message, e.StatusCode)
+func (he *HTTPError) Unwrap() error {
+	return he.Err
+}
+
+func NewHTTPError(statusCode int, err error) *HTTPError {
+	return &HTTPError{
+		StatusCode: statusCode,
+		Err:        err,
+	}
 }
 
 func Header(r *http.Request, name string) (string, error) {
@@ -520,7 +527,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 	}
 
 	if expectedCode > 0 && resp.StatusCode != expectedCode {
-		return nil, nil, fmt.Errorf("unexpected HTTP status code, expected %d got %d\nResponseBody\n%s", expectedCode, resp.StatusCode, ba)
+		return nil, nil, NewHTTPError(resp.StatusCode, fmt.Errorf("Unexpected HTTP status code, expected %d got %d\nResponseBody\n%s", expectedCode, resp.StatusCode, ba))
 	}
 
 	return resp, ba, nil
