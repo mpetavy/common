@@ -810,7 +810,7 @@ func HidePasswordValue(name string, value string) string {
 	name = strings.ToLower(name)
 	ch := "X"
 
-	for _, hit := range []string{"username", "password", "token", "pwd", "credential", "subscription", "private", "accesskey", "secret", "endpoint"} {
+	for _, hit := range []string{"username", "password", "token", "pwd", "credential", "subscription", "private", "accesskey", "secret", "endpoint", "secretkey"} {
 		if strings.Contains(name, hit) || strings.Contains(value, hit) {
 			if len(value) > 12 {
 				index := len(value) - 3
