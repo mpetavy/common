@@ -285,24 +285,35 @@ func (bt *BackgroundTask) Stop(waitFor bool) {
 type AlignedTicker struct {
 	IsFirstTicker bool
 	SleepTime     time.Duration
+	now           time.Time
 }
 
 func NewAlignedTicker(sleepTime time.Duration) *AlignedTicker {
-	return &AlignedTicker{
+	alignedTicker := &AlignedTicker{
 		IsFirstTicker: false,
 		SleepTime:     sleepTime,
+		now:           time.Time{},
 	}
+
+	return alignedTicker
 }
 
 func (at *AlignedTicker) SleepUntilNextTicker() time.Duration {
 	var delta time.Duration
 
+	if at.now.IsZero() {
+		at.now = time.Now()
+	}
+
 	if !at.IsFirstTicker {
-		nextTick := time.Now().Truncate(at.SleepTime).Add(at.SleepTime)
+		nextTick := time.Date(at.now.Year(), at.now.Month(), at.now.Day(), 0, 0, 0, 0, at.now.Location())
+		for nextTick.Before(at.now) || nextTick.Equal(at.now) {
+			nextTick = nextTick.Add(at.SleepTime)
+		}
 
-		delta = nextTick.Sub(time.Now())
+		delta = nextTick.Sub(at.now)
 
-		Debug("Next ticker: %v sleep: %v\n", CalcDeadline(time.Now(), delta).Truncate(at.SleepTime).Format(DateTimeMilliMask), delta)
+		Debug("Next ticker: %v sleep: %v\n", nextTick, delta)
 	}
 
 	at.IsFirstTicker = false
