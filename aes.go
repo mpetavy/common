@@ -93,10 +93,19 @@ func EncryptString(key []byte, txt string) (string, error) {
 	}
 }
 
-func Secret(txt string) (string, error) {
-	key := ScrambleString(os.Getenv("SECRETKEY"))
+func Secret(txt string, secret ...string) (string, error) {
+	key := ""
+
+	if len(secret) == 1 {
+		key = secret[0]
+	}
+
 	if key == "" {
-		return "", fmt.Errorf("SECRETKEY environment variable not set")
+		key = ScrambleString(os.Getenv("SECRETKEY"))
+	}
+
+	if key == "" {
+		return "", fmt.Errorf("SECRETKEY environment variable not set and not given as flag")
 	}
 
 	m, err := DecryptString([]byte(key), txt)

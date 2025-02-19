@@ -15,7 +15,8 @@ import (
 type EventConfigurationReset struct {
 }
 
-type EventFlagsExternal struct {
+type EventExternalFlags struct {
+	Err   error
 	Flags map[string]string
 }
 
@@ -531,10 +532,14 @@ func registerExternalFlags() (map[string]string, error) {
 
 	m := make(map[string]string)
 
-	event := &EventFlagsExternal{}
+	event := &EventExternalFlags{}
 	event.Flags = make(map[string]string)
 
 	Events.Emit(event, false)
+
+	if Error(event.Err) {
+		return nil, event.Err
+	}
 
 	for key, value := range event.Flags {
 		if IsValidFlagDefinition(key, value, true) {
