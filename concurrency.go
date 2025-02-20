@@ -3,6 +3,8 @@ package common
 import (
 	"bufio"
 	"bytes"
+	"fmt"
+	"github.com/pkg/errors"
 	"runtime"
 	"sort"
 	"strconv"
@@ -111,8 +113,11 @@ func getRoutineId(s string) uint64 {
 	}
 
 	n, err := strconv.ParseUint(s[:i], 10, 64)
+	if err != nil {
+		WarnError(errors.Wrap(err, fmt.Sprintf("parsing goroutine id from: %s", s)))
 
-	Panic(err)
+		return 0
+	}
 
 	return n
 }
