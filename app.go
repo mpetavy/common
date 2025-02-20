@@ -127,12 +127,14 @@ var (
 	onceRunningAsService    sync.Once
 	onceRunningAsExecutable sync.Once
 	onceRunningInteractive  sync.Once
+	onceRunningInDev        sync.Once
 	onceShutdownHooks       sync.Once
 	onceTitle               sync.Once
 	runningAsContainer      bool
 	runningAsService        bool
 	runningAsExecutable     bool
 	runningInteractive      bool
+	runningInDev            bool
 	restart                 bool
 	restartCh               = make(chan struct{}, 1)
 	shutdownCh              = make(chan struct{}, 1)
@@ -868,6 +870,21 @@ func IsRunningInteractive() bool {
 	DebugFunc(runningInteractive)
 
 	return runningInteractive
+}
+
+func IsRunningInDev() bool {
+	onceRunningInDev.Do(func() {
+		workDir, err := os.Getwd()
+		if err != nil {
+			runningInDev = false
+		}
+
+		runningInDev = FileExists(filepath.Join(workDir, ".git"))
+	})
+
+	DebugFunc(runningInDev)
+
+	return runningInDev
 }
 
 func App() *application {
