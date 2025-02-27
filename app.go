@@ -491,6 +491,11 @@ func run(mandatoryFlags []string, m *testing.M) {
 			return err
 		}
 
+		err = initTemp()
+		if Error(err) {
+			return err
+		}
+
 		err = InitLog()
 		if Error(err) {
 			return err

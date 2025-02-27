@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	ctxio "github.com/jbenet/go-context/io"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"os"
@@ -21,6 +20,7 @@ import (
 )
 
 const (
+	FlagNameIoTempPath    = "io.temp.path"
 	FlagNameIoFileBackups = "io.file.backups"
 )
 
@@ -29,7 +29,10 @@ var (
 	DefaultFileMode  = FileMode(true, true, false)
 	DefaultDirMode   = FileMode(true, true, true)
 
+	FlagIoTempPath    = SystemFlagString(FlagNameIoTempPath, os.TempDir(), "OS root temp dir for creating temporary files")
 	FlagIoFileBackups = SystemFlagInt(FlagNameIoFileBackups, 5, "amount of file backups")
+
+	tempDir string
 )
 
 type ErrFileNotFound struct {
@@ -110,21 +113,27 @@ func (this *debugWriter) Write(p []byte) (n int, err error) {
 // | ------rwx  | 0007 | Other |
 // +------------+------+-------+
 
-var tempDir string
+func initTemp() error {
+	err := CheckOutputPath(*FlagIoTempPath)
+	if Error(err) {
+		return err
+	}
 
-func init() {
-	Events.AddListener(EventInit{}, func(ev Event) {
-		var err error
+	tempDir, err = os.MkdirTemp(*FlagIoTempPath, Title())
+	if Error(err) {
+		return err
+	}
 
-		tempDir, err = os.MkdirTemp("", Title())
-		if Error(err) {
-			tempDir = os.TempDir()
-		} else {
-			Events.AddListener(EventShutdown{}, func(event Event) {
-				Error(deleteTempDir())
-			})
-		}
+	err = CheckOutputPath(tempDir)
+	if Error(err) {
+		return err
+	}
+
+	Events.AddListener(EventShutdown{}, func(event Event) {
+		Error(deleteTempDir())
 	})
+
+	return nil
 }
 
 // AppCleanup cleans up all remaining objects
@@ -1110,8 +1119,8 @@ func CheckOutputPath(path string) error {
 	}
 
 	f, err := os.CreateTemp(path, "")
-	if Error(err) {
-		return errors.Wrap(err, (&ErrNotWriteable{Path: path}).Error())
+	if err != nil {
+		return &ErrNotWriteable{Path: path}
 
 	}
 
