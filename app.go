@@ -464,8 +464,6 @@ func run(mandatoryFlags []string, m *testing.M) {
 	err := func() error {
 		flag.Parse()
 
-		Events.Emit(EventFlags{}, false)
-
 		if !*FlagNoBanner && !*FlagUsageMd {
 			showBanner()
 		}

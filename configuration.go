@@ -458,9 +458,9 @@ func setFlags() error {
 		}
 	}
 
-	debugFlags()
-
 	Events.Emit(EventFlags{}, false)
+
+	debugFlags()
 
 	return nil
 }
