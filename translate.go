@@ -23,7 +23,7 @@ var (
 )
 
 func init() {
-	Events.AddListener(EventFlagsSet{}, func(ev Event) {
+	Events.AddListener(EventFlags{}, func(ev Event) {
 		initLanguage()
 	})
 }

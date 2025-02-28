@@ -91,7 +91,7 @@ func init() {
 		FlagTlsKeyLen = SystemFlagInt(FlagNameTlsKeylen, 256, "Key length")
 	})
 
-	Events.AddListener(EventFlagsSet{}, func(ev Event) {
+	Events.AddListener(EventFlags{}, func(ev Event) {
 		initTls()
 	})
 }

@@ -26,7 +26,7 @@ var (
 )
 
 func init() {
-	common.Events.AddListener(common.EventFlagsSet{}, func(event common.Event) {
+	common.Events.AddListener(common.EventFlags{}, func(event common.Event) {
 		if !*FlagInsightsEnabled {
 			return
 		}
@@ -76,7 +76,7 @@ func init() {
 			return
 		}
 
-		common.Catch(func() error {
+		common.Error(common.Catch(func() error {
 			eventTelemetry := event.(common.EventTelemetry)
 
 			if eventTelemetry.Code == 0 {
@@ -115,7 +115,7 @@ func init() {
 			}
 
 			return nil
-		})
+		}))
 	})
 
 	common.Events.AddListener(common.EventLog{}, func(event common.Event) {
@@ -123,7 +123,7 @@ func init() {
 			return
 		}
 
-		common.Catch(func() error {
+		common.Error(common.Catch(func() error {
 			if insightClient == nil {
 				return nil
 			}
@@ -164,6 +164,6 @@ func init() {
 			}
 
 			return nil
-		})
+		}))
 	})
 }

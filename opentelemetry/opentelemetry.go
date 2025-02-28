@@ -32,7 +32,7 @@ var (
 )
 
 func init() {
-	common.Events.AddListener(common.EventFlagsSet{}, func(event common.Event) {
+	common.Events.AddListener(common.EventFlags{}, func(event common.Event) {
 		if !*FlagOpentelemetryEnabled {
 			return
 		}
@@ -63,7 +63,7 @@ func init() {
 			return
 		}
 
-		common.Catch(func() error {
+		common.Error(common.Catch(func() error {
 			if Telemetry == nil {
 				return nil
 			}
@@ -81,7 +81,7 @@ func init() {
 			span.End()
 
 			return nil
-		})
+		}))
 	})
 
 	common.Events.AddListener(common.EventLog{}, func(event common.Event) {
@@ -89,7 +89,7 @@ func init() {
 			return
 		}
 
-		common.Catch(func() error {
+		common.Error(common.Catch(func() error {
 			if Telemetry == nil {
 				return nil
 			}
@@ -110,7 +110,7 @@ func init() {
 			}
 
 			return nil
-		})
+		}))
 	})
 }
 

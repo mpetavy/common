@@ -70,10 +70,7 @@ type EventInit struct {
 type EventShutdown struct {
 }
 
-type EventFlagsParsed struct {
-}
-
-type EventFlagsSet struct {
+type EventFlags struct {
 }
 
 type ErrExit struct {
@@ -467,7 +464,7 @@ func run(mandatoryFlags []string, m *testing.M) {
 	err := func() error {
 		flag.Parse()
 
-		Events.Emit(EventFlagsParsed{}, false)
+		Events.Emit(EventFlags{}, false)
 
 		if !*FlagNoBanner && !*FlagUsageMd {
 			showBanner()

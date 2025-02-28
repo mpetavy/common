@@ -95,7 +95,7 @@ type LogEntry struct {
 }
 
 func init() {
-	Events.AddListener(EventFlagsParsed{}, func(event Event) {
+	Events.AddListener(EventFlags{}, func(event Event) {
 		if *FlagLogSys && IsLinux() && !IsRunningInteractive() {
 			// with SYSTEMD everything which is printed to console is automatically printed to journalctl
 

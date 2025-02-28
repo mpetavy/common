@@ -460,7 +460,7 @@ func setFlags() error {
 
 	debugFlags()
 
-	Events.Emit(EventFlagsSet{}, false)
+	Events.Emit(EventFlags{}, false)
 
 	return nil
 }
