@@ -101,14 +101,25 @@ func Secret(txt string, secret ...string) (string, error) {
 	}
 
 	if key == "" {
-		key = ScrambleString(os.Getenv("SECRETKEY"))
+		key = os.Getenv("SECRETKEY")
 	}
 
 	if key == "" {
-		return "", fmt.Errorf("SECRETKEY environment variable not set and not given as flag")
+		key = os.Getenv(FlagNameAsEnvName("secretkey"))
 	}
 
-	m, err := DecryptString([]byte(key), txt)
+	if key == "" && FileExists("secretkey") {
+		ba, err := os.ReadFile("secretkey")
+		if err == nil {
+			key = strings.TrimSpace(string(ba))
+		}
+	}
+
+	if key == "" {
+		return "", fmt.Errorf("SECRETKEY is not set and not given as flag")
+	}
+
+	m, err := DecryptString([]byte(ScrambleString(key)), txt)
 	if Error(err) {
 		return "", err
 	}
