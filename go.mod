@@ -1,6 +1,8 @@
 module github.com/mpetavy/common
 
-go 1.23
+go 1.23.0
+
+toolchain go1.23.6
 
 require (
 	cloud.google.com/go/translate v1.7.1
@@ -44,11 +46,11 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.7.0
 	go.opentelemetry.io/otel/sdk/metric v1.31.0
 	go.opentelemetry.io/otel/trace v1.31.0
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.36.0
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	golang.org/x/mod v0.17.0
-	golang.org/x/sys v0.29.0
-	golang.org/x/text v0.21.0
+	golang.org/x/sys v0.31.0
+	golang.org/x/text v0.23.0
 	google.golang.org/api v0.122.0
 	software.sslmate.com/src/go-pkcs12 v0.2.0
 )
