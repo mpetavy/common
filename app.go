@@ -540,16 +540,9 @@ func run(mandatoryFlags []string, m *testing.M) {
 		}
 
 		// simple app or simulated service
+		// can kill with "kill -SIGINT <pid>"
 
-		signal.Notify(ctrlC, os.Interrupt, syscall.SIGTERM)
-
-		go func() {
-			defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
-			<-ctrlC
-
-			Exit(1)
-		}()
+		signal.Notify(ctrlC, os.Interrupt, syscall.SIGINT)
 
 		err = app.applicationLoop(m)
 		if Error(err) {
