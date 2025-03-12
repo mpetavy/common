@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -51,7 +50,7 @@ var (
 	FlagLogEqualError   = SystemFlagBool(FlagNameLogEqualError, false, "Log equal (repeated) error")
 
 	// synchronizes logging output
-	logMutex    sync.Mutex
+	logMutex    GoRoutineMutex
 	fw          *fileWriter
 	rw                      = newMemoryWriter()
 	LogDebug    *log.Logger = log.New(rw, prefix(LevelDebug), 0)
