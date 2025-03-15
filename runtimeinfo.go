@@ -105,12 +105,23 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 		if strings.HasPrefix(line, "\t") {
 			count++
 			if count > 2+pos {
+				line = line[1:]
+
 				p := strings.LastIndex(line, " +")
 				if p != -1 {
 					line = fmt.Sprintf("%s\n", line[:p])
 				}
 
-				stack += line
+				if strings.HasPrefix(line, "/home") {
+					line = line[6:]
+
+					p = strings.Index(line, "/")
+					if p != -1 {
+						line = line[p:]
+					}
+				}
+
+				stack += "\t" + line
 			}
 		}
 	}
@@ -118,6 +129,7 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 	f := runtime.FuncForPC(pc)
 
 	fn := f.Name()
+
 	if strings.Contains(fn, "/") {
 		fn = fn[strings.LastIndex(fn, "/")+1:]
 	}
@@ -129,7 +141,7 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 
 	file = path.Base(file)
 
-	pack := runtime.FuncForPC(pc).Name()
+	pack := f.Name()
 	pack = pack[strings.LastIndex(pack, "/")+1:]
 	pack = pack[0:strings.Index(pack, ".")]
 
