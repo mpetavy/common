@@ -478,10 +478,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 			return nil, nil, err
 		}
 
-		s := string(ba)
-		if password != "" {
-			s = strings.Replace(s, password, strings.Repeat("X", len(password)), -1)
-		}
+		s := HidePasswords(string(ba))
 
 		Debug("HTTP Request: %s %s Username: %s Password: %s\n%s\n", method, address, username, strings.Repeat("X", len(password)), s)
 	}
@@ -513,10 +510,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 			return nil, nil, err
 		}
 
-		s := string(ba)
-		if password != "" {
-			s = strings.Replace(s, password, strings.Repeat("X", len(password)), -1)
-		}
+		s := HidePasswords(string(ba))
 
 		Debug("HTTP Response (after %v): %s %s Username: %s Password: %s\n%s\n", timeNeeded, method, address, username, strings.Repeat("X", len(password)), s)
 	}

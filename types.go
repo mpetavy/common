@@ -54,6 +54,7 @@ var (
 	MEMORY_UNITS = []string{"Bytes", "KB", "MB", "GB", "TB"}
 
 	WindowsRestrictedFilenames = []string{"CON", "PRN", "AUX", "NUL", " COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
+	PasswordTags               = []string{"username", "password", "token", "pwd", "credential", "subscription", "private", "accesskey", "secret", "endpoint", "secretkey", "authorization"}
 )
 
 // Trim4Path trims given path to be usefull as filename
@@ -808,20 +809,59 @@ func HidePasswordValue(name string, value string) string {
 	}
 
 	name = strings.ToLower(name)
-	ch := "X"
 
-	for _, hit := range []string{"username", "password", "token", "pwd", "credential", "subscription", "private", "accesskey", "secret", "endpoint", "secretkey"} {
+	for _, hit := range PasswordTags {
 		if strings.Contains(name, hit) || strings.Contains(value, hit) {
-			if len(value) > 12 {
-				index := len(value) - 3
-				return value[:3] + strings.Repeat(ch, len(value[3:index])) + value[index:]
-			} else {
-				return strings.Repeat(ch, len(value))
-			}
+			return strings.Repeat("X", len(value))
 		}
 	}
 
 	return value
+}
+
+func HidePasswords(str string) string {
+	var sb strings.Builder
+
+	scanner := bufio.NewScanner(strings.NewReader(str))
+	for scanner.Scan() {
+		line := scanner.Text()
+		lowerLine := strings.ToLower(line)
+
+		for _, hit := range PasswordTags {
+			p := strings.Index(lowerLine, hit)
+			if p == -1 {
+				continue
+			}
+
+			p += len(hit)
+
+			skip := strings.Index(lowerLine[p:], ":")
+			if skip == -1 {
+				skip = strings.Index(lowerLine[p:], "=")
+			}
+			if skip == -1 {
+				skip = 0
+			}
+
+			p += skip + 1
+			if p >= len(lowerLine) {
+				continue
+			}
+
+			skip = strings.Index(lowerLine[p:], " ")
+
+			if skip != -1 {
+				p += skip + 1
+			}
+
+			line = line[:p] + strings.Repeat("X", len(line)-p)
+
+		}
+
+		sb.WriteString(line + "\n")
+	}
+
+	return sb.String()
 }
 
 func IsEqualType(a any, b any) bool {

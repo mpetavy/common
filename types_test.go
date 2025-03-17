@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -577,4 +578,21 @@ func TestSortedKeys(t *testing.T) {
 	sortedKey := SortedKeys(m)
 
 	require.Equal(t, []string{"a", "b", "c"}, sortedKey)
+}
+
+func TestHidePasswords(t *testing.T) {
+	sb := strings.Builder{}
+
+	for _, tag := range PasswordTags {
+
+		sb.WriteString(fmt.Sprintf("%s 12345\n", tag))
+		sb.WriteString(fmt.Sprintf("%s: 12345\n", tag))
+		sb.WriteString(fmt.Sprintf("%s= 12345\n", tag))
+		sb.WriteString(fmt.Sprintf("%s:12345\n", tag))
+		sb.WriteString(fmt.Sprintf("%s=12345\n", tag))
+	}
+
+	r := HidePasswords(sb.String())
+
+	require.False(t, strings.Contains(r, "12345"))
 }
