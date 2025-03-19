@@ -825,9 +825,10 @@ func HidePasswords(str string) string {
 	scanner := bufio.NewScanner(strings.NewReader(str))
 	for scanner.Scan() {
 		line := scanner.Text()
-		lowerLine := strings.ToLower(line)
 
 		for _, hit := range PasswordTags {
+			lowerLine := strings.ToLower(line)
+
 			IgnoreError(Catch(func() error {
 				p := strings.Index(lowerLine, hit)
 				if p == -1 {
@@ -852,7 +853,6 @@ func HidePasswords(str string) string {
 
 				return nil
 			}))
-
 		}
 
 		sb.WriteString(line + "\n")

@@ -480,7 +480,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 
 		s := HidePasswords(string(ba))
 
-		Debug("HTTP Request: %s %s Username: %s Password: %s\n%s\n", method, address, username, strings.Repeat("X", len(password)), s)
+		Debug("HTTP Request: %s %s Username: %s Password: %s\n%s\n", method, address, username, strings.Repeat("X", 5)+"...", s)
 	}
 
 	var resp *http.Response
@@ -512,7 +512,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 
 		s := HidePasswords(string(ba))
 
-		Debug("HTTP Response (after %v): %s %s Username: %s Password: %s\n%s\n", timeNeeded, method, address, username, strings.Repeat("X", len(password)), s)
+		Debug("HTTP Response (after %v): %s %s Username: %s Password: %s\n%s\n", timeNeeded, method, address, username, strings.Repeat("X", 5)+"...", s)
 	}
 
 	ba, err := ReadBody(resp.Body)
