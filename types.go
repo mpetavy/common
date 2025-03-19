@@ -812,7 +812,7 @@ func HidePasswordValue(name string, value string) string {
 
 	for _, hit := range PasswordTags {
 		if strings.Contains(name, hit) || strings.Contains(value, hit) {
-			return strings.Repeat("X", len(value))
+			return strings.Repeat("X", Min(5, len(value)))
 		}
 	}
 
@@ -854,7 +854,7 @@ func HidePasswords(str string) string {
 				p += skip + 1
 			}
 
-			line = line[:p] + strings.Repeat("X", len(line)-p)
+			line = line[:p] + strings.Repeat("X", Min(5, len(line)-p))
 
 		}
 

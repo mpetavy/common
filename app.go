@@ -14,7 +14,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -456,6 +455,27 @@ func RunTests(m *testing.M) {
 	run(nil, m)
 }
 
+func initCtrlCHandler(fn func()) {
+	if ctrlC != nil {
+		signal.Stop(ctrlC)
+	}
+
+	// can kill with "kill -SIGINT <pid>"
+	ctrlC = make(chan os.Signal, 1)
+
+	signal.Notify(ctrlC, os.Interrupt)
+
+	if fn != nil {
+		go func() {
+			defer UnregisterGoRoutine(RegisterGoRoutine(1))
+
+			<-ctrlC
+
+			fn()
+		}()
+	}
+}
+
 func run(mandatoryFlags []string, m *testing.M) {
 	defer done()
 
@@ -540,9 +560,11 @@ func run(mandatoryFlags []string, m *testing.M) {
 		}
 
 		// simple app or simulated service
-		// can kill with "kill -SIGINT <pid>"
 
-		signal.Notify(ctrlC, os.Interrupt, syscall.SIGINT)
+		// create CTRL-C handler for apps with are run in start() (like -dev.test)
+		initCtrlCHandler(func() {
+			Exit(1)
+		})
 
 		err = app.applicationLoop(m)
 		if Error(err) {
@@ -653,6 +675,9 @@ func (app *application) applicationRun() {
 			errCh <- err
 		}()
 	}
+
+	// create CTRL-C handler for apps with are run in start() (like -dev.test)
+	initCtrlCHandler(nil)
 
 	restart = false
 

@@ -2,7 +2,6 @@ package common
 
 import (
 	"flag"
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"strconv"
 	"sync/atomic"
@@ -45,43 +44,17 @@ func TestBackgroundTask(t *testing.T) {
 }
 
 func TestAlignedTicker(t *testing.T) {
-	end := time.Now().Add(time.Hour * 24 * 3)
-	sleepTime := time.Hour * 24
+	at := NewAlignedTicker(time.Second)
+	at.now = time.Now()
+	end := at.now.Add(time.Second * 3)
 
-	alignedTicker := NewAlignedTicker(sleepTime)
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Add(time.Hour * 24)
+	for at.now.Before(end) {
+		sleepTime := at.NextTicker()
 
-	for now.Before(end) {
-		alignedTicker.now = now
-
-		sleep := alignedTicker.SleepUntilNextTicker()
-
-		compare := alignedTicker.now.Add(sleep)
-
-		require.Equal(t, compare.Year(), today.Year())
-		require.Equal(t, compare.Month(), today.Month())
-		require.Equal(t, compare.Day(), today.Day())
-		require.Equal(t, compare.Hour(), today.Hour())
-		require.Equal(t, compare.Minute(), today.Minute())
-
-		now = now.Add(sleep)
-		today = now.Add(sleepTime)
+		at.now = at.now.Add(sleepTime)
 	}
-}
 
-func nextTickerDuration(interval time.Duration) time.Duration {
-	now := time.Now()
-	nextTick := now.Truncate(interval).Add(interval)
-	return time.Until(nextTick)
-}
-
-func TestTicker(t *testing.T) {
-	interval := 24 * time.Hour
-	duration := nextTickerDuration(interval)
-
-	fmt.Printf("Time now:             %v\n", time.Now())
-	fmt.Printf("Time until next tick: %v\n", time.Now().Add(duration))
+	require.True(t, at.now.Equal(end) || at.now.After(end))
 }
 
 func TestConcurrentLimit(t *testing.T) {

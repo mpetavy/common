@@ -288,40 +288,34 @@ func (bt *BackgroundTask) Stop(waitFor bool) {
 }
 
 type AlignedTicker struct {
-	IsFirstTicker bool
-	SleepTime     time.Duration
-	now           time.Time
+	TickerTime time.Duration
+	next       time.Time
+	now        time.Time
 }
 
-func NewAlignedTicker(sleepTime time.Duration) *AlignedTicker {
-	alignedTicker := &AlignedTicker{
-		IsFirstTicker: false,
-		SleepTime:     sleepTime,
-		now:           time.Time{},
+func NewAlignedTicker(tickerTime time.Duration) *AlignedTicker {
+	return &AlignedTicker{
+		TickerTime: tickerTime,
+		next:       time.Now().Truncate(24 * time.Hour),
 	}
-
-	return alignedTicker
 }
 
-func (at *AlignedTicker) SleepUntilNextTicker() time.Duration {
-	var delta time.Duration
-
+func (at *AlignedTicker) current() time.Time {
 	if at.now.IsZero() {
-		at.now = time.Now()
+		return time.Now()
 	}
 
-	if !at.IsFirstTicker {
-		nextTick := time.Date(at.now.Year(), at.now.Month(), at.now.Day(), 0, 0, 0, 0, at.now.Location())
-		for nextTick.Before(at.now) || nextTick.Equal(at.now) {
-			nextTick = nextTick.Add(at.SleepTime)
-		}
+	return at.now
+}
 
-		delta = nextTick.Sub(at.now)
-
-		Debug("Next ticker: %v sleep: %v\n", nextTick, delta)
+func (at *AlignedTicker) NextTicker() time.Duration {
+	for at.next.Before(at.current()) || at.next.Equal(at.current()) {
+		at.next = at.next.Add(at.TickerTime)
 	}
 
-	at.IsFirstTicker = false
+	delta := at.next.Sub(at.current())
+
+	Debug("Next ticker: %v sleep: %v\n", at.next, delta)
 
 	return delta
 }

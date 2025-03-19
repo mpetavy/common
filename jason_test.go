@@ -82,10 +82,10 @@ func TestJsonReformat(t *testing.T) {
 	ba1, err := json.MarshalIndent(p, "", "    ")
 	require.NoError(t, err)
 
-	ba0, err = JsonReformat(ba0)
+	ba0, err = ReformatJson(ba0)
 	require.NoError(t, err)
 
-	ba1, err = JsonReformat(ba1)
+	ba1, err = ReformatJson(ba1)
 	require.NoError(t, err)
 
 	require.Equal(t, string(ba0), string(ba1))

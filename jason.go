@@ -306,17 +306,31 @@ func RemoveJsonComments(ba []byte) ([]byte, error) {
 	return r.Bytes(), nil
 }
 
-func JsonReformat(ba []byte) ([]byte, error) {
-	m := make(map[string]any)
-
-	err := json.Unmarshal(ba, &m)
-	if Error(err) {
-		return nil, err
+func ReformatJson(ba []byte) ([]byte, error) {
+	if ba == nil {
+		return ba, nil
 	}
 
-	ba, err = json.MarshalIndent(m, "", "    ")
-	if Error(err) {
-		return nil, err
+	a := []any{}
+
+	err := json.Unmarshal(ba, &a)
+	if err != nil {
+		m := make(map[string]any)
+
+		err := json.Unmarshal(ba, &m)
+		if Error(err) {
+			return nil, err
+		}
+
+		ba, err = json.MarshalIndent(m, "", "    ")
+		if Error(err) {
+			return nil, err
+		}
+	} else {
+		ba, err = json.MarshalIndent(a, "", "    ")
+		if Error(err) {
+			return nil, err
+		}
 	}
 
 	return ba, nil
