@@ -590,9 +590,12 @@ func TestHidePasswords(t *testing.T) {
 		sb.WriteString(fmt.Sprintf("%s= 12345\n", tag))
 		sb.WriteString(fmt.Sprintf("%s:12345\n", tag))
 		sb.WriteString(fmt.Sprintf("%s=12345\n", tag))
+		sb.WriteString("client_id=b7020ce9-9db6-46f0-b176-5ec94d35b7b0&grant_type=password&password=F%3DxcPU%3D%24f%21%293h%254r&response_type=id_token&scope=openid+b7020ce9-9db6-46f0-b176-5ec94d35b7b0&username=hakodate-test%40id.zeiss.com")
 	}
 
 	r := HidePasswords(sb.String())
+
+	fmt.Printf("%s\n", r)
 
 	require.False(t, strings.Contains(r, "12345"))
 }
