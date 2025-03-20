@@ -374,6 +374,8 @@ func setFlags() error {
 		return err
 	}
 
+	externalCfg := ""
+
 	flagMaps := []struct {
 		origin string
 		fn     func() (map[string]string, error)
@@ -397,7 +399,19 @@ func setFlags() error {
 		},
 		{
 			origin: "external",
-			fn:     registerExternalFlags,
+			fn: func() (map[string]string, error) {
+				m, err := registerExternalFlags()
+				if err == nil {
+					var ok bool
+
+					externalCfg, ok = m[FlagNameCfgExternal]
+					if !ok {
+						externalCfg = ""
+					}
+				}
+
+				return m, err
+			},
 		},
 		{
 			origin: "cfg file",
@@ -444,6 +458,10 @@ func setFlags() error {
 				}
 
 				value = envValue
+			}
+
+			if key == FlagNameCfgExternal {
+				value = externalCfg
 			}
 
 			err := flag.Set(key, value)
