@@ -32,12 +32,12 @@ type flagInfo struct {
 }
 
 var (
-	FlagCfgExternal *string
-	FlagCfgReset    *bool
-	FlagCfgCreate   *bool
-	FlagCfgFile     *string
-	FlagCfgIni      *string
-	FlagCfgEnv      *string
+	FlagCfgExternal   *string
+	FlagCfgReset      *bool
+	FlagCfgCreate     *bool
+	FlagCfgFile       *string
+	FlagCfgIniFile    *string
+	FlagCfgIniSection *string
 
 	CmdlineOnlyFlags = []string{
 		FlagNameService,
@@ -98,8 +98,8 @@ func init() {
 		FlagCfgExternal = SystemFlagString(FlagNameCfgExternal, "", "Configuration JSON content")
 		FlagCfgReset = SystemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
 		FlagCfgCreate = SystemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
-		FlagCfgIni = SystemFlagString(FlagNameCfgIniFile, CleanPath(filepath.Join(dir, AppFilename(".ini"))), "INI file configuration path")
-		FlagCfgEnv = SystemFlagString(FlagNameCfgIniSection, DEFAULT_SECTION, "INI file section")
+		FlagCfgIniFile = SystemFlagString(FlagNameCfgIniFile, CleanPath(filepath.Join(dir, AppFilename(".ini"))), "INI file configuration path")
+		FlagCfgIniSection = SystemFlagString(FlagNameCfgIniSection, DEFAULT_SECTION, "INI file section")
 	})
 }
 
@@ -218,18 +218,18 @@ func ResetConfiguration() error {
 func registerIniFileFlags() (map[string]string, error) {
 	DebugFunc()
 
-	if !FileExists(*FlagCfgIni) {
+	if !FileExists(*FlagCfgIniFile) {
 		return nil, nil
 	}
 
 	ini := NewIniFile()
 
-	err := ini.LoadFile(*FlagCfgIni)
+	err := ini.LoadFile(*FlagCfgIniFile)
 	if Error(err) {
 		return nil, err
 	}
 
-	m := ini.GetAll(Split(*FlagCfgEnv, ",")...)
+	m := ini.GetAll(Split(*FlagCfgIniSection, ",")...)
 
 	for key, value := range m {
 		if flag.Lookup(key) == nil {

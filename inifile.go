@@ -64,7 +64,7 @@ func (ini *IniFile) Load(ba []byte) error {
 
 			section, ok := ini.keyValues[sectionName]
 			if ok && len(section) > 0 {
-				return fmt.Errorf("in INI file '%s' the section '%s' is duplicate", *FlagCfgIni, sectionName)
+				return fmt.Errorf("in INI file '%s' the section '%s' is duplicate", *FlagCfgIniFile, sectionName)
 			}
 
 			ini.keyValues[sectionName] = make(map[string]string)
