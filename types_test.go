@@ -595,7 +595,5 @@ func TestHidePasswords(t *testing.T) {
 
 	r := HidePasswords(sb.String())
 
-	fmt.Printf("%s\n", r)
-
 	require.False(t, strings.Contains(r, "12345"))
 }

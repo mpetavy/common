@@ -49,20 +49,20 @@ var (
 		FlagNameCfgCreate,
 		FlagNameUsage,
 		FlagNameUsageMd,
-		FlagNameCfgIni,
-		FlagNameCfgEnv,
+		FlagNameCfgIniFile,
+		FlagNameCfgIniSection,
 	}
 
 	flagInfos = make(map[string]flagInfo)
 )
 
 const (
-	FlagNameCfgFile     = "cfg.file"
-	FlagNameCfgExternal = "cfg.external"
-	FlagNameCfgReset    = "cfg.reset"
-	FlagNameCfgCreate   = "cfg.create"
-	FlagNameCfgIni      = "cfg.inifile"
-	FlagNameCfgEnv      = "cfg.env"
+	FlagNameCfgFile       = "cfg.file"
+	FlagNameCfgExternal   = "cfg.external"
+	FlagNameCfgReset      = "cfg.reset"
+	FlagNameCfgCreate     = "cfg.create"
+	FlagNameCfgIniFile    = "cfg.ini.file"
+	FlagNameCfgIniSection = "cfg.ini.section"
 )
 
 type ErrUnknownFlag struct {
@@ -98,8 +98,8 @@ func init() {
 		FlagCfgExternal = SystemFlagString(FlagNameCfgExternal, "", "Configuration JSON content")
 		FlagCfgReset = SystemFlagBool(FlagNameCfgReset, false, "Reset configuration file")
 		FlagCfgCreate = SystemFlagBool(FlagNameCfgCreate, false, "Reset configuration file and exit")
-		FlagCfgIni = SystemFlagString(FlagNameCfgIni, CleanPath(filepath.Join(dir, AppFilename(".ini"))), "INI file configuration path")
-		FlagCfgEnv = SystemFlagString(FlagNameCfgEnv, DEFAULT_SECTION, "INI file section")
+		FlagCfgIni = SystemFlagString(FlagNameCfgIniFile, CleanPath(filepath.Join(dir, AppFilename(".ini"))), "INI file configuration path")
+		FlagCfgEnv = SystemFlagString(FlagNameCfgIniSection, DEFAULT_SECTION, "INI file section")
 	})
 }
 
