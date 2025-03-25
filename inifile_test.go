@@ -5,6 +5,13 @@ import (
 	"testing"
 )
 
+func TestIniFileLoad(t *testing.T) {
+	ini := NewIniFile()
+
+	err := ini.LoadFile("/home/ransom/go/src/hakodate/hakodate.ini")
+	require.NoError(t, err)
+}
+
 func TestIniFile(t *testing.T) {
 	ini := NewIniFile()
 
