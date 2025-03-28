@@ -112,7 +112,7 @@ func GetRuntimeInfo(pos int) RuntimeInfo {
 					line = fmt.Sprintf("%s\n", line[:p])
 				}
 
-				if strings.HasPrefix(line, "/home") {
+				if IsRunningAsExecutable() && strings.HasPrefix(line, "/home") {
 					line = line[6:]
 
 					p = strings.Index(line, "/")
