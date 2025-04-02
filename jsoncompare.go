@@ -55,6 +55,12 @@ func convertJSONToMap(jsonStr []byte) (map[string]any, error) {
 func JSONCompare(json1, json2 []byte, options jsondiff.Options, ignoreCondition IgnoreCondition) (jsondiff.Difference, string, error) {
 	DebugFunc()
 
+	if ignoreCondition == nil {
+		ignoreCondition = func(keyPath string, value any, depth int) bool {
+			return false
+		}
+	}
+
 	obj1, err := convertJSONToMap(json1)
 	if Error(err) {
 		return jsondiff.NoMatch, "", err
