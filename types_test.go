@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/stretchr/testify/require"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -580,20 +581,44 @@ func TestSortedKeys(t *testing.T) {
 	require.Equal(t, []string{"a", "b", "c"}, sortedKey)
 }
 
-func TestHidePasswords(t *testing.T) {
+func TestHideSecrets(t *testing.T) {
 	sb := strings.Builder{}
 
-	for _, tag := range PasswordTags {
-
+	for _, tag := range SecretTags {
 		sb.WriteString(fmt.Sprintf("%s 12345\n", tag))
 		sb.WriteString(fmt.Sprintf("%s: 12345\n", tag))
 		sb.WriteString(fmt.Sprintf("%s= 12345\n", tag))
 		sb.WriteString(fmt.Sprintf("%s:12345\n", tag))
 		sb.WriteString(fmt.Sprintf("%s=12345\n", tag))
-		sb.WriteString("client_id=b7020ce9-9db6-46f0-b176-5ec94d35b7b0&grant_type=password&password=F%3DxcPU%3D%24f%21%293h%254r&response_type=id_token&scope=openid+b7020ce9-9db6-46f0-b176-5ec94d35b7b0&username=hakodate-test%40id.zeiss.com")
+		sb.WriteString("client_id=b7020ce9-9db6-46f0-b176-5ec94d35b7b0&grant_type=password&password=F%3DxcPU%3D%24f%21%293h%254r&response_type=id_token&scope=openid+b7020ce9-9db6-46f0-b176-5ec94d35b7b0&username=hakodate-test%40id.zeiss.com\n")
 	}
 
-	r := HidePasswords(sb.String())
+	s := HideSecrets(sb.String())
 
-	require.False(t, strings.Contains(r, "12345"))
+	require.False(t, strings.Contains(s, "12345"))
+}
+
+func TestIsText(t *testing.T) {
+	tmpFile, err := CreateTempFile()
+	require.NoError(t, err)
+
+	defer func() {
+		require.NoError(t, FileDelete(tmpFile.Name()))
+	}()
+
+	err = os.WriteFile(tmpFile.Name(), RndBytes(100), DefaultFileMode)
+	require.NoError(t, err)
+
+	isText, err := IsTextFile(tmpFile.Name())
+	require.NoError(t, err)
+
+	require.False(t, isText)
+
+	err = os.WriteFile(tmpFile.Name(), []byte(RndString(100)), DefaultFileMode)
+	require.NoError(t, err)
+
+	isText, err = IsTextFile(tmpFile.Name())
+	require.NoError(t, err)
+
+	require.True(t, isText)
 }

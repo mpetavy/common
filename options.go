@@ -7,20 +7,19 @@ import (
 )
 
 type Options struct {
-	list []string
+	All      []string
+	Includes []string
+	Excludes []string
 }
 
 func NewOptions(allOptions []string, selectedOptions []string) (*Options, error) {
 	options := &Options{
-		list: slices.Clone(allOptions),
+		All: slices.Clone(allOptions),
 	}
 
 	if len(selectedOptions) == 0 {
 		return options, nil
 	}
-
-	includes := []string{}
-	excludes := []string{}
 
 	for _, option := range selectedOptions {
 		isExclude := strings.HasPrefix(option, "-")
@@ -28,34 +27,36 @@ func NewOptions(allOptions []string, selectedOptions []string) (*Options, error)
 			option = strings.TrimPrefix(option, "-")
 		}
 
-		if !slices.Contains(allOptions, option) {
+		if len(allOptions) > 0 && !slices.Contains(allOptions, option) {
 			return nil, fmt.Errorf("option %s not in list %v", option, allOptions)
 		}
 
 		if isExclude {
-			excludes = append(excludes, option)
+			options.Excludes = append(options.Excludes, option)
 		} else {
-			includes = append(includes, option)
-		}
-	}
-
-	if len(excludes) == 0 {
-		options = &Options{}
-	} else {
-		for _, option := range excludes {
-			options.list = SliceRemove(options.list, option)
-		}
-	}
-
-	for _, option := range includes {
-		if !slices.Contains(options.list, option) {
-			options.list = append(options.list, option)
+			options.Includes = append(options.Includes, option)
 		}
 	}
 
 	return options, nil
 }
 
-func (options *Options) Contains(option string) bool {
-	return slices.Contains(options.list, option)
+func (options *Options) IsValid(option string) bool {
+	if len(options.All) > 0 && !slices.Contains(options.All, option) {
+		return false
+	}
+
+	if options.Includes == nil {
+		return !slices.ContainsFunc(options.Excludes, func(s string) bool {
+			b, err := EqualsWildcard(option, s)
+
+			return b && err == nil
+		})
+	} else {
+		return slices.ContainsFunc(options.Includes, func(s string) bool {
+			b, err := EqualsWildcard(option, s)
+
+			return b && err == nil
+		})
+	}
 }

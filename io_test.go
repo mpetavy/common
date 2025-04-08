@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -207,42 +208,63 @@ func TestListFiles(t *testing.T) {
 }
 
 func TestSplitFilemask(t *testing.T) {
-	type args struct {
-		filemask string
-	}
 	tests := []struct {
-		name  string
-		args  args
-		want  string
-		want1 string
+		name     string
+		filemask string
+		path     string
+		includes string
+		excludes string
 	}{
 		{
-			name:  "0",
-			args:  args{"asdf"},
-			want:  CleanPath("."),
-			want1: "asdf",
+			name:     "0",
+			filemask: "asdf",
+			path:     CleanPath("."),
+			includes: "asdf",
+			excludes: "",
 		},
 		{
-			name:  "1",
-			args:  args{"."},
-			want:  CleanPath("."),
-			want1: "*",
+			name:     "1",
+			filemask: ".",
+			path:     CleanPath("."),
+			includes: "*",
+			excludes: "",
 		},
 		{
-			name:  "2",
-			args:  args{"*.txt"},
-			want:  CleanPath("."),
-			want1: "*.txt",
+			name:     "2",
+			filemask: "*.txt",
+			path:     CleanPath("."),
+			includes: "*.txt",
+			excludes: "",
+		},
+		{
+			name:     "3",
+			filemask: "/tmp/*.txt,*.go",
+			path:     "/tmp",
+			includes: "*.txt,*.go",
+			excludes: "",
+		},
+		{
+			name:     "4",
+			filemask: "/tmp/*.txt,-*.go",
+			path:     "/tmp",
+			includes: "*.txt",
+			excludes: "*.go",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := SplitFilemask(tt.args.filemask)
-			if got != tt.want {
-				t.Errorf("SplitFilemask() got = %v, want %v", got, tt.want)
+			path, options := SplitFilemask(tt.filemask)
+
+			if path != tt.path {
+				t.Errorf("SplitFilemask() path = %v, want %v", path, tt.path)
 			}
-			if got1 != tt.want1 {
-				t.Errorf("SplitFilemask() got1 = %v, want %v", got1, tt.want1)
+
+			if strings.Join(options.Includes, ",") != tt.includes {
+				t.Errorf("SplitFilemask() includes = %v, want %v", options, tt.includes)
+			}
+
+			if strings.Join(options.Excludes, ",") != tt.excludes {
+				t.Errorf("SplitFilemask() excludes = %v, want %v", options, tt.excludes)
 			}
 		})
 	}

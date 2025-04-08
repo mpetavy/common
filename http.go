@@ -478,7 +478,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 			return nil, nil, err
 		}
 
-		s := HidePasswords(string(ba))
+		s := HideSecrets(string(ba))
 
 		Debug("HTTP Request: %s %s Username: %s Password: %s\n%s\n", method, address, username, strings.Repeat("X", 5)+"...", s)
 	}
@@ -510,7 +510,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 			return nil, nil, err
 		}
 
-		s := HidePasswords(string(ba))
+		s := HideSecrets(string(ba))
 
 		Debug("HTTP Response (after %v): %s %s Username: %s Password: %s\n%s\n", timeNeeded, method, address, username, strings.Repeat("X", 5)+"...", s)
 	}

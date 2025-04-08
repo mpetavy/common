@@ -8,7 +8,7 @@ import (
 
 type filewalker struct {
 	Path        string
-	Filemask    string
+	Options     *Options
 	Recursive   bool
 	IgnoreError bool
 	walkFunc    func(path string, f os.FileInfo) error
@@ -26,12 +26,7 @@ func (fw *filewalker) walkfunc(path string, f os.FileInfo, err error) error {
 			return fs.SkipDir
 		}
 	} else {
-		b, err := EqualsWildcard(filepath.Base(path), fw.Filemask)
-		if Error(err) {
-			return err
-		}
-
-		if !b {
+		if !fw.Options.IsValid(filepath.Base(path)) {
 			return nil
 		}
 
@@ -61,7 +56,7 @@ func NewFileEntry(path string, fileInfo os.FileInfo) (*FileEntry, error) {
 }
 
 func WalkFiles(filemask string, recursive bool, ignoreError bool, walkFunc func(path string, fi os.FileInfo) error) error {
-	path, filemask := SplitFilemask(filemask)
+	path, options := SplitFilemask(filemask)
 
 	if !FileExists(path) || !IsDirectory(path) {
 		return &ErrFileNotFound{
@@ -71,7 +66,7 @@ func WalkFiles(filemask string, recursive bool, ignoreError bool, walkFunc func(
 
 	fw := &filewalker{
 		Path:        path,
-		Filemask:    filemask,
+		Options:     options,
 		Recursive:   recursive,
 		IgnoreError: ignoreError,
 		walkFunc:    walkFunc,

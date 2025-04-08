@@ -1130,24 +1130,38 @@ func CheckOutputPath(path string) error {
 	return nil
 }
 
-func SplitFilemask(filemask string) (string, string) {
-	path := ""
+func SplitFilemask(filemask string) (string, *Options) {
+	options := &Options{}
+	p := strings.Index(filemask, ",")
+
+	if p != -1 {
+		options, _ = NewOptions(nil, Split(filemask[p+1:], ","))
+		filemask = filemask[:p]
+	}
+
 	filemask = CleanPath(filemask)
+
+	path := ""
+	wildcard := ""
 
 	if ContainsWildcard(filemask) || !FileExists(filemask) {
 		path = filepath.Dir(filemask)
-		filemask = filepath.Base(filemask)
+		wildcard = filepath.Base(filemask)
 	} else {
 		if IsDirectory(filemask) {
 			path = filemask
-			filemask = "*"
+			wildcard = "*"
 		} else {
 			path = filepath.Dir(filemask)
-			filemask = filepath.Base(filemask)
+			wildcard = filepath.Base(filemask)
 		}
 	}
 
-	DebugFunc("%s: path: %s filemask: %s", filemask, path, filemask)
+	if wildcard != "" && !slices.Contains(options.Includes, wildcard) {
+		options.Includes = slices.Insert(options.Includes, 0, wildcard)
+	}
 
-	return path, filemask
+	DebugFunc("%s: path: %s include: %s excludes", filemask, path, strings.Join(options.Includes, ","), strings.Join(options.Excludes, ","))
+
+	return path, options
 }

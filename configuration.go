@@ -496,7 +496,7 @@ func debugFlags() {
 			flagOnlyCmdline = "*"
 		}
 
-		value := HidePasswordValue(f.Name, flagValue.Value)
+		value := HideSecretFlags(f.Name, flagValue.Value)
 
 		if f.Name == FlagNameCfgExternal {
 			value = CapString(value, 80)

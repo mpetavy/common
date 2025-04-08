@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/constraints"
 	"io"
 	"math"
+	"os"
 	"os/exec"
 	"reflect"
 	"regexp"
@@ -54,7 +55,7 @@ var (
 	MEMORY_UNITS = []string{"Bytes", "KB", "MB", "GB", "TB"}
 
 	WindowsRestrictedFilenames = []string{"CON", "PRN", "AUX", "NUL", " COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
-	PasswordTags               = []string{"username", "password", "token", "pwd", "credential", "subscription", "private", "accesskey", "secret", "endpoint", "secretkey", "authorization"}
+	SecretTags                 = []string{"username", "password", "token", "pwd", "credential", "subscription", "private", "accesskey", "secret", "endpoint", "secretkey", "authorization"}
 )
 
 // Trim4Path trims given path to be usefull as filename
@@ -803,14 +804,14 @@ func (d DurationJSON) MarshalJSON() (b []byte, err error) {
 	return []byte(fmt.Sprintf(`"%s"`, d.String())), nil
 }
 
-func HidePasswordValue(name string, value string) string {
+func HideSecretFlags(name string, value string) string {
 	if IsHashedValue(value) {
 		return value
 	}
 
 	name = strings.ToLower(name)
 
-	for _, hit := range PasswordTags {
+	for _, hit := range SecretTags {
 		if strings.Contains(name, hit) || strings.Contains(value, hit) {
 			return strings.Repeat("X", Min(5, len(value))) + "..."
 		}
@@ -819,14 +820,14 @@ func HidePasswordValue(name string, value string) string {
 	return value
 }
 
-func HidePasswords(str string) string {
+func HideSecrets(str string) string {
 	var sb strings.Builder
 
 	scanner := bufio.NewScanner(strings.NewReader(str))
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		for _, hit := range PasswordTags {
+		for _, hit := range SecretTags {
 			lowerLine := strings.ToLower(line)
 
 			IgnoreError(Catch(func() error {
@@ -898,4 +899,66 @@ func SortedKeys[K constraints.Ordered, V any](m map[K]V) []K {
 	})
 
 	return keys
+}
+
+func IsWhitespace(r rune) bool {
+	return r == '\n' || r == '\r' || r == '\t'
+}
+
+func IsTextContent(ba []byte) (bool, error) {
+	const maxRunes = 1000
+
+	reader := bufio.NewReader(bytes.NewReader(ba))
+	nonPrintable := 0
+	total := 0
+
+	for total < maxRunes {
+		r, _, err := reader.ReadRune()
+		if err != nil {
+			break // EOF or error
+		}
+
+		if !unicode.IsPrint(r) && !IsWhitespace(r) {
+			nonPrintable++
+		}
+
+		total++
+	}
+
+	if total == 0 {
+		return true, nil // empty file = text
+	}
+
+	return nonPrintable == 0, nil
+}
+
+func IsTextFile(filename string) (bool, error) {
+	fileSize, err := FileSize(filename)
+	if Error(err) {
+		return false, err
+	}
+
+	const max = 1000
+
+	fileSize = Min(max, fileSize)
+
+	ba := make([]byte, fileSize)
+
+	f, err := os.Open(filename)
+	if Error(err) {
+		return false, err
+	}
+	defer func() {
+		Error(f.Close())
+	}()
+
+	lr := io.LimitedReader{R: f, N: max}
+	n, err := lr.Read(ba)
+	if Error(err) {
+		return false, err
+	}
+
+	ba = ba[:n]
+
+	return IsTextContent(ba)
 }
