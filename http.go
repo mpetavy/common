@@ -56,24 +56,27 @@ var (
 
 type BasicAuthFunc func(username string, password string) error
 
-type HTTPError struct {
-	StatusCode int   // HTTP status code
-	Err        error // Original error
+type ErrHTTPRequest struct {
+	Err        error  // Original error
+	Dump       string // HTTP dump
+	Status     string // HTTP status
+	StatusCode int    // HTTP status code
 }
 
-func (he *HTTPError) Error() string {
-	return fmt.Sprintf("status %d: %v", he.StatusCode, he.Err)
-}
+func (err *ErrHTTPRequest) Error() string {
+	sb := strings.Builder{}
+	sb.WriteString(fmt.Sprintf("HTTP code: %d status: '%s' error: %v", err.StatusCode, err.Status, err.Err))
 
-func (he *HTTPError) Unwrap() error {
-	return he.Err
-}
-
-func NewHTTPError(statusCode int, err error) *HTTPError {
-	return &HTTPError{
-		StatusCode: statusCode,
-		Err:        err,
+	if err.Dump != "" {
+		sb.WriteString("\n")
+		sb.WriteString(err.Dump)
 	}
+
+	return sb.String()
+}
+
+func (err *ErrHTTPRequest) Unwrap() error {
+	return err.Err
 }
 
 func Header(r *http.Request, name string) (string, error) {
@@ -480,7 +483,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 
 		s := HideSecrets(string(ba))
 
-		Debug("HTTP Request: %s %s Username: %s Password: %s\n%s\n", method, address, username, strings.Repeat("X", 5)+"...", s)
+		Debug("HTTP Request: %s %s Username: %s \n%s\n", method, address, username, s)
 	}
 
 	var resp *http.Response
@@ -503,25 +506,34 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 	}
 
 	timeNeeded := time.Since(start)
+	isError := expectedCode > 0 && resp.StatusCode != expectedCode
+	dump := ""
 
-	if IsLogVerboseEnabled() {
+	if IsLogVerboseEnabled() || isError {
 		ba, err := httputil.DumpResponse(resp, IsTextMimeType(resp.Header.Get(CONTENT_TYPE)))
 		if Error(err) {
 			return nil, nil, err
 		}
 
-		s := HideSecrets(string(ba))
+		dump = HideSecrets(string(ba))
 
-		Debug("HTTP Response (after %v): %s %s Username: %s Password: %s\n%s\n", timeNeeded, method, address, username, strings.Repeat("X", 5)+"...", s)
+		if !isError {
+			Debug("HTTP Response (after %v): %s %s Username: %s\n%s\n", timeNeeded, method, address, username, dump)
+		}
+	}
+
+	if isError {
+		return nil, nil, &ErrHTTPRequest{
+			Err:        fmt.Errorf("Unexpected HTTP status code, expected %d got %d", expectedCode, resp.StatusCode),
+			Dump:       dump,
+			Status:     resp.Status,
+			StatusCode: resp.StatusCode,
+		}
 	}
 
 	ba, err := ReadBody(resp.Body)
 	if Error(err) {
 		return nil, nil, err
-	}
-
-	if expectedCode > 0 && resp.StatusCode != expectedCode {
-		return nil, nil, NewHTTPError(resp.StatusCode, fmt.Errorf("Unexpected HTTP status code, expected %d got %d\nResponseBody\n%s", expectedCode, resp.StatusCode, ba))
 	}
 
 	return resp, ba, nil
