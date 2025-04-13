@@ -133,9 +133,8 @@ var (
 	runningInDev            bool
 	restart                 bool
 	restartCh               = make(chan struct{}, 1)
-	shutdownCh              = make(chan struct{}, 1)
+	exitCh                  = make(chan error, 1)
 	ctrlC                   = make(chan os.Signal, 1)
-	isFirstTicker           = true
 	banner                  = bytes.Buffer{}
 )
 
@@ -626,41 +625,23 @@ func showBanner() {
 	})
 }
 
-func nextTicker() *time.Ticker {
-	tickerSleep := time.Second
-
-	if isFirstTicker {
-		tickerSleep = time.Millisecond
-	} else {
-		if *FlagAppTicker > 0 {
-			nextTick := time.Now().Truncate(MillisecondToDuration(*FlagAppTicker)).Add(MillisecondToDuration(*FlagAppTicker))
-			tickerSleep = nextTick.Sub(time.Now())
-		}
-	}
-
-	newTicker := time.NewTicker(tickerSleep)
-
-	if *FlagAppTicker == 0 {
-		newTicker.Stop()
-	} else {
-		if !isFirstTicker {
-			Debug("next tick: %s sleep: %v\n", CalcDeadline(time.Now(), tickerSleep).Truncate(MillisecondToDuration(*FlagAppTicker)).Format(DateTimeMilliMask), tickerSleep)
-		}
-	}
-
-	isFirstTicker = false
-
-	return newTicker
-}
-
-func (app *application) applicationRun() {
+func (app *application) applicationRun() error {
 	if IsRunningAsService() {
 		Info("Service()")
 	} else {
 		DebugFunc()
 	}
 
-	ticker = nextTicker()
+	var tickerCh <-chan time.Time
+
+	if *FlagAppTicker != 0 {
+		ticker = time.NewTicker(MillisecondToDuration(*FlagAppTicker))
+		defer func() {
+			ticker.Stop()
+		}()
+
+		tickerCh = ticker.C
+	}
 
 	errCh := make(chan error)
 
@@ -691,33 +672,29 @@ func (app *application) applicationRun() {
 		//	fmt.Printf("Restart on time %d\n", runtime.NumGoroutine())
 		//	restart = true
 		//	return nil
-		case <-errCh:
-			return
+		case err := <-errCh:
+			return err
 		case <-appLifecycle.Channel():
 			Info("Stop on request")
-			return
+			return nil
 		case <-restartCh:
 			Info("Restart on request")
 			restart = true
-			return
-		case <-shutdownCh:
+			return nil
+		case err := <-exitCh:
 			Info("Shutdown on request")
-			return
+			return err
 		case <-ctrlC:
 			fmt.Println()
 			Info("Terminate: CTRL-C pressed")
-			return
-		case <-ticker.C:
+			return nil
+		case <-tickerCh:
 			Debug("ticker!")
-
-			ticker.Stop()
 
 			err := app.RunFunc()
 			if Error(err) {
-				return
+				return err
 			}
-
-			ticker = nextTicker()
 		}
 	}
 }
@@ -746,8 +723,9 @@ func (app *application) applicationLoop(m *testing.M) error {
 	DebugFunc()
 
 	appLifecycle.Set()
-
-	var exitcode int
+	defer func() {
+		appLifecycle.Unset()
+	}()
 
 	for {
 		if app.StartFunc != nil {
@@ -758,21 +736,20 @@ func (app *application) applicationLoop(m *testing.M) error {
 			}
 		}
 
-		if m != nil {
-			exitcode = m.Run()
-		} else {
-			app.applicationRun()
-		}
+		var appErr error
 
-		if !restart || m != nil {
-			break
+		if m != nil {
+			appErr = &ErrExit{ExitCode: m.Run()}
+		} else {
+			appErr = app.applicationRun()
 		}
 
 		if app.StopFunc != nil {
-			err := app.StopFunc()
-			if Error(err) {
-				return err
-			}
+			Error(app.StopFunc())
+		}
+
+		if !restart || m != nil {
+			return appErr
 		}
 
 		err := initConfiguration()
@@ -780,21 +757,6 @@ func (app *application) applicationLoop(m *testing.M) error {
 			return err
 		}
 	}
-
-	appLifecycle.Unset()
-
-	if app.StopFunc != nil {
-		err := app.StopFunc()
-		if Error(err) {
-			return err
-		}
-	}
-
-	if m != nil {
-		Exit(exitcode)
-	}
-
-	return nil
 }
 
 func AppLifecycle() *Notice {
@@ -810,23 +772,29 @@ func (app *application) Stop(s service.Service) error {
 
 	appLifecycle.Unset()
 
-	if ticker != nil {
-		ticker.Stop()
-	}
-
 	return nil
 }
 
-func AppRestart() {
+func Restart() {
 	DebugFunc()
 
-	restartCh <- struct{}{}
+	if appLifecycle.IsSet() {
+		restartCh <- struct{}{}
+	}
 }
 
-func AppShutdown() {
+func Exit(exitCode int) {
 	DebugFunc()
 
-	shutdownCh <- struct{}{}
+	if appLifecycle.IsSet() {
+		exitCh <- &ErrExit{
+			ExitCode: exitCode,
+		}
+	} else {
+		done()
+
+		os.Exit(exitCode)
+	}
 }
 
 func IsRunningAsContainer() bool {
@@ -910,6 +878,8 @@ func App() *application {
 }
 
 func done() {
+	DebugFunc()
+
 	onceShutdownHooks.Do(func() {
 		Events.Emit(EventShutdown{}, true)
 	})

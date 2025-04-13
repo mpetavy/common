@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"math/big"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -108,12 +107,6 @@ func Catch(fn func() error) (err error) {
 	}()
 
 	return fn()
-}
-
-func Exit(code int) {
-	done()
-
-	os.Exit(code)
 }
 
 func Rnd(max int) int {
