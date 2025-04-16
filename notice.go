@@ -14,7 +14,6 @@ func NewNotice() *Notice {
 	return &Notice{
 		isSet: true,
 		mu:    sync.Mutex{},
-		ch:    make(chan struct{}),
 	}
 }
 
@@ -42,7 +41,6 @@ func (this *Notice) Set() bool {
 
 	if !this.isSet {
 		this.isSet = true
-		this.ch = make(chan struct{})
 
 		return true
 	}
@@ -57,8 +55,10 @@ func (this *Notice) Unset() bool {
 	if this.isSet {
 		this.isSet = false
 
-		close(this.ch)
-		this.ch = nil
+		if this.ch != nil {
+			close(this.ch)
+			this.ch = nil
+		}
 
 		return true
 	}

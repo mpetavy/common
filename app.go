@@ -132,9 +132,8 @@ var (
 	runningInteractive      bool
 	runningInDev            bool
 	restart                 bool
-	restartCh               = make(chan struct{}, 1)
-	exitCh                  = make(chan error, 1)
-	ctrlC                   = make(chan os.Signal, 1)
+	restartCh               chan struct{}
+	exitCh                  chan error
 	banner                  = bytes.Buffer{}
 )
 
@@ -454,27 +453,6 @@ func RunTests(m *testing.M) {
 	run(nil, m)
 }
 
-func initCtrlCHandler(fn func()) {
-	if ctrlC != nil {
-		signal.Stop(ctrlC)
-	}
-
-	// can kill with "kill -SIGINT <pid>"
-	ctrlC = make(chan os.Signal, 1)
-
-	signal.Notify(ctrlC, os.Interrupt)
-
-	if fn != nil {
-		go func() {
-			defer UnregisterGoRoutine(RegisterGoRoutine(1))
-
-			<-ctrlC
-
-			fn()
-		}()
-	}
-}
-
 func run(mandatoryFlags []string, m *testing.M) {
 	defer done()
 
@@ -560,10 +538,22 @@ func run(mandatoryFlags []string, m *testing.M) {
 
 		// simple app or simulated service
 
-		// create CTRL-C handler for apps with are run in start() (like -dev.test)
-		initCtrlCHandler(func() {
+		ctrlC := make(chan os.Signal, 1)
+
+		// can kill with "kill -SIGINT <pid>"
+		signal.Notify(ctrlC, os.Interrupt)
+
+		go func() {
+			defer UnregisterGoRoutine(RegisterGoRoutine(1))
+
+			<-ctrlC
+
+			fmt.Println()
+
+			Info("Terminate: CTRL-C pressed")
+
 			Exit(1)
-		})
+		}()
 
 		err = app.applicationLoop(m)
 		if Error(err) {
@@ -657,8 +647,16 @@ func (app *application) applicationRun() error {
 		}()
 	}
 
-	// create CTRL-C handler for apps with are run in start() (like -dev.test)
-	initCtrlCHandler(nil)
+	restartCh = make(chan struct{}, 1)
+	exitCh = make(chan error, 1)
+
+	defer func() {
+		close(restartCh)
+		restartCh = nil
+
+		close(exitCh)
+		exitCh = nil
+	}()
 
 	restart = false
 
@@ -684,10 +682,6 @@ func (app *application) applicationRun() error {
 		case err := <-exitCh:
 			Info("Shutdown on request")
 			return err
-		case <-ctrlC:
-			fmt.Println()
-			Info("Terminate: CTRL-C pressed")
-			return nil
 		case <-tickerCh:
 			Debug("ticker!")
 
@@ -786,7 +780,7 @@ func Restart() {
 func Exit(exitCode int) {
 	DebugFunc()
 
-	if appLifecycle.IsSet() {
+	if !IsRunningInTest() && exitCh != nil {
 		exitCh <- &ErrExit{
 			ExitCode: exitCode,
 		}
