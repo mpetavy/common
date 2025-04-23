@@ -98,31 +98,56 @@ func Secret(txt string, secret ...string) (string, error) {
 
 	if len(secret) == 1 {
 		key = secret[0]
+
+		DebugFunc("using flag")
 	}
 
 	if key == "" {
-		key = os.Getenv("SECRETKEY")
-	}
+		for _, env := range []string{FlagNameAsEnvName("secretkey"), "SECRETKEY", "secretkey"} {
+			key = os.Getenv(env)
+			if key != "" {
+				DebugFunc("using ENV: %s", env)
 
-	if key == "" {
-		key = os.Getenv(FlagNameAsEnvName("secretkey"))
-	}
-
-	if key == "" && FileExists("secretkey") {
-		ba, err := os.ReadFile("secretkey")
-		if err == nil {
-			key = strings.TrimSpace(string(ba))
+				break
+			}
 		}
 	}
 
 	if key == "" {
-		return "", fmt.Errorf("SECRETKEY is not set and not given as flag")
+		for _, file := range []string{"secretkey", "secretkey.txt", ".secretkey", ".secretkey.txt"} {
+			if FileExists(file) {
+				DebugFunc("using file: %s", file)
+
+				ba, err := os.ReadFile(file)
+				if err == nil {
+					key = strings.TrimSpace(string(ba))
+
+					break
+				}
+			}
+		}
 	}
 
-	m, err := DecryptString([]byte(ScrambleString(key)), txt)
-	if Error(err) {
-		return "", err
+	if key == "" {
+		return "", fmt.Errorf("SECRETKEY is not defined")
 	}
 
-	return m, nil
+	// descramble
+	key = ScrambleString(key)
+
+	if IsEncrypted(txt) {
+		m, err := DecryptString([]byte(key), txt)
+		if Error(err) {
+			return "", err
+		}
+
+		return m, nil
+	} else {
+		m, err := EncryptString([]byte(key), txt)
+		if Error(err) {
+			return "", err
+		}
+
+		return m, nil
+	}
 }
