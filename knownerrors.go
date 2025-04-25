@@ -85,3 +85,16 @@ func IsSuppressedErrorMessage(err string) bool {
 
 	return false
 }
+
+func IsSpecificError[T error](err error, fn func(T) bool) bool {
+	_, ok := err.(T)
+	if !ok {
+		return false
+	}
+
+	if fn != nil {
+		ok = fn(err.(T))
+	}
+
+	return ok
+}
