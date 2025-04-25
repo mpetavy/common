@@ -938,9 +938,9 @@ func IsTextFile(filename string) (bool, error) {
 		return false, err
 	}
 
-	const max = 1000
+	const maxSize = 1000
 
-	fileSize = Min(max, fileSize)
+	fileSize = Min(maxSize, fileSize)
 
 	ba := make([]byte, fileSize)
 
@@ -952,7 +952,7 @@ func IsTextFile(filename string) (bool, error) {
 		Error(f.Close())
 	}()
 
-	lr := io.LimitedReader{R: f, N: max}
+	lr := io.LimitedReader{R: f, N: maxSize}
 	n, err := lr.Read(ba)
 	if Error(err) {
 		return false, err
@@ -961,4 +961,13 @@ func IsTextFile(filename string) (bool, error) {
 	ba = ba[:n]
 
 	return IsTextContent(ba)
+}
+
+func Cast[T any](o any) T {
+	_, ok := o.(T)
+	if !ok {
+		Panic(fmt.Errorf("Unexpected type: %T", o))
+	}
+
+	return o.(T)
 }
