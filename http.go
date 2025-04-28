@@ -57,6 +57,7 @@ var (
 type BasicAuthFunc func(username string, password string) error
 
 type ErrHTTPRequest struct {
+	Request    string
 	Err        error  // Original error
 	Dump       string // HTTP dump
 	Status     string // HTTP status
@@ -65,7 +66,7 @@ type ErrHTTPRequest struct {
 
 func (err *ErrHTTPRequest) Error() string {
 	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("HTTP code: %d status: '%s' error: %v", err.StatusCode, err.Status, err.Err))
+	sb.WriteString(fmt.Sprintf("HTTP request: %s HTTP code: %d status: '%s' error: %v", err.Request, err.StatusCode, err.Status, err.Err))
 
 	if err.Dump != "" {
 		sb.WriteString("\n")
@@ -524,6 +525,7 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 
 	if isError {
 		return nil, nil, &ErrHTTPRequest{
+			Request:    fmt.Sprintf("%s %s", method, address),
 			Err:        fmt.Errorf("Unexpected HTTP status code, expected %d got %d", expectedCode, resp.StatusCode),
 			Dump:       dump,
 			Status:     resp.Status,
