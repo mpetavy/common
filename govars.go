@@ -31,7 +31,7 @@ func init() {
 }
 
 func (g *goRoutineVars) cleanup() {
-	GoRoutineVars.RunSynchronized(func(g *goRoutineVars) {
+	Error(GoRoutineVars.RunSynchronized(func(g *goRoutineVars) error {
 		ids := GoRoutineIds()
 
 		for id := range *g {
@@ -39,11 +39,13 @@ func (g *goRoutineVars) cleanup() {
 				delete(*g, id)
 			}
 		}
-	})
+
+		return nil
+	}))
 }
 
 func (g *goRoutineVars) Set(name string, value any) {
-	GoRoutineVars.RunSynchronized(func(g *goRoutineVars) {
+	Error(GoRoutineVars.RunSynchronized(func(g *goRoutineVars) error {
 		id := GoRoutineId()
 
 		values, ok := (*g)[id]
@@ -54,11 +56,13 @@ func (g *goRoutineVars) Set(name string, value any) {
 
 		values[name] = value
 		(*g)[id] = values
-	})
+
+		return nil
+	}))
 }
 
 func (g *goRoutineVars) SetById(id uint64, name string, value any) {
-	GoRoutineVars.RunSynchronized(func(g *goRoutineVars) {
+	Error(GoRoutineVars.RunSynchronized(func(g *goRoutineVars) error {
 		values, ok := (*g)[id]
 
 		if !ok {
@@ -67,19 +71,23 @@ func (g *goRoutineVars) SetById(id uint64, name string, value any) {
 
 		values[name] = value
 		(*g)[id] = values
-	})
+
+		return nil
+	}))
 }
 
 func (g *goRoutineVars) GetById(id uint64, key string) (value any, ok bool) {
-	GoRoutineVars.RunSynchronized(func(g *goRoutineVars) {
+	Error(GoRoutineVars.RunSynchronized(func(g *goRoutineVars) error {
 		m, found := (*g)[id]
 
 		if !found {
-			return
+			return nil
 		}
 
 		value, ok = m[key]
-	})
+
+		return nil
+	}))
 
 	return value, ok
 }

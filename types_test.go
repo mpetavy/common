@@ -45,6 +45,10 @@ func TestEqualsWildcard(t *testing.T) {
 	require.True(t, ew(t, "file.dcm", "*.dcm"))
 	require.False(t, ew(t, "file.dcm.modfied", "*.dcm"))
 
+	require.True(t, ew(t, "abcdef", "regex:a.*f"))
+	require.True(t, ew(t, "abcdef", "regex:a.*f"))
+	require.False(t, ew(t, "abcdef", "regex:a.*e$"))
+
 	masks := []string{
 		FlagNameCfgFile + "*",
 		FlagNameCfgReset,

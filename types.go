@@ -49,6 +49,8 @@ const (
 	WINDOWS_1250 = "windows-1250"
 	WINDOWS_1251 = "windows-1251"
 	WINDOWS_1252 = "windows-1252"
+
+	REGEX = "regex:"
 )
 
 var (
@@ -56,6 +58,8 @@ var (
 
 	WindowsRestrictedFilenames = []string{"CON", "PRN", "AUX", "NUL", " COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
 	SecretTags                 = []string{"username", "password", "token", "pwd", "credential", "subscription", "private", "accesskey", "secret", "endpoint", "secretkey", "authorization"}
+
+	regexes *Sync[map[string]*regexp.Regexp] = NewSyncOf(make(map[string]*regexp.Regexp))
 )
 
 // Trim4Path trims given path to be usefull as filename
@@ -223,11 +227,39 @@ func Rune(s string, index int) (rune, error) {
 	}
 }
 
+func RegisterRegex(regex string) (*regexp.Regexp, error) {
+	err := regexes.RunSynchronized(func(m map[string]*regexp.Regexp) error {
+		if _, ok := m[regex]; !ok {
+			r, err := regexp.Compile(regex)
+			if Error(err) {
+				return err
+			}
+			m[regex] = r
+		}
+
+		return nil
+	})
+	if Error(err) {
+		return nil, err
+	}
+
+	return regexes.Get()[regex], nil
+}
+
 func ContainsWildcard(s string) bool {
 	return strings.ContainsAny(s, "*?")
 }
 
 func EqualsWildcard(s, mask string) (bool, error) {
+	if strings.HasPrefix(mask, REGEX) {
+		r, err := RegisterRegex(mask[len(REGEX):])
+		if Error(err) {
+			return false, err
+		}
+
+		return r.MatchString(s), nil
+	}
+
 	if !ContainsWildcard(mask) {
 		return strings.ToLower(s) == strings.ToLower(mask), nil
 	}

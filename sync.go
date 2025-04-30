@@ -41,9 +41,9 @@ func (sync *Sync[T]) Set(value T) {
 	sync.Ref = value
 }
 
-func (sync *Sync[T]) RunSynchronized(fn func(T)) {
+func (sync *Sync[T]) RunSynchronized(fn func(T) error) error {
 	sync.Lock()
 	defer sync.Unlock()
 
-	fn(sync.Ref)
+	return fn(sync.Ref)
 }
