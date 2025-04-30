@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/dlclark/regexp2"
 	"reflect"
-	"regexp"
 	"strings"
 )
 
@@ -277,29 +276,52 @@ func (jason *Jason) Pretty() (string, error) {
 }
 
 func RemoveJsonComments(ba []byte) ([]byte, error) {
-	// enable multiline mode
-	// skip from start of line to the first \\ and remove the remaining characters
+	var buf bytes.Buffer
+	scanner := bufio.NewScanner(bytes.NewReader(ba))
 
-	s := string(ba)
+	for scanner.Scan() {
+		line := scanner.Text()
+		var resultLine strings.Builder
+		inString := false
+		escaped := false
 
-	s = regexp.MustCompile("(?m)(^ *\t*)\\/\\/.*").ReplaceAllString(s, "")
-	s = regexp.MustCompile("(?m)(^ *\t*)\\#.*").ReplaceAllString(s, "")
+		for i := 0; i < len(line); i++ {
+			c := line[i]
 
-	// remove a pending , on the last element before a closing ) ] or }
-	s, err := regexp2.MustCompile(",(?=\\s*[\\)\\]\\}])", 0).Replace(s, "", -1, -1)
+			// Toggle inString if unescaped quote
+			if c == '"' && !escaped {
+				inString = !inString
+			}
+
+			// If not in string and see //, ignore rest of line
+			if !inString && c == '/' && i+1 < len(line) && line[i+1] == '/' {
+				break
+			}
+
+			resultLine.WriteByte(c)
+
+			// Track escape sequences (only relevant in strings)
+			escaped = !escaped && c == '\\'
+		}
+
+		buf.WriteString(resultLine.String())
+		buf.WriteByte('\n')
+	}
+
+	s, err := regexp2.MustCompile(",(?=\\s*[\\)\\]\\}])", 0).Replace(buf.String(), "", -1, -1)
 	if Error(err) {
 		return nil, err
 	}
 
 	r := bytes.Buffer{}
 
-	scanner := bufio.NewScanner(strings.NewReader(s))
+	scanner = bufio.NewScanner(strings.NewReader(s))
 	scanner.Split(ScanLinesWithLF)
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if len(strings.TrimSpace(line)) != 0 {
-			r.Write([]byte(line))
+		if len(strings.TrimRight(line, " \t\r\n")) != 0 {
+			r.Write([]byte(strings.TrimRight(line, " \t")))
 		}
 	}
 

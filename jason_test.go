@@ -109,3 +109,38 @@ func TestJsonFieldName(t *testing.T) {
 
 	require.Equal(t, "Name", JsonDefaultName("name"))
 }
+
+func TestRemoveJsonComments(t *testing.T) {
+	input := `{
+  "name": "Alice", // this is a comment
+  "url": "http://example.com", // keep this
+  "note": "she said: \"// not a comment\"" // still not a comment
+  "array": [
+    {
+      "elem0": "0" // remove this
+      // ${script:getDurationInSeconds:${devicelog.ts},${job.videoStart}}
+    },
+	{"elem1": "1"},
+	//{"elem2": "2"}, 
+	//{"elem3": "3"},
+  ]
+}
+// full line comment
+`
+	expected := `{
+  "name": "Alice", 
+  "url": "http://example.com", 
+  "note": "she said: \"// not a comment\"" 
+  "array": [
+    {
+      "elem0": "0" 
+    },
+	{"elem1": "1"}
+  ]
+}
+`
+	output, err := RemoveJsonComments([]byte(input))
+	require.NoError(t, err)
+
+	require.Equal(t, expected, string(output))
+}
