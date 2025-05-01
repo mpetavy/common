@@ -202,7 +202,7 @@ func Init(title string, version string, git string, build string, description st
 
 	FlagAppProduct = SystemFlagString(FlagNameAppProduct, title, "app product")
 	FlagAppTicker = SystemFlagInt(FlagNameAppTicker, int(runTime.Milliseconds()), "app execution ticker")
-	FlagAppStartupDelay = SystemFlagInt(FlagNameAppStartupDelay, 3000, "app startup delay")
+	FlagAppStartupDelay = SystemFlagInt(FlagNameAppStartupDelay, 0, "app startup delay")
 
 	app = &application{
 		Title:         title,
