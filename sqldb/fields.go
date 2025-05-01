@@ -3,9 +3,14 @@ package sqldb
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/mpetavy/common"
 	"time"
 )
+
+type AsStringer interface {
+	AsString() string
+}
 
 type FieldString struct {
 	sql.NullString
@@ -22,9 +27,17 @@ func NewFieldString(v ...string) FieldString {
 	return o
 }
 
+func (c FieldString) AsString() string {
+	if c.Valid {
+		return fmt.Sprintf("%v", c.NullString.String)
+	}
+
+	return ""
+}
+
 func (c FieldString) MarshalJSON() ([]byte, error) {
 	if c.Valid {
-		return json.Marshal(c.String)
+		return json.Marshal(c.NullString.String)
 	}
 
 	return json.Marshal(nil)
@@ -32,7 +45,7 @@ func (c FieldString) MarshalJSON() ([]byte, error) {
 
 func (c *FieldString) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
-		c.String = ""
+		c.NullString.String = ""
 		c.Valid = false
 
 		return nil
@@ -43,7 +56,7 @@ func (c *FieldString) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	c.String = v
+	c.NullString.String = v
 	c.Valid = true
 
 	return nil
@@ -54,12 +67,12 @@ func (c *FieldString) SetString(v string) {
 }
 
 func (c *FieldString) SetField(other FieldString) {
-	c.String = other.String
+	c.NullString.String = other.NullString.String
 	c.Valid = other.Valid
 }
 
 func (c *FieldString) SetNull() {
-	c.String = ""
+	c.NullString.String = ""
 	c.Valid = false
 }
 
@@ -76,6 +89,14 @@ func NewFieldInt64(v ...int64) FieldInt64 {
 	common.Error(o.Scan(v[0]))
 
 	return o
+}
+
+func (c FieldInt64) AsString() string {
+	if c.Valid {
+		return fmt.Sprintf("%v", c.NullInt64.Int64)
+	}
+
+	return ""
 }
 
 func (c FieldInt64) MarshalJSON() ([]byte, error) {
@@ -129,6 +150,14 @@ func NewFieldTime(v ...time.Time) FieldTime {
 	return o
 }
 
+func (c FieldTime) AsString() string {
+	if c.Valid {
+		return fmt.Sprintf("%v", c.NullTime.Time)
+	}
+
+	return ""
+}
+
 func (c FieldTime) MarshalJSON() ([]byte, error) {
 	if c.Valid {
 		return json.Marshal(c.Time.UTC())
@@ -178,6 +207,14 @@ func NewFieldBool(v ...bool) FieldBool {
 	common.Error(o.Scan(v[0]))
 
 	return o
+}
+
+func (c FieldBool) AsString() string {
+	if c.Valid {
+		return fmt.Sprintf("%v", c.NullBool.Bool)
+	}
+
+	return ""
 }
 
 func (c FieldBool) MarshalJSON() ([]byte, error) {
