@@ -17,3 +17,12 @@ func SliceRemove[S ~[]E, E comparable](s S, e ...E) S {
 func SliceDelete[S ~[]E, E any](s S, index int) S {
 	return slices.Delete(s, index, index+1)
 }
+
+func SliceMove[S ~[]E, E any](s S, from int, to int) S {
+	e := s[from]
+
+	s = slices.Delete(s, from, from+1)
+	s = slices.Insert(s, to, e)
+
+	return s
+}

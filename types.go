@@ -59,7 +59,7 @@ var (
 	WindowsRestrictedFilenames = []string{"CON", "PRN", "AUX", "NUL", " COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"}
 	SecretTags                 = []string{"username", "password", "token", "pwd", "credential", "subscription", "private", "accesskey", "secret", "endpoint", "secretkey", "authorization"}
 
-	regexes *Sync[map[string]*regexp.Regexp] = NewSyncOf(make(map[string]*regexp.Regexp))
+	regexCache = NewCache[string, *regexp.Regexp](1000)
 )
 
 // Trim4Path trims given path to be usefull as filename
@@ -228,22 +228,19 @@ func Rune(s string, index int) (rune, error) {
 }
 
 func RegisterRegex(regex string) (*regexp.Regexp, error) {
-	err := regexes.RunSynchronized(func(m map[string]*regexp.Regexp) error {
-		if _, ok := m[regex]; !ok {
-			r, err := regexp.Compile(regex)
-			if Error(err) {
-				return err
-			}
-			m[regex] = r
+	err := regexCache.PutFunc(regex, func() (*regexp.Regexp, error) {
+		r, err := regexp.Compile(regex)
+		if Error(err) {
+			return nil, err
 		}
 
-		return nil
+		return r, nil
 	})
 	if Error(err) {
 		return nil, err
 	}
 
-	return regexes.Get()[regex], nil
+	return regexCache.Get(regex)
 }
 
 func ContainsWildcard(s string) bool {
