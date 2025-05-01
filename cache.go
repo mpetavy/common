@@ -2,54 +2,50 @@ package common
 
 import (
 	"fmt"
-	"slices"
-	"sync"
 )
 
+// Cache is a thread-safe, LRU-based cache using a deque.
 type Cache[K comparable, V any] struct {
 	capacity int
-	keys     []K
-	values   []V
-	mu       sync.RWMutex
+	data     map[K]V
+	order    *Deque[K]
+	mu       ReentrantMutex // Ensure thread safety
 }
 
-type ErrNotFound[T any] struct {
-	What T
+type ErrNotFound[K comparable] struct {
+	What K
 }
 
-func (e *ErrNotFound[T]) Error() string {
+func (e *ErrNotFound[K]) Error() string {
 	return fmt.Sprintf("Not found: %v", e.What)
 }
 
+// NewCache creates a new cache with the specified capacity.
 func NewCache[K comparable, V any](capacity int) *Cache[K, V] {
 	return &Cache[K, V]{
 		capacity: capacity,
-		keys:     make([]K, 0),
-		values:   make([]V, 0),
+		data:     make(map[K]V),
+		order:    NewDeque[K](),
 	}
 }
 
-func (cache *Cache[K, V]) Len() int {
-	return len(cache.keys)
+// Len returns the current size of the cache.
+func (c *Cache[K, V]) Len() int {
+	c.mu.Lock() // Lock for reading
+	defer c.mu.Unlock()
+	return len(c.data)
 }
 
-func (cache *Cache[K, V]) PutFunc(key K, fn func() (V, error)) error {
-	cache.mu.Lock()
-	defer func() {
-		cache.mu.Unlock()
-	}()
+// Put inserts a new value into the cache, or updates an existing one.
+func (c *Cache[K, V]) PutFunc(key K, fn func() (V, error)) error {
+	c.mu.Lock() // Lock for writing
+	defer c.mu.Unlock()
 
-	p := slices.Index(cache.keys, key)
-	if p != -1 {
-		cache.keys = SliceMove(cache.keys, p, 0)
-		cache.values = SliceMove(cache.values, p, 0)
+	_, ok := c.data[key]
+	if ok {
+		c.order.PushFront(key)
 
 		return nil
-	}
-
-	if len(cache.keys) >= cache.capacity {
-		cache.keys = slices.Delete(cache.keys, cache.capacity-1, len(cache.keys))
-		cache.values = slices.Delete(cache.values, cache.capacity-1, len(cache.values))
 	}
 
 	value, err := fn()
@@ -57,50 +53,93 @@ func (cache *Cache[K, V]) PutFunc(key K, fn func() (V, error)) error {
 		return err
 	}
 
-	cache.keys = slices.Insert(cache.keys, 0, key)
-	cache.values = slices.Insert(cache.values, 0, value)
+	if c.Len() >= c.capacity {
+		// Remove least recently used item (from the back of the deque)
+		leastUsedKey, _ := c.order.PopBack()
+		delete(c.data, leastUsedKey)
+	}
+
+	// Insert or update the value
+	c.data[key] = value
+	// Move the key to the front of the deque (mark it as most recently used)
+	c.order.PushFront(key)
 
 	return nil
 }
 
-func (cache *Cache[K, V]) Put(key K, value V) error {
-	return cache.PutFunc(key, func() (V, error) {
+func (c *Cache[K, V]) Put(key K, value V) error {
+	return c.PutFunc(key, func() (V, error) {
 		return value, nil
 	})
 }
 
-func (cache *Cache[K, V]) Get(key K) (V, error) {
-	cache.mu.Lock()
-	defer func() {
-		cache.mu.Unlock()
-	}()
+// Get retrieves a value from the cache and moves the key to the front (mark as recently used).
+func (c *Cache[K, V]) Get(key K) (V, error) {
+	c.mu.Lock() // Lock for writing (we move the key to the front, so it's a write operation)
+	defer c.mu.Unlock()
 
-	p := slices.Index(cache.keys, key)
-	if p != -1 {
-		cache.keys = SliceMove(cache.keys, p, 0)
-		cache.values = SliceMove(cache.values, p, 0)
-
-		return cache.values[0], nil
+	value, found := c.data[key]
+	if !found {
+		var zero V
+		return zero, &ErrNotFound[K]{What: key}
 	}
 
-	value := new(V)
-
-	return *value, &ErrNotFound[K]{What: key}
+	// Move the key to the front of the deque (mark it as recently used)
+	c.order.PushFront(key)
+	return value, nil
 }
 
-func (cache *Cache[K, V]) Remove(key K) error {
-	cache.mu.Lock()
-	defer func() {
-		cache.mu.Unlock()
-	}()
+// Remove removes a key-value pair from the cache.
+func (c *Cache[K, V]) Remove(key K) error {
+	c.mu.Lock() // Lock for writing
+	defer c.mu.Unlock()
 
-	p := slices.Index(cache.keys, key)
-	if p == -1 {
+	_, found := c.data[key]
+	if !found {
 		return &ErrNotFound[K]{What: key}
 	}
 
-	cache.keys = slices.Delete(cache.keys, p, p+1)
-	cache.values = slices.Delete(cache.values, p, p+1)
-
+	// Remove from the deque and data
+	_, err := c.order.PopFront() // or PopBack() depending on where the key is
+	if Error(err) {
+		return err
+	}
+	delete(c.data, key)
 	return nil
+}
+
+func (c *Cache[K, V]) KeyIndex(key K) int {
+	i := 0
+	c.order.Iterate(func(current K) bool {
+		if key == current {
+			return false
+		}
+
+		i++
+
+		return true
+	})
+
+	if i == len(c.data) {
+		i = -1
+	}
+
+	return i
+}
+
+func (c *Cache[K, V]) KeyAt(index int) K {
+	var found K
+	i := 0
+	c.order.Iterate(func(current K) bool {
+		found = current
+		if i == index {
+			return false
+		}
+
+		i++
+
+		return true
+	})
+
+	return found
 }

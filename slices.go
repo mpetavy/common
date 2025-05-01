@@ -19,10 +19,22 @@ func SliceDelete[S ~[]E, E any](s S, index int) S {
 }
 
 func SliceMove[S ~[]E, E any](s S, from int, to int) S {
-	e := s[from]
+	if from == to {
+		return s
+	}
 
-	s = slices.Delete(s, from, from+1)
-	s = slices.Insert(s, to, e)
+	// Remove the element from the original position
+	e := s[from]
+	s = append(s[:from], s[from+1:]...)
+
+	// Insert the element at the new position
+	if to == 0 {
+		s = append([]E{e}, s...)
+	} else if to == len(s) {
+		s = append(s, e)
+	} else {
+		s = append(s[:to], append([]E{e}, s[to:]...)...)
+	}
 
 	return s
 }
