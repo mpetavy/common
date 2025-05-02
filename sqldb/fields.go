@@ -152,7 +152,7 @@ func NewFieldTime(v ...time.Time) FieldTime {
 
 func (c FieldTime) AsString() string {
 	if c.Valid {
-		return fmt.Sprintf("%v", c.NullTime.Time)
+		return c.NullTime.Time.Format(time.RFC3339)
 	}
 
 	return ""
