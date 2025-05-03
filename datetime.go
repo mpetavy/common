@@ -1,6 +1,7 @@
 package common
 
 import (
+	"strings"
 	"time"
 )
 
@@ -35,6 +36,15 @@ var DateTimeMilliMask = DateMask + Separator + TimeMask + Msec
 
 var SortedDateMask = Year + "-" + Month + "-" + Day
 var SortedDateTimeMilliMask = SortedDateMask + Separator + TimeMask + Msec
+
+func FileTimstamp(now ...time.Time) string {
+	n := time.Now()
+	if len(now) > 0 {
+		n = now[0]
+	}
+
+	return strings.ReplaceAll(n.Format(time.RFC3339), ":", "_")
+}
 
 // ParseDateTime parses only date, but no time
 func ParseDateTime(mask string, v string) (time.Time, error) {
