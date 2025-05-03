@@ -43,7 +43,7 @@ func FileTimstamp(now ...time.Time) string {
 		n = now[0]
 	}
 
-	return strings.ReplaceAll(n.Format(time.RFC3339), ":", "_")
+	return strings.ReplaceAll(n.Format(time.RFC3339), ":", "-")
 }
 
 // ParseDateTime parses only date, but no time
