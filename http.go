@@ -54,7 +54,7 @@ var (
 	ErrNoBodyContent = fmt.Errorf("no HTTP body provided")
 )
 
-type BasicAuthFunc func(username string, password string) error
+type BasicAuthFunc func(r *http.Request, username string, password string) error
 
 type ErrHTTPRequest struct {
 	Request    string
@@ -153,7 +153,7 @@ func BasicAuthHandler(mandatory bool, authFunc BasicAuthFunc, next http.HandlerF
 				}
 			}
 
-			err := authFunc(username, password)
+			err := authFunc(r, username, password)
 			if Error(err) {
 				return http.StatusUnauthorized, err
 			}
