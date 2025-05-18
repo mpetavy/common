@@ -34,19 +34,21 @@ const (
 
 	HEADER_LOCATION = "Location"
 
-	FlagNameHTTPHeaderLimit = "http.headerlimit"
-	FlagNameHTTPBodyLimit   = "http.bodylimit"
-	FlagNameHTTPTLSInsecure = "http.tlsinsecure"
-	FlagNameHTTPTimeout     = "http.timeout"
-	FlagNameHTTPGzip        = "http.gzip"
+	FlagNameHTTPHeaderLimit   = "http.headerlimit"
+	FlagNameHTTPBodyLimit     = "http.bodylimit"
+	FlagNameHTTPTLSInsecure   = "http.tlsinsecure"
+	FlagNameHTTPTimeout       = "http.timeout"
+	FlagNameHTTPGzip          = "http.gzip"
+	FlagNameHTTPLocalhostAuth = "http.localhost.auth"
 )
 
 var (
-	FlagHTTPHeaderLimit = SystemFlagInt64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
-	FlagHTTPBodyLimit   = SystemFlagInt64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
-	FlagHTTPTLSInsecure = SystemFlagBool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
-	FlagHTTPTimeout     = SystemFlagInt(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
-	FlagHTTPGzip        = SystemFlagBool(FlagNameHTTPGzip, true, "HTTP GZip support")
+	FlagHTTPHeaderLimit   = SystemFlagInt64(FlagNameHTTPHeaderLimit, 1024*1024, "HTTP header limit")
+	FlagHTTPBodyLimit     = SystemFlagInt64(FlagNameHTTPBodyLimit, 5*1024*1024*1024, "HTTP body limit")
+	FlagHTTPTLSInsecure   = SystemFlagBool(FlagNameHTTPTLSInsecure, true, "HTTP default TLS insecure")
+	FlagHTTPTimeout       = SystemFlagInt(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
+	FlagHTTPGzip          = SystemFlagBool(FlagNameHTTPGzip, true, "HTTP GZip support")
+	FlagHTTPLocalhostAuth = SystemFlagBool(FlagNameHTTPLocalhostAuth, true, "HTTP localhost auth")
 
 	httpServer *http.Server
 
@@ -143,30 +145,43 @@ func BasicAuthHandler(mandatory bool, authFunc BasicAuthFunc, next http.HandlerF
 	DebugFunc()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		status, err := func() (int, error) {
-			username, password, ok := r.BasicAuth()
-			if !ok {
-				if mandatory {
-					return http.StatusUnauthorized, ErrUnauthorized
-				} else {
-					return http.StatusOK, nil
+		bool := false
+
+		if *FlagHTTPLocalhostAuth {
+			host, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err == nil && IsLocalhost(net.ParseIP(host)) {
+				Debug("Localhost authentication")
+
+				bool = true
+			}
+		}
+
+		if !bool {
+			status, err := func() (int, error) {
+				username, password, ok := r.BasicAuth()
+				if !ok {
+					if mandatory {
+						return http.StatusUnauthorized, ErrUnauthorized
+					} else {
+						return http.StatusOK, nil
+					}
 				}
+
+				err := authFunc(r, username, password)
+				if Error(err) {
+					return http.StatusUnauthorized, err
+				}
+
+				return http.StatusOK, nil
+			}()
+
+			if err != nil {
+				w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+
+				http.Error(w, err.Error(), status)
+
+				return
 			}
-
-			err := authFunc(r, username, password)
-			if Error(err) {
-				return http.StatusUnauthorized, err
-			}
-
-			return http.StatusOK, nil
-		}()
-
-		if err != nil {
-			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
-
-			http.Error(w, err.Error(), status)
-
-			return
 		}
 
 		next.ServeHTTP(w, r)
