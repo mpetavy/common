@@ -188,11 +188,12 @@ func Init(title string, version string, git string, build string, description st
 
 				git = setting.Value
 			case "vcs.time":
+				date, _ = time.Parse(time.RFC3339, setting.Value)
+
 				if version != "" {
 					continue
 				}
 
-				date, _ = time.Parse(time.RFC3339, setting.Value)
 				d := date.Sub(time.Date(date.Year(), 1, 1, 0, 0, 0, 0, time.UTC))
 
 				version = fmt.Sprintf("%d.%d", (date.Year()-22)%100, int(d.Abs().Hours())/24)
