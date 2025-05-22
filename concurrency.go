@@ -300,20 +300,17 @@ func NewAlignedTicker(tickerTime time.Duration) *AlignedTicker {
 	}
 }
 
-func (at *AlignedTicker) current() time.Time {
+func (at *AlignedTicker) NextTicker() time.Duration {
+	current := at.now
 	if at.now.IsZero() {
-		return time.Now()
+		current = time.Now()
 	}
 
-	return at.now
-}
-
-func (at *AlignedTicker) NextTicker() time.Duration {
-	for at.next.Before(at.current()) || at.next.Equal(at.current()) {
+	for at.next.Before(current) || at.next.Equal(current) {
 		at.next = at.next.Add(at.TickerTime)
 	}
 
-	delta := at.next.Sub(at.current())
+	delta := at.next.Sub(current)
 
 	Debug("Next ticker: %v sleep: %v\n", at.next, delta)
 
