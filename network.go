@@ -27,7 +27,7 @@ const (
 var (
 	FlagIoPrimaryIface     = SystemFlagString(FlagNameIoNetworkIface, "", "primary ethernet interface")
 	FlagIoNetworkTimeout   = SystemFlagInt(FlagNameIoNetworkTimeout, 10*1000, "network ready timeout")
-	FlagIoConnectTimeout   = SystemFlagInt(FlagNameIoConnectTimeout, 3*1000, "network server and client dial timeout")
+	FlagIoConnectTimeout   = SystemFlagInt(FlagNameIoConnectTimeout, 10*1000, "network server and client dial timeout")
 	FlagIoReadwriteTimeout = SystemFlagInt(FlagNameIoReadwriteTimeout, 30*60*1000, "network read/write timeout")
 )
 

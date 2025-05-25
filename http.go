@@ -419,22 +419,27 @@ func HTTPRequest(httpTransport *http.Transport, timeout time.Duration, method st
 	}()
 
 	client := &http.Client{}
+	client.Timeout = timeout
 
 	if headers == nil {
 		headers = make(http.Header)
 	}
 
-	if httpTransport != nil {
-		client.Transport = httpTransport
-	} else {
+	connectTimeout := MillisecondToDuration(*FlagIoConnectTimeout)
+
+	if httpTransport == nil {
+		httpTransport = &http.Transport{
+			TLSHandshakeTimeout: connectTimeout,
+			DialContext:         (&net.Dialer{Timeout: connectTimeout}).DialContext,
+		}
 		if *FlagHTTPTLSInsecure {
-			client.Transport = &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
+			httpTransport.TLSClientConfig = &tls.Config{
+				InsecureSkipVerify: true,
 			}
 		}
 	}
+
+	client.Transport = httpTransport
 
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		for key, val := range via[0].Header {

@@ -23,34 +23,36 @@ var (
 	FlagConcurrentLimit   = SystemFlagInt(FlagNameConcurrentLimit, Max(4, runtime.NumCPU()*2), "Limit of maximum current running tasks")
 	FLagConcurrentTimeout = SystemFlagInt(FlagNameConcurrentTimeout, 10000, "Tinmeout waiting for running a current running tasks")
 
-	routines        = make(map[int]RuntimeInfo)
-	routinesCounter = 0
-	routinesMutex   = sync.Mutex{}
+	registeredGoRoutines      = make(map[int]RuntimeInfo)
+	registeredGoRoutinesMutex = sync.Mutex{}
 
 	onceConcurrentLimit sync.Once
 	concurrentLimitCh   chan struct{}
 )
 
 func RegisterConcurrentLimit() bool {
-	onceConcurrentLimit.Do(func() {
-		concurrentLimitCh = make(chan struct{}, *FlagConcurrentLimit)
-	})
-
 	if *FlagConcurrentLimit == 0 {
 		return false
 	}
 
-	DebugFunc("Register...")
+	onceConcurrentLimit.Do(func() {
+		concurrentLimitCh = make(chan struct{}, *FlagConcurrentLimit)
+	})
 
+	ti := time.NewTimer(MillisecondToDuration(*FLagConcurrentTimeout))
 	defer func() {
-		DebugFunc("Run")
+		ti.Stop()
 	}()
 
 	select {
 	case concurrentLimitCh <- struct{}{}:
+		if !ti.Stop() {
+			<-ti.C
+		}
+
 		return true
-	case <-time.After(MillisecondToDuration(*FLagConcurrentTimeout)):
-		Warn("Concurrent limit exceeded")
+	case <-ti.C:
+		Info(fmt.Sprintf("Concurrent limit exceeded. Limit: %d timeout: %d", *FlagConcurrentLimit, *FLagConcurrentTimeout))
 
 		return false
 	}
@@ -61,46 +63,50 @@ func UnregisterConcurrentLimit(fromChannel bool) {
 		return
 	}
 
-	DebugFunc("Unregister")
-
 	if fromChannel {
 		<-concurrentLimitCh
 	}
 }
 
 func RegisterGoRoutine(index int) int {
-	routinesMutex.Lock()
-	defer routinesMutex.Unlock()
+	registeredGoRoutinesMutex.Lock()
+	defer registeredGoRoutinesMutex.Unlock()
 
 	ri := GetRuntimeInfo(index)
-	id := routinesCounter
-	routinesCounter++
+	id := int(GoRoutineId())
 
-	routines[id] = ri
+	registeredGoRoutines[id] = ri
 
 	return id
 }
 
 func UnregisterGoRoutine(id int) {
-	routinesMutex.Lock()
-	defer routinesMutex.Unlock()
+	registeredGoRoutinesMutex.Lock()
+	defer registeredGoRoutinesMutex.Unlock()
 
-	delete(routines, id)
+	delete(registeredGoRoutines, id)
+}
+
+func NumRegisteredGoRoutines() int {
+	registeredGoRoutinesMutex.Lock()
+	defer registeredGoRoutinesMutex.Unlock()
+
+	return len(registeredGoRoutines)
 }
 
 func RegisteredGoRoutines(f func(id int, ri RuntimeInfo)) {
-	routinesMutex.Lock()
-	defer routinesMutex.Unlock()
+	registeredGoRoutinesMutex.Lock()
+	defer registeredGoRoutinesMutex.Unlock()
 
 	ks := make([]int, 0)
-	for k := range routines {
+	for k := range registeredGoRoutines {
 		ks = append(ks, k)
 	}
 
 	sort.Ints(ks)
 
 	for _, k := range ks {
-		f(k, routines[k])
+		f(k, registeredGoRoutines[k])
 	}
 }
 
