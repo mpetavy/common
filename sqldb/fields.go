@@ -8,10 +8,6 @@ import (
 	"time"
 )
 
-type AsStringer interface {
-	AsString() string
-}
-
 type FieldString struct {
 	sql.NullString
 }
@@ -27,8 +23,8 @@ func NewFieldString(v ...string) FieldString {
 	return o
 }
 
-func (c FieldString) AsString() string {
-	if c.Valid {
+func (c FieldString) String() string {
+	if c.NullString.Valid {
 		return fmt.Sprintf("%v", c.NullString.String)
 	}
 
@@ -36,7 +32,7 @@ func (c FieldString) AsString() string {
 }
 
 func (c FieldString) MarshalJSON() ([]byte, error) {
-	if c.Valid {
+	if c.NullString.Valid {
 		return json.Marshal(c.NullString.String)
 	}
 
@@ -46,7 +42,7 @@ func (c FieldString) MarshalJSON() ([]byte, error) {
 func (c *FieldString) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
 		c.NullString.String = ""
-		c.Valid = false
+		c.NullString.Valid = false
 
 		return nil
 	}
@@ -57,9 +53,13 @@ func (c *FieldString) UnmarshalJSON(data []byte) error {
 	}
 
 	c.NullString.String = v
-	c.Valid = true
+	c.NullString.Valid = true
 
 	return nil
+}
+
+func (c *FieldString) GetString(v string) {
+	common.Error(c.Scan(v))
 }
 
 func (c *FieldString) SetString(v string) {
@@ -68,12 +68,12 @@ func (c *FieldString) SetString(v string) {
 
 func (c *FieldString) SetField(other FieldString) {
 	c.NullString.String = other.NullString.String
-	c.Valid = other.Valid
+	c.NullString.Valid = other.Valid
 }
 
 func (c *FieldString) SetNull() {
 	c.NullString.String = ""
-	c.Valid = false
+	c.NullString.Valid = false
 }
 
 type FieldInt64 struct {
@@ -91,8 +91,8 @@ func NewFieldInt64(v ...int64) FieldInt64 {
 	return o
 }
 
-func (c FieldInt64) AsString() string {
-	if c.Valid {
+func (c FieldInt64) String() string {
+	if c.NullInt64.Valid {
 		return fmt.Sprintf("%v", c.NullInt64.Int64)
 	}
 
@@ -100,8 +100,8 @@ func (c FieldInt64) AsString() string {
 }
 
 func (c FieldInt64) MarshalJSON() ([]byte, error) {
-	if c.Valid {
-		return json.Marshal(c.Int64)
+	if c.NullInt64.Valid {
+		return json.Marshal(c.NullInt64.Int64)
 	}
 
 	return json.Marshal(nil)
@@ -109,8 +109,8 @@ func (c FieldInt64) MarshalJSON() ([]byte, error) {
 
 func (c *FieldInt64) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
-		c.Int64 = 0
-		c.Valid = false
+		c.NullInt64.Int64 = 0
+		c.NullInt64.Valid = false
 
 		return nil
 	}
@@ -120,10 +120,18 @@ func (c *FieldInt64) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	c.Int64 = v
-	c.Valid = true
+	c.NullInt64.Int64 = v
+	c.NullInt64.Valid = true
 
 	return nil
+}
+
+func (c *FieldInt64) Int64() int64 {
+	if c.NullInt64.Valid {
+		return c.NullInt64.Int64
+	}
+
+	return 0
 }
 
 func (c *FieldInt64) SetInt64(v int64) {
@@ -131,8 +139,8 @@ func (c *FieldInt64) SetInt64(v int64) {
 }
 
 func (c *FieldInt64) SetNull() {
-	c.Int64 = 0
-	c.Valid = false
+	c.NullInt64.Int64 = 0
+	c.NullInt64.Valid = false
 }
 
 type FieldTime struct {
@@ -150,8 +158,8 @@ func NewFieldTime(v ...time.Time) FieldTime {
 	return o
 }
 
-func (c FieldTime) AsString() string {
-	if c.Valid {
+func (c FieldTime) String() string {
+	if c.NullTime.Valid {
 		return c.NullTime.Time.Format(time.RFC3339)
 	}
 
@@ -159,8 +167,8 @@ func (c FieldTime) AsString() string {
 }
 
 func (c FieldTime) MarshalJSON() ([]byte, error) {
-	if c.Valid {
-		return json.Marshal(c.Time.UTC())
+	if c.NullTime.Valid {
+		return json.Marshal(c.NullTime.Time.UTC())
 	}
 
 	return json.Marshal(nil)
@@ -168,8 +176,8 @@ func (c FieldTime) MarshalJSON() ([]byte, error) {
 
 func (c *FieldTime) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
-		c.Time = time.Time{}
-		c.Valid = false
+		c.NullTime.Time = time.Time{}
+		c.NullTime.Valid = false
 
 		return nil
 	}
@@ -179,10 +187,18 @@ func (c *FieldTime) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	c.Time = v
-	c.Valid = true
+	c.NullTime.Time = v
+	c.NullTime.Valid = true
 
 	return nil
+}
+
+func (c *FieldTime) Time() time.Time {
+	if c.NullTime.Valid {
+		return c.NullTime.Time
+	}
+
+	return time.Time{}
 }
 
 func (c *FieldTime) SetTime(v time.Time) {
@@ -190,8 +206,8 @@ func (c *FieldTime) SetTime(v time.Time) {
 }
 
 func (c *FieldTime) SetNull() {
-	c.Time = time.Time{}
-	c.Valid = false
+	c.NullTime.Time = time.Time{}
+	c.NullTime.Valid = false
 }
 
 type FieldBool struct {
@@ -209,8 +225,8 @@ func NewFieldBool(v ...bool) FieldBool {
 	return o
 }
 
-func (c FieldBool) AsString() string {
-	if c.Valid {
+func (c FieldBool) String() string {
+	if c.NullBool.Valid {
 		return fmt.Sprintf("%v", c.NullBool.Bool)
 	}
 
@@ -218,8 +234,8 @@ func (c FieldBool) AsString() string {
 }
 
 func (c FieldBool) MarshalJSON() ([]byte, error) {
-	if c.Valid {
-		return json.Marshal(c.Bool)
+	if c.NullBool.Valid {
+		return json.Marshal(c.NullBool.Bool)
 	}
 
 	return json.Marshal(nil)
@@ -227,8 +243,8 @@ func (c FieldBool) MarshalJSON() ([]byte, error) {
 
 func (c *FieldBool) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
-		c.Bool = false
-		c.Valid = false
+		c.NullBool.Bool = false
+		c.NullBool.Valid = false
 
 		return nil
 	}
@@ -238,8 +254,8 @@ func (c *FieldBool) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	c.Bool = v
-	c.Valid = true
+	c.NullBool.Bool = v
+	c.NullBool.Valid = true
 
 	return nil
 }
@@ -249,6 +265,6 @@ func (c *FieldBool) SetBool(v bool) {
 }
 
 func (c *FieldBool) SetNull() {
-	c.Bool = false
-	c.Valid = false
+	c.NullBool.Bool = false
+	c.NullBool.Valid = false
 }

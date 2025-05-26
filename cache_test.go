@@ -1,10 +1,8 @@
 package common
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
-	"time"
 )
 
 func TestCache(t *testing.T) {
@@ -53,11 +51,9 @@ func TestCachePerformance(t *testing.T) {
 	for i := range cache.capacity {
 		require.NoError(t, cache.Put(i, i))
 	}
-	start := time.Now()
 	for range cache.capacity {
 		v := Rnd(cache.capacity)
 		_, err := cache.Get(v)
 		require.NoError(t, err)
 	}
-	fmt.Printf("%v\n", time.Since(start))
 }
