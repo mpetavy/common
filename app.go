@@ -117,7 +117,7 @@ var (
 	FlagAppTicker           *int
 	FlagAppStartupDelay     *int
 	ticker                  *time.Ticker
-	appLifecycle            = NewNotice()
+	appLifecycle            = NewNotice(true, nil)
 	onceBanner              sync.Once
 	onceRunningAsContainer  sync.Once
 	onceRunningAsService    sync.Once

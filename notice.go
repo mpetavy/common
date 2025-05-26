@@ -2,66 +2,77 @@ package common
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 type Notice struct {
-	isSet bool
+	isSet atomic.Bool
 	mu    sync.Mutex
-	ch    chan struct{}
+	chs   []chan struct{}
+	fn    func(notice *Notice)
 }
 
-func NewNotice() *Notice {
-	return &Notice{
-		isSet: true,
-		mu:    sync.Mutex{},
+func NewNotice(isSet bool, fn func(notice *Notice)) *Notice {
+	notice := &Notice{
+		mu: sync.Mutex{},
+		fn: fn,
 	}
+	notice.isSet.Store(isSet)
+
+	return notice
 }
 
-func (this *Notice) Channel() chan struct{} {
-	this.mu.Lock()
-	defer this.mu.Unlock()
+func (notice *Notice) Channel() chan struct{} {
+	notice.mu.Lock()
+	defer notice.mu.Unlock()
 
-	if this.ch == nil {
-		this.ch = make(chan struct{})
-	}
+	ch := make(chan struct{})
 
-	return this.ch
+	notice.chs = append(notice.chs, ch)
+
+	return ch
 }
 
-func (this *Notice) IsSet() bool {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	return this.isSet
+func (notice *Notice) IsSet() bool {
+	return notice.isSet.Load()
 }
 
-func (this *Notice) Set() bool {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	if !this.isSet {
-		this.isSet = true
-
-		return true
-	}
-
-	return false
-}
-
-func (this *Notice) Unset() bool {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	if this.isSet {
-		this.isSet = false
-
-		if this.ch != nil {
-			close(this.ch)
-			this.ch = nil
+func (notice *Notice) Set() bool {
+	if notice.isSet.CompareAndSwap(false, true) {
+		if notice.fn != nil {
+			notice.fn(notice)
 		}
 
 		return true
 	}
 
 	return false
+}
+
+func (notice *Notice) Unset() bool {
+	if notice.isSet.CompareAndSwap(true, false) {
+		notice.mu.Lock()
+
+		for i := 0; i < len(notice.chs); i++ {
+			close(notice.chs[i])
+		}
+
+		notice.chs = nil
+
+		notice.mu.Unlock()
+
+		if notice.fn != nil {
+			notice.fn(notice)
+		}
+
+		return true
+	}
+
+	return false
+}
+
+func (notice *Notice) Func() {
+	if notice.fn != nil {
+		notice.fn(notice)
+	}
 }
