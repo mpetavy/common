@@ -9,6 +9,7 @@ import (
 	ctxio "github.com/jbenet/go-context/io"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -250,6 +251,24 @@ func IsValidFilename(path string) bool {
 	DebugFunc("%s: %v", path, b)
 
 	return b
+}
+
+func FilepathToURI(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if Error(err) {
+		return "", err
+	}
+
+	if IsWindows() {
+		absPath = "/" + filepath.ToSlash(absPath)
+	}
+
+	u := url.URL{
+		Scheme: "file",
+		Path:   absPath,
+	}
+
+	return u.String(), nil
 }
 
 // FileExists does ... guess what :-)
