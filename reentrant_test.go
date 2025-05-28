@@ -15,16 +15,16 @@ func TestReentrantSimple(t *testing.T) {
 	rm.Lock()
 	rm.Lock()
 
-	require.Equal(t, rm.count.Load(), uint64(3))
+	require.Equal(t, rm.count, uint64(3))
 
 	rm.Unlock()
 
-	require.Equal(t, rm.count.Load(), uint64(2))
+	require.Equal(t, rm.count, uint64(2))
 
 	rm.UnlockNow()
 
-	require.Equal(t, rm.count.Load(), uint64(0))
-	require.Equal(t, rm.id.Load(), uint64(0))
+	require.Equal(t, rm.count, uint64(0))
+	require.Equal(t, rm.owner, uint64(0))
 }
 
 func TestReentrantBlocking(t *testing.T) {
@@ -54,4 +54,53 @@ func TestReentrantBlocking(t *testing.T) {
 	require.LessOrEqual(t, int64(100), time.Since(start).Milliseconds())
 
 	require.True(t, i.Load() == 2)
+}
+
+func TestReentrantEnterIfSame(t *testing.T) {
+	m := NewReentrantMutex()
+	m.EnterIfSame = false
+
+	require.True(t, m.TryLock())
+	require.False(t, m.TryLock())
+	require.False(t, m.TryLock())
+
+	require.Equal(t, m.count, uint64(1))
+
+	m.Unlock()
+
+	require.Equal(t, m.count, uint64(0))
+
+	m = NewReentrantMutex()
+	m.EnterIfSame = true
+
+	require.True(t, m.TryLock())
+	require.True(t, m.TryLock())
+	require.True(t, m.TryLock())
+
+	require.Equal(t, m.count, uint64(3))
+
+	for c := range 3 {
+		m.Unlock()
+
+		require.Equal(t, m.count, uint64(2-c))
+	}
+
+	require.Equal(t, m.count, uint64(0))
+	require.Equal(t, m.owner, uint64(0))
+}
+
+func TestReentrantUnlockNow(t *testing.T) {
+	m := NewReentrantMutex()
+	m.EnterIfSame = true
+
+	require.True(t, m.TryLock())
+	require.True(t, m.TryLock())
+	require.True(t, m.TryLock())
+
+	require.Equal(t, m.count, uint64(3))
+
+	m.UnlockNow()
+
+	require.Equal(t, m.count, uint64(0))
+	require.Equal(t, m.owner, uint64(0))
 }

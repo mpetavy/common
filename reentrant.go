@@ -1,57 +1,125 @@
 package common
 
 import (
-	"sync/atomic"
+	"fmt"
+	"sync"
 )
 
-// ReentrantMutex is a Mutex which shall prevent a function to enter if it is already taken by an other GO routine
+// ReentrantMutex is a mutex that can be locked multiple times by the same goroutine.
 type ReentrantMutex struct {
-	id           atomic.Uint64
-	count        atomic.Uint64
-	loopNotifier LoopNotifier
+	EnterIfSame bool
+	owner       uint64
+	count       uint64
+	mu          sync.Mutex
+	muUpdate    sync.Mutex
 }
+
+var ErrReentrantNotOwner = fmt.Errorf("reentrantmutex: unlock called by non-owner")
 
 func NewReentrantMutex() *ReentrantMutex {
 	return &ReentrantMutex{}
 }
 
-func (m *ReentrantMutex) TryLock() bool {
-	id := GoRoutineId()
+func (m *ReentrantMutex) Lock() {
+	gid := GoRoutineId()
 
-	if m.id.CompareAndSwap(0, id) || m.id.CompareAndSwap(id, id) {
-		m.count.Store(m.count.Load() + 1)
+	alreadyOwned := false
 
-		return true
+	m.muUpdate.Lock()
+
+	if m.owner == gid {
+		m.count++
+
+		alreadyOwned = true
 	}
 
-	return false
+	m.muUpdate.Unlock()
+
+	if alreadyOwned {
+		return
+	}
+
+	m.mu.Lock()
+
+	m.owner = gid
+	m.count = 1
 }
 
-func (m *ReentrantMutex) Lock() {
-	m.loopNotifier.Reset()
+func (m *ReentrantMutex) TryLock() bool {
+	gid := GoRoutineId()
 
-	for !m.TryLock() {
-		m.loopNotifier.Notify()
+	alreadyOwned := false
+
+	m.muUpdate.Lock()
+
+	if m.owner == gid {
+		alreadyOwned = true
+
+		if m.EnterIfSame {
+			m.count++
+		}
 	}
+
+	m.muUpdate.Unlock()
+
+	if alreadyOwned {
+		return m.EnterIfSame
+	}
+
+	m.mu.Lock()
+
+	m.owner = gid
+	m.count = 1
+
+	return true
 }
 
 func (m *ReentrantMutex) Unlock() {
-	id := GoRoutineId()
+	gid := GoRoutineId()
 
-	if m.id.CompareAndSwap(id, id) {
-		m.count.Store(Max(0, m.count.Load()-1))
+	m.muUpdate.Lock()
 
-		if m.count.Load() == 0 {
-			m.id.Store(0)
-		}
+	if m.owner != gid {
+		m.muUpdate.Unlock()
+
+		Panic(ErrReentrantNotOwner)
+	}
+
+	doUnlock := false
+
+	m.count--
+	if m.count == 0 {
+		doUnlock = true
+
+		m.owner = 0
+	}
+
+	m.muUpdate.Unlock()
+
+	if doUnlock {
+		m.mu.Unlock()
 	}
 }
 
 func (m *ReentrantMutex) UnlockNow() {
-	id := GoRoutineId()
+	gid := GoRoutineId()
 
-	if m.id.CompareAndSwap(id, id) {
-		m.count.Store(0)
-		m.id.Store(0)
+	m.muUpdate.Lock()
+
+	if m.owner != gid {
+		m.muUpdate.Unlock()
+
+		Panic(ErrReentrantNotOwner)
+	}
+
+	doUnlock := m.count > 0
+
+	m.owner = 0
+	m.count = 0
+
+	m.muUpdate.Unlock()
+
+	if doUnlock {
+		m.mu.Unlock()
 	}
 }
