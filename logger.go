@@ -50,7 +50,7 @@ var (
 	FlagLogEqualError   = SystemFlagBool(FlagNameLogEqualError, false, "Log equal (repeated) error")
 
 	// synchronizes logging output
-	logMutex    ReentrantMutex
+	logMutex    = NewReentrantMutex(true)
 	fw          *fileWriter
 	rw                      = newMemoryWriter()
 	LogDebug    *log.Logger = log.New(rw, prefix(LevelDebug), 0)

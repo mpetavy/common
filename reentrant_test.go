@@ -9,7 +9,7 @@ import (
 )
 
 func TestReentrantSimple(t *testing.T) {
-	rm := NewReentrantMutex()
+	rm := ReentrantMutex{}
 
 	rm.Lock()
 	rm.Lock()
@@ -21,14 +21,14 @@ func TestReentrantSimple(t *testing.T) {
 
 	require.Equal(t, rm.count, uint64(2))
 
-	rm.UnlockNow()
+	require.NoError(t, rm.UnlockNow())
 
 	require.Equal(t, rm.count, uint64(0))
 	require.Equal(t, rm.owner, uint64(0))
 }
 
 func TestReentrantBlocking(t *testing.T) {
-	rm := NewReentrantMutex()
+	rm := ReentrantMutex{}
 
 	start := time.Now()
 	wg := sync.WaitGroup{}
@@ -56,51 +56,48 @@ func TestReentrantBlocking(t *testing.T) {
 	require.True(t, i.Load() == 2)
 }
 
-func TestReentrantEnterIfSame(t *testing.T) {
-	m := NewReentrantMutex()
-	m.EnterIfSame = false
+func TestReentrantPreventIfSame(t *testing.T) {
+	rm := NewReentrantMutex(true)
 
-	require.True(t, m.TryLock())
-	require.False(t, m.TryLock())
-	require.False(t, m.TryLock())
+	require.True(t, rm.TryLock())
+	require.False(t, rm.TryLock())
+	require.False(t, rm.TryLock())
 
-	require.Equal(t, m.count, uint64(1))
+	require.Equal(t, rm.count, uint64(1))
 
-	m.Unlock()
+	rm.Unlock()
 
-	require.Equal(t, m.count, uint64(0))
+	require.Equal(t, rm.count, uint64(0))
 
-	m = NewReentrantMutex()
-	m.EnterIfSame = true
+	rm = NewReentrantMutex(false)
 
-	require.True(t, m.TryLock())
-	require.True(t, m.TryLock())
-	require.True(t, m.TryLock())
+	require.True(t, rm.TryLock())
+	require.True(t, rm.TryLock())
+	require.True(t, rm.TryLock())
 
-	require.Equal(t, m.count, uint64(3))
+	require.Equal(t, rm.count, uint64(3))
 
 	for c := range 3 {
-		m.Unlock()
+		rm.Unlock()
 
-		require.Equal(t, m.count, uint64(2-c))
+		require.Equal(t, rm.count, uint64(2-c))
 	}
 
-	require.Equal(t, m.count, uint64(0))
-	require.Equal(t, m.owner, uint64(0))
+	require.Equal(t, rm.count, uint64(0))
+	require.Equal(t, rm.owner, uint64(0))
 }
 
 func TestReentrantUnlockNow(t *testing.T) {
-	m := NewReentrantMutex()
-	m.EnterIfSame = true
+	rm := ReentrantMutex{}
 
-	require.True(t, m.TryLock())
-	require.True(t, m.TryLock())
-	require.True(t, m.TryLock())
+	require.True(t, rm.TryLock())
+	require.True(t, rm.TryLock())
+	require.True(t, rm.TryLock())
 
-	require.Equal(t, m.count, uint64(3))
+	require.Equal(t, rm.count, uint64(3))
 
-	m.UnlockNow()
+	require.NoError(t, rm.UnlockNow())
 
-	require.Equal(t, m.count, uint64(0))
-	require.Equal(t, m.owner, uint64(0))
+	require.Equal(t, rm.count, uint64(0))
+	require.Equal(t, rm.owner, uint64(0))
 }
