@@ -80,7 +80,15 @@ func (ini *IniFile) Load(ba []byte) error {
 		key := strings.TrimSpace(line[0:p])
 		value := strings.TrimSpace(line[p+1:])
 
-		if strings.HasPrefix(value, "\"") {
+		var delim string
+		switch {
+		case strings.HasPrefix(value, "\""):
+			delim = "\""
+		case strings.HasPrefix(value, "`"):
+			delim = "``"
+		}
+
+		if delim != "" {
 			sb := strings.Builder{}
 			sb.WriteString(value)
 
@@ -88,13 +96,13 @@ func (ini *IniFile) Load(ba []byte) error {
 				line = scanner.Text()
 				sb.WriteString(line)
 
-				if strings.HasSuffix(line, "\"\n") {
+				if strings.HasSuffix(line, fmt.Sprintf("%s\n", delim)) {
 					break
 				}
 			}
 
 			value = strings.TrimSpace(sb.String())
-			value = strings.Trim(value, "\"")
+			value = strings.Trim(value, delim)
 		}
 
 		if strings.HasPrefix(value, "@") {
