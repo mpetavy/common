@@ -41,7 +41,7 @@ func EnableDatabase(engine *ScriptEngine) error {
 		return err
 	}
 
-	err = obj.Set("open", sqlDb.Health())
+	err = obj.Set("open", sqlDb.Open)
 	if common.Error(err) {
 		return err
 	}

@@ -145,19 +145,28 @@ func Init(title string, version string, git string, build string, description st
 		FlagScriptStop = SystemFlagString(FlagNameScriptStop, fmt.Sprintf("%s%s-stop%s", Eval(IsWindows(), "", "./"), strings.ToLower(Title()), Eval(IsWindows(), ".bat", ".sh")), "Service user")
 	})
 
-	ba, err := resources.ReadFile("go.mod")
-	Panic(err)
+	if resources != nil {
+		ba, err := resources.ReadFile("go.mod")
+		Panic(err)
 
-	mf, err := modfile.Parse("go.mod", ba, nil)
-	Panic(err)
+		mf, err := modfile.Parse("go.mod", ba, nil)
+		Panic(err)
+
+		if title == "" {
+			title = mf.Module.Mod.String()
+
+			p := strings.LastIndex(title, "/")
+			if p != -1 {
+				title = title[p+1:]
+			}
+		}
+	}
 
 	if title == "" {
-		title = mf.Module.Mod.String()
+		wd, err := os.Getwd()
+		Panic(err)
 
-		p := strings.LastIndex(title, "/")
-		if p != -1 {
-			title = title[p+1:]
-		}
+		title = filepath.Base(wd)
 	}
 
 	if developer == "" {
@@ -456,6 +465,10 @@ func RunTests(m *testing.M) {
 
 func run(mandatoryFlags []string, m *testing.M) {
 	defer done()
+
+	if app == nil {
+		Init("", "", "", "", "", "", "", "", nil, nil, nil, nil, 0)
+	}
 
 	Events.Emit(EventInit{}, false)
 

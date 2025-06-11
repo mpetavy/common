@@ -75,7 +75,7 @@ func (sqlDb *SqlDb) currentDb() dbintf {
 	}
 }
 
-func (sqlDb *SqlDb) open() error {
+func (sqlDb *SqlDb) Open() error {
 	if sqlDb.conn == nil {
 		var err error
 
@@ -127,7 +127,7 @@ func (sqlDb *SqlDb) Close() error {
 }
 
 func (sqlDb *SqlDb) Health() error {
-	err := sqlDb.open()
+	err := sqlDb.Open()
 	if common.Error(err) {
 		return err
 	}
@@ -136,7 +136,7 @@ func (sqlDb *SqlDb) Health() error {
 }
 
 func (sqlDb *SqlDb) Begin() error {
-	err := sqlDb.open()
+	err := sqlDb.Open()
 	if common.Error(err) {
 		return err
 	}
@@ -158,7 +158,7 @@ func (sqlDb *SqlDb) Begin() error {
 }
 
 func (sqlDb *SqlDb) Rollback() error {
-	err := sqlDb.open()
+	err := sqlDb.Open()
 	if common.Error(err) {
 		return err
 	}
@@ -184,7 +184,7 @@ func (sqlDb *SqlDb) Rollback() error {
 }
 
 func (sqlDb *SqlDb) Commit() error {
-	err := sqlDb.open()
+	err := sqlDb.Open()
 	if common.Error(err) {
 		return err
 	}
@@ -210,7 +210,7 @@ func (sqlDb *SqlDb) Commit() error {
 }
 
 func (sqlDb *SqlDb) Execute(sqlcmd string, args ...any) (int64, error) {
-	err := sqlDb.open()
+	err := sqlDb.Open()
 	if common.Error(err) {
 		return 0, err
 	}
@@ -292,7 +292,7 @@ func (sqlDb *SqlDb) QueryPaged(fn ResultsetFunc, pageRowCount int, sqlcmd string
 type ResultsetFunc func(rs *Resultset) error
 
 func (sqlDb *SqlDb) query(fn ResultsetFunc, pageRowCount int, sqlcmd string, args ...any) (*Resultset, error) {
-	err := sqlDb.open()
+	err := sqlDb.Open()
 	if common.Error(err) {
 		return nil, err
 	}

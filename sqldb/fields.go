@@ -260,6 +260,14 @@ func (c *FieldBool) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (c *FieldBool) Bool() bool {
+	if c.NullBool.Valid {
+		return c.NullBool.Bool
+	}
+
+	return false
+}
+
 func (c *FieldBool) SetBool(v bool) {
 	common.Error(c.Scan(v))
 }
