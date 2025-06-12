@@ -43,15 +43,9 @@ func (ini *IniFile) Load(ba []byte) error {
 		ba = append(ba, '\n')
 	}
 
-	withCrlf, err := NewSeparatorSplitFunc(nil, []byte("\n"), false)
-	if Error(err) {
-		return err
-	}
-
 	sectionName := DEFAULT_SECTION
 
 	scanner := bufio.NewScanner(bytes.NewReader(ba))
-	scanner.Split(withCrlf)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
@@ -89,16 +83,19 @@ func (ini *IniFile) Load(ba []byte) error {
 		}
 
 		if delim != "" {
+			value = value[1:]
 			sb := strings.Builder{}
 			sb.WriteString(value)
 
-			for scanner.Scan() {
-				line = scanner.Text()
-				sb.WriteString(line)
-
-				if strings.HasSuffix(line, fmt.Sprintf("%s\n", delim)) {
+			for !strings.HasSuffix(sb.String(), delim) {
+				if !scanner.Scan() {
 					break
 				}
+
+				sb.WriteString("\n")
+
+				line = scanner.Text()
+				sb.WriteString(line)
 			}
 
 			value = strings.TrimSpace(sb.String())
