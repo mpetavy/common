@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/rs/cors"
 	"io"
 	"net"
 	"net/http"
@@ -40,6 +41,7 @@ const (
 	FlagNameHTTPTimeout       = "http.timeout"
 	FlagNameHTTPGzip          = "http.gzip"
 	FlagNameHTTPLocalhostAuth = "http.localhost.auth"
+	FlagNameHTTPCors          = "http.cors"
 )
 
 var (
@@ -49,6 +51,7 @@ var (
 	FlagHTTPTimeout       = SystemFlagInt(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
 	FlagHTTPGzip          = SystemFlagBool(FlagNameHTTPGzip, true, "HTTP GZip support")
 	FlagHTTPLocalhostAuth = SystemFlagBool(FlagNameHTTPLocalhostAuth, true, "HTTP localhost auth")
+	FlagHTTPCors          = SystemFlagBool(FlagNameHTTPCors, false, "HTTP CORS")
 
 	httpServer *http.Server
 
@@ -145,18 +148,18 @@ func BasicAuthHandler(mandatory bool, authFunc BasicAuthFunc, next http.HandlerF
 	DebugFunc()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		bool := false
+		b := false
 
 		if *FlagHTTPLocalhostAuth {
 			host, _, err := net.SplitHostPort(r.RemoteAddr)
 			if err == nil && IsLocalhost(net.ParseIP(host)) {
 				Debug("Localhost authentication")
 
-				bool = true
+				b = true
 			}
 		}
 
-		if !bool {
+		if !b {
 			status, err := func() (int, error) {
 				username, password, ok := r.BasicAuth()
 				if !ok {
@@ -188,7 +191,7 @@ func BasicAuthHandler(mandatory bool, authFunc BasicAuthFunc, next http.HandlerF
 	}
 }
 
-func HTTPServerStart(port int, tlsConfig *tls.Config, mux *http.ServeMux) error {
+func HTTPServerStart(port int, tlsConfig *tls.Config, handler http.Handler) error {
 	DebugFunc()
 
 	err := IsPortAvailable("tcp", port)
@@ -196,14 +199,13 @@ func HTTPServerStart(port int, tlsConfig *tls.Config, mux *http.ServeMux) error 
 		return err
 	}
 
-	protocolInfo := "HTTP"
-	if tlsConfig != nil {
-		protocolInfo = "HTTPS"
+	if *FlagHTTPCors {
+		handler = cors.AllowAll().Handler(handler)
 	}
 
 	httpServer = &http.Server{
 		Addr:              fmt.Sprintf(":%d", port),
-		Handler:           mux,
+		Handler:           handler,
 		TLSConfig:         tlsConfig,
 		ReadTimeout:       MillisecondToDuration(*FlagIoReadwriteTimeout),
 		ReadHeaderTimeout: MillisecondToDuration(*FlagIoReadwriteTimeout),
@@ -218,7 +220,25 @@ func HTTPServerStart(port int, tlsConfig *tls.Config, mux *http.ServeMux) error 
 	httpServer.SetKeepAlivesEnabled(false)
 	httpServer.MaxHeaderBytes = int(*FlagHTTPHeaderLimit)
 
-	StartInfo(fmt.Sprintf("%s server %s", protocolInfo, httpServer.Addr))
+	hostname, _, hostInfos, err := GetHostInfos()
+	if Error(err) {
+		return err
+	}
+
+	ips := []string{hostname}
+
+	for _, hostInfo := range hostInfos {
+		ips = append(ips, FormatIP(hostInfo.IPNet.IP))
+	}
+
+	schema := Eval(tlsConfig != nil, "https", "http")
+
+	connects := []string{}
+	for _, ip := range ips {
+		connects = append(connects, fmt.Sprintf("%s://%s:%d", schema, ip, port))
+	}
+
+	StartInfo(fmt.Sprintf("Server %s", strings.Join(connects, " ")))
 
 	ln, err := net.Listen("tcp", httpServer.Addr)
 	if Error(err) {
