@@ -103,17 +103,6 @@ func Secret(txt string, secret ...string) (string, error) {
 	}
 
 	if key == "" {
-		for _, env := range []string{FlagNameAsEnvName("secretkey"), "SECRETKEY", "secretkey"} {
-			key = os.Getenv(env)
-			if key != "" {
-				DebugFunc("using ENV: %s", env)
-
-				break
-			}
-		}
-	}
-
-	if key == "" {
 		for _, file := range []string{"secretkey", "secretkey.txt", ".secretkey", ".secretkey.txt"} {
 			if FileExists(file) {
 				DebugFunc("using file: %s", file)
@@ -124,6 +113,17 @@ func Secret(txt string, secret ...string) (string, error) {
 
 					break
 				}
+			}
+		}
+	}
+
+	if key == "" {
+		for _, env := range []string{FlagNameAsEnvName("secretkey"), "SECRETKEY", "secretkey"} {
+			key = os.Getenv(env)
+			if key != "" {
+				DebugFunc("using ENV: %s", env)
+
+				break
 			}
 		}
 	}
