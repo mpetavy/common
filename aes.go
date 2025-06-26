@@ -133,7 +133,7 @@ func Secret(txt string, secret ...string) (string, error) {
 	}
 
 	// descramble
-	key = ScrambleString(key)
+	key = ScrambleString(strings.TrimSpace(key))
 
 	if IsEncrypted(txt) {
 		m, err := DecryptString([]byte(key), txt)
