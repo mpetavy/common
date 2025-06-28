@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/rs/cors"
 	"io"
 	"net"
 	"net/http"
@@ -51,7 +50,6 @@ var (
 	FlagHTTPTimeout       = SystemFlagInt(FlagNameHTTPTimeout, 120000, "HTTP default request timeout")
 	FlagHTTPGzip          = SystemFlagBool(FlagNameHTTPGzip, true, "HTTP GZip support")
 	FlagHTTPLocalhostAuth = SystemFlagBool(FlagNameHTTPLocalhostAuth, true, "HTTP localhost auth")
-	FlagHTTPCors          = SystemFlagBool(FlagNameHTTPCors, false, "HTTP CORS")
 
 	httpServer *http.Server
 
@@ -197,10 +195,6 @@ func HTTPServerStart(port int, tlsConfig *tls.Config, handler http.Handler) erro
 	err := IsPortAvailable("tcp", port)
 	if Error(err) {
 		return err
-	}
-
-	if *FlagHTTPCors {
-		handler = cors.AllowAll().Handler(handler)
 	}
 
 	httpServer = &http.Server{
