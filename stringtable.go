@@ -99,7 +99,7 @@ func (st *StringTable) rower(markdown bool, cols []string, colLengths []int, cro
 			}
 		}
 
-		line.WriteString(cols[x] + strings.Repeat(" ", colLengths[x]-len(cols[x])))
+		line.WriteString(fmt.Sprintf(fmt.Sprintf("%%-%ds", colLengths[x]), cols[x]))
 	}
 
 	txt := line.String()
