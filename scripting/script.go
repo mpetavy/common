@@ -1,6 +1,7 @@
 package scripting
 
 import (
+	"flag"
 	"fmt"
 	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/dop251/goja"
@@ -17,6 +18,10 @@ type ScriptEngine struct {
 	VM       *goja.Runtime
 	program  *goja.Program
 }
+
+var (
+	fileJsonFormat = flag.Bool("file.json.format", true, "use JSON file format")
+)
 
 func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	vm := goja.New()
@@ -168,6 +173,10 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args ...
 }
 
 func FormatJavascriptCode(src string) (string, error) {
+	if !*fileJsonFormat {
+		return src, nil
+	}
+
 	cpySrc := src
 
 	formatScript, err := jsbeautifier.Beautify(&cpySrc, jsbeautifier.DefaultOptions())
