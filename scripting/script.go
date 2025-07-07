@@ -1,8 +1,8 @@
 package scripting
 
 import (
-	"embed"
 	"fmt"
+	"github.com/ditashi/jsbeautifier-go/jsbeautifier"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/require"
 	"github.com/mpetavy/common"
@@ -11,9 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 )
-
-//go:embed embed/*
-var embedfs embed.FS
 
 type ScriptEngine struct {
 	Registry *require.Registry
@@ -171,24 +168,12 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args ...
 }
 
 func FormatJavascriptCode(src string) (string, error) {
-	beautifyCode, err := embedfs.ReadFile("embed/js/beautify.js")
-	if common.WarnError(err) {
-		return src, nil
-	}
+	cpySrc := src
 
-	se, err := NewScriptEngine(string(beautifyCode), "")
+	formatScript, err := jsbeautifier.Beautify(&cpySrc, jsbeautifier.DefaultOptions())
 	if common.Error(err) {
-		return "", err
+
 	}
 
-	v, err := se.Run(0, "js_beautify", src)
-	if common.Error(err) {
-		return "", err
-	}
-
-	code := v.String()
-	code = strings.Replace(code, "= >", "=>", -1)
-	code = strings.Replace(code, "\r\n", "\n", -1)
-
-	return code, nil
+	return formatScript, nil
 }
