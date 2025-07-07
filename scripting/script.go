@@ -7,8 +7,6 @@ import (
 	"github.com/dop251/goja_nodejs/require"
 	"github.com/mpetavy/common"
 	"path/filepath"
-	"reflect"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -23,65 +21,8 @@ type ScriptEngine struct {
 	program  *goja.Program
 }
 
-func (c *gojaConsole) table(data interface{}) {
-	val, ok := data.(reflect.Value)
-	if !ok {
-		val = reflect.Indirect(reflect.ValueOf(data))
-	}
-
-	st := common.NewStringTable()
-	st.AddCols("field", "value")
-
-	switch val.Type().Kind() {
-	case reflect.Map:
-		iter := val.MapRange()
-		for iter.Next() {
-			k := iter.Key()
-			v := iter.Value()
-
-			st.AddCols(k.String(), fmt.Sprintf("%+v", v.Elem()))
-		}
-	case reflect.Struct:
-		err := common.IterateStruct(data, func(fieldPath string, fieldType reflect.StructField, fieldValue reflect.Value) error {
-			st.AddCols(fieldPath, fmt.Sprintf("%+v", fieldValue.Elem()))
-
-			return nil
-		})
-		if common.Error(err) {
-			return
-		}
-	case reflect.Array:
-		for i := 0; i < val.Len(); i++ {
-			st.AddCols(strconv.Itoa(i), val.Index(i).String())
-		}
-	case reflect.Slice:
-		for i := 0; i < val.Len(); i++ {
-			st.AddCols(strconv.Itoa(i), val.Slice(i, i+1).String())
-		}
-	default:
-		common.Error(common.TraceError(fmt.Errorf("unsupported type")))
-	}
-
-	common.Debug(st.Table())
-}
-
 func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	vm := goja.New()
-
-	err := registerConsole(vm)
-	if common.Error(err) {
-		return nil, err
-	}
-
-	err = registerHttp(vm)
-	if common.Error(err) {
-		return nil, err
-	}
-
-	err = registerEtree(vm)
-	if common.Error(err) {
-		return nil, err
-	}
 
 	options := []require.Option{}
 
@@ -119,6 +60,21 @@ func NewScriptEngine(src string, modulesPath string) (*ScriptEngine, error) {
 	registry := require.NewRegistry(options...)
 	registry.Enable(vm)
 
+	err := registerConsole(registry, vm)
+	if common.Error(err) {
+		return nil, err
+	}
+
+	err = registerHttp(vm)
+	if common.Error(err) {
+		return nil, err
+	}
+
+	err = registerEtree(vm)
+	if common.Error(err) {
+		return nil, err
+	}
+
 	program, err := goja.Compile("", src, false)
 	if common.Error(err) {
 		return nil, err
@@ -155,7 +111,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args ...
 
 			// script must be run once to initialize all functions (also the "main" function)
 			value, err = engine.VM.RunProgram(engine.program)
-			if isTimeout.Load() || common.DebugError(err) {
+			if isTimeout.Load() || err != nil {
 				return err
 			}
 
@@ -171,7 +127,7 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args ...
 				}
 
 				value, err = fn(goja.Undefined(), list...)
-				if common.DebugError(err) {
+				if err != nil {
 					return err
 				}
 			}
@@ -194,8 +150,13 @@ func (engine *ScriptEngine) Run(timeout time.Duration, funcName string, args ...
 		}
 	}()
 
+	timeoutCh := time.After(timeout)
+	if timeout == 0 {
+		timeoutCh = nil
+	}
+
 	select {
-	case <-time.After(timeout):
+	case <-timeoutCh:
 		isTimeout.Store(true)
 
 		engine.VM.Interrupt(nil)
@@ -220,7 +181,7 @@ func FormatJavascriptCode(src string) (string, error) {
 		return "", err
 	}
 
-	v, err := se.Run(time.Second, "js_beautify", src)
+	v, err := se.Run(0, "js_beautify", src)
 	if common.Error(err) {
 		return "", err
 	}

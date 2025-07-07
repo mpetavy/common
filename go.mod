@@ -11,9 +11,9 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/data/azappconfig v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.2.0
 	github.com/beevik/etree v1.1.4
-	github.com/dlclark/regexp2 v1.11.2
-	github.com/dop251/goja v0.0.0-20230427124612-428fc442ff5f
-	github.com/dop251/goja_nodejs v0.0.0-20230322100729-2550c7b6c124
+	github.com/dlclark/regexp2 v1.11.4
+	github.com/dop251/goja v0.0.0-20250630131328-58d95d85e994
+	github.com/dop251/goja_nodejs v0.0.0-20250409162600-f7acab6894b0
 	github.com/fatih/structtag v1.2.0
 	github.com/gabriel-vasile/mimetype v1.4.2
 	github.com/go-ini/ini v1.67.0
@@ -68,12 +68,12 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
+	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/pprof v0.0.0-20230509042627-b1315fad0c5a // indirect
+	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
 	github.com/google/s2a-go v0.1.3 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.8.0 // indirect

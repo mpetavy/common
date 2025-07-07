@@ -234,3 +234,37 @@ func TestScriptEngineDatabase(t *testing.T) {
 
 	require.Nil(t, err)
 }
+
+func TestScript(t *testing.T) {
+	ba, err := os.ReadFile("testdata/test.js")
+	require.NoError(t, err)
+
+	//src := "const name = 'Marcel'; const result = `Hello ${name}`; console.error(result);"
+	src := string(ba)
+
+	_, err = FormatJavascriptCode(src)
+	if common.Error(err) {
+		return
+	}
+
+	engine, err := NewScriptEngine(src, "")
+	if common.Error(err) {
+		return
+	}
+
+	_, err = engine.Run(time.Hour, "", "")
+	if common.Error(err) {
+		return
+	}
+
+	//require.NoError(t, err)
+}
+
+func TestInterpolation(t *testing.T) {
+	engine, err := NewScriptEngine("const name = 'Marcel'; console.info(`Hello ${name}`);", "")
+	if common.Error(err) {
+		return
+	}
+
+	_, err = engine.Run(time.Hour, "", "")
+}

@@ -7,24 +7,21 @@ import (
 	"github.com/mpetavy/common"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type gojaHttp struct{}
 
 func (c *gojaHttp) execute(method string, url string, username string, password string, header map[string][]string, body []byte) (*http.Response, error) {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	var tr *http.Transport
+
+	if strings.Contains(url, "https") {
+		tr = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
 	}
 
-	client := &http.Client{Transport: tr}
-
-	req, err := http.NewRequest(method, url, bytes.NewReader(body))
-	if header != nil {
-		req.Header = header
-	}
-	req.SetBasicAuth(username, password)
-
-	resp, err := client.Do(req)
+	resp, _, err := common.HTTPRequest(tr, common.MillisecondToDuration(*common.FlagHTTPTimeout), method, url, header, nil, username, password, bytes.NewReader(body), 0)
 	if common.Error(err) {
 		return resp, err
 	}
