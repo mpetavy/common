@@ -177,9 +177,7 @@ func FormatJavascriptCode(src string) (string, error) {
 		return src, nil
 	}
 
-	cpySrc := src
-
-	formatScript, err := jsbeautifier.Beautify(&cpySrc, jsbeautifier.DefaultOptions())
+	formatScript, err := jsbeautifier.Beautify(&src, jsbeautifier.DefaultOptions())
 	if common.Error(err) {
 
 	}

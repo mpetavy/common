@@ -566,7 +566,7 @@ func run(mandatoryFlags []string, m *testing.M) {
 
 			Info("Terminate: CTRL-C pressed")
 
-			Exit(1)
+			Exit(130) // 128 + 2 (SIGINT)
 		}()
 
 		err = app.applicationLoop(m)
@@ -905,6 +905,10 @@ func AppFilename(newExt string) string {
 }
 
 func Title() string {
+	if app == nil {
+		return ""
+	}
+
 	onceTitle.Do(func() {
 		DebugFunc(app.Title)
 	})

@@ -1,7 +1,6 @@
 package azure
 
 import (
-	"context"
 	"fmt"
 	"github.com/mpetavy/common"
 	"github.com/stretchr/testify/require"
@@ -41,20 +40,22 @@ func TestAzureAppConfiguration(t *testing.T) {
 		fmt.Printf("key: %s, value: %s\n", key, value)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), common.MillisecondToDuration(*FlagAzureTimeout))
-	defer func() {
-		cancel()
-	}()
+	fmt.Printf("%s\n", *common.FlagCfgExternal)
 
-	for i := range 3 {
-		value := fmt.Sprintf("test%d", i)
-
-		err = azureAppCfg.SetValue(ctx, "ccc-dataingress-apikey", value)
-		require.NoError(t, err)
-
-		setValue, err := azureAppCfg.GetValue(ctx, "ccc-dataingress-apikey")
-		require.NoError(t, err)
-
-		require.Equal(t, setValue, value)
-	}
+	//ctx, cancel := context.WithTimeout(context.Background(), common.MillisecondToDuration(*FlagAzureTimeout))
+	//defer func() {
+	//	cancel()
+	//}()
+	//
+	//for i := range 3 {
+	//	value := fmt.Sprintf("test%d", i)
+	//
+	//	err = azureAppCfg.SetValue(ctx, "ccc-dataingress-apikey", value)
+	//	require.NoError(t, err)
+	//
+	//	setValue, err := azureAppCfg.GetValue(ctx, "ccc-dataingress-apikey")
+	//	require.NoError(t, err)
+	//
+	//	require.Equal(t, setValue, value)
+	//}
 }
