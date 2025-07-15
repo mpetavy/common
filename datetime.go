@@ -57,6 +57,8 @@ func init() {
 		Panic(err)
 
 		time.Local = loc
+
+		Info("Default app timezone: %s", *timezone)
 	})
 }
 
