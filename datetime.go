@@ -28,16 +28,39 @@ const (
 	Separator = " "
 )
 
-var DateMask = Day + DateSeparator + Month + DateSeparator + Year
-var TimeMask = Hour + TimeSeparator + Minute + TimeSeparator + Second
+const (
+	FlagNameAppTimezone = "app.timezone"
+)
 
-var DateTimeMask = DateMask + Separator + TimeMask
-var DateTimeMilliMask = DateMask + Separator + TimeMask + Msec
+var (
+	timezone *string
 
-var SortedDateMask = Year + "-" + Month + "-" + Day
-var SortedDateTimeMilliMask = SortedDateMask + Separator + TimeMask + Msec
+	DateMask = Day + DateSeparator + Month + DateSeparator + Year
+	TimeMask = Hour + TimeSeparator + Minute + TimeSeparator + Second
 
-func FileTimstamp(now ...time.Time) string {
+	DateTimeMask      = DateMask + Separator + TimeMask
+	DateTimeMilliMask = DateMask + Separator + TimeMask + Msec
+
+	SortedDateMask          = Year + "-" + Month + "-" + Day
+	SortedDateTimeMilliMask = SortedDateMask + Separator + TimeMask + Msec
+)
+
+func init() {
+	Events.AddListener(EventInit{}, func(ev Event) {
+		name, _ := time.Now().In(time.Local).Zone()
+
+		timezone = SystemFlagString(FlagNameAppTimezone, name, "app time zone")
+	})
+
+	Events.AddListener(EventFlags{}, func(ev Event) {
+		loc, err := time.LoadLocation(*timezone)
+		Panic(err)
+
+		time.Local = loc
+	})
+}
+
+func FileTimestamp(now ...time.Time) string {
 	n := time.Now()
 	if len(now) > 0 {
 		n = now[0]
