@@ -53,12 +53,16 @@ func init() {
 	})
 
 	Events.AddListener(EventFlags{}, func(ev Event) {
-		loc, err := time.LoadLocation(*timezone)
-		Panic(err)
+		name, _ := time.Now().In(time.Local).Zone()
 
-		time.Local = loc
+		if *timezone != name {
+			loc, err := time.LoadLocation(*timezone)
+			Panic(err)
 
-		Info("Default app timezone: %s", *timezone)
+			time.Local = loc
+
+			Info("App timezone: %s", *timezone)
+		}
 	})
 }
 
