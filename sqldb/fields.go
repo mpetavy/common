@@ -168,7 +168,7 @@ func (c FieldTime) String() string {
 
 func (c FieldTime) MarshalJSON() ([]byte, error) {
 	if c.NullTime.Valid {
-		return json.Marshal(c.NullTime.Time.UTC())
+		return json.Marshal(c.NullTime.Time)
 	}
 
 	return json.Marshal(nil)

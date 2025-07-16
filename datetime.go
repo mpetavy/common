@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	timezone *string
+	FlagTimezone *string
 
 	DateMask = Day + DateSeparator + Month + DateSeparator + Year
 	TimeMask = Hour + TimeSeparator + Minute + TimeSeparator + Second
@@ -49,19 +49,19 @@ func init() {
 	Events.AddListener(EventInit{}, func(ev Event) {
 		name, _ := time.Now().In(time.Local).Zone()
 
-		timezone = SystemFlagString(FlagNameAppTimezone, name, "app time zone")
+		FlagTimezone = SystemFlagString(FlagNameAppTimezone, name, "app time zone")
 	})
 
 	Events.AddListener(EventFlags{}, func(ev Event) {
 		name, _ := time.Now().In(time.Local).Zone()
 
-		if *timezone != name {
-			loc, err := time.LoadLocation(*timezone)
+		if *FlagTimezone != name {
+			loc, err := time.LoadLocation(*FlagTimezone)
 			Panic(err)
 
 			time.Local = loc
 
-			Info("App timezone: %s", *timezone)
+			Info("App timezone: %s", *FlagTimezone)
 		}
 	})
 }
