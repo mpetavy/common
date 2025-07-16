@@ -394,15 +394,10 @@ func DebugError(err error) bool {
 	return true
 }
 
-func DebugErrorIndex(index int, err error) bool {
+func asDebugError(index int, err error) bool {
 	if err == nil || !IsLogVerboseEnabled() || IsErrExit(err) {
 		return err != nil
 	}
-
-	if !logMutex.TryLock() {
-		return err != nil
-	}
-	defer logMutex.Unlock()
 
 	logEntry := formatLog(LevelDebug, 2+index, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
 
@@ -422,7 +417,7 @@ func WarnError(err error) bool {
 	defer logMutex.Unlock()
 
 	if IsSuppressedError(err) {
-		return DebugErrorIndex(1, err)
+		return asDebugError(1, err)
 	}
 
 	logEntry := formatLog(LevelWarn, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
@@ -471,7 +466,7 @@ func Error(err error) bool {
 	defer logMutex.Unlock()
 
 	if IsSuppressedError(err) {
-		return DebugErrorIndex(1, err)
+		return asDebugError(1, err)
 	}
 
 	logEntry := formatLog(LevelError, 2, strings.TrimSpace(err.Error()), IsLogVerboseEnabled())
