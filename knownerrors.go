@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	suppressErrors = []string{
+	SuppressedErrors = []string{
 		"http2",
 		"wsasend",
 		"tls: unknown certificate",
@@ -77,7 +77,7 @@ func IsSuppressedError(err error) bool {
 
 func IsSuppressedErrorMessage(err string) bool {
 	msg := strings.ToLower(err)
-	for _, se := range suppressErrors {
+	for _, se := range SuppressedErrors {
 		if strings.Contains(msg, se) {
 			return true
 		}
