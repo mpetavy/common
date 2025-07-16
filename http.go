@@ -40,7 +40,6 @@ const (
 	FlagNameHTTPTimeout       = "http.timeout"
 	FlagNameHTTPGzip          = "http.gzip"
 	FlagNameHTTPLocalhostAuth = "http.localhost.auth"
-	FlagNameHTTPCors          = "http.cors"
 )
 
 var (
@@ -232,7 +231,7 @@ func HTTPServerStart(port int, tlsConfig *tls.Config, handler http.Handler) erro
 		connects = append(connects, fmt.Sprintf("%s://%s:%d", schema, ip, port))
 	}
 
-	StartInfo(fmt.Sprintf("Server %s", strings.Join(connects, " ")))
+	StartInfo(fmt.Sprintf("%s server: %s", strings.ToUpper(schema), strings.Join(connects, " ")))
 
 	ln, err := net.Listen("tcp", httpServer.Addr)
 	if Error(err) {
@@ -269,12 +268,12 @@ func HTTPServerStop() error {
 		return err
 	}
 
-	protocolInfo := "HTTP"
-	if httpServer.TLSConfig != nil {
-		protocolInfo = "HTTPS"
+	schema := "HTTP"
+	if httpServer.TLSConfig != nil && httpServer.TLSConfig.Certificates != nil {
+		schema = "HTTPS"
 	}
 
-	StopInfo(fmt.Sprintf("%s server %s", protocolInfo, httpServer.Addr))
+	StopInfo(fmt.Sprintf("%s server", strings.ToUpper(schema)))
 
 	httpServer = nil
 
