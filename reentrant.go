@@ -3,130 +3,85 @@ package common
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 )
 
-var ErrReentrantNotOwner = fmt.Errorf("reentrantmutex: unlock called by non-owner")
+var ErrReentrantNotOwner = fmt.Errorf("ReentrantMutex: unlock called by non-owner")
 
 type ReentrantMutex struct {
 	PreventIfSame bool
-	mu            sync.Mutex
-	cond          *sync.Cond
-	owner         uint64 // goroutine id
+	owner         atomic.Int64
 	count         uint64
+	mu            sync.Mutex
 }
 
 func NewReentrantMutex(preventIfSame bool) *ReentrantMutex {
 	m := &ReentrantMutex{
 		PreventIfSame: preventIfSame,
 	}
-	m.cond = sync.NewCond(&m.mu)
 
 	return m
 }
 
-// TryLock tries to acquire the lock.
-// Returns true if the lock was acquired or re-entered, false if re-entry is not allowed.
-func (m *ReentrantMutex) TryLock() bool {
-	gid := GoRoutineId()
+func (rm *ReentrantMutex) Lock() {
+	id := int64(GoRoutineId())
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	if rm.owner.CompareAndSwap(id, id) {
+		rm.count++
 
-	if m.cond == nil {
-		m.cond = sync.NewCond(&m.mu)
-	}
-
-	if m.owner == gid {
-		if m.PreventIfSame {
-			return false
-		}
-		m.count++
-		return true
-	}
-
-	if m.count == 0 {
-		m.owner = gid
-		m.count = 1
-		return true
-	}
-	return false
-}
-
-// Lock blocks until the lock is acquired or re-entered.
-func (m *ReentrantMutex) Lock() {
-	gid := GoRoutineId()
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.cond == nil {
-		m.cond = sync.NewCond(&m.mu)
-	}
-
-	if m.owner == gid {
-		if m.PreventIfSame {
-			return
-		}
-		m.count++
 		return
 	}
 
-	for m.count != 0 {
-		m.cond.Wait()
-	}
+	rm.mu.Lock()
 
-	m.owner = gid
-	m.count = 1
+	rm.owner.Store(id)
+	rm.count = 1
 }
 
-func (m *ReentrantMutex) Unlock() {
-	DebugError(m.TryUnlock())
+func (rm *ReentrantMutex) TryLock() bool {
+	id := int64(GoRoutineId())
+
+	if rm.owner.CompareAndSwap(id, id) {
+		if rm.PreventIfSame {
+			return false
+		}
+
+		rm.count++
+
+		return true
+	}
+
+	rm.mu.Lock()
+
+	rm.owner.Store(id)
+	rm.count = 1
+
+	return true
 }
 
-// Unlock releases the lock once.
-func (m *ReentrantMutex) TryUnlock() error {
-	gid := GoRoutineId()
+func (rm *ReentrantMutex) Unlock() {
+	id := int64(GoRoutineId())
 
-	m.mu.Lock()
-	defer func() {
-		m.cond.Broadcast()
-		m.mu.Unlock()
-	}()
+	if rm.owner.CompareAndSwap(id, id) {
+		rm.count--
 
-	if m.cond == nil {
-		m.cond = sync.NewCond(&m.mu)
+		if rm.count == 0 {
+			rm.owner.Store(0)
+			rm.mu.Unlock()
+		}
 	}
-
-	if m.owner != gid {
-		return ErrReentrantNotOwner
-	}
-
-	m.count--
-	if m.count == 0 {
-		m.owner = 0
-	}
-	return nil
 }
 
-// UnlockNow fully releases the lock regardless of the reentrancy count.
-func (m *ReentrantMutex) UnlockNow() error {
-	gid := GoRoutineId()
+func (rm *ReentrantMutex) UnlockNow() error {
+	id := int64(GoRoutineId())
 
-	m.mu.Lock()
-	defer func() {
-		m.cond.Broadcast()
-		m.mu.Unlock()
-	}()
+	if rm.owner.CompareAndSwap(id, 0) {
+		rm.count = 0
 
-	if m.cond == nil {
-		m.cond = sync.NewCond(&m.mu)
+		rm.mu.Unlock()
+
+		return nil
 	}
 
-	if m.owner != gid {
-		return ErrReentrantNotOwner
-	}
-
-	m.count = 0
-	m.owner = 0
-	return nil
+	return ErrReentrantNotOwner
 }

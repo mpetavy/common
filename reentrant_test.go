@@ -24,7 +24,7 @@ func TestReentrantSimple(t *testing.T) {
 	require.NoError(t, rm.UnlockNow())
 
 	require.Equal(t, rm.count, uint64(0))
-	require.Equal(t, rm.owner, uint64(0))
+	require.Equal(t, rm.owner.Load(), int64(0))
 }
 
 func TestReentrantBlocking(t *testing.T) {
@@ -84,7 +84,7 @@ func TestReentrantPreventIfSame(t *testing.T) {
 	}
 
 	require.Equal(t, rm.count, uint64(0))
-	require.Equal(t, rm.owner, uint64(0))
+	require.Equal(t, rm.owner.Load(), int64(0))
 }
 
 func TestReentrantUnlockNow(t *testing.T) {
@@ -99,5 +99,5 @@ func TestReentrantUnlockNow(t *testing.T) {
 	require.NoError(t, rm.UnlockNow())
 
 	require.Equal(t, rm.count, uint64(0))
-	require.Equal(t, rm.owner, uint64(0))
+	require.Equal(t, rm.owner.Load(), int64(0))
 }
